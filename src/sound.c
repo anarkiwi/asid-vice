@@ -1369,6 +1369,7 @@ void sound_init(unsigned int clock_rate, unsigned int ticks_per_frame)
 #endif
 #ifdef USE_ALSA
     sound_init_alsa_device();
+    sound_init_asid_device();
 #endif
 #ifdef USE_COREAUDIO
     sound_init_coreaudio_device();
@@ -1405,6 +1406,7 @@ void sound_init(unsigned int clock_rate, unsigned int ticks_per_frame)
 #endif
 
 #ifdef WIN32
+   sound_init_asid_device();
 #ifdef USE_DXSOUND
     sound_init_dx_device();
 #endif
