@@ -13,6 +13,7 @@ EXTRA_libsounddrv_a_SOURCES = \
 	soundaix.c \
 	soundallegro.c \
 	soundalsa.c \
+	soundasid.cc \
 	soundarts.c \
 	soundbeos.cc \
 	soundbsp.cc \
