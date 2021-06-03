@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <shlobj.h>
 #include <string.h>
 #include <windows.h>
 #include <winsock.h>
@@ -86,6 +87,7 @@
 #include "platform.h"
 #include "system.h"
 #include "util.h"
+#include "version.h"
 
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
@@ -105,21 +107,6 @@
 
 static char *orig_workdir;
 static char *argv0;
-
-int archdep_network_init(void)
-{
-    WORD wVersionRequested = MAKEWORD(1, 1);
-    WSADATA wsaData;
-
-    WSAStartup(wVersionRequested, &wsaData);
-
-    return 0;
-}
-
-void archdep_network_shutdown(void)
-{
-    WSACleanup();
-}
 
 int archdep_init(int *argc, char **argv)
 {
@@ -225,6 +212,68 @@ static BOOL verify_exe(TCHAR *file_name)
     }
 
     return bResult;
+}
+
+#ifdef _MSC_VER
+#  if (_MSC_VER <= 1200)
+#    define NO_SHGETFOLDERPATH
+#  endif
+#endif
+
+const char *archdep_home_path(void)
+{
+    static char *cached_home = NULL;
+	char *home;
+#ifndef NO_SHGETFOLDERPATH
+    char *home_prefix;
+    char data_path[MAX_PATH + 1];
+    HRESULT res;
+#endif
+
+    if (cached_home) {
+        return cached_home;
+    }
+
+#ifndef NO_SHGETFOLDERPATH
+    res = SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0 /* SHGFP_TYPE_CURRENT */, data_path);
+    if (res != S_OK) {
+#endif
+        /* Only use 'userprofile' when on windows nt and up */
+        if (!(GetVersion() & 0x80000000)) {
+            home = getenv("USERPROFILE");
+        } else {
+            home = "C:\\My Documents";
+        }
+
+        if (!home) {
+            home = ".";
+        }
+#ifndef NO_SHGETFOLDERPATH
+    } else {
+       /* create the base directory within appdata */
+        home_prefix = util_concat(data_path, "\\vice", NULL);
+        if (!CreateDirectory(home_prefix, NULL)) {
+            if (GetLastError() != ERROR_ALREADY_EXISTS) {
+                lib_free(home_prefix);
+                home = ".";
+                goto fail;
+            }
+        }
+
+        /* create a version-numbered subdirectory */
+        home = util_concat(home_prefix, "\\", VERSION, NULL);
+        lib_free(home_prefix);
+        if (!CreateDirectory(home, NULL)) {
+            if (GetLastError() != ERROR_ALREADY_EXISTS) {
+                lib_free(home);
+                home = ".";
+            }
+        }
+    }
+
+ fail:
+#endif
+    return home;
 }
 
 const char *archdep_boot_path(void)
@@ -418,24 +467,31 @@ char *archdep_default_save_resource_file_name(void)
 
 char *archdep_default_resource_file_name(void)
 {
-    return util_concat(archdep_boot_path(), "\\vice.ini", NULL);
+    char *local_ini = util_concat(archdep_boot_path(), "\\vice.ini", NULL);
+
+    if (!util_file_exists(local_ini)) {
+        free(local_ini);
+        return util_concat(archdep_home_path(), "\\vice.ini", NULL);
+    } else {
+        return local_ini;
+    }
 }
 
 char *archdep_default_fliplist_file_name(void)
 {
-    return util_concat(archdep_boot_path(), "\\fliplist-", machine_get_name(), ".vfl", NULL);
+    return util_concat(archdep_home_path(), "\\fliplist-", machine_get_name(), ".vfl", NULL);
 }
 
 char *archdep_default_rtc_file_name(void)
 {
-    return util_concat(archdep_boot_path(), "\\vice.rtc", NULL);
+    return util_concat(archdep_home_path(), "\\vice.rtc", NULL);
 }
 
 char *archdep_default_autostart_disk_image_file_name(void)
 {
     const char *home;
 
-    home = archdep_boot_path();
+    home = archdep_home_path();
     return util_concat(home, "\\autostart-", machine_get_name(), ".d64", NULL);
 }
 
@@ -444,7 +500,7 @@ FILE *archdep_open_default_log_file(void)
     char *fname;
     FILE *f;
 
-    fname = util_concat(archdep_boot_path(), "\\vice.log", NULL);
+    fname = util_concat(archdep_home_path(), "\\vice.log", NULL);
     f = fopen(fname, "wt");
     lib_free(fname);
 
@@ -712,6 +768,7 @@ void archdep_shutdown(void)
     lib_free(boot_path);
     lib_free(argv0);
     lib_free(orig_workdir);
+    archdep_network_shutdown();
 }
 
 void archdep_workaround_nop(const char *otto)

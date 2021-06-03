@@ -1,4 +1,4 @@
-.TH C1541 1 "November 2016" "VICE"
+.TH C1541 1 "March 2017" "VICE"
 .SH NAME
 c1541 \- a stand alone disk image maintenance program
 .SH SYNOPSIS
@@ -27,8 +27,29 @@ execute CBM DOS command
 attach \fIimage\fR for use.  All consequent commands in interactive mode will
 refer to this image.
 .TP
+.B \-bam [\fIunit\fR] | \fItrack-min\fR \fItrack_max\fR [\fIunit\fR] (bam [\fIunit\fR] | \fItrack-min\fR \fItrack_max\fR [\fIunit\fR])
+show bam bitmap of an imagem optionally specifying unit and/or a slice of the tracks using \fItrack-min\fR and \fItrack-max\fR.
+.TP
+.B \-bcopy \fIsrc_trk\fR \fIsrc_sec\fR \fIdst_trk\fR \fIdst_sec\fR [\fIsrc_unit\fR [\fIdst_unit\fR]] (bcopy \fIsrc_trk\fR \fIsrc_sec\fR \fIdst_trk\fR \fIdst_sec\fR [\fIsrc_unit\fR [\fIdst_unit\fR]])
+copy a block to another block. When not using the optional unit numbers, the block is copied among the current unit. If one unit (\fIsrc_unit\fR) is specified that unit is used for both source and destination. Using both unit number allows copying blocks between different units.
+.TP
+.B \-bfill \fItrack\fR \fIsector\fR \fIvalue\fR \fI[unit]\fR (bfill \fItrack\fR \fIsector\fR \fIvalue\fR \fI[unit]\fR)
+fill a block with a single value.
+.TP
 .B \-block \fItrack\fR \fIsector\fR \fI[offset]\fR \fI[unit]\fR (block \fItrack\fR \fIsector\fR \fI[offset]\fR \fI[unit]\fR)
 show disk blocks in hex format.
+.TP
+.B \-bpoke [\fI[@unit:]\fR \fItrack\fR \fIsector\fR \fIoffset\fR \fIdata\fR (bpoke [\fI[@unit:]\fR \fItrack\fR \fIsector\fR \fIoffset\fR \fIdata\fR)
+poke data into a block. The \fIdata\fR list should be at least a single byte. Multiple prefixes for the data are supported: 0x/$ for hex, 0b/% for binary, & for octal and unadorned for plain decimal.
+.TP
+.B \-bread \fIfilename\fR \fItrack\fR \fIsector\fR [\fIunit\fR] (bread \fIfilename\fR \fItrack\fR \fIsector\fR [\fIunit\fR])
+read a block from the disk image at (\fItrack\fR,\fIsector\fR) and write it to the host file system as \fIfilename\fR.
+.TP
+.B \-bwrite \fIfilename\fR \fItrack\fR \fIsector\fR [\fIunit\fR] (bwrite \fIfilename\fR \fItrack\fR \fIsector\fR [\fIunit\fR])
+write a block from \fIfilename\fR on the host file system to a disk image at (\fItrack\fR,\fIsector\fR).
+.TP
+.B \-chain \fItrack\fR \fIsector\fR \fi[unit]\fR (chain \fItrack\fR \fIsector\fR \fI[unit]\fR)
+show block chain starting at (\fItrack\fR,\fIsector\fR). The last number shown is the number of bytes in the final block.
 .TP
 .B \-copy \fIimage\fR \fIoldname1\fR \fI[oldname2...]\fR \fInewname\fR (copy \fIoldname1\fR \fI[oldname2...]\fR \fInewname\fR)
 concatenate \fIoldname1\fR, \fIoldname2\fR... into \fInewname\fR on \fIimage\fR
@@ -101,6 +122,10 @@ set verbose mode. Output extra logging information, disable with \fBverbose off\
 .B \-write \fIimage\fR \fIfsname\fR \fI[1541name]\fR (write \fIfsname\fR \fI[1541name]\fR)
 write \fIfsname\fR to \fIimage\fR as \fI1541name\fR (\fIfsname\fR by default).
 (works with \fIP00\fR files as well).
+.TP
+.B \-zcreate \fIx64name\fR \fIzipname\fR [\fIlabel,id\fR] (zcreate \fIx64name\fR \fIzipname\fR [\fIlabel,id\fR]
+create an X64 disk image from four Zipcoded files named \fI1!zipname\fR through
+\fI4!zipname\fR.
 .P
 When more than one command is specified in batch mode, all of them are
 executed in the same order they have on the command line.

@@ -1191,7 +1191,7 @@ static const resource_int_t resources_int[] = {
     { "KeepMonitorOpen", 1, RES_EVENT_NO, NULL,
       &keep_monitor_open, set_keep_monitor_open, NULL },
 #endif
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 int monitor_resources_init(void)
@@ -1232,7 +1232,7 @@ static const cmdline_option_t cmdline_options[] = {
       IDCLS_UNUSED, IDCLS_DISABLE_KEEP_MONITOR_OPEN,
       NULL, NULL },
 #endif
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 int monitor_cmdline_options_init(void)

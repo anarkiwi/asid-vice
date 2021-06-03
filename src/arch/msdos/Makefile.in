@@ -49,15 +49,12 @@ LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
 libarch_a_AR = $(AR) $(ARFLAGS)
 am_libarch_a_OBJECTS = archdep.$(OBJEXT) c128ui.$(OBJEXT) \
-	c64ui.$(OBJEXT) c64dtvui.$(OBJEXT) \
-	catweaselmkiii-drv.$(OBJEXT) cbm2ui.$(OBJEXT) \
+	c64ui.$(OBJEXT) c64dtvui.$(OBJEXT) cbm2ui.$(OBJEXT) \
 	cbm5x0ui.$(OBJEXT) cbmcharsets.$(OBJEXT) console.$(OBJEXT) \
-	grabkey.$(OBJEXT) hardsid-drv.$(OBJEXT) hs-isa.$(OBJEXT) \
-	hs-pci.$(OBJEXT) joy.$(OBJEXT) kbd.$(OBJEXT) \
+	grabkey.$(OBJEXT) joy.$(OBJEXT) kbd.$(OBJEXT) \
 	lightpendrv.$(OBJEXT) menudefs.$(OBJEXT) mousedrv.$(OBJEXT) \
-	msdosmain.$(OBJEXT) parsid-drv.$(OBJEXT) pci-drv.$(OBJEXT) \
-	petui.$(OBJEXT) plus4ui.$(OBJEXT) rawnetarch.$(OBJEXT) \
-	scpu64ui.$(OBJEXT) signals.$(OBJEXT) ssi2001-drv.$(OBJEXT) \
+	msdosmain.$(OBJEXT) petui.$(OBJEXT) plus4ui.$(OBJEXT) \
+	rawnetarch.$(OBJEXT) scpu64ui.$(OBJEXT) signals.$(OBJEXT) \
 	statusbar.$(OBJEXT) tui.$(OBJEXT) tui_backend.$(OBJEXT) \
 	tuicharset.$(OBJEXT) tuiimagebrowser.$(OBJEXT) tuifs.$(OBJEXT) \
 	tuimenu.$(OBJEXT) tuiview.$(OBJEXT) ui.$(OBJEXT) \
@@ -168,6 +165,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -231,6 +230,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -400,7 +401,6 @@ libarch_a_SOURCES = \
 	c128ui.c \
 	c64ui.c \
 	c64dtvui.c \
-	catweaselmkiii-drv.c \
 	cbm2ui.c \
 	cbm5x0ui.c \
 	cbmcharsets.c \
@@ -408,10 +408,6 @@ libarch_a_SOURCES = \
 	console.c \
 	grabkey.c \
 	grabkey.h \
-	hardsid-drv.c \
-	hs.h \
-	hs-isa.c \
-	hs-pci.c \
 	joy.c \
 	joy.h \
 	kbd.c \
@@ -423,16 +419,11 @@ libarch_a_SOURCES = \
 	mousedrv.c \
 	mousedrv.h \
 	msdosmain.c \
-	parsid-drv.c \
-	pci-drv.c \
-	pci-drv.h \
 	petui.c \
 	plus4ui.c \
 	rawnetarch.c \
 	scpu64ui.c \
 	signals.c \
-	socketimpl.h \
-	ssi2001-drv.c \
 	statusbar.c \
 	statusbar.h \
 	tui.c \
@@ -650,29 +641,22 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c128ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64dtvui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64ui.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/catweaselmkiii-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cbm2ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cbm5x0ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cbmcharsets.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/console.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/grabkey.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hardsid-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-isa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-pci.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kbd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lightpendrv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menudefs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mousedrv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/msdosmain.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parsid-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pci-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/petui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plus4ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rawnetarch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scpu64ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/signals.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssi2001-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statusbar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tui_backend.Po@am__quote@

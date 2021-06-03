@@ -53,7 +53,7 @@ libarchmacosx_a_AR = $(AR) $(ARFLAGS)
 libarchmacosx_a_LIBADD =
 am_libarchmacosx_a_OBJECTS = joy-hidmgr.$(OBJEXT) \
 	joy-hidutil.$(OBJEXT) joy-hid.$(OBJEXT) joy.$(OBJEXT) \
-	mididrv.$(OBJEXT) vsyncarch.$(OBJEXT)
+	vsyncarch.$(OBJEXT)
 libarchmacosx_a_OBJECTS = $(am_libarchmacosx_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -169,6 +169,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -232,6 +234,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -393,7 +397,6 @@ libarchmacosx_a_SOURCES = \
 	joy-hid.h \
 	joy.c \
 	joy.h \
-	mididrv.c \
 	vsyncarch.c
 
 EXTRA_DIST = \
@@ -456,7 +459,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy-hidmgr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy-hidutil.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mididrv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsyncarch.Po@am__quote@
 
 .c.o:

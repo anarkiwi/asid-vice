@@ -141,7 +141,7 @@ static const cmdline_option_t cmdline_options[] =
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_SPECIFY_CART_ROM_6000_NAME,
       NULL, NULL },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 int cartridge_cmdline_options_init(void)
@@ -264,7 +264,7 @@ static const resource_string_t resources_string[] = {
       &cart_4_name, set_cart4_rom_name, NULL },
     { "Cart6Name", "", RES_EVENT_NO, NULL,
       &cart_6_name, set_cart6_rom_name, NULL },
-    { NULL }
+    RESOURCE_STRING_LIST_END
 };
 
 static const resource_int_t resources_int[] = {
@@ -282,7 +282,7 @@ static const resource_int_t resources_int[] = {
       &cart6_ram, set_cart6_ram, NULL },
     { "RamC", 0, RES_EVENT_NO, NULL,
       &cartC_ram, set_cartC_ram, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 int cartridge_resources_init(void)

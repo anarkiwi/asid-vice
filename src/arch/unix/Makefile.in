@@ -51,15 +51,10 @@ LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
 libarch_a_AR = $(AR) $(ARFLAGS)
 am_libarch_a_OBJECTS = archdep.$(OBJEXT) blockdev.$(OBJEXT) \
-	catweaselmkiii-drv.$(OBJEXT) coproc.$(OBJEXT) \
-	cw-device.$(OBJEXT) cw-pci.$(OBJEXT) dynlib.$(OBJEXT) \
-	hardsid-drv.$(OBJEXT) hs-linux.$(OBJEXT) hs-isa.$(OBJEXT) \
-	hs-pci.$(OBJEXT) io-access.$(OBJEXT) joy.$(OBJEXT) \
-	joy_usb.$(OBJEXT) mididrv.$(OBJEXT) mousedrv.$(OBJEXT) \
-	parsid-drv.$(OBJEXT) pci-drv.$(OBJEXT) ps-file.$(OBJEXT) \
-	ps-ieee1284.$(OBJEXT) ps-io.$(OBJEXT) rs232dev.$(OBJEXT) \
-	signals.$(OBJEXT) rawnetarch.$(OBJEXT) ssi2001-drv.$(OBJEXT) \
-	unixmain.$(OBJEXT) vsyncarch.$(OBJEXT)
+	coproc.$(OBJEXT) dynlib.$(OBJEXT) joy.$(OBJEXT) \
+	joy_usb.$(OBJEXT) mousedrv.$(OBJEXT) rs232dev.$(OBJEXT) \
+	signals.$(OBJEXT) rawnetarch.$(OBJEXT) unixmain.$(OBJEXT) \
+	vsyncarch.$(OBJEXT)
 libarch_a_OBJECTS = $(am_libarch_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -85,7 +80,7 @@ AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
 	distdir
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = gui minix next_open_rhap qnx4 qnx6 sco_sol skyos x11 \
+DIST_SUBDIRS = minix next_open_rhap qnx4 qnx6 sco_sol skyos gui x11 \
 	macosx readline
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
@@ -176,6 +171,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -239,6 +236,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -376,9 +375,10 @@ xpet_LDFLAGS = @xpet_LDFLAGS@
 xplus4_LDFLAGS = @xplus4_LDFLAGS@
 xscpu64_LDFLAGS = @xscpu64_LDFLAGS@
 xvic_LDFLAGS = @xvic_LDFLAGS@
-@MACOSX_COCOA_FALSE@@NEED_READLINE_FALSE@@UNIX_MACOSX_COMPILE_FALSE@SUBDIRS = gui minix next_open_rhap qnx4 qnx6 sco_sol skyos x11
+@DUMMY_COMPILE_TRUE@SUBDIRS = minix next_open_rhap qnx4 qnx6 sco_sol skyos
+@MACOSX_COCOA_FALSE@@NEED_READLINE_FALSE@@UNIX_MACOSX_COMPILE_FALSE@SUBDIRS = gui x11
 @MACOSX_COCOA_FALSE@@NEED_READLINE_FALSE@@UNIX_MACOSX_COMPILE_TRUE@SUBDIRS = gui x11 macosx
-@MACOSX_COCOA_FALSE@@NEED_READLINE_TRUE@@UNIX_MACOSX_COMPILE_FALSE@SUBDIRS = gui minix next_open_rhap qnx4 qnx6 readline sco_sol skyos x11
+@MACOSX_COCOA_FALSE@@NEED_READLINE_TRUE@@UNIX_MACOSX_COMPILE_FALSE@SUBDIRS = gui readline x11
 @MACOSX_COCOA_FALSE@@NEED_READLINE_TRUE@@UNIX_MACOSX_COMPILE_TRUE@SUBDIRS = gui x11 readline macosx
 @MACOSX_COCOA_TRUE@SUBDIRS = macosx
 AM_CPPFLAGS = \
@@ -406,42 +406,21 @@ libarch_a_SOURCES = \
 	archdep.c \
 	archdep.h \
 	blockdev.c \
-	catweaselmkiii-drv.c \
 	coproc.h \
 	coproc.c \
-	cw.h \
-	cw-device.c \
-	cw-pci.c \
 	dynlib.c \
 	fullscreenarch.h \
-	hardsid-drv.c \
-	hs.h \
-	hs-linux.c \
-	hs-isa.c \
-	hs-pci.c \
 	icon.h \
-	io-access.c \
-	io-access.h \
 	joy.c \
 	joy.h \
 	joy_usb.c \
 	kbd.h \
-	mididrv.c \
 	mousedrv.c \
 	mousedrv.h \
 	openGL_sync.h \
-	parsid-drv.c \
-	pci-drv.c \
-	pci-drv.h \
-	ps.h \
-	ps-file.c \
-	ps-ieee1284.c \
-	ps-io.c \
 	rs232dev.c \
 	signals.c \
-	socketimpl.h \
 	rawnetarch.c \
-	ssi2001-drv.c \
 	types.h \
 	ui.h \
 	uimenu.h \
@@ -505,29 +484,14 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/archdep.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/blockdev.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/catweaselmkiii-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coproc.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cw-device.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cw-pci.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dynlib.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hardsid-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-isa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-linux.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-pci.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/io-access.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy_usb.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mididrv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mousedrv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parsid-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pci-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-file.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-ieee1284.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-io.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rawnetarch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rs232dev.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/signals.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssi2001-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ui-threads.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unixmain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsyncarch.Po@am__quote@

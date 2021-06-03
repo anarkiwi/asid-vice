@@ -44,6 +44,7 @@
 #include "menu_help.h"
 #include "menu_jam.h"
 #include "menu_joyport.h"
+#include "menu_media.h"
 #include "menu_monitor.h"
 #include "menu_network.h"
 #include "menu_printer.h"
@@ -100,10 +101,10 @@ static const ui_menu_entry_t xcbm6x0_7x0_main_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)snapshot_menu },
-    { "Screenshot",
+    { "Save media file",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
-      (ui_callback_data_t)screenshot_crtc_menu },
+      (ui_callback_data_t)media_menu },
     { "Speed settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -199,7 +200,7 @@ static const ui_menu_entry_t xcbm5x0_main_menu[] = {
     { "Screenshot",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
-      (ui_callback_data_t)screenshot_vic_vicii_vdc_menu },
+      (ui_callback_data_t)media_menu },
     { "Speed settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -318,6 +319,10 @@ void cbm2ui_shutdown(void)
 #ifdef HAVE_FFMPEG
     sdl_menu_ffmpeg_shutdown();
 #endif
+    uikeyboard_menu_shutdown();
+    uipalette_menu_shutdown();
+    uisid_menu_shutdown();
+    uijoyport_menu_shutdown();
 
     lib_free(cbm2_font_14);
     lib_free(cbm2_font_8);
@@ -335,6 +340,7 @@ int cbm5x0ui_init(void)
     uikeyboard_menu_create();
     uipalette_menu_create("VICII", NULL);
     uisid_menu_create();
+    uimedia_menu_create();
 
     sdl_ui_set_menu_font(mem_chargen_rom + 0x800, 8, 8);
     sdl_ui_set_main_menu(xcbm5x0_main_menu);
@@ -354,6 +360,8 @@ void cbm5x0ui_shutdown(void)
     uikeyboard_menu_shutdown();
     uisid_menu_shutdown();
     uipalette_menu_shutdown();
+    uijoyport_menu_shutdown();
+    uimedia_menu_shutdown();
 #ifdef SDL_DEBUG
     fprintf(stderr, "%s\n", __func__);
 #endif

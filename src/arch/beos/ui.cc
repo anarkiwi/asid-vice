@@ -32,9 +32,7 @@
 #include <Application.h>
 #include <Clipboard.h>
 #include <FilePanel.h>
-#include <Menu.h>
-#include <MenuBar.h>
-#include <MenuItem.h>
+#include <Path.h>
 #include <ScrollView.h>
 #include <TextView.h>
 #include <View.h>
@@ -389,7 +387,6 @@ static int set_confirm_on_exit(int val, void *param)
     return 0;
 }
 
-
 static const resource_int_t resources_int[] = {
     { "JoystickDisplay", 0, RES_EVENT_NO, NULL,
       &joystickdisplay, set_joystickdisplay, NULL },
@@ -397,7 +394,7 @@ static const resource_int_t resources_int[] = {
       &save_resources_on_exit, set_save_resources_on_exit, NULL },
     { "ConfirmOnExit", 1, RES_EVENT_NO, NULL,
       &confirm_on_exit, set_confirm_on_exit, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 int ui_resources_init(void)
@@ -443,7 +440,7 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
       NULL, "Do not confirm exiting the emulator" },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 int ui_cmdline_options_init(void)
@@ -640,30 +637,57 @@ static void ui_copy_clipboard(void)
         lib_free(text);
     }
 }
-
-static void ui_paste_clipboard_text(void)
+static void ui_handle_paste_text(BMessage *msg)
 {
     const char *text;
     char *text_in_petscii = NULL;
     ssize_t textlen = 0;
+
+    if ((msg->FindData("text/plain", B_MIME_TYPE, (const void **)&text, &textlen)) != B_OK) {
+        // ui_error("No text pasted ?!");
+        return;
+    }
+
+    if (textlen != 0) {
+        text_in_petscii = (char *)lib_malloc(textlen + 1);
+        memcpy(text_in_petscii, text, textlen);
+        text_in_petscii[textlen] = 0;
+        charset_petconvstring((unsigned char *)text_in_petscii, 0);
+        kbdbuf_feed(text_in_petscii);
+        lib_free(text_in_petscii);
+    }
+} 
+
+static void ui_paste_clipboard_text(void)
+{
     BMessage *clippy = (BMessage *)NULL;
 
     if (be_clipboard->Lock()) {
         if (clippy = be_clipboard->Data()) {
-            clippy->FindData("text/plain", B_MIME_TYPE, (const void **)&text, &textlen);
-
-            if (textlen != 0) {
-                text_in_petscii = (char *)lib_malloc(textlen + 1);
-                memcpy(text_in_petscii, text, textlen);
-                text_in_petscii[textlen] = 0;
-                charset_petconvstring((unsigned char *)text_in_petscii, 0);
-                kbdbuf_feed(text_in_petscii);
-                lib_free(text_in_petscii);
-            }
+            ui_handle_paste_text(clippy);
         }
         be_clipboard->Unlock();
     }
 } 
+
+static void ui_handle_dropped_file(BMessage *msg)
+{
+    entry_ref ref;
+    status_t err;
+    BPath *path;
+    // int32 buttons;
+
+    if ((err = msg->FindRef("refs", 0, &ref)) != B_OK) {
+        // ui_error("No File selected ?!");
+        return;
+    }
+    // err = msg->FindInt32("buttons", &buttons);
+    path = new BPath(&ref);
+
+    if (autostart_autodetect(path->Path(), NULL, 0, AUTOSTART_MODE_RUN) < 0) {
+        ui_error("Cannot autostart specified file.");
+    }
+}
 
 static char *get_compiletime_features(void)
 {
@@ -789,6 +813,15 @@ void ui_dispatch_events(void)
                 /* the file- or save-panel was closed */
                 /* now we can use the selected file */
                 ui_select_file_action(&message_queue[i]);
+                break;
+            case B_SIMPLE_DATA:
+                /* handle a file being dropped on the */
+                /* window from tracker */
+                ui_handle_dropped_file(&message_queue[i]);
+                break;
+            case B_MIME_DATA:
+                /* handle text being dropped on the window */
+                ui_handle_paste_text(&message_queue[i]);
                 break;
            case MENU_EXIT_REQUESTED:
                 {
@@ -1060,7 +1093,7 @@ void ui_dispatch_events(void)
 
                 tmp = util_concat("BeVICE Version ", VERSION,
 #ifdef USE_SVN_REVISION
-                                  "rev " VICE_SVN_REV_STRING,
+                                  " rev" VICE_SVN_REV_STRING,
 #endif
                                   "\n (", PLATFORM_CPU, " ", PLATFORM_OS, " ", PLATFORM_COMPILER, ")\n\n",
                                   NULL);

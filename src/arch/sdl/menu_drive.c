@@ -28,6 +28,7 @@
 
 #include "attach.h"
 #include "autostart-prg.h"
+#include "charset.h"
 #include "drive.h"
 #include "diskimage.h"
 #include "fliplist.h"
@@ -709,20 +710,42 @@ UI_MENU_CALLBACK(create_disk_image_callback)
     char *name = NULL;
     char *format_name;
     int overwrite = 1;
+    int result;
 
     if (activated) {
         name = sdl_ui_file_selection_dialog("Select diskimage name", FILEREQ_MODE_SAVE_FILE);
         if (name != NULL) {
             if (util_file_exists(name)) {
-                if (message_box("VICE QUESTION", "File exists, do you want to overwrite?", MESSAGE_YESNO) == 1) {
+                if (message_box("VICE QUESTION", "File exists, do you want to overwrite?", MESSAGE_YESNO) != 0) {
                     overwrite = 0;
                 }
             }
             if (overwrite == 1) {
-                format_name = lib_msprintf("%s,dsk", name);
-                if (vdrive_internal_create_format_disk_image(name, format_name, new_disk_image_type) < 0) {
+                /* ask user for label,id of new disk */
+                format_name = sdl_ui_text_input_dialog(
+                        "Enter disk label,id:", NULL);
+                if (!format_name) {
+                    lib_free(name);
+                    return NULL;
+                }
+                /* convert to PETSCII */
+                charset_petconvstring((BYTE *)format_name, 0);
+
+                /* try to create the new image */
+                if (vdrive_internal_create_format_disk_image(name, format_name,
+                            new_disk_image_type) < 0) {
                     ui_error("Cannot create disk image");
                 }
+                result = message_box("Attach new image", "Select unit",
+                        MESSAGE_UNIT_SELECT);
+                /* 0-3 = unit #8 - unit #11, 4 = SKIP */
+                if (result >= 0 && result <= 3) {
+                    /* try to attach disk image */
+                    if (file_system_attach_disk(result + 8, name) < 0) {
+                        ui_error("Cannot attach disk image.");
+                    }
+                }
+
                 lib_free(format_name);
             }
             lib_free(name);
@@ -768,6 +791,10 @@ static const ui_menu_entry_t create_disk_image_type_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       set_disk_type_callback,
       (ui_callback_data_t)DISK_IMAGE_TYPE_G64 },
+    { "G71",
+      MENU_ENTRY_RESOURCE_RADIO,
+      set_disk_type_callback,
+      (ui_callback_data_t)DISK_IMAGE_TYPE_G71 },
     { "P64",
       MENU_ENTRY_RESOURCE_RADIO,
       set_disk_type_callback,

@@ -93,15 +93,6 @@ int archdep_rtc_get_centisecond(void)
 }
 #endif
 
-int archdep_network_init(void)
-{
-    return 0;
-}
-
-void archdep_network_shutdown(void)
-{
-}
-
 int archdep_init_extra(int *argc, char **argv)
 {
     ssize_t read;
@@ -224,11 +215,8 @@ char *archdep_default_sysfile_pathlist(const char *emu_id)
 #else
 #if defined(MACOSX_BUNDLE)
         /* Mac OS X Bundles keep their ROMS in Resources/bin/../ROM */
-#if defined(MACOSX_COCOA) || defined(USE_SDLUI) || defined(USE_SDLUI2)
         #define MACOSX_ROMDIR "/../Resources/ROM/"
-#else
-        #define MACOSX_ROMDIR "/../ROM/"
-#endif
+
         default_path = util_concat(boot_path, MACOSX_ROMDIR, emu_id, ARCHDEP_FINDPATH_SEPARATOR_STRING,
                                    boot_path, "/", emu_id, ARCHDEP_FINDPATH_SEPARATOR_STRING,
                                    home_path, "/", VICEUSERDIR, "/", emu_id, ARCHDEP_FINDPATH_SEPARATOR_STRING,
@@ -361,19 +349,10 @@ char *archdep_default_save_resource_file_name(void)
     return fname;
 }
 
-#if defined(MACOSX_COCOA)
-FILE *default_log_file = NULL;
-
-FILE *archdep_open_default_log_file(void)
-{
-    return default_log_file;
-}
-#else
 FILE *archdep_open_default_log_file(void)
 {
     return stdout;
 }
-#endif
 
 int archdep_default_logger(const char *level_string, const char *txt)
 {

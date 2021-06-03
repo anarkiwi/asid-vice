@@ -73,15 +73,6 @@
 static char *orig_workdir;
 static char *argv0 = NULL;
 
-int archdep_network_init(void)
-{
-    return 0;
-}
-
-void archdep_network_shutdown(void)
-{
-}
-
 int archdep_init_extra(int *argc, char **argv)
 {
     argv0 = lib_stralloc(argv[0]);
@@ -445,3 +436,11 @@ int kbd_arch_get_host_mapping(void)
 {
     return KBD_MAPPING_US;
 }
+
+
+#ifdef USE_SDLUI2
+char *archdep_sdl2_default_renderers[] = {
+    "software", "opengl", NULL
+};
+#endif
+

@@ -68,11 +68,13 @@ am_libplatform_a_OBJECTS = platform.$(OBJEXT) \
 	platform_nextopenstep_runtime_os.$(OBJEXT) \
 	platform_openbsd_runtime_os.$(OBJEXT) \
 	platform_os2_runtime_os.$(OBJEXT) \
+	platform_qnx4_runtime_os.$(OBJEXT) \
 	platform_qnx6_runtime_os.$(OBJEXT) \
 	platform_rhapsody_runtime_os.$(OBJEXT) \
 	platform_skyos_runtime_os.$(OBJEXT) \
 	platform_sco_runtime_os.$(OBJEXT) \
 	platform_solaris_runtime_os.$(OBJEXT) \
+	platform_sortix_runtime_os.$(OBJEXT) \
 	platform_sunos_runtime_os.$(OBJEXT) \
 	platform_syllable_runtime_os.$(OBJEXT) \
 	platform_ultrix_runtime_os.$(OBJEXT) \
@@ -155,6 +157,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -218,6 +222,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -394,6 +400,7 @@ libplatform_a_SOURCES = \
 	platform_openbsd_runtime_os.c \
 	platform_openbsd_version.h \
 	platform_os2_runtime_os.c \
+	platform_qnx4_runtime_os.c \
 	platform_qnx6_runtime_os.c \
 	platform_qnx6_version.h \
 	platform_rhapsody_runtime_os.c \
@@ -401,6 +408,7 @@ libplatform_a_SOURCES = \
 	platform_sco_runtime_os.c \
 	platform_solaris_runtime_os.c \
 	platform_solaris_version.h \
+	platform_sortix_runtime_os.c \
 	platform_sunos_runtime_os.c \
 	platform_syllable_runtime_os.c \
 	platform_ultrix_runtime_os.c \
@@ -480,11 +488,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_nextopenstep_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_openbsd_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_os2_runtime_os.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_qnx4_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_qnx6_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_rhapsody_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_sco_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_skyos_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_solaris_runtime_os.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_sortix_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_sunos_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_syllable_runtime_os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/platform_ultrix_runtime_os.Po@am__quote@

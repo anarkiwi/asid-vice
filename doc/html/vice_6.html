@@ -1,10 +1,9 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 15 December 2016 -->
+     from ../../doc/vice.texi on 30 March 2017 -->
 
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
 <TITLE>VICE Manual - 6  Settings and resources</TITLE>
 <style type="text/css">
     @import 'vice.css';
@@ -1733,6 +1732,17 @@ Booleans controlling whether Super Card is emulated or not for drives 8 to 11
 <A NAME="IDX189"></A>
 <A NAME="IDX190"></A>
 <A NAME="IDX191"></A>
+<DT><CODE>Drive8StarDos</CODE>
+<DD>
+<DT><CODE>Drive9StarDos</CODE>
+<DD>
+<DT><CODE>Drive10StarDos</CODE>
+<DD>
+<DT><CODE>Drive11StarDos</CODE>
+<DD>
+Booleans controlling whether StarDOS is emulated or not for drives 8 to 11
+(x64, x64sc, xscpu64 and x128 only).
+
 <A NAME="IDX192"></A>
 <A NAME="IDX193"></A>
 <A NAME="IDX194"></A>
@@ -1749,6 +1759,10 @@ Booleans controlling whether Super Card is emulated or not for drives 8 to 11
 <A NAME="IDX205"></A>
 <A NAME="IDX206"></A>
 <A NAME="IDX207"></A>
+<A NAME="IDX208"></A>
+<A NAME="IDX209"></A>
+<A NAME="IDX210"></A>
+<A NAME="IDX211"></A>
 <DT><CODE>Drive8RAM2000</CODE>
 <DD>
 <DT><CODE>Drive8RAM4000</CODE>
@@ -1792,10 +1806,10 @@ Booleans controlling whether Super Card is emulated or not for drives 8 to 11
 Booleans controlling whether a RAM block is emulated at the respective block or
 not for drives 8 to 11 respectively.
 
-<A NAME="IDX208"></A>
-<A NAME="IDX209"></A>
-<A NAME="IDX210"></A>
-<A NAME="IDX211"></A>
+<A NAME="IDX212"></A>
+<A NAME="IDX213"></A>
+<A NAME="IDX214"></A>
+<A NAME="IDX215"></A>
 <DT><CODE>Drive8ExtendImagePolicy</CODE>
 <DD>
 <DT><CODE>Drive9ExtendImagePolicy</CODE>
@@ -1807,10 +1821,10 @@ not for drives 8 to 11 respectively.
 Integer specifying the policy for 40-track support for drives 8 to 11.
 (0: never extend, 1: ask on extend, 2: extend on access)
 
-<A NAME="IDX212"></A>
-<A NAME="IDX213"></A>
-<A NAME="IDX214"></A>
-<A NAME="IDX215"></A>
+<A NAME="IDX216"></A>
+<A NAME="IDX217"></A>
+<A NAME="IDX218"></A>
+<A NAME="IDX219"></A>
 <DT><CODE>Drive8IdleMethod</CODE>
 <DD>
 <DT><CODE>Drive9IdleMethod</CODE>
@@ -1823,10 +1837,10 @@ Integers specifying the idling method for the drive CPU.
 See section <A HREF="vice_6.html#SEC67">6.10  Drive settings</A>.
 (0: none, 1: skip cycles, 2: trap idle)
 
-<A NAME="IDX216"></A>
-<A NAME="IDX217"></A>
-<A NAME="IDX218"></A>
-<A NAME="IDX219"></A>
+<A NAME="IDX220"></A>
+<A NAME="IDX221"></A>
+<A NAME="IDX222"></A>
+<A NAME="IDX223"></A>
 <DT><CODE>Drive8RPM</CODE>
 <DD>
 <DT><CODE>Drive9RPM</CODE>
@@ -1838,10 +1852,10 @@ See section <A HREF="vice_6.html#SEC67">6.10  Drive settings</A>.
 Integers specifying the rotation speed of the drive, multiplied by 100 so 300rpm
 equal 30000.
 
-<A NAME="IDX220"></A>
-<A NAME="IDX221"></A>
-<A NAME="IDX222"></A>
-<A NAME="IDX223"></A>
+<A NAME="IDX224"></A>
+<A NAME="IDX225"></A>
+<A NAME="IDX226"></A>
+<A NAME="IDX227"></A>
 <DT><CODE>Drive8Wobble</CODE>
 <DD>
 <DT><CODE>Drive9Wobble</CODE>
@@ -1853,14 +1867,14 @@ equal 30000.
 Integers specifying the random deviation of the rotation speed, multiplied by 100
 so 100 equals +/- 1rpm.
 
-<A NAME="IDX224"></A>
-<A NAME="IDX225"></A>
-<A NAME="IDX226"></A>
-<A NAME="IDX227"></A>
 <A NAME="IDX228"></A>
 <A NAME="IDX229"></A>
 <A NAME="IDX230"></A>
 <A NAME="IDX231"></A>
+<A NAME="IDX232"></A>
+<A NAME="IDX233"></A>
+<A NAME="IDX234"></A>
+<A NAME="IDX235"></A>
 <DT><CODE>DosName1540</CODE>
 <DD>
 <DT><CODE>DosName1541</CODE>
@@ -1880,23 +1894,23 @@ so 100 equals +/- 1rpm.
 Strings specifying the names of the ROM images for the drive emulation.
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX232"></A>
+<A NAME="IDX236"></A>
 <DT><CODE>DosName1551</CODE>
 <DD>
 String specifying the name of the ROM image for the drive emulation.
 (xplus4 only)
 
-<A NAME="IDX233"></A>
+<A NAME="IDX237"></A>
 <DT><CODE>DosName1571cr</CODE>
 <DD>
 String specifying the name of the ROM image for the drive emulation.
 (x128 only)
 
-<A NAME="IDX234"></A>
-<A NAME="IDX235"></A>
-<A NAME="IDX236"></A>
-<A NAME="IDX237"></A>
 <A NAME="IDX238"></A>
+<A NAME="IDX239"></A>
+<A NAME="IDX240"></A>
+<A NAME="IDX241"></A>
+<A NAME="IDX242"></A>
 <DT><CODE>DosName2031</CODE>
 <DD>
 <DT><CODE>DosName2040</CODE>
@@ -1910,16 +1924,22 @@ String specifying the name of the ROM image for the drive emulation.
 Strings specifying the names of the ROM images for the drive emulation.
 (all emulators except x64dtv, xplus4 and vsid)
 
-<A NAME="IDX239"></A>
+<A NAME="IDX243"></A>
 <DT><CODE>DriveProfDOS1571Name</CODE>
 <DD>
 String specifying the filename of the 1571 professional DOS ROM image
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX240"></A>
+<A NAME="IDX244"></A>
 <DT><CODE>DriveSuperCardName</CODE>
 <DD>
 String specifying the filename of the Super Card ROM image
+(x64, x64sc, xscpu64 and x128 only).
+
+<A NAME="IDX245"></A>
+<DT><CODE>DriveStarDosName</CODE>
+<DD>
+String specifying the filename of the image of the lower half of the StarDOS ROM
 (x64, x64sc, xscpu64 and x128 only).
 
 </DL>
@@ -1932,14 +1952,14 @@ String specifying the filename of the Super Card ROM image
 
 <DT><CODE>-truedrive</CODE>
 <DD>
-<A NAME="IDX241"></A>
+<A NAME="IDX246"></A>
  
 <DT><CODE>+truedrive</CODE>
 <DD>
 Enable/disable true drive emulation
 (<CODE>DriveTrueEmulation=1</CODE>, <CODE>DriveTrueEmulation=0</CODE>).
 
-<A NAME="IDX242"></A>
+<A NAME="IDX247"></A>
 <DT><CODE>-drivesound</CODE>
 <DD>
 <DT><CODE>+drivesound</CODE>
@@ -1948,17 +1968,17 @@ Enable/disable drive sound emulation
 (<CODE>DriveSoundEmulation=1</CODE>, <CODE>DriveSoundEmulation=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX243"></A>
+<A NAME="IDX248"></A>
 <DT><CODE>-drivesoundvolume &#60;Volume&#62;</CODE>
 <DD>
 Set the volume of the drive sound emulation
 (<CODE>DriveSoundEmulationVolume=1</CODE>, <CODE>DriveSoundEmulationVolume=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX244"></A>
-<A NAME="IDX245"></A>
-<A NAME="IDX246"></A>
-<A NAME="IDX247"></A>
+<A NAME="IDX249"></A>
+<A NAME="IDX250"></A>
+<A NAME="IDX251"></A>
+<A NAME="IDX252"></A>
 <DT><CODE>-drive8type &#60;Type&#62;</CODE>
 <DD>
 <DT><CODE>-drive9type &#60;Type&#62;</CODE>
@@ -1986,7 +2006,7 @@ Possible values for <CODE>TYPE</CODE> are
 <CODE>8050</CODE> [all emulators except x64dtv, xplus4 and vsid]
 and <CODE>8250</CODE> [all emulators except x64dtv, xplus4 and vsid].
 
-<A NAME="IDX248"></A>
+<A NAME="IDX253"></A>
 <DT><CODE>-drive8rtcsave</CODE>
 <DD>
 <DT><CODE>-drive8rtcsave</CODE>
@@ -1994,7 +2014,7 @@ and <CODE>8250</CODE> [all emulators except x64dtv, xplus4 and vsid].
 Enable/disable the saving of the RTC data for drive 8 when changed (drive type 2000/4000 only)
 (<CODE>Drive8RTCSave=1</CODE>, <CODE>Drive8RTCSave=0</CODE>).
 
-<A NAME="IDX249"></A>
+<A NAME="IDX254"></A>
 <DT><CODE>-drive9rtcsave</CODE>
 <DD>
 <DT><CODE>-drive9rtcsave</CODE>
@@ -2002,7 +2022,7 @@ Enable/disable the saving of the RTC data for drive 8 when changed (drive type 2
 Enable/disable the saving of the RTC data for drive 9 when changed (drive type 2000/4000 only)
 (<CODE>Drive9RTCSave=1</CODE>, <CODE>Drive9RTCSave=0</CODE>).
 
-<A NAME="IDX250"></A>
+<A NAME="IDX255"></A>
 <DT><CODE>-drive10rtcsave</CODE>
 <DD>
 <DT><CODE>-drive10rtcsave</CODE>
@@ -2010,7 +2030,7 @@ Enable/disable the saving of the RTC data for drive 9 when changed (drive type 2
 Enable/disable the saving of the RTC data for drive 10 when changed (drive type 2000/4000 only)
 (<CODE>Drive10RTCSave=1</CODE>, <CODE>Drive10RTCSave=0</CODE>).
 
-<A NAME="IDX251"></A>
+<A NAME="IDX256"></A>
 <DT><CODE>-drive11rtcsave</CODE>
 <DD>
 <DT><CODE>-drive11rtcsave</CODE>
@@ -2018,10 +2038,10 @@ Enable/disable the saving of the RTC data for drive 10 when changed (drive type 
 Enable/disable the saving of the RTC data for drive 11 when changed (drive type 2000/4000 only)
 (<CODE>Drive11RTCSave=1</CODE>, <CODE>Drive11RTCSave=0</CODE>).
 
-<A NAME="IDX252"></A>
-<A NAME="IDX253"></A>
-<A NAME="IDX254"></A>
-<A NAME="IDX255"></A>
+<A NAME="IDX257"></A>
+<A NAME="IDX258"></A>
+<A NAME="IDX259"></A>
+<A NAME="IDX260"></A>
 <DT><CODE>-parallel8 &#60;type&#62;</CODE>
 <DD>
 <DT><CODE>-parallel9 &#60;type&#62;</CODE>
@@ -2037,10 +2057,10 @@ Set parallel cable type for drives 8-11 respectively
 x64/x64sc/xscpu64/x128: (0: None, 1: Standard, 2: Professional DOS, 3: Formel64)
 xplus4: (0: None, 1: Standard)
 
-<A NAME="IDX256"></A>
-<A NAME="IDX257"></A>
-<A NAME="IDX258"></A>
-<A NAME="IDX259"></A>
+<A NAME="IDX261"></A>
+<A NAME="IDX262"></A>
+<A NAME="IDX263"></A>
+<A NAME="IDX264"></A>
 <DT><CODE>-drive8idle &#60;method&#62;</CODE>
 <DD>
 <DT><CODE>-drive9idle &#60;method&#62;</CODE>
@@ -2054,10 +2074,10 @@ Specifies &#60;method&#62; as the idling method for drives 8-11 respectively
 <CODE>Drive10IdleMethod</CODE>), <CODE>Drive11IdleMethod</CODE>).
 (0: none, 1: skip cycles, 2: trap idle)
 
-<A NAME="IDX260"></A>
-<A NAME="IDX261"></A>
-<A NAME="IDX262"></A>
-<A NAME="IDX263"></A>
+<A NAME="IDX265"></A>
+<A NAME="IDX266"></A>
+<A NAME="IDX267"></A>
+<A NAME="IDX268"></A>
 <DT><CODE>-drive8extend &#60;method&#62;</CODE>
 <DD>
 <DT><CODE>-drive9extend &#60;method&#62;</CODE>
@@ -2071,10 +2091,10 @@ Specifies &#60;method&#62; as the track 40 extend policy in drives 8-11 respecti
 <CODE>Drive10ExtendImagePolicy</CODE>, <CODE>Drive11ExtendImagePolicy</CODE>).
 (0: never extend, 1: ask on extend, 2: extend on access)
 
-<A NAME="IDX264"></A>
-<A NAME="IDX265"></A>
-<A NAME="IDX266"></A>
-<A NAME="IDX267"></A>
+<A NAME="IDX269"></A>
+<A NAME="IDX270"></A>
+<A NAME="IDX271"></A>
+<A NAME="IDX272"></A>
 <DT><CODE>-drive8rpm &#60;rpm&#62;</CODE>
 <DD>
 <DT><CODE>-drive9rpm &#60;rpm&#62;</CODE>
@@ -2086,10 +2106,10 @@ Specifies &#60;method&#62; as the track 40 extend policy in drives 8-11 respecti
 Specifies the rotation speed of the drive, multiplied by 100 so 300rpm
 equal 30000.
 
-<A NAME="IDX268"></A>
-<A NAME="IDX269"></A>
-<A NAME="IDX270"></A>
-<A NAME="IDX271"></A>
+<A NAME="IDX273"></A>
+<A NAME="IDX274"></A>
+<A NAME="IDX275"></A>
+<A NAME="IDX276"></A>
 <DT><CODE>-drive8wobble &#60;wobble&#62;</CODE>
 <DD>
 <DT><CODE>-drive9wobble &#60;wobble&#62;</CODE>
@@ -2100,232 +2120,232 @@ equal 30000.
 <DD>
 Specifies random amount of wobble added to the rotation speed.
 
-<A NAME="IDX272"></A>
+<A NAME="IDX277"></A>
 <DT><CODE>-dos1540 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1540 emulation
 (<CODE>DosName1540</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX273"></A>
+<A NAME="IDX278"></A>
 <DT><CODE>-dos1541 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1541 emulation
 (<CODE>DosName1541</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX274"></A>
+<A NAME="IDX279"></A>
 <DT><CODE>-dos1541II &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1541-II emulation
 (<CODE>DosName1541ii</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX275"></A>
+<A NAME="IDX280"></A>
 <DT><CODE>-dos1551 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1551 emulation
 (<CODE>DosName1551</CODE>).
 (xplus4 only)
 
-<A NAME="IDX276"></A>
+<A NAME="IDX281"></A>
 <DT><CODE>-dos1570 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1570 emulation
 (<CODE>DosName1570</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX277"></A>
+<A NAME="IDX282"></A>
 <DT><CODE>-dos1571 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1571 emulation
 (<CODE>DosName1571</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX278"></A>
+<A NAME="IDX283"></A>
 <DT><CODE>-dos1571cr &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1571 emulation
 (<CODE>DosName1571CR</CODE>).
 (x128 only)
 
-<A NAME="IDX279"></A>
+<A NAME="IDX284"></A>
 <DT><CODE>-dos1581 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1581 emulation
 (<CODE>DosName1581</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX280"></A>
+<A NAME="IDX285"></A>
 <DT><CODE>-dos2000 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the FD2000 emulation
 (<CODE>DosName2000</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX281"></A>
+<A NAME="IDX286"></A>
 <DT><CODE>-dos4000 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the FD4000 emulation
 (<CODE>DosName4000</CODE>).
 (all emulators except xcbm2, xcbm5x0, xpet and vsid)
 
-<A NAME="IDX282"></A>
+<A NAME="IDX287"></A>
 <DT><CODE>-dos2031 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 2031 emulation
 (<CODE>DosName2031</CODE>).
 (all emulators except x64dtv, xplus4 and vsid)
 
-<A NAME="IDX283"></A>
+<A NAME="IDX288"></A>
 <DT><CODE>-dos2040 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 2040 emulation
 (<CODE>DosName2040</CODE>).
 (all emulators except x64dtv, xplus4 and vsid)
 
-<A NAME="IDX284"></A>
+<A NAME="IDX289"></A>
 <DT><CODE>-dos3040 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 3040 emulation
 (<CODE>DosName3040</CODE>).
 (all emulators except x64dtv, xplus4 and vsid)
 
-<A NAME="IDX285"></A>
+<A NAME="IDX290"></A>
 <DT><CODE>-dos4040 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 4040 emulation
 (<CODE>DosName4040</CODE>).
 (all emulators except x64dtv, xplus4 and vsid)
 
-<A NAME="IDX286"></A>
+<A NAME="IDX291"></A>
 <DT><CODE>-dos1001 &#60;name&#62;</CODE>
 <DD>
 Specify the ROM name for the 1001, 8050 and 8250 emulations
 (<CODE>DosName1001</CODE>).
 (all emulators except x64dtv, xplus4 and vsid)
 
-<A NAME="IDX287"></A>
+<A NAME="IDX292"></A>
 <DT><CODE>-drive8ram2000, +drive8ram2000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $2000-$3FFF for drive 8
 (<CODE>Drive8RAM2000=1</CODE>, <CODE>Drive8RAM2000=0</CODE>).
 
-<A NAME="IDX288"></A>
+<A NAME="IDX293"></A>
 <DT><CODE>-drive9ram2000, +drive9ram2000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $2000-$3FFF for drive 9
 (<CODE>Drive9RAM2000=1</CODE>, <CODE>Drive9RAM2000=0</CODE>).
 
-<A NAME="IDX289"></A>
+<A NAME="IDX294"></A>
 <DT><CODE>-drive10ram2000, +drive10ram2000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $2000-$3FFF for drive 10
 (<CODE>Drive10RAM2000=1</CODE>, <CODE>Drive10RAM2000=0</CODE>).
 
-<A NAME="IDX290"></A>
+<A NAME="IDX295"></A>
 <DT><CODE>-drive11ram2000, +drive11ram2000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $2000-$3FFF for drive 11
 (<CODE>Drive11RAM2000=1</CODE>, <CODE>Drive11RAM2000=0</CODE>).
 
-<A NAME="IDX291"></A>
+<A NAME="IDX296"></A>
 <DT><CODE>-drive8ram4000, +drive8ram4000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $4000-$5FFF for drive 8
 (<CODE>Drive8RAM4000=1</CODE>, <CODE>Drive8RAM4000=0</CODE>).
 
-<A NAME="IDX292"></A>
+<A NAME="IDX297"></A>
 <DT><CODE>-drive9ram4000, +drive9ram4000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $4000-$5FFF for drive 9
 (<CODE>Drive9RAM4000=1</CODE>, <CODE>Drive9RAM4000=0</CODE>).
 
-<A NAME="IDX293"></A>
+<A NAME="IDX298"></A>
 <DT><CODE>-drive10ram4000, +drive10ram4000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $4000-$5FFF for drive 10
 (<CODE>Drive10RAM4000=1</CODE>, <CODE>Drive10RAM4000=0</CODE>).
 
-<A NAME="IDX294"></A>
+<A NAME="IDX299"></A>
 <DT><CODE>-drive11ram4000, +drive11ram4000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $4000-$5FFF for drive 11
 (<CODE>Drive11RAM4000=1</CODE>, <CODE>Drive11RAM4000=0</CODE>).
 
-<A NAME="IDX295"></A>
+<A NAME="IDX300"></A>
 <DT><CODE>-drive8ram6000, +drive8ram6000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $6000-$7FFF for drive 8
 (<CODE>Drive8RAM6000=1</CODE>, <CODE>Drive8RAM6000=0</CODE>).
 
-<A NAME="IDX296"></A>
+<A NAME="IDX301"></A>
 <DT><CODE>-drive9ram6000, +drive9ram6000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $6000-$7FFF for drive 9
 (<CODE>Drive9RAM6000=1</CODE>, <CODE>Drive9RAM6000=0</CODE>).
 
-<A NAME="IDX297"></A>
+<A NAME="IDX302"></A>
 <DT><CODE>-drive10ram6000, +drive10ram6000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $6000-$7FFF for drive 10
 (<CODE>Drive10RAM6000=1</CODE>, <CODE>Drive10RAM6000=0</CODE>).
 
-<A NAME="IDX298"></A>
+<A NAME="IDX303"></A>
 <DT><CODE>-drive11ram6000, +drive11ram6000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $6000-$7FFF for drive 11
 (<CODE>Drive11RAM6000=1</CODE>, <CODE>Drive11RAM6000=0</CODE>).
 
-<A NAME="IDX299"></A>
+<A NAME="IDX304"></A>
 <DT><CODE>-drive8ram8000, +drive8ram8000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $8000-$9FFF for drive 8
 (<CODE>Drive8RAM8000=1</CODE>, <CODE>Drive8RAM8000=0</CODE>).
 
-<A NAME="IDX300"></A>
+<A NAME="IDX305"></A>
 <DT><CODE>-drive9ram8000, +drive9ram8000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $8000-$9FFF for drive 9
 (<CODE>Drive9RAM8000=1</CODE>, <CODE>Drive9RAM8000=0</CODE>).
 
-<A NAME="IDX301"></A>
+<A NAME="IDX306"></A>
 <DT><CODE>-drive10ram8000, +drive10ram8000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $8000-$9FFF for drive 10
 (<CODE>Drive10RAM8000=1</CODE>, <CODE>Drive10RAM8000=0</CODE>).
 
-<A NAME="IDX302"></A>
+<A NAME="IDX307"></A>
 <DT><CODE>-drive11ram8000, +drive11ram8000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $8000-$9FFF for drive 11
 (<CODE>Drive11RAM8000=1</CODE>, <CODE>Drive11RAM8000=0</CODE>).
 
-<A NAME="IDX303"></A>
+<A NAME="IDX308"></A>
 <DT><CODE>-drive8rama000, +drive8rama000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $A000-$BFFF for drive 8
 (<CODE>Drive8RAMA000=1</CODE>, <CODE>Drive8RAMA000=0</CODE>).
 
-<A NAME="IDX304"></A>
+<A NAME="IDX309"></A>
 <DT><CODE>-drive9rama000, +drive9rama000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $A000-$BFFF for drive 9
 (<CODE>Drive9RAMA000=1</CODE>, <CODE>Drive9RAMA000=0</CODE>).
 
-<A NAME="IDX305"></A>
+<A NAME="IDX310"></A>
 <DT><CODE>-drive10rama000, +drive10rama000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $A000-$BFFF for drive 10
 (<CODE>Drive10RAMA000=1</CODE>, <CODE>Drive10RAMA000=0</CODE>).
 
-<A NAME="IDX306"></A>
+<A NAME="IDX311"></A>
 <DT><CODE>-drive11rama000, +drive11rama000</CODE>
 <DD>
 Enable/disable 8KB RAM expansion at $A000-$BFFF for drive 11
 (<CODE>Drive11RAMA000=1</CODE>, <CODE>Drive11RAMA000=0</CODE>).
 
-<A NAME="IDX307"></A>
+<A NAME="IDX312"></A>
 <DT><CODE>-drive8profdos</CODE>
 <DD>
 <DT><CODE>+drive8profdos</CODE>
@@ -2334,7 +2354,7 @@ Enable/disable Professional DOS for drive 8
 (<CODE>Drive8ProfDOS=1</CODE>, <CODE>Drive8ProfDOS=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX308"></A>
+<A NAME="IDX313"></A>
 <DT><CODE>-drive9profdos</CODE>
 <DD>
 <DT><CODE>+drive9profdos</CODE>
@@ -2343,7 +2363,7 @@ Enable/disable Professional DOS for drive 9
 (<CODE>Drive9ProfDOS=1</CODE>, <CODE>Drive9ProfDOS=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX309"></A>
+<A NAME="IDX314"></A>
 <DT><CODE>-drive10profdos</CODE>
 <DD>
 <DT><CODE>+drive10profdos</CODE>
@@ -2352,7 +2372,7 @@ Enable/disable Professional DOS for drive 10
 (<CODE>Drive10ProfDOS=1</CODE>, <CODE>Drive10ProfDOS=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX310"></A>
+<A NAME="IDX315"></A>
 <DT><CODE>-drive11profdos</CODE>
 <DD>
 <DT><CODE>+drive11profdos</CODE>
@@ -2361,14 +2381,14 @@ Enable/disable Professional DOS for drive 11
 (<CODE>Drive11ProfDOS=1</CODE>, <CODE>Drive11ProfDOS=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX311"></A>
+<A NAME="IDX316"></A>
 <DT><CODE>-profdos1571 &#60;name&#62;</CODE>
 <DD>
 Specify name of Professional DOS 1571 ROM image
 (<CODE>DriveProfDOS1571Name</CODE>)
 (x64, x64sc, xscpu64 and x128).
 
-<A NAME="IDX312"></A>
+<A NAME="IDX317"></A>
 <DT><CODE>-drive8supercard</CODE>
 <DD>
 <DT><CODE>+drive8supercard</CODE>
@@ -2377,7 +2397,7 @@ Enable/disable Super Card for drive 8
 (<CODE>Drive8SuperCard=1</CODE>, <CODE>Drive8SuperCard=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX313"></A>
+<A NAME="IDX318"></A>
 <DT><CODE>-drive9supercard</CODE>
 <DD>
 <DT><CODE>+drive9supercard</CODE>
@@ -2386,7 +2406,7 @@ Enable/disable Super Card for drive 9
 (<CODE>Drive9SuperCard=1</CODE>, <CODE>Drive9SuperCard=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX314"></A>
+<A NAME="IDX319"></A>
 <DT><CODE>-drive10supercard</CODE>
 <DD>
 <DT><CODE>+drive10supercard</CODE>
@@ -2395,7 +2415,7 @@ Enable/disable Super Card for drive 10
 (<CODE>Drive10SuperCard=1</CODE>, <CODE>Drive10SuperCard=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX315"></A>
+<A NAME="IDX320"></A>
 <DT><CODE>-drive11supercard</CODE>
 <DD>
 <DT><CODE>+drive11supercard</CODE>
@@ -2404,11 +2424,55 @@ Enable/disable Super Card for drive 11
 (<CODE>Drive11SuperCard=1</CODE>, <CODE>Drive11SuperCard=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX316"></A>
+<A NAME="IDX321"></A>
 <DT><CODE>-supercard &#60;name&#62;</CODE>
 <DD>
 Specify name of Super Card ROM image
 (<CODE>DriveSuperCardName</CODE>)
+(x64, x64sc, xscpu64 and x128 only).
+
+<A NAME="IDX322"></A>
+<DT><CODE>-drive8stardos</CODE>
+<DD>
+<DT><CODE>+drive8stardos</CODE>
+<DD>
+Enable/disable StarDOS for drive 8
+(<CODE>Drive8StarDos=1</CODE>, <CODE>Drive8StarDos=0</CODE>)
+(x64, x64sc, xscpu64 and x128 only).
+
+<A NAME="IDX323"></A>
+<DT><CODE>-drive9stardos</CODE>
+<DD>
+<DT><CODE>+drive9stardos</CODE>
+<DD>
+Enable/disable StarDOS for drive 9
+(<CODE>Drive9StarDos=1</CODE>, <CODE>Drive9StarDos=0</CODE>)
+(x64, x64sc, xscpu64 and x128 only).
+
+<A NAME="IDX324"></A>
+<DT><CODE>-drive10stardos</CODE>
+<DD>
+<DT><CODE>+drive10stardos</CODE>
+<DD>
+Enable/disable StarDOS for drive 10
+(<CODE>Drive10StarDos=1</CODE>, <CODE>Drive10StarDos=0</CODE>)
+(x64, x64sc, xscpu64 and x128 only).
+
+<A NAME="IDX325"></A>
+<DT><CODE>-drive11stardos</CODE>
+<DD>
+<DT><CODE>+drive11stardos</CODE>
+<DD>
+Enable/disable StarDOS for drive 11
+(<CODE>Drive11StarDos=1</CODE>, <CODE>Drive11StarDos=0</CODE>)
+(x64, x64sc, xscpu64 and x128 only).
+
+<A NAME="IDX326"></A>
+<DT><CODE>-stardos &#60;name&#62;</CODE>
+<DD>
+Specify name of the image of the lower half of the StarDOS ROM. (Attach the upper
+half using the -dos1541 option.)
+(<CODE>DriveStarDosName</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
 </DL>
@@ -2502,10 +2566,10 @@ Note that, by default, all drives create P00 files on save.
 
 <DT><CODE>IECDevice8</CODE>
 <DD>
-<A NAME="IDX317"></A>
- <A NAME="IDX318"></A>
- <A NAME="IDX319"></A>
- <A NAME="IDX320"></A>
+<A NAME="IDX327"></A>
+ <A NAME="IDX328"></A>
+ <A NAME="IDX329"></A>
+ <A NAME="IDX330"></A>
  
 <DT><CODE>IECDevice9</CODE>
 <DD>
@@ -2515,10 +2579,10 @@ Note that, by default, all drives create P00 files on save.
 <DD>
 Booleans that specify whether IEC device emulation for device #8 to #11 is enabled.
 
-<A NAME="IDX321"></A>
-<A NAME="IDX322"></A>
-<A NAME="IDX323"></A>
-<A NAME="IDX324"></A>
+<A NAME="IDX331"></A>
+<A NAME="IDX332"></A>
+<A NAME="IDX333"></A>
+<A NAME="IDX334"></A>
 <DT><CODE>FileSystemDevice8</CODE>
 <DD>
 <DT><CODE>FileSystemDevice9</CODE>
@@ -2531,10 +2595,10 @@ Integers specifying the device type for device 8-11 respectively
 (all emulators except vsid).
 (0: None, 1: Filesystem, 2: OpenCBM (Real), 3: Block Device (Raw))
 
-<A NAME="IDX325"></A>
-<A NAME="IDX326"></A>
-<A NAME="IDX327"></A>
-<A NAME="IDX328"></A>
+<A NAME="IDX335"></A>
+<A NAME="IDX336"></A>
+<A NAME="IDX337"></A>
+<A NAME="IDX338"></A>
 <DT><CODE>FSDevice8ConvertP00</CODE>
 <DD>
 <DT><CODE>FSDevice9ConvertP00</CODE>
@@ -2546,10 +2610,10 @@ Integers specifying the device type for device 8-11 respectively
 Booleans specifying whether on-read support for P00 files is enabled on drives 8, 9, 10 and 11 respectively
 (all emulators except vsid).
 
-<A NAME="IDX329"></A>
-<A NAME="IDX330"></A>
-<A NAME="IDX331"></A>
-<A NAME="IDX332"></A>
+<A NAME="IDX339"></A>
+<A NAME="IDX340"></A>
+<A NAME="IDX341"></A>
+<A NAME="IDX342"></A>
 <DT><CODE>FSDevice8SaveP00</CODE>
 <DD>
 <DT><CODE>FSDevice9SaveP00</CODE>
@@ -2561,10 +2625,10 @@ Booleans specifying whether on-read support for P00 files is enabled on drives 8
 Booleans specifying whether the drives should create P00 files instead of plain CBM ones for drives 8, 9, 10 and 11 respectively
 (all emulators except vsid).
 
-<A NAME="IDX333"></A>
-<A NAME="IDX334"></A>
-<A NAME="IDX335"></A>
-<A NAME="IDX336"></A>
+<A NAME="IDX343"></A>
+<A NAME="IDX344"></A>
+<A NAME="IDX345"></A>
+<A NAME="IDX346"></A>
 <DT><CODE>FSDevice8HideCBMFiles</CODE>
 <DD>
 <DT><CODE>FSDevice9HideCBMFiles</CODE>
@@ -2576,10 +2640,10 @@ Booleans specifying whether the drives should create P00 files instead of plain 
 Booleans specifying whether non-P00 files should be invisible for drives 8, 9, 10 and 11 respectively
 (all emulators except vsid).
 
-<A NAME="IDX337"></A>
-<A NAME="IDX338"></A>
-<A NAME="IDX339"></A>
-<A NAME="IDX340"></A>
+<A NAME="IDX347"></A>
+<A NAME="IDX348"></A>
+<A NAME="IDX349"></A>
+<A NAME="IDX350"></A>
 <DT><CODE>FSDevice8Dir</CODE>
 <DD>
 <DT><CODE>FSDevice9Dir</CODE>
@@ -2601,14 +2665,14 @@ Strings specifying the directories to which drives 8, 9, 10 and 11 have access
 
 <DT><CODE>-iecdevice8</CODE>
 <DD>
-<A NAME="IDX341"></A>
+<A NAME="IDX351"></A>
  
 <DT><CODE>+iecdevice8</CODE>
 <DD>
 Enable/disable IEC device emulation for device #8
 (<CODE>IECDevice8=1</CODE>, <CODE>IECDevice8=0</CODE>).
 
-<A NAME="IDX342"></A>
+<A NAME="IDX352"></A>
 <DT><CODE>-iecdevice9</CODE>
 <DD>
 <DT><CODE>+iecdevice9</CODE>
@@ -2616,7 +2680,7 @@ Enable/disable IEC device emulation for device #8
 Enable/disable IEC device emulation for device #9
 (<CODE>IECDevice9=1</CODE>, <CODE>IECDevice9=0</CODE>).
 
-<A NAME="IDX343"></A>
+<A NAME="IDX353"></A>
 <DT><CODE>-iecdevice10</CODE>
 <DD>
 <DT><CODE>+iecdevice10</CODE>
@@ -2624,7 +2688,7 @@ Enable/disable IEC device emulation for device #9
 Enable/disable IEC device emulation for device #10
 (<CODE>IECDevice10=1</CODE>, <CODE>IECDevice10=0</CODE>).
 
-<A NAME="IDX344"></A>
+<A NAME="IDX354"></A>
 <DT><CODE>-iecdevice11</CODE>
 <DD>
 <DT><CODE>+iecdevice11</CODE>
@@ -2632,10 +2696,10 @@ Enable/disable IEC device emulation for device #10
 Enable/disable IEC device emulation for device #11
 (<CODE>IECDevice11=1</CODE>, <CODE>IECDevice11=0</CODE>).
 
-<A NAME="IDX345"></A>
-<A NAME="IDX346"></A>
-<A NAME="IDX347"></A>
-<A NAME="IDX348"></A>
+<A NAME="IDX355"></A>
+<A NAME="IDX356"></A>
+<A NAME="IDX357"></A>
+<A NAME="IDX358"></A>
 <DT><CODE>-device8 &#60;type&#62;</CODE>
 <DD>
 <DT><CODE>-device9 &#60;type&#62;</CODE>
@@ -2649,10 +2713,10 @@ Set device type for device 8-11 respectively
 (all emulators except vsid).
 (0: None, 1: Filesystem, 2: OpenCBM (Real), 3: Block device (Raw))
 
-<A NAME="IDX349"></A>
-<A NAME="IDX350"></A>
-<A NAME="IDX351"></A>
-<A NAME="IDX352"></A>
+<A NAME="IDX359"></A>
+<A NAME="IDX360"></A>
+<A NAME="IDX361"></A>
+<A NAME="IDX362"></A>
 <DT><CODE>-fs8 &#60;Name&#62;</CODE>
 <DD>
 <DT><CODE>-fs9 &#60;Name&#62;</CODE>
@@ -2666,7 +2730,7 @@ Specify the paths for the file system access on drives 8, 9, 10 and 11, respecti
 <CODE>FSDevice10Dir</CODE> and <CODE>FSDevice11Dir</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX353"></A>
+<A NAME="IDX363"></A>
 <DT><CODE>-fs8convertp00</CODE>
 <DD>
 <DT><CODE>+fs8convertp00</CODE>
@@ -2675,7 +2739,7 @@ Enable/disable on-read support for P00 files on drive 8
 (<CODE>FSDevice8ConvertP00=1</CODE>, <CODE>FSDevice8ConvertP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX354"></A>
+<A NAME="IDX364"></A>
 <DT><CODE>-fs9convertp00</CODE>
 <DD>
 <DT><CODE>+fs9convertp00</CODE>
@@ -2684,7 +2748,7 @@ Enable/disable on-read support for P00 files on drive 9
 (<CODE>FSDevice9ConvertP00=1</CODE>, <CODE>FSDevice9ConvertP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX355"></A>
+<A NAME="IDX365"></A>
 <DT><CODE>-fs10convertp00</CODE>
 <DD>
 <DT><CODE>+fs10convertp00</CODE>
@@ -2693,7 +2757,7 @@ Enable/disable on-read support for P00 files on drive 10
 (<CODE>FSDevice10ConvertP00=1</CODE>, <CODE>FSDevice10ConvertP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX356"></A>
+<A NAME="IDX366"></A>
 <DT><CODE>-fs11convertp00</CODE>
 <DD>
 <DT><CODE>+fs11convertp00</CODE>
@@ -2702,7 +2766,7 @@ Enable/disable on-read support for P00 files on drive 11
 (<CODE>FSDevice11ConvertP00=1</CODE>, <CODE>FSDevice11ConvertP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX357"></A>
+<A NAME="IDX367"></A>
 <DT><CODE>-fs8savep00</CODE>
 <DD>
 <DT><CODE>+fs8savep00</CODE>
@@ -2711,7 +2775,7 @@ Enable/disable saving P00 files on drive 8
 (<CODE>FSDevice8SaveP00=1</CODE>, <CODE>FSDevice8SaveP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX358"></A>
+<A NAME="IDX368"></A>
 <DT><CODE>-fs9savep00</CODE>
 <DD>
 <DT><CODE>+fs9savep00</CODE>
@@ -2720,7 +2784,7 @@ Enable/disable saving P00 files on drive 9
 (<CODE>FSDevice9SaveP00=1</CODE>, <CODE>FSDevice9SaveP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX359"></A>
+<A NAME="IDX369"></A>
 <DT><CODE>-fs10savep00</CODE>
 <DD>
 <DT><CODE>+fs10savep00</CODE>
@@ -2729,7 +2793,7 @@ Enable/disable saving P00 files on drive 10
 (<CODE>FSDevice10SaveP00=1</CODE>, <CODE>FSDevice10SaveP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX360"></A>
+<A NAME="IDX370"></A>
 <DT><CODE>-fs11savep00</CODE>
 <DD>
 <DT><CODE>+fs11savep00</CODE>
@@ -2738,7 +2802,7 @@ Enable/disable saving P00 files on drive 11
 (<CODE>FSDevice11SaveP00=1</CODE>, <CODE>FSDevice11SaveP00=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX361"></A>
+<A NAME="IDX371"></A>
 <DT><CODE>-fs8hidecbm</CODE>
 <DD>
 <DT><CODE>+fs8hidecbm</CODE>
@@ -2747,7 +2811,7 @@ Enable/disable hiding of CBM files for drive 8
 (<CODE>FSDevice8HideCBMFiles=1</CODE>, <CODE>FSDevice8HideCBMFiles=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX362"></A>
+<A NAME="IDX372"></A>
 <DT><CODE>-fs9hidecbm</CODE>
 <DD>
 <DT><CODE>+fs9hidecbm</CODE>
@@ -2756,7 +2820,7 @@ Enable/disable hiding of CBM files for drive 9
 (<CODE>FSDevice9HideCBMFiles=1</CODE>, <CODE>FSDevice9HideCBMFiles=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX363"></A>
+<A NAME="IDX373"></A>
 <DT><CODE>-fs10hidecbm</CODE>
 <DD>
 <DT><CODE>+fs10hidecbm</CODE>
@@ -2765,7 +2829,7 @@ Enable/disable hiding of CBM files for drive 10
 (<CODE>FSDevice10HideCBMFiles=1</CODE>, <CODE>FSDevice10HideCBMFiles=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX364"></A>
+<A NAME="IDX374"></A>
 <DT><CODE>-fs11hidecbm</CODE>
 <DD>
 <DT><CODE>+fs11hidecbm</CODE>
@@ -2774,7 +2838,7 @@ Enable/disable hiding of CBM files for drive 11
 (<CODE>FSDevice11HideCBMFiles=1</CODE>, <CODE>FSDevice11HideCBMFiles=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX365"></A>
+<A NAME="IDX375"></A>
 <DT><CODE>-flipname &#60;name&#62;</CODE>
 <DD>
 Specify name of the flip list file image
@@ -2840,10 +2904,10 @@ output from the Commodore printer code) and then to the printer via
 
 <DT><CODE>IECDevice4</CODE>
 <DD>
-<A NAME="IDX366"></A>
- <A NAME="IDX367"></A>
- <A NAME="IDX368"></A>
- <A NAME="IDX369"></A>
+<A NAME="IDX376"></A>
+ <A NAME="IDX377"></A>
+ <A NAME="IDX378"></A>
+ <A NAME="IDX379"></A>
  
 <DT><CODE>IECDevice5</CODE>
 <DD>
@@ -2853,9 +2917,9 @@ output from the Commodore printer code) and then to the printer via
 <DD>
 Booleans that specify whether IEC device emulation for device #4, #5, #6 and #7 is enabled.
 
-<A NAME="IDX370"></A>
-<A NAME="IDX371"></A>
-<A NAME="IDX372"></A>
+<A NAME="IDX380"></A>
+<A NAME="IDX381"></A>
+<A NAME="IDX382"></A>
 <DT><CODE>PrinterTextDevice1</CODE>
 <DD>
 <DT><CODE>PrinterTextDevice2</CODE>
@@ -2864,9 +2928,9 @@ Booleans that specify whether IEC device emulation for device #4, #5, #6 and #7 
 <DD>
 Strings specifying the printer devices (see section <A HREF="vice_6.html#SEC74">6.11.2  Printer settings</A>).
 
-<A NAME="IDX373"></A>
-<A NAME="IDX374"></A>
-<A NAME="IDX375"></A>
+<A NAME="IDX383"></A>
+<A NAME="IDX384"></A>
+<A NAME="IDX385"></A>
 <DT><CODE>Printer4TextDevice</CODE>
 <DD>
 <DT><CODE>Printer5TextDevice</CODE>
@@ -2876,9 +2940,9 @@ Strings specifying the printer devices (see section <A HREF="vice_6.html#SEC74">
 Integer (ranging from 0 to 2, for device 1-3) specifying what printer device
 (see section <A HREF="vice_6.html#SEC74">6.11.2  Printer settings</A>) the IEC printer is using.
 
-<A NAME="IDX376"></A>
-<A NAME="IDX377"></A>
-<A NAME="IDX378"></A>
+<A NAME="IDX386"></A>
+<A NAME="IDX387"></A>
+<A NAME="IDX388"></A>
 <DT><CODE>Printer4</CODE>
 <DD>
 <DT><CODE>Printer5</CODE>
@@ -2888,33 +2952,33 @@ Integer (ranging from 0 to 2, for device 1-3) specifying what printer device
 Integer specifying how the printer (device 4-6) is being emulated.
 (0: None, 1: Filesystem, 2: Real)
 
-<A NAME="IDX379"></A>
+<A NAME="IDX389"></A>
 <DT><CODE>Printer7</CODE>
 <DD>
 Integer specifying how printer 7 is being emulated.
 (0: None, 2: Real)
 
-<A NAME="IDX380"></A>
+<A NAME="IDX390"></A>
 <DT><CODE>Printer4Driver</CODE>
 <DD>
 String specifying the printer output driver.
 (raw, ascii, mps803, nl10)
 
-<A NAME="IDX381"></A>
+<A NAME="IDX391"></A>
 <DT><CODE>Printer5Driver</CODE>
 <DD>
 String specifying the printer output driver.
 (raw, ascii, mps803, nl10)
 
-<A NAME="IDX382"></A>
+<A NAME="IDX392"></A>
 <DT><CODE>Printer6Driver</CODE>
 <DD>
 String specifying the printer output driver.
 (raw, 1520)
 
-<A NAME="IDX383"></A>
-<A NAME="IDX384"></A>
-<A NAME="IDX385"></A>
+<A NAME="IDX393"></A>
+<A NAME="IDX394"></A>
+<A NAME="IDX395"></A>
 <DT><CODE>Printer4Output</CODE>
 <DD>
 <DT><CODE>Printer5Output</CODE>
@@ -2924,24 +2988,24 @@ String specifying the printer output driver.
 Strings specifying the IEC printer output device.
 (text, graphics)
 
-<A NAME="IDX386"></A>
+<A NAME="IDX396"></A>
 <DT><CODE>PrinterUserport</CODE>
 <DD>
 Boolean specifying if the user-port printer is being emulated.
 
-<A NAME="IDX387"></A>
+<A NAME="IDX397"></A>
 <DT><CODE>PrinterUserportTextDevice</CODE>
 <DD>
 Integer (ranging from 0 to 2, for device 1-3) specifying what printer
 device the user-port printer is using.
 
-<A NAME="IDX388"></A>
+<A NAME="IDX398"></A>
 <DT><CODE>PrinterUserportDriver</CODE>
 <DD>
 String specifying the user-port printer output driver.
 (ascii/nl10/raw)
 
-<A NAME="IDX389"></A>
+<A NAME="IDX399"></A>
 <DT><CODE>PrinterUserportOutput</CODE>
 <DD>
 String specifying the user-port printer output device.
@@ -2957,14 +3021,14 @@ String specifying the user-port printer output device.
 
 <DT><CODE>-iecdevice4</CODE>
 <DD>
-<A NAME="IDX390"></A>
+<A NAME="IDX400"></A>
  
 <DT><CODE>+iecdevice4</CODE>
 <DD>
 Enable/disable IEC device emulation for device #4
 (<CODE>IECDevice4=1</CODE>, <CODE>IECDevice4=0</CODE>).
 
-<A NAME="IDX391"></A>
+<A NAME="IDX401"></A>
 <DT><CODE>-iecdevice5</CODE>
 <DD>
 <DT><CODE>+iecdevice5</CODE>
@@ -2972,7 +3036,7 @@ Enable/disable IEC device emulation for device #4
 Enable/disable IEC device emulation for device #5
 (<CODE>IECDevice5=1</CODE>, <CODE>IECDevice5=0</CODE>).
 
-<A NAME="IDX392"></A>
+<A NAME="IDX402"></A>
 <DT><CODE>-iecdevice6</CODE>
 <DD>
 <DT><CODE>+iecdevice6</CODE>
@@ -2980,7 +3044,7 @@ Enable/disable IEC device emulation for device #5
 Enable/disable IEC device emulation for device #6
 (<CODE>IECDevice6=1</CODE>, <CODE>IECDevice6=0</CODE>).
 
-<A NAME="IDX393"></A>
+<A NAME="IDX403"></A>
 <DT><CODE>-iecdevice7</CODE>
 <DD>
 <DT><CODE>+iecdevice7</CODE>
@@ -2988,37 +3052,37 @@ Enable/disable IEC device emulation for device #6
 Enable/disable IEC device emulation for device #7
 (<CODE>IECDevice7=1</CODE>, <CODE>IECDevice7=0</CODE>).
 
-<A NAME="IDX394"></A>
+<A NAME="IDX404"></A>
 <DT><CODE>-device4 &#60;type&#62;</CODE>
 <DD>
 Set device type for device 4
 (<CODE>Printer4</CODE>).
 (0: None, 1: Filesystem, 2: Real)
 
-<A NAME="IDX395"></A>
+<A NAME="IDX405"></A>
 <DT><CODE>-device5 &#60;type&#62;</CODE>
 <DD>
 Set device type for device 5
 (<CODE>Printer5</CODE>).
 (0: None, 1: Filesystem, 2: Real)
 
-<A NAME="IDX396"></A>
+<A NAME="IDX406"></A>
 <DT><CODE>-device6 &#60;type&#62;</CODE>
 <DD>
 Set device type for device 6
 (<CODE>Printer6</CODE>).
 (0: None, 1: Filesystem, 2: Real)
 
-<A NAME="IDX397"></A>
+<A NAME="IDX407"></A>
 <DT><CODE>-device7 &#60;type&#62;</CODE>
 <DD>
 Set device type for device 7
 (<CODE>Printer7</CODE>).
 (0: None, 2: Real)
 
-<A NAME="IDX398"></A>
-<A NAME="IDX399"></A>
-<A NAME="IDX400"></A>
+<A NAME="IDX408"></A>
+<A NAME="IDX409"></A>
+<A NAME="IDX410"></A>
 <DT><CODE>-prtxtdev1 &#60;name&#62;</CODE>
 <DD>
 <DT><CODE>-prtxtdev2 &#60;name&#62;</CODE>
@@ -3028,9 +3092,9 @@ Set device type for device 7
 Specify name of printer text device or dump file
 (<CODE>PrinterTextDevice1</CODE>, <CODE>PrinterTextDevice2</CODE>, <CODE>PrinterTextDevice3</CODE>).
 
-<A NAME="IDX401"></A>
-<A NAME="IDX402"></A>
-<A NAME="IDX403"></A>
+<A NAME="IDX411"></A>
+<A NAME="IDX412"></A>
+<A NAME="IDX413"></A>
 <DT><CODE>-pr4txtdev &#60;0-2&#62;</CODE>
 <DD>
 <DT><CODE>-pr5txtdev &#60;0-2&#62;</CODE>
@@ -3040,49 +3104,49 @@ Specify name of printer text device or dump file
 Specify printer text output device for IEC printer #4-6
 (<CODE>Printer4TextDevice</CODE>, <CODE>Printer5TextDevice</CODE>, <CODE>Printer6TextDevice</CODE>).
 
-<A NAME="IDX404"></A>
+<A NAME="IDX414"></A>
 <DT><CODE>-pr4output &#60;name&#62;</CODE>
 <DD>
 Specify name of output device for device #4
 (<CODE>Printer4Output</CODE>).
 (text, graphics)
 
-<A NAME="IDX405"></A>
+<A NAME="IDX415"></A>
 <DT><CODE>-pr5output &#60;name&#62;</CODE>
 <DD>
 Specify name of output device for device #5
 (<CODE>Printer5Output</CODE>).
 (text, graphics)
 
-<A NAME="IDX406"></A>
+<A NAME="IDX416"></A>
 <DT><CODE>-pr6output &#60;name&#62;</CODE>
 <DD>
 Specify name of output device for device #6
 (<CODE>Printer6Output</CODE>).
 (text, graphics)
 
-<A NAME="IDX407"></A>
+<A NAME="IDX417"></A>
 <DT><CODE>-pr4drv &#60;name&#62;</CODE>
 <DD>
 Specify name of printer driver for device #4
 (<CODE>Printer4Driver</CODE>).
 (raw, ascii, mps803, nl10)
 
-<A NAME="IDX408"></A>
+<A NAME="IDX418"></A>
 <DT><CODE>-pr5drv &#60;name&#62;</CODE>
 <DD>
 Specify name of printer driver for device #5
 (<CODE>Printer5Driver</CODE>).
 (raw, ascii, mps803, nl10)
 
-<A NAME="IDX409"></A>
+<A NAME="IDX419"></A>
 <DT><CODE>-pr6drv &#60;name&#62;</CODE>
 <DD>
 Specify name of printer driver for device #6
 (<CODE>Printer6Driver</CODE>).
 (raw, 1520)
 
-<A NAME="IDX410"></A>
+<A NAME="IDX420"></A>
 <DT><CODE>-pruser</CODE>
 <DD>
 <DT><CODE>+pruser</CODE>
@@ -3090,20 +3154,20 @@ Specify name of printer driver for device #6
 Enable/disable emulation of the userport printer emulation
 (<CODE>PrUser=1</CODE>, <CODE>PrUser=0</CODE>).
 
-<A NAME="IDX411"></A>
+<A NAME="IDX421"></A>
 <DT><CODE>-prusertxtdev &#60;0-2&#62;</CODE>
 <DD>
 Specify printer text output device for userport printer
 (<CODE>PrinterUserportTextDevice</CODE>).
 
-<A NAME="IDX412"></A>
+<A NAME="IDX422"></A>
 <DT><CODE>-pruseroutput &#60;name&#62;</CODE>
 <DD>
 Specify name of output device for the userport printer
 (<CODE>PrinterUserportOutput</CODE>).
 (text, graphics)
 
-<A NAME="IDX413"></A>
+<A NAME="IDX423"></A>
 <DT><CODE>-pruserdrv &#60;name&#62;</CODE>
 <DD>
 Specify name of printer driver for the userport printer
@@ -3132,7 +3196,7 @@ to be able to read or write disk images) and tape support.
 
 <DT><CODE>VirtualDevices</CODE>
 <DD>
-<A NAME="IDX414"></A>
+<A NAME="IDX424"></A>
  
 Boolean specifying whether all the mechanisms for virtual device
 emulation should be enabled. Serial IEC devices use kernal traps,
@@ -3149,7 +3213,7 @@ on and off with this resource.
 
 <DT><CODE>-virtualdev</CODE>
 <DD>
-<A NAME="IDX415"></A>
+<A NAME="IDX425"></A>
  
 <DT><CODE>+virtualdev</CODE>
 <DD>
@@ -3262,10 +3326,10 @@ actually expects).
 
 <DT><CODE>RsDevice1</CODE>
 <DD>
-<A NAME="IDX416"></A>
- <A NAME="IDX417"></A>
- <A NAME="IDX418"></A>
- <A NAME="IDX419"></A>
+<A NAME="IDX426"></A>
+ <A NAME="IDX427"></A>
+ <A NAME="IDX428"></A>
+ <A NAME="IDX429"></A>
  
 <DT><CODE>RsDevice2</CODE>
 <DD>
@@ -3275,49 +3339,49 @@ actually expects).
 <DD>
 Strings specifying the RS232 devices (see section <A HREF="vice_6.html#SEC80">6.12  RS232 settings</A>).
 
-<A NAME="IDX420"></A>
+<A NAME="IDX430"></A>
 <DT><CODE>Acia1Enable</CODE>
 <DD>
 Boolean specifying whether the ACIA (Swiftlink, Turbo232) cartridge should be emulated or not
 (x64, x64sc, xscpu64, x128 and xvic only, and only if RS232 support is enabled and supported at compile time).
 
-<A NAME="IDX421"></A>
+<A NAME="IDX431"></A>
 <DT><CODE>Acia1Dev</CODE>
 <DD>
 Integer specifying what RS232 device (see section <A HREF="vice_6.html#SEC80">6.12  RS232 settings</A>) the ACIA is using
 (all emulators except x64dtv and vsid, and only if RS232 support is enabled and supported at compile time).
 
-<A NAME="IDX422"></A>
+<A NAME="IDX432"></A>
 <DT><CODE>Acia1Base</CODE>
 <DD>
 Integer specifying the base address for the emulated ACIA chip (x64, x64sc, xscpu64, xvic and x128 only, and only if RS232 support is enabled and supported at compile time).
 (xvic: $9800/$9C00, x128: $D700/$DE00/$DF00, x64/x64sc/xscpu64: $DE00/$DF00)
 
-<A NAME="IDX423"></A>
+<A NAME="IDX433"></A>
 <DT><CODE>Acia1Mode</CODE>
 <DD>
 Integer specifying the type of emulated RS232 interface (x64, x64sc, xscpu64, xvic and x128 only, and only if RS232 support is enabled and supported at compile time).
 (0: normal, 1: Swiftlink, 2: Turbo232)
 
-<A NAME="IDX424"></A>
+<A NAME="IDX434"></A>
 <DT><CODE>Acia1Irq</CODE>
 <DD>
 Integer specifying which interrupt to use (x64, x64sc, xscpu64, xvic and x128 only, and only if RS232 support is enabled and supported at compile time).
 (0 = none, 1 = IRQ, 2 = NMI)
 
-<A NAME="IDX425"></A>
+<A NAME="IDX435"></A>
 <DT><CODE>RsUserEnable</CODE>
 <DD>
 Boolean specifying if the user-port RS232 interface is being emulated
 (C64, C128 and VIC20).
 
-<A NAME="IDX426"></A>
+<A NAME="IDX436"></A>
 <DT><CODE>RsUserBaud</CODE>
 <DD>
 Integer specifying the baudrate of the user-port RS232 interface
 (C64, C128 and VIC20).
 
-<A NAME="IDX427"></A>
+<A NAME="IDX437"></A>
 <DT><CODE>RsUserDev</CODE>
 <DD>
 Integer (ranging from 0 to 3, for device 1-4) specifying what RS232 device
@@ -3333,21 +3397,21 @@ the user-port interface is using (C64, C128 and VIC20).
 
 <DT><CODE>-rsdev1 &#60;Name&#62;</CODE>
 <DD>
-<A NAME="IDX428"></A>
+<A NAME="IDX438"></A>
  
-<A NAME="IDX429"></A>
+<A NAME="IDX439"></A>
 <DT><CODE>-rsdev2 &#60;Name&#62;</CODE>
 <DD>
-<A NAME="IDX430"></A>
+<A NAME="IDX440"></A>
 <DT><CODE>-rsdev3 &#60;Name&#62;</CODE>
 <DD>
-<A NAME="IDX431"></A>
+<A NAME="IDX441"></A>
 <DT><CODE>-rsdev4 &#60;Name&#62;</CODE>
 <DD>
 Specify &#60;Name&#62; as RS232 devices 1, 2, 3 and 4, respectively
 (<CODE>RsDevice1</CODE>, <CODE>RsDevice2</CODE> <CODE>RsDevice3</CODE> and <CODE>RsDevice4</CODE>).
 
-<A NAME="IDX432"></A>
+<A NAME="IDX442"></A>
 <DT><CODE>-acia1</CODE>
 <DD>
 <DT><CODE>+acia1</CODE>
@@ -3356,13 +3420,13 @@ Enable/Disable the $DE** ACIA RS232 interface emulation
 (<CODE>Acia1Enable=1</CODE>, <CODE>Acia1Enable=0</CODE>)
 (x64, x64sc, xscpu64, x128 and xvic only, and only if RS232 support is enabled and supported at compile time).
 
-<A NAME="IDX433"></A>
+<A NAME="IDX443"></A>
 <DT><CODE>-myaciadev &#60;0-3&#62;</CODE>
 <DD>
 Specify RS232 device the ACIA should work on
 (all emulators except x64dtv and vsid, and only if RS232 support is enabled and supported at compile time)
 
-<A NAME="IDX434"></A>
+<A NAME="IDX444"></A>
 <DT><CODE>-acia1base &#60;Base address&#62;</CODE>
 <DD>
 Set the base address of the ACIA cartridge
@@ -3370,7 +3434,7 @@ Set the base address of the ACIA cartridge
 (x64, x64sc, xscpu, x128 and xvic only, and only if RS232 support is enabled and supported at compile time).
 (xvic: $9800/$9C00, x128: $D700/$DE00/$DF00, x64/x64sc/xscpu: $DE00/$DF00)
 
-<A NAME="IDX435"></A>
+<A NAME="IDX445"></A>
 <DT><CODE>-acia1mode &#60;mode&#62;</CODE>
 <DD>
 Set the ACIA mode
@@ -3378,7 +3442,7 @@ Set the ACIA mode
 (x64, x64sc, xscpu64, xvic and x128 only, and only if RS232 support is enabled and supported at compile time).
 (0: Normal, 1: Swiftlink, 2: Turbo232)
 
-<A NAME="IDX436"></A>
+<A NAME="IDX446"></A>
 <DT><CODE>-acia1irq &#60;interrupt&#62;</CODE>
 <DD>
 Set the ACIA interrupt
@@ -3386,7 +3450,7 @@ Set the ACIA interrupt
 (x64, x64sc, xscpu64, xvic and x128 only, and only if RS232 support is enabled and supported at compile time).
 (0: None, 1: IRQ, 2: NMI)
 
-<A NAME="IDX437"></A>
+<A NAME="IDX447"></A>
 <DT><CODE>-rsuser</CODE>
 <DD>
 <DT><CODE>+rsuser</CODE>
@@ -3394,12 +3458,12 @@ Set the ACIA interrupt
 Enable or disable emulation of the
 userport RS232 emulation (<CODE>RsUser</CODE>; C64, C128 and VIC20)
 
-<A NAME="IDX438"></A>
+<A NAME="IDX448"></A>
 <DT><CODE>-rsuserbaud &#60;baud&#62;</CODE>
 <DD>
 Set the baud rate of the RS232 userport emulation.
 
-<A NAME="IDX439"></A>
+<A NAME="IDX449"></A>
 <DT><CODE>-rsuserdev &#60;0-3&#62;</CODE>
 <DD>
 Specify device for the userport RS232 emulation (<CODE>RsUserDev</CODE>;
@@ -3472,17 +3536,17 @@ This section lists command-line options specific to the built-in monitor.
 
 <DT><CODE>KeepMonitorOpen</CODE>
 <DD>
-<A NAME="IDX440"></A>
+<A NAME="IDX450"></A>
  
 Boolean, if true the monitor window may stay open when the emulation is running,
 eg to look at trace-point output. (Not all ports/UIs support this, in that case
 this setting has no effect.)
 
-<A NAME="IDX441"></A>
+<A NAME="IDX451"></A>
 <DT><CODE>MonitorServer</CODE>
 <DD>
 Boolean specifying whether the remote monitor server is enabled.
-<A NAME="IDX442"></A>
+<A NAME="IDX452"></A>
 <DT><CODE>MonitorServerAddress</CODE>
 <DD>
 String specifying the address the remote monitor server listens to (ip4://127.0.0.1:6510)
@@ -3497,19 +3561,19 @@ String specifying the address the remote monitor server listens to (ip4://127.0.
 
 <DT><CODE>-moncommands &#60;Name&#62;</CODE>
 <DD>
-<A NAME="IDX443"></A>
+<A NAME="IDX453"></A>
  
 Execute the commands from the file &#60;Name&#62; in the monitor after starting up. This
 command line switch is mainly thought to load labels and to set breakpoints.
 Not all other commands are useful to be executed in this way, some may even
 lead to strange effects.
 
-<A NAME="IDX444"></A>
+<A NAME="IDX454"></A>
 <DT><CODE>-initbreak &#60;address&#62;</CODE>
 <DD>
 Set an initial breakpoint for the monitor. Addresses with prefix "0x" are hexadecimal.
 
-<A NAME="IDX445"></A>
+<A NAME="IDX455"></A>
 <DT><CODE>-keepmonopen</CODE>
 <DD>
 <DT><CODE>+keepmonopen</CODE>
@@ -3517,14 +3581,14 @@ Set an initial breakpoint for the monitor. Addresses with prefix "0x" are hexade
 Enable/disable keeping the monitor window open
 (<CODE>KeepMonitorOpen=1</CODE>, <CODE>KeepMonitorOpen=0</CODE>).
 
-<A NAME="IDX446"></A>
+<A NAME="IDX456"></A>
 <DT><CODE>-remotemonitor</CODE>
 <DD>
 <DT><CODE>+remotemonitor</CODE>
 <DD>
 Enable/Disable remote monitor
 
-<A NAME="IDX447"></A>
+<A NAME="IDX457"></A>
 <DT><CODE>-remotemonitoraddress &#60;name&#62;</CODE>
 <DD>
 The local address the remote monitor should bind to
@@ -3543,19 +3607,19 @@ The local address the remote monitor should bind to
 
 <DT><CODE>RAMInitStartValue</CODE>
 <DD>
-<A NAME="IDX448"></A>
+<A NAME="IDX458"></A>
  
 Integer specifying the value for the very first RAM address after powerup
 (all emulators except vsid).
 (0..255)
 
-<A NAME="IDX449"></A>
+<A NAME="IDX459"></A>
 <DT><CODE>RAMInitValueInvert</CODE>
 <DD>
 Integer specifying the length of the memory block initialized with the same value
 (all emulators except vsid).
 
-<A NAME="IDX450"></A>
+<A NAME="IDX460"></A>
 <DT><CODE>RAMInitPatternInvert</CODE>
 <DD>
 Integer specifying the length of the memory block initialized with the same pattern
@@ -3571,21 +3635,21 @@ Integer specifying the length of the memory block initialized with the same patt
 
 <DT><CODE>-raminitstartvalue &#60;value&#62;</CODE>
 <DD>
-<A NAME="IDX451"></A>
+<A NAME="IDX461"></A>
  
 Set the value for the very first RAM address after powerup
 (<CODE>RAMInitStartValue</CODE>)
 (all emulators except vsid).
 (0..255)
 
-<A NAME="IDX452"></A>
+<A NAME="IDX462"></A>
 <DT><CODE>-raminitvalueinvert &#60;num of bytes&#62;</CODE>
 <DD>
 Length of memory block initialized with the same value
 (<CODE>RAMInitValueInvert</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX453"></A>
+<A NAME="IDX463"></A>
 <DT><CODE>-raminitpatterninvert &#60;num of bytes&#62;</CODE>
 <DD>
 Length of memory block initialized with the same pattern
@@ -3612,12 +3676,12 @@ categories.
 
 <DT><CODE>JAMAction</CODE>
 <DD>
-<A NAME="IDX454"></A>
+<A NAME="IDX464"></A>
  
 Integer specifying the action to take when the CPU encounters a 'JAM' opcode.
 (0: show dialog, 1: continue emulation, 2: start monitor, 3: soft reset, 4: hard reset, 5: quit emulator)
 
-<A NAME="IDX455"></A>
+<A NAME="IDX465"></A>
 <DT><CODE>Directory</CODE>
 <DD>
 String specifying the search path for system files.  It is defined as a
@@ -3625,45 +3689,45 @@ sequence of directory names, separated by colons (<SAMP>`:'</SAMP>), just like
 the <CODE>PATH</CODE> variable in the shell. The special string <SAMP>`$$'</SAMP>
 stands for the default search path.
 
-<A NAME="IDX456"></A>
+<A NAME="IDX466"></A>
 <DT><CODE>DoCoreDump</CODE>
 <DD>
 Boolean specifying whether the emulator should dump core when it gets a signal
 (all emulators except vsid).
 
-<A NAME="IDX457"></A>
+<A NAME="IDX467"></A>
 <DT><CODE>NetworkServerName</CODE>
 <DD>
 String specifying the name of the remote server.
-<A NAME="IDX458"></A>
+<A NAME="IDX468"></A>
 <DT><CODE>NetworkServerBindAddress</CODE>
 <DD>
 String specifying the IP of the remote server.
-<A NAME="IDX459"></A>
+<A NAME="IDX469"></A>
 <DT><CODE>NetworkServerPort</CODE>
 <DD>
 Integer specifying the port used for network play.
-<A NAME="IDX460"></A>
+<A NAME="IDX470"></A>
 <DT><CODE>NetworkControl</CODE>
 <DD>
 Integer specifying whether the emulator is running as server or client (0: client,
 1: server)
 
-<A NAME="IDX461"></A>
+<A NAME="IDX471"></A>
 <DT><CODE>LogFileName</CODE>
 <DD>
 String specifying the filename of the current log file.
 
-<A NAME="IDX462"></A>
+<A NAME="IDX472"></A>
 <DT><CODE>FliplistName</CODE>
 <DD>
 String specifying the filename of the current flip list. (Drive 8 only)
 (all emulators except vsid).
 
-<A NAME="IDX463"></A>
-<A NAME="IDX464"></A>
-<A NAME="IDX465"></A>
-<A NAME="IDX466"></A>
+<A NAME="IDX473"></A>
+<A NAME="IDX474"></A>
+<A NAME="IDX475"></A>
+<A NAME="IDX476"></A>
 <DT><CODE>AttachDevice8Readonly</CODE>
 <DD>
 <DT><CODE>AttachDevice9Readonly</CODE>
@@ -3675,13 +3739,13 @@ String specifying the filename of the current flip list. (Drive 8 only)
 Booleans that specify whether to attach images on drives 8 to 11 read-only or not
 (all emulators except vsid).
 
-<A NAME="IDX467"></A>
+<A NAME="IDX477"></A>
 <DT><CODE>UserportRTC</CODE>
 <DD>
 Boolean specifying whether the userport RTC is emulated or not
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX468"></A>
+<A NAME="IDX478"></A>
 <DT><CODE>UserportRTCSave</CODE>
 <DD>
 Boolean specifying whether the userport RTC data is saved when changed or not
@@ -3697,19 +3761,19 @@ Boolean specifying whether the userport RTC data is saved when changed or not
 
 <DT><CODE>-jamaction &#60;Type&#62;</CODE>
 <DD>
-<A NAME="IDX469"></A>
+<A NAME="IDX479"></A>
  
 Specify the action to take when the CPU encounters a 'JAM' opcode
 (<CODE>JAMAction</CODE>)
 (0: Show dialog, 1: continue emulation, 2: start monitor, 3: soft reset, 4: hard reset, 5: quit emulator).
 
-<A NAME="IDX470"></A>
+<A NAME="IDX480"></A>
 <DT><CODE>-directory &#60;Path&#62;</CODE>
 <DD>
 Specify the system file search path
 (<CODE>Directory</CODE>).
 
-<A NAME="IDX471"></A>
+<A NAME="IDX481"></A>
 <DT><CODE>-core</CODE>
 <DD>
 <DT><CODE>+core</CODE>
@@ -3718,7 +3782,7 @@ Enable/disable generation of core dumps
 (<CODE>DoCoreDump=1</CODE>, <CODE>DoCoreDump=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX472"></A>
+<A NAME="IDX482"></A>
 <DT><CODE>-debug</CODE>
 <DD>
 <DT><CODE>+debug</CODE>
@@ -3727,7 +3791,7 @@ Disable/enable calling of the exception handler
 (<CODE>DoCoreDump=1</CODE>, <CODE>DoCoreDump=0</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX473"></A>
+<A NAME="IDX483"></A>
 <DT><CODE>-userportrtc</CODE>
 <DD>
 <DT><CODE>+userportrtc</CODE>
@@ -3736,7 +3800,7 @@ Enable/disable the userport RTC emulation
 (<CODE>UserportRTC=1</CODE>, <CODE>UserportRTC=0</CODE>)
 (x64, x64sc, xscpu64 and x128 only).
 
-<A NAME="IDX474"></A>
+<A NAME="IDX484"></A>
 <DT><CODE>-userportrtcsave</CODE>
 <DD>
 <DT><CODE>+userportrtcsave</CODE>

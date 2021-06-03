@@ -320,7 +320,7 @@ static int set_gmod2_flash_write(int val, void *param)
 static const resource_string_t resources_string[] = {
     { "GMod2EEPROMImage", "", RES_EVENT_NO, NULL,
       &gmod2_eeprom_filename, set_gmod2_eeprom_filename, NULL },
-    { NULL }
+    RESOURCE_STRING_LIST_END
 };
 
 static const resource_int_t resources_int[] = {
@@ -328,7 +328,7 @@ static const resource_int_t resources_int[] = {
       &gmod2_flash_write, set_gmod2_flash_write, NULL },
     { "GMod2EEPROMRW", 1, RES_EVENT_NO, NULL,
       &gmod2_eeprom_rw, set_gmod2_eeprom_rw, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 int gmod2_resources_init(void)
@@ -373,7 +373,7 @@ static const cmdline_option_t cmdline_options[] =
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDCLS_DISABLE_SAVE_GMOD2_ROM_AT_EXIT,
       NULL, NULL },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 int gmod2_cmdline_options_init(void)

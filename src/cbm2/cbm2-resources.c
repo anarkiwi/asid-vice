@@ -191,7 +191,7 @@ static const resource_string_t cbm6x0_resources_string[] = {
       &kernal_rom_name, set_kernal_rom_name, NULL },
     { "BasicName", CBM2_BASIC128, RES_EVENT_NO, NULL,
       &basic_rom_name, set_basic_rom_name, NULL },
-    { NULL }
+    RESOURCE_STRING_LIST_END
 };
 
 #include "cbm2-common-resources.c"
@@ -203,7 +203,7 @@ static const resource_int_t cbm6x0_resources_int[] = {
       &ramsize, set_ramsize, NULL },
     { "ModelLine", LINE_6x0_50HZ, RES_EVENT_SAME, NULL,
       &cbm2_model_line, set_cbm2_model_line, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 int cbm2_resources_init(void)

@@ -11,15 +11,34 @@ doc_DATA = \
 	images/CIPS2008.png \
 	images/new.gif \
 	images/vice-logo.svg \
+	fonts/Lato-Bold.eot \
+	fonts/Lato-BoldItalic.eot \
+	fonts/Lato-BoldItalic.ttf \
+	fonts/Lato-BoldItalic.woff \
+	fonts/Lato-BoldItalic.woff2 \
+	fonts/Lato-Bold.ttf \
+	fonts/Lato-Bold.woff \
+	fonts/Lato-Bold.woff2 \
+	fonts/Lato-Italic.eot \
+	fonts/Lato-Italic.ttf \
+	fonts/Lato-Italic.woff \
+	fonts/Lato-Italic.woff2 \
+	fonts/Lato-Regular.eot \
+	fonts/Lato-Regular.ttf \
+	fonts/Lato-Regular.woff \
+	fonts/Lato-Regular.woff2 \
+	fonts/OFL.txt \
 	index.html \
 	macosx.html \
 	COPYING \
 	NEWS \
 	nsosrh.html \
 	qnx.html \
+	robots.txt \
 	sco.html \
 	sitemap.xml \
 	solaris.html \
+	sortix.html \
 	vice.css \
 	vice_1.html \
 	vice_2.html \
@@ -44,7 +63,7 @@ doc_DATA = \
 	vice_21.html \
 	vice_22.html \
 	vice_toc.html \
-	robots.txt
+	windows.html
 
 EXTRA_DIST = $(doc_DATA) \
 	texi2html

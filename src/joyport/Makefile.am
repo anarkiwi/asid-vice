@@ -37,4 +37,8 @@ libjoyport_a_SOURCES = \
 	sampler2bit.c \
 	sampler2bit.h \
 	sampler4bit.c \
-	sampler4bit.h
+	sampler4bit.h \
+	script64_dongle.c \
+	script64_dongle.h \
+	vizawrite64_dongle.c \
+	vizawrite64_dongle.h

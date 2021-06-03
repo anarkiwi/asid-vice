@@ -176,23 +176,23 @@ notice identical to this one.
 @vskip 0pt plus 1filll
 @c section used in file generation, keep to the format used.
 @c ---vice-core-team---
-Copyright @copyright{} 1999-2016 Andreas Matthies
-Copyright @copyright{} 1999-2016 Martin Pottendorfer
-Copyright @copyright{} 2005-2016 Marco van den Heuvel
-Copyright @copyright{} 2007-2016 Fabrizio Gennari
-Copyright @copyright{} 2009-2016 Groepaz
-Copyright @copyright{} 2011-2016 Marcus Sutton
-Copyright @copyright{} 2011-2016 Kajtar Zsolt
-Copyright @copyright{} 2011-2016 Stefan Haubenthal
-Copyright @copyright{} 2015-2016 BSzili
-Copyright @copyright{} 2016-2016 AreaScout
-Copyright @copyright{} 2016-2016 Bas Wassink
+Copyright @copyright{} 1999-2017 Martin Pottendorfer
+Copyright @copyright{} 2005-2017 Marco van den Heuvel
+Copyright @copyright{} 2007-2017 Fabrizio Gennari
+Copyright @copyright{} 2009-2017 Groepaz
+Copyright @copyright{} 2010-2017 Olaf Seibert
+Copyright @copyright{} 2011-2017 Marcus Sutton
+Copyright @copyright{} 2011-2017 Kajtar Zsolt
+Copyright @copyright{} 2016-2017 AreaScout
+Copyright @copyright{} 2016-2017 Bas Wassink
 @c ---vice-core-team-end---
 
 @c ---ex-team---
+Copyright @copyright{} 2011-2016 Stefan Haubenthal
+Copyright @copyright{} 2015-2016 BSzili
+Copyright @copyright{} 1999-2016 Andreas Matthies
 Copyright @copyright{} 2007-2015 Daniel Kahlin
 Copyright @copyright{} 2009-2015 Errol Smith
-Copyright @copyright{} 2010-2015 Olaf Seibert
 Copyright @copyright{} 2012-2014 Benjamin 'BeRo' Rosseaux
 Copyright @copyright{} 2011-2014 Ulrich Schulz
 Copyright @copyright{} 2011-2014 Thomas Giesel
@@ -240,7 +240,7 @@ notice identical to this one.
 
 @ifinfo
 
-This is the documentation for version 3.0 of VICE, the Versatile
+This is the documentation for version 3.1 of VICE, the Versatile
 Commodore Emulator.
 
 @end ifinfo
@@ -3699,6 +3699,17 @@ Booleans controlling whether Professional DOS is emulated or not for drives 8 to
 Booleans controlling whether Super Card is emulated or not for drives 8 to 11
 (x64, x64sc, xscpu64 and x128 only).
 
+@vindex Drive8StarDos
+@vindex Drive9StarDos
+@vindex Drive10StarDos
+@vindex Drive11StarDos
+@item Drive8StarDos
+@itemx Drive9StarDos
+@itemx Drive10StarDos
+@itemx Drive11StarDos
+Booleans controlling whether StarDOS is emulated or not for drives 8 to 11
+(x64, x64sc, xscpu64 and x128 only).
+
 @vindex Drive8RAM2000
 @vindex Drive8RAM4000
 @vindex Drive8RAM6000
@@ -3837,6 +3848,11 @@ String specifying the filename of the 1571 professional DOS ROM image
 @vindex DriveSuperCardName
 @item DriveSuperCardName
 String specifying the filename of the Super Card ROM image
+(x64, x64sc, xscpu64 and x128 only).
+
+@vindex DriveStarDosName
+@item DriveStarDosName
+String specifying the filename of the image of the lower half of the StarDOS ROM
 (x64, x64sc, xscpu64 and x128 only).
 
 @end table
@@ -4234,6 +4250,41 @@ Enable/disable Super Card for drive 11
 @item -supercard <name>
 Specify name of Super Card ROM image
 (@code{DriveSuperCardName})
+(x64, x64sc, xscpu64 and x128 only).
+
+@findex -drive8stardos, +drive8stardos
+@item -drive8stardos
+@itemx +drive8stardos
+Enable/disable StarDOS for drive 8
+(@code{Drive8StarDos=1}, @code{Drive8StarDos=0})
+(x64, x64sc, xscpu64 and x128 only).
+
+@findex -drive9stardos, +drive9stardos
+@item -drive9stardos
+@itemx +drive9stardos
+Enable/disable StarDOS for drive 9
+(@code{Drive9StarDos=1}, @code{Drive9StarDos=0})
+(x64, x64sc, xscpu64 and x128 only).
+
+@findex -drive10stardos, +drive10stardos
+@item -drive10stardos
+@itemx +drive10stardos
+Enable/disable StarDOS for drive 10
+(@code{Drive10StarDos=1}, @code{Drive10StarDos=0})
+(x64, x64sc, xscpu64 and x128 only).
+
+@findex -drive11stardos, +drive11stardos
+@item -drive11stardos
+@itemx +drive11stardos
+Enable/disable StarDOS for drive 11
+(@code{Drive11StarDos=1}, @code{Drive11StarDos=0})
+(x64, x64sc, xscpu64 and x128 only).
+
+@findex -stardos
+@item -stardos <name>
+Specify name of the image of the lower half of the StarDOS ROM. (Attach the upper
+half using the -dos1541 option.)
+(@code{DriveStarDosName})
 (x64, x64sc, xscpu64 and x128 only).
 
 @end table
@@ -16572,7 +16623,7 @@ a watchpoint is triggered, the monitor is entered.
 
 @item memmap
 The memmap keeps track of RAM/ROM/IO read/write/execute
-accesses. The feature must be enabled with "--enable-memmap"
+accesses. The feature must be enabled with "--enable-cpuhistory"
 configure option, as it might decrease performance notably on
 slower hardware. The option also enables CPU history.
 
@@ -16601,7 +16652,7 @@ only.
 @item cpuhistory [<count>]
 @itemx chis [<count>]
 Show <count> last executed commands.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 @item dump "<filename>"
 Write a snapshot of the machine into the file specified.
@@ -16705,18 +16756,18 @@ Show the memmap. The mask can be specified to show only those
 locations with accesses of certain type(s). The mask is a number
 with the bits "ioRWXrwx", where RWX are for ROM and rwx for RAM.
 Optionally, an address range can be specified.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 @item memmapzap
 @itemx mmzap
 Clear the memmap.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 @item memmapsave "<filename>" <format>
 @itemx mmsave "<filename>" <format>
 Save the memmap as a picture. @code{format}:
 0 = BMP, 1 = PCX, 2 = PNG, 3 = GIF, 4 = IFF.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 @item memchar [<data_type>] [<address_opt_range>]
 @itemx mc [<data_type>] [<address_opt_range>]
@@ -17214,8 +17265,45 @@ ones.
 @item attach <diskimage> [<unit>]
 Attach @code{diskimage} to @code{unit} (default unit is 8).
 
-@item block <track> <sector> <disp> [<drive>]
+@item bam [<unit>] | <track-min> <track-max> [<unit>]
+Show the BAM of @code{unit}, optionally displaying only the entries for
+@code{track-min} to @code{track-max}
+
+@item bcopy <src-trk> <src-sec> <dst-trk> <dst-sec> [<src-unit> [<dst-unit>]]
+Copy a block to another block, optionally specifying different source and
+destination units. The block is copied using all 256 bytes.
+
+@item bfill <track> <sector> <value> [<unit>]
+Fill a block with a single value.
+
+@item block <track> <sector> [<offset> [<unit>]]
 Show specified disk block in hex form.
+
+@item bpoke [@@unit:<unit>] <track> <sector> <offset> <data @dots{}>
+Store one or more bytes of @code{data} into a block. The @code{data} can be
+specified using prefixes:
+@table @code
+@item 0b or %
+binary value (`%11111111`)
+@item &
+octal value (`&377`)
+@item 0x or $
+hexadecimal value (`$ff`)
+@end table
+The <unit> is optional, and when used must use the CBM DOS notation for the
+unit number, for example `@@9:`.
+
+@item bread <filename> <track> <sector> [<unit>]
+Read a block from a disk image and write it to the host filesystem as
+@code{filename}.
+
+@item bwrite <filename> <track> <sector> [<unit>]
+Write data from the host filesystem using @code{filename} as input. At most 256
+bytes are written to the disk image.
+
+@item chain <track> <sector> [<unit>]
+Show block chain starting at (@code{track},@code{sector}). The last number
+shown is the number of bytes used in the final block.
 
 @item copy <source1> [<source2> @dots{} <sourceN>] <destination>
 Copy @code{source1} @dots{} @code{sourceN} into destination.  If N > 1,
@@ -17235,7 +17323,8 @@ If @code{unit} is specified, format the disk in unit @code{unit}.  If
 @code{type} and @code{imagename} are specified, create a new image named
 @code{imagename}, attach it to unit 8 and format it.  @code{type} is a
 disk image type, and must be either @code{x64}, @code{d64} (both VC1541/2031),
-@code{g64} (VC1541/2031 but in GCR coding), @code{d71} (VC1571), @code{d81}
+@code{g64} (VC1541/2031 but in GCR coding), @code{d71} (VC1571), 
+@code{g71} (VC1571 but in GCR coding), @code{d81}
 (VC1581), @code{d80} (CBM8050) or @code{d82} (CBM8250/1001).
 Otherwise, format the disk in the current unit, if any.
 
@@ -17298,8 +17387,11 @@ is the current unit).
 Validate the disk in unit @code{unit}.  If @code{unit} is not specified,
 validate the disk in the current unit.
 
-@item verbose
-Enable verbose output.
+@item verbose ["off"]
+Enable or disable verbose output.
+
+@item version
+Show C1541 version string
 
 @item write <source> [<destination>]
 Write @code{source} from the file system into @code{destination} on a
@@ -17315,7 +17407,7 @@ Create an X64 disk image out of a set of four Zipcoded files named
 @node c1541 executing shell commands,  , c1541 commands and options, c1541
 @section Executing shell commands
 
-If you want to execute a shell command from withing @code{c1541}, just
+If you want to execute a shell command from within @code{c1541}, just
 prepend it with an exclamation mark (@code{!}).  For example,
 
 @example
@@ -17396,6 +17488,9 @@ This parameter is optional, it disables all non-error messages
 @cindex --types
 @item --types
 This parameter is optional. It shows all supported cartridge types (see below).
+@cindex --version
+@item --version
+Show cartconv version string and exit
 @end table
 
 The following cartridge types are supported:
@@ -17578,6 +17673,9 @@ Output help text
 @cindex -?
 @item -?
 Same as above
+@cindex -version
+@item -version
+show petcat version string and exit
 @cindex -v
 @item -v
 verbose output
@@ -17871,6 +17969,7 @@ are rarely  used).
 
 @node G64, D64 , T64, File formats
 @section The G64 GCR-encoded disk image format
+@subsection The original format
 
 (This section was contributed by Peter Schepers and slightly edited by
 Ettore Perazzoli.)
@@ -18176,6 +18275,19 @@ speed zone data is not important, meaning they do not have to be in any
 particular order since they are all referenced by the offsets at the
 beginning of the image.
 
+@subsection An extension for double sided disks (Commodore VIC 1571)
+
+Given that a Commodore VIC 1541/1570/1571 can read/write at most 42 
+tracks per side, it is quite natural to use the half-tracks from 1
+to 84 for the first side and the following 84 half-tracks (i. e.
+halg.track 85 to 168) for the second size.
+
+In order for this to work, byte 9 of the image (i. e. the maximum
+number of tracks) usually contains 168 for double sided disks.
+
+To make identifying such images easy, the fiel signature in the first 8 bytes of 
+such files will be @code{GCR-1571}).
+
 @c @node FIXME
 @section The P64 NRZI flux pulse disk image format
 
@@ -18203,7 +18315,9 @@ All values are in little endian order !
             Size   Size of the following whole chunk content stream
       
            Flags:  Bit    0 = Write protect
-                   Bit 1-31 = Reserved, all set to 0 when creating a file, 
+                   Bit    1 = Number of sides (0 for single sided,
+                              1 for double sided)
+                   Bit 2-31 = Reserved, all set to 0 when creating a file, 
                               preserve existing value when updating
        
    CRC32CheckSum:  CRC32 checksum of the following whole chunk content stream                
@@ -18229,6 +18343,7 @@ All values are in little endian order !
 
                           | x = half track index byte |
                           +---------------------------+
+       Bit 7 of the half track index byte contains the side.
                           
        Track 18 = Half track 36 = Half track index byte decimal value 36
                           
@@ -26769,19 +26884,6 @@ The VICE core team:
 @c The Texinfo manual says we should not use @b though!
 
 @item
-@b{Andreas Matthies}
-Improved the datasette support, the VIC20 video emulation and
-some UI stuff in the Win32 and DOS ports. He also wrote the
-BeOS port and implemented video/audio capture support. Improved
-history recording/playback and implemented support for video
-recording and the netlink feature. Made the Win32 user
-changable keyboard shortcut system. Improved CIA and VIA
-emulation. Worked on x64sc, especially interrupt timing.
-Improved the FFMPEG support and started the 'in-source'
-FFMPEG support/merge. Wrote test programs. Various
-bug(fixe)s. ;-)
-
-@item
 @b{Martin Pottendorfer}
 Implemented the Gnome Port based on Oliver Schaertels GTK+
 port. Added support code for internationalization based on
@@ -26848,17 +26950,6 @@ using VTE to the GTK+ GUI. Made some monitor fixes. Fixed some
 tape code issues.
 
 @item
-@b{Daniel Kahlin}
-Worked on DTV VIC emulation, palette, DTV SID support in resid,
-better DMA/Blitter support and did lots of refactoring. Added
-new monitor commands and features. Improved the VIC emulation
-for xvic. Made MIDI driver code for Win32. Rewrote the xvic
-cartridge system. Added Mega-Cart and Final Expansion V3.2
-support to xvic. Wrote large parts of the new VIC-II emulation
-used in x64sc, especially the dot clock domain emulation. Wrote
-many test programs for hardware analysis.
-
-@item
 @b{Groepaz}
 Added new more precise CRT emulation. Added support for the new
 cartridge system and many new cartridges. Fixed up parts of
@@ -26876,10 +26967,6 @@ emulation. Added GMod2 cartridge emulation. Added xvic BehrBonz
 cartridge emulation. Added VICII VSP-bug emulation. Wrote alot of
 test programs. Updated this document after a long period of
 outdated mess. And various fixes and improvements.
-
-@item
-@b{Errol Smith}
-Improved VDC emulation. Improved MPS803 printer emulation.
 
 @item
 @b{Olaf Seibert}
@@ -26908,11 +26995,6 @@ Added Swiss ROM support to x128. Added IDE64 USB server emulation. Added
 compatibility. Added godot screenshot support. And fixed various issues.
 
 @item
-@b{BSzili}
-Provided many amigaos4 fixes. Maintains the amigaos based and derived
-ports.
-
-@item
 @b{AreaScout}
 Fixed the SDL2 port. Revived the Android port. Maintains the SDL1,
 SDL2 and Android ports.
@@ -26930,6 +27012,39 @@ out-of-tree building.
 Former/inactive team members:
 
 @itemize @bullet
+
+@item
+@b{BSzili}
+Provided many amigaos4 fixes. Maintained the amigaos based and derived
+ports.
+
+@item
+@b{Errol Smith}
+Improved VDC emulation. Improved MPS803 printer emulation.
+
+@item
+@b{Daniel Kahlin}
+Worked on DTV VIC emulation, palette, DTV SID support in resid,
+better DMA/Blitter support and did lots of refactoring. Added
+new monitor commands and features. Improved the VIC emulation
+for xvic. Made MIDI driver code for Win32. Rewrote the xvic
+cartridge system. Added Mega-Cart and Final Expansion V3.2
+support to xvic. Wrote large parts of the new VIC-II emulation
+used in x64sc, especially the dot clock domain emulation. Wrote
+many test programs for hardware analysis.
+
+@item
+@b{Andreas Matthies}
+Improved the datasette support, the VIC20 video emulation and
+some UI stuff in the Win32 and DOS ports. He also wrote the
+BeOS port and implemented video/audio capture support. Improved
+history recording/playback and implemented support for video
+recording and the netlink feature. Made the Win32 user
+changable keyboard shortcut system. Improved CIA and VIA
+emulation. Worked on x64sc, especially interrupt timing.
+Improved the FFMPEG support and started the 'in-source'
+FFMPEG support/merge. Wrote test programs. Various
+bug(fixe)s. ;-)
 
 @item
 @b{Ulrich Schulz}
@@ -27097,31 +27212,31 @@ Internationalization Team:
 @item
 @c ---translation-team---
 @b{Mikkel Holm Olsen}
-Copyright @copyright{} 2009-2016
+Copyright @copyright{} 2009-2017
 Provided the Danish user interface translations and fixed a few monitor bugs.
 
 @b{Martin Pottendorfer}
-Copyright @copyright{} 2000-2016
+Copyright @copyright{} 2000-2017
 Provided the German user interface translations.
 
 @b{Manuel Antonio Rodriguez Bas}
-Copyright @copyright{} 2011-2016
+Copyright @copyright{} 2011-2017
 Provided the Spanish user interface translations.
 
 @b{Paul Dubé}
-Copyright @copyright{} 2004-2016
+Copyright @copyright{} 2004-2017
 Provided the French user interface translations.
 
 @b{Czirkos Zoltan}
-Copyright @copyright{} 2006-2016
+Copyright @copyright{} 2006-2017
 Provided the Hungarian user interface translations.
 
 @b{Karai Csaba}
-Copyright @copyright{} 2006-2016
+Copyright @copyright{} 2006-2017
 Provided the Hungarian user interface translations.
 
 @b{Andrea Musuruane}
-Copyright @copyright{} 2001-2016
+Copyright @copyright{} 2001-2017
 Provided the Italian user interface translations.
 
 @b{Jesse Lee}
@@ -27129,23 +27244,23 @@ Copyright @copyright{} 2011-2016
 Provided the Korean user interface translations.
 
 @b{Marco van den Heuvel}
-Copyright @copyright{} 2005-2016
+Copyright @copyright{} 2005-2017
 Provided the Dutch user interface translations.
 
 @b{Jarek Sobolewski}
-Copyright @copyright{} 2011-2016
+Copyright @copyright{} 2011-2017
 Provided the Polish user interface translations.
 
 @b{Michael Litvinov}
-Copyright @copyright{} 2010-2016
+Copyright @copyright{} 2010-2017
 Provided the Russian user interface translations.
 
 @b{Peter Krefting}
-Copyright @copyright{} 2000-2016
+Copyright @copyright{} 2000-2017
 Provided the Swedish user interface translations.
 
 @b{Emir Akaydin}
-Copyright @copyright{} 2008-2016
+Copyright @copyright{} 2008-2017
 Provided the Turkish user interface translations.
 
 @c ---translation-team-end---
@@ -27402,8 +27517,8 @@ Fixed some resource handling issues.
 
 @item
 @b{Robert McIntyre}
-Bugged people enough to get the improved g64 support rolling, 
-updated g64 support to allow variable-length tracks, and 
+Bugged people enough to get the improved g64 support rolling,
+updated g64 support to allow variable-length tracks, and
 performed initial development of half-track support.
 
 @item
@@ -27635,7 +27750,7 @@ Fixed some monitor issues.
 @end itemize
 
 (We hope we have not forgotten anybody; if you think we have,
- please tell us.)
+please tell us.)
 
 The people around the world providing results from running our
 test programs on various machines deserve a special mention:
@@ -27714,28 +27829,32 @@ cool emulators to compete with.  @t{:-)}
 @item
 Copyright @copyright{} 1999-2016 Andreas Matthies
 @item
-Copyright @copyright{} 1999-2016 Martin Pottendorfer
+Copyright @copyright{} 1999-2017 Martin Pottendorfer
 @item
-Copyright @copyright{} 2005-2016 Marco van den Heuvel
+Copyright @copyright{} 2005-2017 Marco van den Heuvel
 @item
-Copyright @copyright{} 2007-2016 Fabrizio Gennari
+Copyright @copyright{} 2007-2017 Fabrizio Gennari
 @item
-Copyright @copyright{} 2009-2016 Groepaz
+Copyright @copyright{} 2009-2017 Groepaz
 @item
-Copyright @copyright{} 2011-2016 Marcus Sutton
+Copyright @copyright{} 2010-2017 Olaf Seibert
 @item
-Copyright @copyright{} 2011-2016 Kajtar Zsolt
+Copyright @copyright{} 2011-2017 Marcus Sutton
+@item
+Copyright @copyright{} 2011-2017 Kajtar Zsolt
+@item
+Copyright @copyright{} 2016-2017 AreaScout
+@item
+Copyright @copyright{} 2016-2017 Bas Wassink
+
 @item
 Copyright @copyright{} 2011-2016 Stefan Haubenthal
 @item
 Copyright @copyright{} 2015-2016 BSzili
-
 @item
 Copyright @copyright{} 2007-2015 Daniel Kahlin
 @item
 Copyright @copyright{} 2009-2015 Errol Smith
-@item
-Copyright @copyright{} 2010-2015 Olaf Seibert
 @item
 Copyright @copyright{} 2012-2014 Benjamin 'BeRo' Rosseaux
 @item

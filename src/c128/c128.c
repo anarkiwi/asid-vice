@@ -98,6 +98,7 @@
 #include "sampler2bit.h"
 #include "sampler4bit.h"
 #include "screenshot.h"
+#include "script64_dongle.h"
 #include "serial.h"
 #include "sid-cmdline-options.h"
 #include "sid-resources.h"
@@ -119,13 +120,14 @@
 #include "userport_joystick.h"
 #include "userport_rtc_58321a.h"
 #include "userport_rtc_ds1307.h"
+#include "vdc.h"
+#include "vdc-mem.h"
 #include "vice-event.h"
 #include "vicii.h"
 #include "vicii-mem.h"
 #include "video.h"
 #include "video-sound.h"
-#include "vdc.h"
-#include "vdc-mem.h"
+#include "vizawrite64_dongle.h"
 #include "vsync.h"
 #include "z80.h"
 #include "z80mem.h"
@@ -234,9 +236,23 @@ int machine_get_num_keyboard_types(void)
     return 1;
 }
 
+/* For use in the UI's, the actuall keymaps still need to be generated */
+static kbdtype_info_t kbdinfo[] = {
+    { "International", C128_MACHINE_INT, 0 },
+    { "Finnish", C128_MACHINE_FINNISH, 0 },
+    { "French", C128_MACHINE_FRENCH, 0 },
+    { "German", C128_MACHINE_GERMAN, 0 },
+    { "Italian", C128_MACHINE_ITALIAN, 0 },
+    { "Norwegian", C128_MACHINE_NORWEGIAN, 0 },
+    { "Swedish", C128_MACHINE_SWEDISH, 0 },
+    { "Swiss", C128_MACHINE_SWISS, 0 },
+    { NULL, 0, 0 }
+};
+
+
 kbdtype_info_t *machine_get_keyboard_info_list(void)
 {
-    return NULL; /* return 0 if no different types exist */
+    return kbdinfo;
 }
 
 
@@ -599,6 +615,14 @@ int machine_resources_init(void)
     }
     if (joyport_paperclip64_resources_init() < 0) {
         init_resource_fail("joyport paperclip64 dongle");
+        return -1;
+    }
+    if (joyport_script64_dongle_resources_init() < 0) {
+        init_resource_fail("joyport script64 dongle");
+        return -1;
+    }
+    if (joyport_vizawrite64_dongle_resources_init() < 0) {
+        init_resource_fail("joyport vizawrite64 dongle");
         return -1;
     }
     if (joystick_resources_init() < 0) {

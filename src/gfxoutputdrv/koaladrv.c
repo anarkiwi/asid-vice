@@ -162,19 +162,19 @@ static const resource_int_t resources_int[] = {
       &oversize_handling, set_oversize_handling, NULL },
     { "KoalaUndersizeHandling", NATIVE_SS_UNDERSIZE_SCALE, RES_EVENT_NO, NULL,
       &undersize_handling, set_undersize_handling, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 static const resource_int_t resources_int_plus4[] = {
     { "KoalaTEDLumHandling", NATIVE_SS_TED_LUM_IGNORE, RES_EVENT_NO, NULL,
       &ted_lum_handling, set_ted_lum_handling, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 static const resource_int_t resources_int_crtc[] = {
     { "KoalaCRTCTextColor", NATIVE_SS_CRTC_WHITE, RES_EVENT_NO, NULL,
       &crtc_text_color, set_crtc_text_color, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 static int koaladrv_resources_init(void)
@@ -205,7 +205,7 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_METHOD, IDCLS_UNDERSIZED_HANDLING,
       NULL, NULL },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 static const cmdline_option_t cmdline_options_plus4[] = {
@@ -214,7 +214,7 @@ static const cmdline_option_t cmdline_options_plus4[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_METHOD, IDCLS_TED_LUM_HANDLING,
       NULL, NULL },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 static const cmdline_option_t cmdline_options_crtc[] = {
@@ -223,7 +223,7 @@ static const cmdline_option_t cmdline_options_crtc[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_COLOR, IDCLS_CRTC_TEXT_COLOR,
       NULL, NULL },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 static int koaladrv_cmdline_options_init(void)
