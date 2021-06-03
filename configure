@@ -669,6 +669,8 @@ UNIX_COMPILE_TRUE
 SUPPORT_CMDLINE_TOOLS_FALSE
 SUPPORT_CMDLINE_TOOLS_TRUE
 UNIX_MACOSX_UITYPE
+NATIVE_GTK3_COMPILE_FALSE
+NATIVE_GTK3_COMPILE_TRUE
 MAKE_BINDIST_FALSE
 MAKE_BINDIST_TRUE
 SDL_VERSION
@@ -711,8 +713,6 @@ PANGO_LIBS
 PANGO_CFLAGS
 VTE_LIBS
 VTE_CFLAGS
-GTK_LIBS
-GTK_CFLAGS
 X_EXTRA_LIBS
 X_LIBS
 X_PRE_LIBS
@@ -720,6 +720,8 @@ X_CFLAGS
 XMKMF
 GFXOUTPUT_LIBS
 GFXOUTPUT_DRIVERS
+PNG_LIBS
+PNG_CFLAGS
 EDITLINE_LIBS
 READLINE_LIBS
 READLINE
@@ -733,6 +735,10 @@ WINDRES
 HAVE_FC_CACHE_FALSE
 HAVE_FC_CACHE_TRUE
 FCCACHE
+GLIB_LIBS
+GLIB_CFLAGS
+GTK_LIBS
+GTK_CFLAGS
 sdl2_config
 sdl_config
 TFE_LIBS
@@ -910,6 +916,8 @@ build_os
 build_vendor
 build_cpu
 build
+DUMMY_COMPILE_FALSE
+DUMMY_COMPILE_TRUE
 VERSION_COMBINED
 VERSION_RC
 am__untar
@@ -992,6 +1000,7 @@ with_sdlsound
 with_resid
 with_jpeg
 with_png
+with_gif
 with_zlib
 with_picasso96
 with_cocoa
@@ -1002,6 +1011,8 @@ enable_gnomeui
 enable_gnomeui3
 enable_sdlui
 enable_sdlui2
+enable_native_gtk3ui
+enable_debug_gtk3ui
 enable_nls
 enable_vte
 enable_realdevice
@@ -1015,8 +1026,11 @@ enable_ssi2001
 enable_catweasel
 enable_hardsid
 enable_parsid
+enable_libieee1284
+enable_portaudio
+enable_ahi
 enable_bundle
-enable_memmap
+enable_cpuhistory
 enable_unicode
 enable_editline
 enable_lame
@@ -1061,9 +1075,13 @@ FFMPEG_SWRESAMPLE_CFLAGS
 FFMPEG_SWRESAMPLE_LIBS
 FFMPEG_AVRESAMPLE_CFLAGS
 FFMPEG_AVRESAMPLE_LIBS
-XMKMF
 GTK_CFLAGS
 GTK_LIBS
+GLIB_CFLAGS
+GLIB_LIBS
+PNG_CFLAGS
+PNG_LIBS
+XMKMF
 VTE_CFLAGS
 VTE_LIBS
 PANGO_CFLAGS
@@ -1702,6 +1720,8 @@ Optional Features:
   --enable-gnomeui3       enables GNOME UI with GTK3 support
   --enable-sdlui          enables SDL UI support
   --enable-sdlui2         enables SDL2 UI support
+  --enable-native-gtk3ui  enables WIP native GTK3 UI support
+ --enable-debug-gtk3ui    enables debugging for the WIP GTK3 port
   --disable-nls           disables national language support
   --disable-vte           disable VTE support
   --disable-realdevice    disables access to real peripheral devices (CBM4Linux/OpenCBM)
@@ -1715,8 +1735,11 @@ Optional Features:
   --disable-catweasel     disables CatWeasel (PCI/Zorro/Clockport SID card) support
   --disable-hardsid       disables HardSID support
   --disable-parsid        disables ParSID support
+  --enable-libieee1284    enables libieee1284 support
+  --disable-portaudio     disables PortAudio support
+  --disable-ahi           disables AHI support
   --disable-bundle        do not use application bundles on Macs
-  --enable-memmap         enable the memmap feature
+  --enable-cpuhistory     enable the 65xx cpu history feature
   --enable-unicode        enable Unicode UI on WinNT
   --disable-editline      disable history in Cocoa UI's console
   --disable-lame          disable MP3 export with LAME
@@ -1750,6 +1773,7 @@ Optional Packages:
   --without-resid         do not use the reSID engine
   --without-jpeg          do not use the JPEG screenshot system
   --without-png           do not use the PNG screenshot system
+  --without-gif           do not use the GIF screenshot sustem
   --without-zlib          do not use the zlib support
   --with-picasso96        use Amiga P96 grafix system instead of cgx
   --with-cocoa            enables native Cocoa UI on Macs
@@ -1788,9 +1812,13 @@ Some influential environment variables:
               C compiler flags for FFMPEG_AVRESAMPLE, overriding pkg-config
   FFMPEG_AVRESAMPLE_LIBS
               linker flags for FFMPEG_AVRESAMPLE, overriding pkg-config
-  XMKMF       Path to xmkmf, Makefile generator for X Window System
   GTK_CFLAGS  C compiler flags for GTK, overriding pkg-config
   GTK_LIBS    linker flags for GTK, overriding pkg-config
+  GLIB_CFLAGS C compiler flags for GLIB, overriding pkg-config
+  GLIB_LIBS   linker flags for GLIB, overriding pkg-config
+  PNG_CFLAGS  C compiler flags for PNG, overriding pkg-config
+  PNG_LIBS    linker flags for PNG, overriding pkg-config
+  XMKMF       Path to xmkmf, Makefile generator for X Window System
   PANGO_CFLAGS
               C compiler flags for PANGO, overriding pkg-config
   PANGO_LIBS  linker flags for PANGO, overriding pkg-config
@@ -2940,7 +2968,7 @@ vice_arg_with_list="x"
 
 
 VICE_VERSION_MAJOR=3
-VICE_VERSION_MINOR=0
+VICE_VERSION_MINOR=1
 VICE_VERSION_BUILD=0
 
 YASM_VERSION_MAJOR=1
@@ -3049,6 +3077,15 @@ vice_arg_with_list="$vice_arg_with_list png"
 
 
 
+# Check whether --with-gif was given.
+if test "${with_gif+set}" = set; then :
+  withval=$with_gif;
+fi
+
+vice_arg_with_list="$vice_arg_with_list gif"
+
+
+
 # Check whether --with-zlib was given.
 if test "${with_zlib+set}" = set; then :
   withval=$with_zlib;
@@ -3130,6 +3167,22 @@ if test "${enable_sdlui2+set}" = set; then :
 fi
 
 vice_arg_enable_list="$vice_arg_enable_list sdlui2"
+
+
+# Check whether --enable-native-gtk3ui was given.
+if test "${enable_native_gtk3ui+set}" = set; then :
+  enableval=$enable_native_gtk3ui;
+fi
+
+vice_arg_enable_list="$vice_arg_enable_list native-gtk3ui"
+
+
+# Check whether --enable-debug-gtk3ui was given.
+if test "${enable_debug_gtk3ui+set}" = set; then :
+  enableval=$enable_debug_gtk3ui;
+fi
+
+vice_arg_enable_list="$vice_arg_enable_list debug-gtk3ui"
 
 
 # Check whether --enable-nls was given.
@@ -3236,6 +3289,30 @@ fi
 vice_arg_enable_list="$vice_arg_enable_list parsid"
 
 
+# Check whether --enable-libieee1284 was given.
+if test "${enable_libieee1284+set}" = set; then :
+  enableval=$enable_libieee1284;
+fi
+
+vice_arg_enable_list="$vice_arg_enable_list libieee1284"
+
+
+# Check whether --enable-portaudio was given.
+if test "${enable_portaudio+set}" = set; then :
+  enableval=$enable_portaudio;
+fi
+
+vice_arg_enable_list="$vice_arg_enable_list portaudio"
+
+
+# Check whether --enable-ahi was given.
+if test "${enable_ahi+set}" = set; then :
+  enableval=$enable_ahi;
+fi
+
+vice_arg_enable_list="$vice_arg_enable_list ahi"
+
+
 # Check whether --enable-bundle was given.
 if test "${enable_bundle+set}" = set; then :
   enableval=$enable_bundle;
@@ -3244,12 +3321,12 @@ fi
 vice_arg_enable_list="$vice_arg_enable_list bundle"
 
 
-# Check whether --enable-memmap was given.
-if test "${enable_memmap+set}" = set; then :
-  enableval=$enable_memmap;
+# Check whether --enable-cpuhistory was given.
+if test "${enable_cpuhistory+set}" = set; then :
+  enableval=$enable_cpuhistory;
 fi
 
-vice_arg_enable_list="$vice_arg_enable_list memmap"
+vice_arg_enable_list="$vice_arg_enable_list cpuhistory"
 
 
 # Check whether --enable-unicode was given.
@@ -3456,7 +3533,7 @@ done
 
 fi
 
-vice_ui_list="--enable-gnomeui --enable-gnomeui3 --enable-sdlui --enable-sdlui2 --with-cocoa"
+vice_ui_list="--enable-gnomeui --enable-gnomeui3 --enable-sdlui --enable-sdlui2 --with-cocoa --enable-native-gtk3ui"
 vice_ui_1=none
 vice_ui_2=none
 
@@ -4095,7 +4172,6 @@ is_win32=no
 is_win32_x11=no
 is_os2=no
 is_beos=no
-is_beos_x11=no
 is_amiga=no
 
 HAVE_FULLSCREEN_SUPPORT="no "
@@ -4188,6 +4264,15 @@ FEATURE_CPUMEMHISTORY_SUPPORT="no "
 DEBUG_SUPPORT="no "
 USE_EMBEDDED_SUPPORT="no "
 
+ if false; then
+  DUMMY_COMPILE_TRUE=
+  DUMMY_COMPILE_FALSE='#'
+else
+  DUMMY_COMPILE_TRUE='#'
+  DUMMY_COMPILE_FALSE=
+fi
+
+
 # Make sure we can run config.sub.
 $SHELL "$ac_aux_dir/config.sub" sun4 >/dev/null 2>&1 ||
   as_fn_error $? "cannot run $SHELL $ac_aux_dir/config.sub" "$LINENO" 5
@@ -4260,7 +4345,7 @@ case $host_os in *\ *) host_os=`echo "$host_os" | sed 's/ /-/g'`;; esac
 
 
 
-if test x"$enable_memmap" = "xyes"; then
+if test x"$enable_cpuhistory" = "xyes"; then
 
 $as_echo "#define FEATURE_CPUMEMHISTORY /**/" >>confdefs.h
 
@@ -4270,6 +4355,18 @@ fi
 if test x"$enable_gnomeui" = "xyes" ; then
 
 $as_echo "#define USE_GNOMEUI /**/" >>confdefs.h
+
+fi
+
+if test x"$enable_native_gtk3ui" = "xyes"; then
+
+$as_echo "#define USE_NATIVE_GTK3 /**/" >>confdefs.h
+
+fi
+
+if test x"$enable_debug_gtk3ui" = "xyes"; then
+
+$as_echo "#define HAVE_DEBUG_GTK3UI /**/" >>confdefs.h
 
 fi
 
@@ -5817,17 +5914,6 @@ if test x"$host_os" = "xcygwin32" -o x"$host_os" = "xcygwin"; then
   fi
 fi
 
-if test x"$host_os" = "xbeos" -o x"$host_os" = "xhaiku"; then
-  if test x"$with_x" = "xyes"; then
-    host_os=x11beos
-    is_beos_x11=yes
-    is_unix=yes
-
-$as_echo "#define BEOS_COMPILE /**/" >>confdefs.h
-
-  fi
-fi
-
 if test x"$host_os" = "xbeos" -a x"$host_cpu" = "xpowerpc"; then
   toolchain_check=no
   ar_check=no
@@ -5848,6 +5934,9 @@ if test x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
   enable_nls=no
 fi
 
+if test x"$enable_native_gtk3ui" = "xyes"; then
+  enable_nls=no
+fi
 
 if test "x$CC" = "xgcc"; then
   GCC=yes
@@ -7308,8 +7397,8 @@ done
 test -n "$DOS2UNIX" || DOS2UNIX="dos2unix"
 
 
-if test x"$SVN" != "x:"; then
-  svnrevision=`$SVN 2>dummy.tmp info $ac_dir | grep Revision | cut -d " " -f 2`
+if test x"$SVN" != "x"; then
+  svnrevision=`$SVN 2>dummy.tmp info $srcdir | grep Revision | cut -d " " -f 2`
   rm dummy.tmp
   if test x"$svnrevision" != "x"; then
      if true; then
@@ -7639,6 +7728,13 @@ $as_echo "#define HAVE_HARDSID /**/" >>confdefs.h
 
         HAVE_HARDSID_SUPPORT="yes"
       fi
+    else
+      if test x"$enable_catweasel" = "xyes" -a x"$HAVE_CATWEASELMKIII_SUPPORT" != "xyes"; then
+        as_fn_error $? "CatWeaselMKIII support is missing" "$LINENO" 5
+      fi
+      if test x"$enable_hardsid" = "xyes" -a x"$HAVE_HARDSID_SUPPORT" != "xyes"; then
+        as_fn_error $? "HardSID support is missing" "$LINENO" 5
+      fi
     fi
     is_amiga_morphos=yes
     is_amigaos4=no
@@ -7757,6 +7853,13 @@ $as_echo "#define HAVE_SSI2001 /**/" >>confdefs.h
 
         HAVE_SSI2001_SUPPORT="yes"
       fi
+    else
+      if test x"$enable_catweasel" = "xyes" -a x"$HAVE_CATWEASELMKIII" != "xyes"; then
+        as_fn_error $? "CatWeaselMKIII support is missing" "$LINENO" 5
+      fi
+      if test x"$enable_hardsid" = "xyes" -a x"$HAVE_HARDSID_SUPPORT" != "xyes"; then
+        as_fn_error $? "HardSID support is missing" "$LINENO" 5
+      fi
     fi
     is_amigaos4=no
     is_amigaos3=yes
@@ -7812,18 +7915,20 @@ fi
 done
 
 
+    if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes" -a x"$enable_native_gtk3ui" != "xyes"; then
 
 $as_echo "#define HAS_JOYSTICK /**/" >>confdefs.h
 
-  HAS_JOYSTICK_SUPPORT="yes"
+    HAS_JOYSTICK_SUPPORT="yes"
 
 $as_echo "#define HAVE_MOUSE /**/" >>confdefs.h
 
-  HAVE_MOUSE_SUPPORT="yes"
+    HAVE_MOUSE_SUPPORT="yes"
 
 $as_echo "#define HAVE_LIGHTPEN /**/" >>confdefs.h
 
-  HAVE_LIGHTPEN_SUPPORT="yes"
+    HAVE_LIGHTPEN_SUPPORT="yes"
+  fi
 
 $as_echo "#define HAVE_HTONL /**/" >>confdefs.h
 
@@ -7856,9 +7961,10 @@ $as_echo "#define HAVE_PARSID /**/" >>confdefs.h
 
     HAVE_PARSID_SUPPORT="yes"
 
-    LIBIEEE1284_HEADERS_PRESENT=yes
+    if test x"$enable_libieee1284" = "xyes"; then
+      LIBIEEE1284_HEADERS_PRESENT=yes
 
-        for ac_header in ieee1284.h
+            for ac_header in ieee1284.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "ieee1284.h" "ac_cv_header_ieee1284_h" "$ac_includes_default"
 if test "x$ac_cv_header_ieee1284_h" = xyes; then :
@@ -7873,8 +7979,8 @@ fi
 done
 
 
-    if test x"$LIBIEEE1284_HEADERS_PRESENT" = "xyes"; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ieee1284_find_ports in -lieee1284" >&5
+      if test x"$LIBIEEE1284_HEADERS_PRESENT" = "xyes"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ieee1284_find_ports in -lieee1284" >&5
 $as_echo_n "checking for ieee1284_find_ports in -lieee1284... " >&6; }
 if ${ac_cv_lib_ieee1284_ieee1284_find_ports+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7914,10 +8020,15 @@ if test "x$ac_cv_lib_ieee1284_ieee1284_find_ports" = xyes; then :
   LIBS="-lieee1284 $LIBS"; PARSID_SUPPORT=yes
 fi
 
-      if test x"$PARSID_SUPPORT" != "xno"; then
+        if test x"$PARSID_SUPPORT" = "xyes"; then
 
 $as_echo "#define HAVE_LIBIEEE1284 /**/" >>confdefs.h
 
+        else
+          as_fn_error $? "libieee1284 is missing" "$LINENO" 5
+        fi
+      else
+        as_fn_error $? "libieee1284 header is missing" "$LINENO" 5
       fi
     fi
   fi
@@ -7944,7 +8055,7 @@ $as_echo "#define HAVE_RS232DEV /**/" >>confdefs.h
     HAVE_RS232DEV_SUPPORT="yes"
   fi
 
-  if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+  if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes" -a x"$enable_native_gtk3ui" != "xyes"; then
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <windows.h>
@@ -8096,9 +8207,10 @@ $as_echo "#define HAVE_PARSID /**/" >>confdefs.h
 
     HAVE_PARSID_SUPPORT="yes"
 
-    LIBIEEE1284_HEADERS_PRESENT=yes
+    if test x"$enable_libieee1284" = "xyes"; then
+      LIBIEEE1284_HEADERS_PRESENT=yes
 
-        for ac_header in ieee1284.h
+            for ac_header in ieee1284.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "ieee1284.h" "ac_cv_header_ieee1284_h" "$ac_includes_default"
 if test "x$ac_cv_header_ieee1284_h" = xyes; then :
@@ -8113,8 +8225,8 @@ fi
 done
 
 
-    if test x"$LIBIEEE1284_HEADERS_PRESENT" = "xyes"; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ieee1284_find_ports in -lieee1284" >&5
+      if test x"$LIBIEEE1284_HEADERS_PRESENT" = "xyes"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ieee1284_find_ports in -lieee1284" >&5
 $as_echo_n "checking for ieee1284_find_ports in -lieee1284... " >&6; }
 if ${ac_cv_lib_ieee1284_ieee1284_find_ports+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -8154,10 +8266,15 @@ if test "x$ac_cv_lib_ieee1284_ieee1284_find_ports" = xyes; then :
   LIBS="-lieee1284 $LIBS"; PARSID_SUPPORT=yes
 fi
 
-      if test x"$PARSID_SUPPORT" != "xno"; then
+        if test x"$PARSID_SUPPORT" = "xyes"; then
 
 $as_echo "#define HAVE_LIBIEEE1284 /**/" >>confdefs.h
 
+        else
+          as_fn_error $? "libieee1284 is missing" "$LINENO" 5
+        fi
+      else
+        as_fn_error $? "libieee1284 header is missing" "$LINENO" 5
       fi
     fi
   fi
@@ -8277,7 +8394,7 @@ $as_echo "#define HAVE_LIGHTPEN /**/" >>confdefs.h
 
 $as_echo "#define MACOSX_SUPPORT /**/" >>confdefs.h
 
-  if test "x$enable_bundle" != "xno" -o "x$enable_sdlui" = "xyes" -o "x$enable_sdlui2" = "xyes"; then
+  if test x"$enable_bundle" != "xno" -o x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes" -o x"$enable_native_gtk3ui" = "xyes"; then
     echo "enabled Mac application bundles"
 
 $as_echo "#define MACOSX_BUNDLE /**/" >>confdefs.h
@@ -8285,6 +8402,11 @@ $as_echo "#define MACOSX_BUNDLE /**/" >>confdefs.h
   else
     echo "disabled Mac application bundles"
   fi
+  CFLAGS="$CFLAGS -I/usr/local/include -I/System/Library/Frameworks/OpenGL.framework/Headers"
+  CXXFLAGS="$CXXFLAGS -I/usr/local/include -I/System/Library/Frameworks/OpenGL.framework/Headers"
+  LDFLAGS="$LDFLAGS -L/usr/local/lib"
+  LIBS="$LIBS -framework CoreServices"
+
   ;;
 
 *)
@@ -8296,9 +8418,6 @@ $as_echo "#define MACOSX_BUNDLE /**/" >>confdefs.h
   esac
 
   case "$host" in
-    *x11beos*)
-      LIBS="$LIBS -lbe -ltracker -ldevice -lgame"
-      ;;
     alpha*-*-linux*)
       if test x"$CC" = "xccc"; then
         echo "Using Compaq C Compiler cflags."
@@ -9126,26 +9245,24 @@ $as_echo "#define HAVE_MOUSE /**/" >>confdefs.h
 $as_echo "#define HAVE_LIGHTPEN /**/" >>confdefs.h
 
   HAVE_LIGHTPEN_SUPPORT="yes"
-  if test x"$is_beos_x11" != "xyes"; then
-    if test x"$enable_midi" != "xno"; then
+  if test x"$enable_midi" != "xno"; then
 
 $as_echo "#define HAVE_MIDI /**/" >>confdefs.h
 
-      HAVE_MIDI_SUPPORT="yes"
-    fi
-    if test x"$enable_rs232" != "xno"; then
+    HAVE_MIDI_SUPPORT="yes"
+  fi
+  if test x"$enable_rs232" != "xno"; then
 
 $as_echo "#define HAVE_RS232DEV /**/" >>confdefs.h
 
-      HAVE_RS232DEV_SUPPORT="yes"
-    fi
+    HAVE_RS232DEV_SUPPORT="yes"
   fi
   ;;
 esac
 fi
 
-
 if test x"$enable_debug" = "xyes"; then
+  have_backtrace_symbols="no"
   DEBUGBUILD=1
   DEBUG_SUPPORT="yes"
     ac_fn_c_check_func "$LINENO" "backtrace_symbols" "ac_cv_func_backtrace_symbols"
@@ -9194,16 +9311,26 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_execinfo_backtrace_symbols" >&5
 $as_echo "$ac_cv_lib_execinfo_backtrace_symbols" >&6; }
 if test "x$ac_cv_lib_execinfo_backtrace_symbols" = xyes; then :
-  LIBS="$LIBS -lexecinfo"
+   LIBS="$LIBS -lexecinfo"
+                   have_backtrace_symbols="yes"
 else
-  as_fn_error $? "libexecinfo is required for debug builds." "$LINENO" 5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: \"Could not find backtrace_symbols in either libc or libexecinfo. Either install libexecinfo" >&5
+$as_echo "$as_me: WARNING: \"Could not find backtrace_symbols in either libc or libexecinfo. Either install libexecinfo" >&2;}
 fi
+
 
   fi
-else
+
+  if test x"$have_backtrace_symbols" = "xyes"; then
+
+$as_echo "#define HAVE_BT_SYMBOLS /**/" >>confdefs.h
+
+  fi
+
+
+                  else
   DEBUGBUILD=0
 fi
-
 
 
 
@@ -14944,43 +15071,7 @@ fi
 
 if test x"$with_sdlsound" = "xyes" -o x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
 
-    if test x"$is_unix_macosx" = "xyes"; then
-        if test x"$enable_sdlui2" = "xyes"; then
-          as_fn_error $? "SDL2 framework not implemented (yet) for the Mac OS X port" "$LINENO" 5
-        fi
-        LIBS="$LIBS -lSDLmain -framework SDL -framework Cocoa -framework OpenGL -framework CoreVideo"
-        CFLAGS="$CFLAGS -I/Library/Frameworks/SDL.framework/Headers -I/System/Library/Frameworks/OpenGL.framework/Headers"
-        CXXFLAGS="$CXXFLAGS -I/Library/Frameworks/SDL.framework/Headers -I/System/Library/Frameworks/OpenGL.framework/Headers"
-        SOUND_DRIVERS="$SOUND_DRIVERS soundsdl.o"
-        USE_SDL_AUDIO_SUPPORT="yes"
-
-$as_echo "#define USE_SDL_AUDIO /**/" >>confdefs.h
-
-        if test x"$enable_sdlui" = "xyes"; then
-
-$as_echo "#define USE_SDLUI /**/" >>confdefs.h
-
-        fi
-
-$as_echo "#define HAVE_HWSCALE /**/" >>confdefs.h
-
-        HAVE_HWSCALE_SUPPORT="yes"
-
-$as_echo "#define HAVE_FULLSCREEN /**/" >>confdefs.h
-
-        HAVE_FULLSCREEN_SUPPORT="yes"
-        for ac_func in SDL_NumJoysticks
-do :
-  ac_fn_c_check_func "$LINENO" "SDL_NumJoysticks" "ac_cv_func_SDL_NumJoysticks"
-if test "x$ac_cv_func_SDL_NumJoysticks" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_SDL_NUMJOYSTICKS 1
-_ACEOF
-
-fi
-done
-
-    elif test x"$host_os" = "xmingw32ce" -o x"$host_os" = "xcegcc"; then
+    if test x"$host_os" = "xmingw32ce" -o x"$host_os" = "xcegcc"; then
         if test x"$enable_sdlui2" = "xyes"; then
           as_fn_error $? "SDL2 not supported on windows ce" "$LINENO" 5
         fi
@@ -14998,10 +15089,7 @@ $as_echo "#define USE_SDLUI /**/" >>confdefs.h
 
 $as_echo "#define CEGCC_COMPILE /**/" >>confdefs.h
 
-    elif test x"$is_amiga" = "xyes"; then
-        if test x"$enable_sdlui2" = "xyes"; then
-          as_fn_error $? "SDL2 not supported on amiga" "$LINENO" 5
-        fi
+    elif test x"$is_amiga" = "xyes" -a x"$enable_sdlui2" != "xyes"; then
         if test x"$enable_sdlui" = "xyes"; then
 
 $as_echo "#define USE_SDLUI /**/" >>confdefs.h
@@ -15215,6 +15303,10 @@ fi
 
 $as_echo "#define USE_SDL_AUDIO /**/" >>confdefs.h
 
+            else
+                if test x"$with_sdlsound" = "xyes"; then
+                    as_fn_error $? "SDL sound support missing" "$LINENO" 5
+                fi
             fi
             for ac_func in SDL_NumJoysticks
 do :
@@ -15943,7 +16035,9 @@ done
         fi
 
         if test x"$ac_cv_lib_SDL_SDL_OpenAudio" != "xyes" -a x"$ac_cv_lib_SDL2_SDL_OpenAudio" != "xyes"; then
-            with_sdlsound=no
+            if test x"$with_sdlsound" = "xyes"; then
+                as_fn_error $? "SDL sound support missing" "$LINENO" 5
+            fi
         else
             SOUND_LIBS="$SOUND_LIBS $EXTRA_SDL_LIBS"
         fi
@@ -16371,6 +16465,61 @@ rm -f core conftest.err conftest.$ac_objext \
                 fi
             fi
 
+            if test x"$have_opengl_lib" != "xyes" -a x"enable_sdlui2" != "xyes" -a x"$is_unix_macosx" = "xyes"; then
+                { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether we can use the OpenGL Framework" >&5
+$as_echo_n "checking whether we can use the OpenGL Framework... " >&6; }
+                old_LIBS="$LIBS"
+                LIBS="$LIBS -framework OpenGL"
+
+                if test x"$use_sdl_prefix" = "xyes"; then
+                    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <SDL/SDL_opengl.h>
+int
+main ()
+{
+glViewport(1,2,3,4)
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; };
+                                    have_opengl_lib=yes
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };
+                                    LIBS="$old_LIBS"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+                else
+                    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <SDL_opengl.h>
+int
+main ()
+{
+glViewport(1,2,3,4)
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; };
+                                    have_opengl_lib=yes
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };
+                                    LIBS="$old_LIBS"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+                fi
+            fi
+
             if test x"$have_opengl_lib" = "xyes"; then
 
 $as_echo "#define HAVE_HWSCALE /**/" >>confdefs.h
@@ -16618,6 +16767,207 @@ $as_echo "#define HAVE_SDLMAIN /**/" >>confdefs.h
     fi
 fi
 
+if test x"$enable_native_gtk3ui" = "xyes"; then
+
+
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for GTK" >&5
+$as_echo_n "checking for GTK... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$GTK_CFLAGS"; then
+        pkg_cv_GTK_CFLAGS="$GTK_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"gtk+-3.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "gtk+-3.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_GTK_CFLAGS=`$PKG_CONFIG --cflags "gtk+-3.0" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$GTK_LIBS"; then
+        pkg_cv_GTK_LIBS="$GTK_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"gtk+-3.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "gtk+-3.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_GTK_LIBS=`$PKG_CONFIG --libs "gtk+-3.0" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        GTK_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "gtk+-3.0"`
+        else
+	        GTK_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "gtk+-3.0"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$GTK_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (gtk+-3.0) were not met:
+
+$GTK_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables GTK_CFLAGS
+and GTK_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+" "$LINENO" 5
+elif test $pkg_failed = untried; then
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables GTK_CFLAGS
+and GTK_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://www.freedesktop.org/software/pkgconfig>.
+See \`config.log' for more details" "$LINENO" 5 ; }
+else
+	GTK_CFLAGS=$pkg_cv_GTK_CFLAGS
+	GTK_LIBS=$pkg_cv_GTK_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	:
+fi
+
+$as_echo "#define HAVE_CAIRO /**/" >>confdefs.h
+
+  HAVE_CAIRO_SUPPORT="yes"
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for GLIB" >&5
+$as_echo_n "checking for GLIB... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$GLIB_CFLAGS"; then
+        pkg_cv_GLIB_CFLAGS="$GLIB_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"glib-2.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "glib-2.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_GLIB_CFLAGS=`$PKG_CONFIG --cflags "glib-2.0" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$GLIB_LIBS"; then
+        pkg_cv_GLIB_LIBS="$GLIB_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"glib-2.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "glib-2.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_GLIB_LIBS=`$PKG_CONFIG --libs "glib-2.0" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        GLIB_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "glib-2.0"`
+        else
+	        GLIB_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "glib-2.0"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$GLIB_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (glib-2.0) were not met:
+
+$GLIB_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables GLIB_CFLAGS
+and GLIB_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+" "$LINENO" 5
+elif test $pkg_failed = untried; then
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables GLIB_CFLAGS
+and GLIB_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://www.freedesktop.org/software/pkgconfig>.
+See \`config.log' for more details" "$LINENO" 5 ; }
+else
+	GLIB_CFLAGS=$pkg_cv_GLIB_CFLAGS
+	GLIB_LIBS=$pkg_cv_GLIB_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	:
+fi
+
+  CFLAGS="$CFLAGS $GLIB_CFLAGS $GTK_CFLAGS"
+  LIBS="$LIBS $GTK_LIBS $GLIB_LIBS"
+
+  if test x"$is_unix_macosx" = "xyes"; then
+        echo "GTK3 on OSX (Experimental)"
+  elif test x"$is_win32" = "xyes"; then
+        echo "GTK3 on Windows (Experimental)"
+  else
+        echo "GTK3 on *nix (Experimental)"
+  fi
+
+      fi
+
 if test x"$is_unix" = "xyes"; then
   if test x"$with_pulse" != "xno"; then
     for ac_header in pulse/simple.h
@@ -16676,9 +17026,13 @@ fi
 
 done
 
+    if test x"$with_pulse" = "xyes" -a x"$USE_PULSE_SUPPORT" != "xyes"; then
+      as_fn_error $? "pulse audio support missing" "$LINENO" 5
+    fi
   fi
 
-  if test x"$with_arts" = "xyes"; then
+
+    if test x"$with_arts" = "xyes"; then
     old_cflags=$CFLAGS
     old_libs=$LIBS
     CFLAGS="$CFLAGS `artsc-config --cflags`"
@@ -16738,16 +17092,18 @@ fi
 
 done
 
-  fi
-
-  if test x"$with_arts" = "xyes"; then
+    if test x"$with_arts" = "xyes"; then
 
 $as_echo "#define USE_ARTS /**/" >>confdefs.h
 
-    USE_ARTS_SUPPORT="yes"
+      USE_ARTS_SUPPORT="yes"
+    else
+      as_fn_error $? "aRts support is missing" "$LINENO" 5
+    fi
   fi
 
-  if test x"$with_alsa" != "xno"; then
+
+    if test x"$with_alsa" != "xno"; then
     for ac_header in alsa/asoundlib.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "alsa/asoundlib.h" "ac_cv_header_alsa_asoundlib_h" "$ac_includes_default"
@@ -16846,9 +17202,13 @@ $as_echo "#define HAVE_SND_PCM_AVAIL /**/" >>confdefs.h
 
 fi
 
+    if test x"$with_alsa" = "xyes" -a x"$USE_ALSA_SUPPORT" != "xyes"; then
+      as_fn_error $? "alsa support is missing" "$LINENO" 5
+    fi
   fi
 
-  if test x"$with_oss" != "xno" -a x"$host_os" != "uwin"; then
+
+    if test x"$with_oss" != "xno" -a x"$host_os" != "uwin"; then
     for ac_header in linux/soundcard.h machine/soundcard.h sys/soundcard.h soundcard.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -16911,6 +17271,9 @@ _ACEOF
 
 fi
 
+    if test x"$with_oss" = "xyes" -a x"$USE_OSS_SUPPORT" != "xyes"; then
+      as_fn_error $? "OSS support missing" "$LINENO" 5
+    fi
   fi
 
   for ac_header in dmedia/audio.h
@@ -17072,7 +17435,8 @@ done
 fi
 
 if test x"$is_amiga" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
-  for ac_header in devices/ahi.h
+  if test x"$enable_ahi" != "xno"; then
+    for ac_header in devices/ahi.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "devices/ahi.h" "ac_cv_header_devices_ahi_h" "$ac_includes_default"
 if test "x$ac_cv_header_devices_ahi_h" = xyes; then :
@@ -17084,6 +17448,15 @@ fi
 
 done
 
+
+    if test "x$ac_cv_header_devices_ahi_h" = xyes; then
+      HAVE_DEVICES_AHI_H_SUPPORT="yes"
+    else
+      if test x"$enable_ahi" = "xyes"; then
+        as_fn_error $? "AHI support is missing" "$LINENO" 5
+      fi
+    fi
+  fi
 fi
 
 if test x"$enable_lame" != "xno" ; then
@@ -17582,8 +17955,8 @@ $as_echo "$as_me: WARNING: WRC found, but is not the Wine Resource Compiler" >&2
                     ;;
             esac
         else
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: WRC not found, WRC is required for propper internationalization support" >&5
-$as_echo "$as_me: WARNING: WRC not found, WRC is required for propper internationalization support" >&2;}
+            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: WRC not found, WRC is required for proper internationalization support" >&5
+$as_echo "$as_me: WARNING: WRC not found, WRC is required for proper internationalization support" >&2;}
             WRC="$WINDRES"
         fi
                 if test x"$WRC" = x"$WINDRES"; then
@@ -17613,7 +17986,7 @@ $as_echo "no" >&6; }
     fi
 fi
 
-if test x"$is_beos" = "xyes" -o x"$is_beos_x11" = "xyes"; then
+if test x"$is_beos" = "xyes"; then
     SOUND_DRIVERS="$SOUND_DRIVERS soundbeos.o soundbsp.o"
 fi
 
@@ -18092,6 +18465,9 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   fi
+  if test x"$enable_midi" = "xyes" -a x"$HAVE_MIDI_SUPPORT" != "xyes"; then
+    as_fn_error $? "MIDI support missing" "$LINENO" 5
+  fi
 fi
 
 
@@ -18112,7 +18488,11 @@ if test x"$is_unix" = "xyes"; then
 
   if test x"$enable_parsid" != "xno" -o x"$enable_ssi2001" != "xno" -o x"$enable_hardsid" != "xno" -o x"$enable_catweasel" != "xno"; then
 
-    LIBIEEE1284_HEADERS_PRESENT=yes
+    if test x"$enable_libieee1284" = "xyes"; then
+      LIBIEEE1284_HEADERS_PRESENT=yes
+    else
+      LIBIEEE1284_HEADERS_PRESENT=no
+    fi
     LINUX_HARDSID_HEADER_PRESENT=yes
     LINUX_PARPORT_HEADERS_PRESENT=yes
     CATWEASEL_HEADER_PRESENT=yes
@@ -18124,7 +18504,8 @@ if test x"$is_unix" = "xyes"; then
     PCIUTILS_HEADER_PRESENT=yes
     PCIUTILS_LIB_PRESENT=no
 
-        for ac_header in ieee1284.h
+        if test x"$enable_libieee1284" = "xyes"; then
+      for ac_header in ieee1284.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "ieee1284.h" "ac_cv_header_ieee1284_h" "$ac_includes_default"
 if test "x$ac_cv_header_ieee1284_h" = xyes; then :
@@ -18138,6 +18519,7 @@ fi
 
 done
 
+    fi
     for ac_header in linux/hardsid.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "linux/hardsid.h" "ac_cv_header_linux_hardsid_h" "$ac_includes_default"
@@ -18391,11 +18773,17 @@ if test "x$ac_cv_lib_ieee1284_ieee1284_find_ports" = xyes; then :
   LIBS="-lieee1284 $LIBS"; PARSID_SUPPORT=yes
 fi
 
-      if test x"$PARSID_SUPPORT" != "xno"; then
+      if test x"$PARSID_SUPPORT" = "xyes"; then
 
 $as_echo "#define HAVE_LIBIEEE1284 /**/" >>confdefs.h
 
         HAVE_LIBIEEE1284_SUPPORT="yes"
+      else
+        as_fn_error $? "libieee1284 is missing" "$LINENO" 5
+      fi
+    else
+      if test x"$enable_libieee1284" = "xyes"; then
+        as_fn_error $? "libieee1284 header is missing" "$LINENO" 5
       fi
     fi
 
@@ -18633,6 +19021,15 @@ $as_echo "#define HAVE_PORTSID /**/" >>confdefs.h
         HAVE_PARSID_SUPPORT="yes"
       fi
     fi
+
+    if test x"$enable_catweasel" = "xyes" -a x"$HAVE_CATWEASELMKIII_SUPPORT" != "xyes"; then
+      as_fn_error $? "CatWeaselMKIII support is missing" "$LINENO" 5
+    fi
+
+    if test x"$enable_hardsid" = "xyes" -a x"$HAVE_HARDSID_SUPPORT" != "xyes"; then
+      as_fn_error $? "HardSID support is missing" "$LINENO" 5
+    fi
+
   fi
 fi
 
@@ -19082,6 +19479,7 @@ fi
 
 
 
+
 READLINE_LIBS=
 EDITLINE_LIBS=
 if test x"$is_unix_x11" = "xyes"; then
@@ -19440,6 +19838,7 @@ fi
 old_LIBS="$LIBS"
 GFXOUTPUT_LIBS=
 
+
 if test x"$with_png" != "xno" ; then
     ac_fn_c_check_header_mongrel "$LINENO" "png.h" "ac_cv_header_png_h" "$ac_includes_default"
 if test "x$ac_cv_header_png_h" = xyes; then :
@@ -19543,16 +19942,246 @@ fi
 
     fi
   fi
+
+  if test x"$HAVE_PNG_SUPPORT" != "xyes"; then
+
+
+if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
+	if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
+set dummy ${ac_tool_prefix}pkg-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_PKG_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PKG_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKG_CONFIG="$PKG_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_PKG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PKG_CONFIG=$ac_cv_path_PKG_CONFIG
+if test -n "$PKG_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PKG_CONFIG" >&5
+$as_echo "$PKG_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 
-ac_fn_c_check_header_mongrel "$LINENO" "gif_lib.h" "ac_cv_header_gif_lib_h" "$ac_includes_default"
+
+fi
+if test -z "$ac_cv_path_PKG_CONFIG"; then
+  ac_pt_PKG_CONFIG=$PKG_CONFIG
+  # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_ac_pt_PKG_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $ac_pt_PKG_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ac_pt_PKG_CONFIG="$ac_pt_PKG_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_ac_pt_PKG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ac_pt_PKG_CONFIG=$ac_cv_path_ac_pt_PKG_CONFIG
+if test -n "$ac_pt_PKG_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_pt_PKG_CONFIG" >&5
+$as_echo "$ac_pt_PKG_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+  if test "x$ac_pt_PKG_CONFIG" = x; then
+    PKG_CONFIG=""
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+$as_echo "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    PKG_CONFIG=$ac_pt_PKG_CONFIG
+  fi
+else
+  PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
+fi
+
+fi
+if test -n "$PKG_CONFIG"; then
+	_pkg_min_version=0.9.0
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking pkg-config is at least version $_pkg_min_version" >&5
+$as_echo_n "checking pkg-config is at least version $_pkg_min_version... " >&6; }
+	if $PKG_CONFIG --atleast-pkgconfig-version $_pkg_min_version; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+		PKG_CONFIG=""
+	fi
+
+fi
+    if test x"$PKG_CONFIG" != "x"; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking if pkgconfig libpng is present" >&5
+$as_echo_n "checking if pkgconfig libpng is present... " >&6; }
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for PNG" >&5
+$as_echo_n "checking for PNG... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$PNG_CFLAGS"; then
+        pkg_cv_PNG_CFLAGS="$PNG_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpng\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpng") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_PNG_CFLAGS=`$PKG_CONFIG --cflags "libpng" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$PNG_LIBS"; then
+        pkg_cv_PNG_LIBS="$PNG_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpng\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpng") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_PNG_LIBS=`$PKG_CONFIG --libs "libpng" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        PNG_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "libpng"`
+        else
+	        PNG_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "libpng"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$PNG_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (libpng) were not met:
+
+$PNG_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables PNG_CFLAGS
+and PNG_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+" "$LINENO" 5
+elif test $pkg_failed = untried; then
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables PNG_CFLAGS
+and PNG_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://www.freedesktop.org/software/pkgconfig>.
+See \`config.log' for more details" "$LINENO" 5 ; }
+else
+	PNG_CFLAGS=$pkg_cv_PNG_CFLAGS
+	PNG_LIBS=$pkg_cv_PNG_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	HAVE_PNG_SUPPORT="yes"
+fi
+      if test x"$HAVE_PNG_SUPPORT" = "xyes"; then
+          GFXOUTPUT_LIBS="$PNG_LIBS $GFXOUTPUT_LIBS"
+          GFXOUTPUT_DRIVERS="$GFXOUTPUT_DRIVERS pngdrv.o";
+
+$as_echo "#define HAVE_PNG /**/" >>confdefs.h
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+      else
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+      fi
+    fi
+  fi
+
+  if test x"$with_png" = "xyes" -a x"$HAVE_PNG_SUPPORT" != "xyes"; then
+    as_fn_error $? "PNG support is missing" "$LINENO" 5
+  fi
+fi
+
+if test x"$with_gif" != "xno"; then
+  ac_fn_c_check_header_mongrel "$LINENO" "gif_lib.h" "ac_cv_header_gif_lib_h" "$ac_includes_default"
 if test "x$ac_cv_header_gif_lib_h" = xyes; then :
 
 fi
 
 
-if test x"$ac_cv_header_gif_lib_h" = "xyes" ; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EGifPutLine in -lungif" >&5
+  if test x"$ac_cv_header_gif_lib_h" = "xyes" ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EGifPutLine in -lungif" >&5
 $as_echo_n "checking for EGifPutLine in -lungif... " >&6; }
 if ${ac_cv_lib_ungif_EGifPutLine+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -19590,16 +20219,16 @@ fi
 $as_echo "$ac_cv_lib_ungif_EGifPutLine" >&6; }
 if test "x$ac_cv_lib_ungif_EGifPutLine" = xyes; then :
 
-               GFXOUTPUT_LIBS="-lungif $GFXOUTPUT_LIBS";
-               GFXOUTPUT_DRIVERS="$GFXOUTPUT_DRIVERS gifdrv.o";
-               HAVE_GIF_SUPPORT="yes";
+                 GFXOUTPUT_LIBS="-lungif $GFXOUTPUT_LIBS";
+                 GFXOUTPUT_DRIVERS="$GFXOUTPUT_DRIVERS gifdrv.o";
+                 HAVE_GIF_SUPPORT="yes";
 
 $as_echo "#define HAVE_GIF /**/" >>confdefs.h
 
 fi
 
-  if test "$ac_cv_lib_ungif_EGifPutLine" = "no"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EGifPutLine in -lgif" >&5
+    if test "$ac_cv_lib_ungif_EGifPutLine" = "no"; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EGifPutLine in -lgif" >&5
 $as_echo_n "checking for EGifPutLine in -lgif... " >&6; }
 if ${ac_cv_lib_gif_EGifPutLine+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -19637,15 +20266,19 @@ fi
 $as_echo "$ac_cv_lib_gif_EGifPutLine" >&6; }
 if test "x$ac_cv_lib_gif_EGifPutLine" = xyes; then :
 
-                 GFXOUTPUT_LIBS="-lgif $GFXOUTPUT_LIBS";
-                 GFXOUTPUT_DRIVERS="$GFXOUTPUT_DRIVERS gifdrv.o";
-                 HAVE_GIF_SUPPORT="yes";
+                   GFXOUTPUT_LIBS="-lgif $GFXOUTPUT_LIBS";
+                   GFXOUTPUT_DRIVERS="$GFXOUTPUT_DRIVERS gifdrv.o";
+                   HAVE_GIF_SUPPORT="yes";
 
 $as_echo "#define HAVE_GIF /**/" >>confdefs.h
 
 fi
 
-  fi
+    fi
+ fi
+ if test x"$with_gif" = "xyes" -a x"$HAVE_GIF_SUPPORT" != "xyes"; then
+   as_fn_error $? "GIF support not present" "$LINENO" 5
+ fi
 fi
 
 if test x"$with_jpeg" != "xno" ; then
@@ -19703,13 +20336,19 @@ $as_echo "#define HAVE_JPEG /**/" >>confdefs.h
 fi
 
   fi
+  if test x"$with_jpeg" = "xyes" -a x"$HAVE_JPEG_SUPPORT" != "xyes"; then
+    as_fn_error $? "JPEG support is missing" "$LINENO" 5
+  fi
 fi
 
 LIBS="$old_LIBS"
 
 
 
-for ac_header in portaudio.h
+
+
+if test x"$enable_portaudio" != "xno"; then
+  for ac_header in portaudio.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "portaudio.h" "ac_cv_header_portaudio_h" "$ac_includes_default"
 if test "x$ac_cv_header_portaudio_h" = xyes; then :
@@ -19724,8 +20363,8 @@ fi
 done
 
 
-if test x"$PA_HEADERS" = "xyes"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Pa_Initialize in -lportaudio" >&5
+  if test x"$PA_HEADERS" = "xyes"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Pa_Initialize in -lportaudio" >&5
 $as_echo_n "checking for Pa_Initialize in -lportaudio... " >&6; }
 if ${ac_cv_lib_portaudio_Pa_Initialize+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -19763,16 +20402,16 @@ fi
 $as_echo "$ac_cv_lib_portaudio_Pa_Initialize" >&6; }
 if test "x$ac_cv_lib_portaudio_Pa_Initialize" = xyes; then :
   LIBS="$LIBS -lportaudio";
-                USE_PORTAUDIO_SUPPORT="yes";
+                  USE_PORTAUDIO_SUPPORT="yes";
 
 $as_echo "#define USE_PORTAUDIO /**/" >>confdefs.h
 
 fi
 
 
-  if test x"$USE_PORTAUDIO_SUPPORT" != "xyes" -a x"$is_win32" = "xyes"; then
-    unset ac_cv_lib_portaudio_Pa_Initialize
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Pa_Initialize in -lportaudio" >&5
+    if test x"$USE_PORTAUDIO_SUPPORT" != "xyes" -a x"$is_win32" = "xyes"; then
+      unset ac_cv_lib_portaudio_Pa_Initialize
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Pa_Initialize in -lportaudio" >&5
 $as_echo_n "checking for Pa_Initialize in -lportaudio... " >&6; }
 if ${ac_cv_lib_portaudio_Pa_Initialize+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -19810,15 +20449,19 @@ fi
 $as_echo "$ac_cv_lib_portaudio_Pa_Initialize" >&6; }
 if test "x$ac_cv_lib_portaudio_Pa_Initialize" = xyes; then :
   LIBS="$LIBS -lportaudio -lwinmm";
-                  USE_PORTAUDIO_SUPPORT="yes";
+                    USE_PORTAUDIO_SUPPORT="yes";
 
 $as_echo "#define USE_PORTAUDIO /**/" >>confdefs.h
 
 fi
 
+    fi
+  fi
+
+  if test x"$enable_portaudio" = "xyes" -a x"$USE_PORTAUDIO_SUPPORT" != "xyes"; then
+    as_fn_error $? "PortAudio support is missing" "$LINENO" 5
   fi
 fi
-
 
 for ac_header in mpg123.h
 do :
@@ -19876,7 +20519,7 @@ fi
 done
 
 
-if test x"$is_unix_x11" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+if test x"$is_unix_x11" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes" -a x"$enable_native_gtk3ui" != "xyes"; then
   X_LIBS=""
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for X" >&5
 $as_echo_n "checking for X... " >&6; }
@@ -22260,8 +22903,7 @@ fi
 
   if test x"$with_uithreads" = "xyes" ; then
     if test x"$have_gtkglext1" != "xyes" -a x"$have_gtkglext3" != "xyes" ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: no suitable GL hardware scaling support found, disabling --with-uithreads" >&5
-$as_echo "$as_me: WARNING: no suitable GL hardware scaling support found, disabling --with-uithreads" >&2;}
+      as_fn_error $? "no suitable GL hardware scaling support found, disabling --with-uithreads" "$LINENO" 5
     else
       ac_fn_c_check_header_compile "$LINENO" "pthread.h" "ac_cv_header_pthread_h" "#include <pthread.h>
 "
@@ -22525,6 +23167,10 @@ $as_echo "#define HAVE_XRANDR /**/" >>confdefs.h
 fi
 
     fi
+
+    if test x"$HAVE_FULLSCREEN_SUPPORT" != "xyes" -a x"$enable_fullscreen" = "xyes"; then
+      as_fn_error $? "No fullscreen support present" "$LINENO" 5
+    fi
   fi
 
   X_LIBS="$PATH_X_LIBS $LINK_X_LIBS"
@@ -22588,13 +23234,13 @@ elif test x"$is_beos" = "xyes"; then
   LIBS="$LIBS -lbe -ltracker -ldevice -lmedia -lgame"
 
 
-elif test x"$is_win32" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+elif test x"$is_win32" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes" -a x"$enable_native_gtk3ui" != "xyes"; then
 
 
   if test x"$host_cpu" = "xx86_64" -o x"$host_cpu" = "xamd64"; then
-    LIBS="$LIBS -lkernel32 -luser32 -lgdi32 -lwinmm -lcomdlg32 -lcomctl32 -lws2_32 -lversion"
+    LIBS="$LIBS -lkernel32 -lshfolder -luser32 -lgdi32 -lwinmm -lcomdlg32 -lcomctl32 -lws2_32 -lversion"
   else
-    LIBS="$LIBS -lkernel32 -luser32 -lgdi32 -lwinmm -lcomdlg32 -lcomctl32 -lwsock32 -lversion"
+    LIBS="$LIBS -lkernel32 -lshfolder -luser32 -lgdi32 -lwinmm -lcomdlg32 -lcomctl32 -lwsock32 -lversion"
   fi
 
   ac_fn_c_check_header_mongrel "$LINENO" "d3d9.h" "ac_cv_header_d3d9_h" "$ac_includes_default"
@@ -22928,9 +23574,264 @@ else
 fi
 
 
+if test x"$enable_native_gtk3ui" = "xyes"; then
+  ARCH_DIR="\$(top_builddir)/src/arch/gtk3"
+  ARCH_SRC_DIR="\$(top_srcdir)/src/arch/gtk3"
+  ARCH_LIBS="$ARCH_DIR/libarch.a"
+  if test x"$is_win32" = "xyes"; then
+    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/win32/msvc/wpcap"
+  else
+    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch"
+  fi
+  if test x"$ac_cv_lib_readline_readline" = "xyes"; then
+
+$as_echo "#define HAVE_READLINE /**/" >>confdefs.h
+
+  fi
+
+$as_echo "#define HAVE_MOUSE /**/" >>confdefs.h
+
+  HAVE_MOUSE_SUPPORT="yes"
+
+$as_echo "#define HAVE_LIGHTPEN /**/" >>confdefs.h
+
+  HAVE_LIGHTPEN_SUPPORT="yes"
+
+    have_vte="no"
+  if test x"$enable_vte" != "xno"; then
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for VTE" >&5
+$as_echo_n "checking for VTE... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$VTE_CFLAGS"; then
+        pkg_cv_VTE_CFLAGS="$VTE_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"vte-2.91\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "vte-2.91") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_VTE_CFLAGS=`$PKG_CONFIG --cflags "vte-2.91" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$VTE_LIBS"; then
+        pkg_cv_VTE_LIBS="$VTE_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"vte-2.91\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "vte-2.91") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_VTE_LIBS=`$PKG_CONFIG --libs "vte-2.91" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        VTE_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "vte-2.91"`
+        else
+	        VTE_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "vte-2.91"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$VTE_PKG_ERRORS" >&5
+
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for VTE" >&5
+$as_echo_n "checking for VTE... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$VTE_CFLAGS"; then
+        pkg_cv_VTE_CFLAGS="$VTE_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"vte-2.90\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "vte-2.90") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_VTE_CFLAGS=`$PKG_CONFIG --cflags "vte-2.90" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$VTE_LIBS"; then
+        pkg_cv_VTE_LIBS="$VTE_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"vte-2.90\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "vte-2.90") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_VTE_LIBS=`$PKG_CONFIG --libs "vte-2.90" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        VTE_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "vte-2.90"`
+        else
+	        VTE_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "vte-2.90"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$VTE_PKG_ERRORS" >&5
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+elif test $pkg_failed = untried; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+else
+	VTE_CFLAGS=$pkg_cv_VTE_CFLAGS
+	VTE_LIBS=$pkg_cv_VTE_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	have_vte=yes
+fi
+elif test $pkg_failed = untried; then
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for VTE" >&5
+$as_echo_n "checking for VTE... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$VTE_CFLAGS"; then
+        pkg_cv_VTE_CFLAGS="$VTE_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"vte-2.90\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "vte-2.90") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_VTE_CFLAGS=`$PKG_CONFIG --cflags "vte-2.90" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$VTE_LIBS"; then
+        pkg_cv_VTE_LIBS="$VTE_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"vte-2.90\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "vte-2.90") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_VTE_LIBS=`$PKG_CONFIG --libs "vte-2.90" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        VTE_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "vte-2.90"`
+        else
+	        VTE_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "vte-2.90"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$VTE_PKG_ERRORS" >&5
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+elif test $pkg_failed = untried; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+else
+	VTE_CFLAGS=$pkg_cv_VTE_CFLAGS
+	VTE_LIBS=$pkg_cv_VTE_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	have_vte=yes
+fi
+else
+	VTE_CFLAGS=$pkg_cv_VTE_CFLAGS
+	VTE_LIBS=$pkg_cv_VTE_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	have_vte=yes
+fi
+  fi
+
+   if true; then
+  NATIVE_GTK3_COMPILE_TRUE=
+  NATIVE_GTK3_COMPILE_FALSE='#'
+else
+  NATIVE_GTK3_COMPILE_TRUE='#'
+  NATIVE_GTK3_COMPILE_FALSE=
+fi
+
+else
+   if false; then
+  NATIVE_GTK3_COMPILE_TRUE=
+  NATIVE_GTK3_COMPILE_FALSE='#'
+else
+  NATIVE_GTK3_COMPILE_TRUE='#'
+  NATIVE_GTK3_COMPILE_FALSE=
+fi
+
+fi
+
 if test x"$is_unix" = "xyes"; then
 
-  if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+  if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes" -a x"$enable_native_gtk3ui" != "xyes"; then
     ARCH_DIR="\$(top_builddir)/src/arch/unix"
     ARCH_SRC_DIR="\$(top_srcdir)/src/arch/unix"
     ARCH_EXTRA_SUBDIR="gui x11"
@@ -22970,16 +23871,18 @@ done
         ARCH_EXTRA_SUBDIR="$ARCH_EXTRA_SUBDIR readline"
       fi
     fi
-  else
+  fi
+
 
 $as_echo "#define UNIX_COMPILE /**/" >>confdefs.h
 
-  fi
 
   if test x"$is_unix_macosx" = "xyes" ; then
     ARCH_MAKE_BINDIST_DIR="\$(top_srcdir)/src/arch/unix/macosx"
     if test x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
       UNIX_MACOSX_UITYPE=sdl
+    elif test x"$enable_native_gtk3ui" = "xyes"; then
+      UNIX_MACOSX_UITYPE=native_gtk3
     elif test x"$with_cocoa" = "xyes" ; then
       ARCH_LIBS="$ARCH_DIR/macosx/cocoa/menu/libarchmacosxcocoamenu.a $ARCH_DIR/macosx/cocoa/dialog/libarchmacosxcocoadialog.a $ARCH_DIR/macosx/cocoa/libarchmacosxcocoa.a $ARCH_DIR/macosx/cocoa/view/libarchmacosxcocoaview.a $ARCH_DIR/macosx/libarchmacosx.a $ARCH_DIR/libarch.a $ARCH_LIBS"
       ARCH_INCLUDES="-I$ARCH_SRC_DIR/macosx/cocoa/menu -I$ARCH_SRC_DIR/macosx/cocoa/dialog -I$ARCH_SRC_DIR/macosx/cocoa/view -I$ARCH_SRC_DIR/macosx/cocoa -I$ARCH_SRC_DIR/macosx -I$ARCH_SRC_DIR $ARCH_INCLUDES"
@@ -23434,7 +24337,7 @@ fi
 
 
 elif test x"$is_win32" = "xyes"; then
-  if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+  if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes" -a x"$enable_native_gtk3ui" != "xyes"; then
     ARCH_DIR="\$(top_builddir)/src/arch/win32"
     ARCH_SRC_DIR="\$(top_srcdir)/src/arch/win32"
     ARCH_LIBS="$ARCH_DIR/libarch.a"
@@ -23662,7 +24565,7 @@ elif test x"$is_amiga" = "xyes"; then
     ARCH_DIR="\$(top_builddir)/src/arch/amigaos"
     ARCH_SRC_DIR="\$(top_srcdir)/src/arch/amigaos"
     ARCH_LIBS="$ARCH_DIR/libarch.a $ARCH_DIR/mui/libarchmui.a"
-    ARCH_INCLUDES="-I\$(top_srcdir)/src/arch/amigaos"
+    ARCH_INCLUDES="-I\$(top_srcdir)/src/arch/amigaos -I\$(top_builddir)/src/arch/amigaos"
   fi
    if false; then
   UNIX_COMPILE_TRUE=
@@ -24479,7 +25382,7 @@ if test x"$enable_platformdox" = "xyes"; then
   fi
 
   if test x"$PLATFORM_DOX_FLAGS" = "x"; then
-    if test x"$is_unix_x11" = "xyes" -o x"$is_win32_x11" = "xyes" -o x"$is_beos_x11" = "xyes"; then
+    if test x"$is_unix_x11" = "xyes" -o x"$is_win32_x11" = "xyes"; then
       PLATFORM_DOX_FLAGS="platformxaw"
     fi
   fi
@@ -24632,7 +25535,7 @@ _ACEOF
 rpath_line=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$LDFLAGS" "$LD" "$with_gnu_ld" "$host" "$VICEDIR/lib"`
 LDFLAGS="$LDFLAGS $rpath_line"
 
-ac_config_files="$ac_config_files Makefile vice.spec vice-gtk.spec vice-mint.spec vice-mint-sdl.spec build/Makefile build/amigaos/Makefile build/android/Makefile build/beos/Makefile build/macosx/Makefile build/mingw32/Makefile build/minix3/Makefile build/nextstep/Makefile build/openstep/Makefile build/openwatcom/Makefile build/qnx4/Makefile build/rhapsody/Makefile data/Makefile data/C128/Makefile data/C64/Makefile data/C64DTV/Makefile data/CBM-II/Makefile data/DRIVES/Makefile data/PET/Makefile data/PLUS4/Makefile data/SCPU64/Makefile data/PRINTER/Makefile data/VIC20/Makefile data/fonts/Makefile doc/Makefile doc/building/Makefile doc/html/Makefile doc/readmes/Makefile man/Makefile src/Makefile src/debug.h src/arch/Makefile src/arch/amigaos/Makefile src/arch/amigaos/info-files/Makefile src/arch/amigaos/info-files/morphos/Makefile src/arch/amigaos/mui/Makefile src/arch/android/Makefile src/arch/android/AnVICE/AndroidManifest.xml src/arch/android/AnVICE/Makefile src/arch/android/AnVICE/.settings/Makefile src/arch/android/AnVICE/assets-proto/Makefile src/arch/android/AnVICE/jni/Makefile src/arch/android/AnVICE/jni/locnet/Makefile src/arch/android/AnVICE/jni/locnet_x64/Makefile src/arch/android/AnVICE/jni/locnet_x64dtv/Makefile src/arch/android/AnVICE/jni/locnet_x64sc/Makefile src/arch/android/AnVICE/jni/locnet_x128/Makefile src/arch/android/AnVICE/jni/locnet_xcbm2/Makefile src/arch/android/AnVICE/jni/locnet_xcbm5x0/Makefile src/arch/android/AnVICE/jni/locnet_xpet/Makefile src/arch/android/AnVICE/jni/locnet_xplus4/Makefile src/arch/android/AnVICE/jni/locnet_xscpu64/Makefile src/arch/android/AnVICE/jni/locnet_xvic/Makefile src/arch/android/AnVICE/jni/locnet_al/Makefile src/arch/android/AnVICE/jni/sdl/Makefile src/arch/android/AnVICE/jni/vice_x64/Makefile src/arch/android/AnVICE/jni/vice_x64_128_5x0/Makefile src/arch/android/AnVICE/jni/vice_x64_dtv_128_5x0/Makefile src/arch/android/AnVICE/jni/vice_x64_sc/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_128/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_pet_4/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_pet_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_4/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_5x0_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64dtv/Makefile src/arch/android/AnVICE/jni/vice_x64sc/Makefile src/arch/android/AnVICE/jni/vice_x64sc_scpu/Makefile src/arch/android/AnVICE/jni/vice_x64sc_scpu_128_2_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x128/Makefile src/arch/android/AnVICE/jni/vice_x128_2_5x0_pet/Makefile src/arch/android/AnVICE/jni/vice_xcbm2/Makefile src/arch/android/AnVICE/jni/vice_xcbm2_5x0/Makefile src/arch/android/AnVICE/jni/vice_xcbm2_pet/Makefile src/arch/android/AnVICE/jni/vice_xcbm5x0/Makefile src/arch/android/AnVICE/jni/vice_xpet/Makefile src/arch/android/AnVICE/jni/vice_xplus4/Makefile src/arch/android/AnVICE/jni/vice_xscpu64/Makefile src/arch/android/AnVICE/jni/vice_xvic/Makefile src/arch/android/AnVICE/res-proto/Makefile src/arch/android/AnVICE/res-proto/layout/Makefile src/arch/android/AnVICE/res-proto/values/Makefile src/arch/android/AnVICE/src-proto/Makefile src/arch/android/AnVICE/src-proto/com/Makefile src/arch/android/AnVICE/src-proto/com/locnet/Makefile src/arch/android/AnVICE/src-proto/com/locnet/vice/Makefile src/arch/beos/Makefile src/arch/msdos/Makefile src/arch/os2/Makefile src/arch/os2/dialogs/Makefile src/arch/os2/doc/Makefile src/arch/os2/fonts/Makefile src/arch/os2/icons/Makefile src/arch/os2/kbd/Makefile src/arch/os2/snippets/Makefile src/arch/os2/unused/Makefile src/arch/os2/unused/pm/Makefile src/arch/os2/watcom/Makefile src/arch/sdl/Makefile src/arch/sdl/msvc-files/Makefile src/arch/sdl/qnx4/Makefile src/arch/sdl/syllable-files/Makefile src/arch/sdl/win32-watcom/Makefile src/arch/unix/Makefile src/arch/unix/gui/Makefile src/arch/unix/minix/Makefile src/arch/unix/next_open_rhap/Makefile src/arch/unix/next_open_rhap/vice.info src/arch/unix/qnx4/Makefile src/arch/unix/qnx6/Makefile src/arch/unix/readline/Makefile src/arch/unix/sco_sol/Makefile src/arch/unix/skyos/Makefile src/arch/unix/skyos/icons/Makefile src/arch/unix/x11/Makefile src/arch/unix/x11/gnome/Makefile src/arch/unix/x11/xaw/Makefile src/arch/unix/x11/xaw/widgets/Makefile src/arch/unix/macosx/Makefile src/arch/unix/macosx/cocoa/Makefile src/arch/unix/macosx/cocoa/view/Makefile src/arch/unix/macosx/cocoa/menu/Makefile src/arch/unix/macosx/cocoa/dialog/Makefile src/arch/unix/macosx/Resources/Makefile src/arch/unix/macosx/Resources/English.lproj/Makefile src/arch/watcom-source-wrappers/Makefile src/arch/win32/Makefile src/arch/win32/vice-version.bat src/arch/win32/evc/Makefile src/arch/win32/mingw32/Makefile src/arch/win32/msvc/Makefile src/arch/win32/msvc/wpcap/Makefile src/arch/win32/msvc/wpcap/net/Makefile src/arch/win32/utils/Makefile src/arch/win32/vs_tmpl/Makefile src/arch/win32/watcom/Makefile src/c128/Makefile src/c64/Makefile src/c64/cart/Makefile src/c64dtv/Makefile src/scpu64/Makefile src/cbm2/Makefile src/core/Makefile src/crtc/Makefile src/diag/Makefile src/diskimage/Makefile src/drive/Makefile src/drive/iec/Makefile src/drive/iec/c64exp/Makefile src/drive/iec/plus4exp/Makefile src/drive/iec128dcr/Makefile src/drive/iecieee/Makefile src/drive/ieee/Makefile src/drive/tcbm/Makefile src/fileio/Makefile src/fsdevice/Makefile src/gfxoutputdrv/Makefile src/iecbus/Makefile src/imagecontents/Makefile src/joyport/Makefile src/lib/Makefile src/lib/ffmpeg/Makefile src/lib/p64/Makefile src/monitor/Makefile src/parallel/Makefile src/pet/Makefile src/platform/Makefile src/plus4/Makefile src/printerdrv/Makefile src/raster/Makefile src/rs232drv/Makefile src/rtc/Makefile src/samplerdrv/Makefile src/serial/Makefile src/sid/Makefile src/sounddrv/Makefile src/tape/Makefile src/tapeport/Makefile src/userport/Makefile src/vdc/Makefile src/vdrive/Makefile src/vic20/Makefile src/vic20/cart/Makefile src/vicii/Makefile src/viciisc/Makefile src/viciivsid/Makefile src/video/Makefile src/version.h src/vice-version.sh po/Makefile.in"
+ac_config_files="$ac_config_files Makefile vice.spec vice-gtk.spec vice-mint.spec vice-mint-sdl.spec build/Makefile build/amigaos/Makefile build/android/Makefile build/beos/Makefile build/macosx/Makefile build/mingw32/Makefile build/minix3/Makefile build/nextstep/Makefile build/openstep/Makefile build/openwatcom/Makefile build/qnx4/Makefile build/rhapsody/Makefile data/Makefile data/C128/Makefile data/C64/Makefile data/C64DTV/Makefile data/CBM-II/Makefile data/DRIVES/Makefile data/PET/Makefile data/PLUS4/Makefile data/SCPU64/Makefile data/PRINTER/Makefile data/VIC20/Makefile data/fonts/Makefile doc/Makefile doc/building/Makefile doc/html/Makefile doc/readmes/Makefile man/Makefile src/Makefile src/debug.h src/arch/Makefile src/arch/amigaos/Makefile src/arch/amigaos/info-files/Makefile src/arch/amigaos/info-files/morphos/Makefile src/arch/amigaos/mui/Makefile src/arch/android/Makefile src/arch/android/AnVICE/AndroidManifest.xml src/arch/android/AnVICE/Makefile src/arch/android/AnVICE/.settings/Makefile src/arch/android/AnVICE/assets-proto/Makefile src/arch/android/AnVICE/jni/Makefile src/arch/android/AnVICE/jni/locnet/Makefile src/arch/android/AnVICE/jni/locnet_x64/Makefile src/arch/android/AnVICE/jni/locnet_x64dtv/Makefile src/arch/android/AnVICE/jni/locnet_x64sc/Makefile src/arch/android/AnVICE/jni/locnet_x128/Makefile src/arch/android/AnVICE/jni/locnet_xcbm2/Makefile src/arch/android/AnVICE/jni/locnet_xcbm5x0/Makefile src/arch/android/AnVICE/jni/locnet_xpet/Makefile src/arch/android/AnVICE/jni/locnet_xplus4/Makefile src/arch/android/AnVICE/jni/locnet_xscpu64/Makefile src/arch/android/AnVICE/jni/locnet_xvic/Makefile src/arch/android/AnVICE/jni/locnet_al/Makefile src/arch/android/AnVICE/jni/sdl/Makefile src/arch/android/AnVICE/jni/vice_x64/Makefile src/arch/android/AnVICE/jni/vice_x64_128_5x0/Makefile src/arch/android/AnVICE/jni/vice_x64_dtv_128_5x0/Makefile src/arch/android/AnVICE/jni/vice_x64_sc/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_128/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_pet_4/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_5x0_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_pet_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_4/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_20/Makefile src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_5x0_4_20/Makefile src/arch/android/AnVICE/jni/vice_x64dtv/Makefile src/arch/android/AnVICE/jni/vice_x64sc/Makefile src/arch/android/AnVICE/jni/vice_x64sc_scpu/Makefile src/arch/android/AnVICE/jni/vice_x64sc_scpu_128_2_pet_4_20/Makefile src/arch/android/AnVICE/jni/vice_x128/Makefile src/arch/android/AnVICE/jni/vice_x128_2_5x0_pet/Makefile src/arch/android/AnVICE/jni/vice_xcbm2/Makefile src/arch/android/AnVICE/jni/vice_xcbm2_5x0/Makefile src/arch/android/AnVICE/jni/vice_xcbm2_pet/Makefile src/arch/android/AnVICE/jni/vice_xcbm5x0/Makefile src/arch/android/AnVICE/jni/vice_xpet/Makefile src/arch/android/AnVICE/jni/vice_xplus4/Makefile src/arch/android/AnVICE/jni/vice_xscpu64/Makefile src/arch/android/AnVICE/jni/vice_xvic/Makefile src/arch/android/AnVICE/res-proto/Makefile src/arch/android/AnVICE/res-proto/layout/Makefile src/arch/android/AnVICE/res-proto/values/Makefile src/arch/android/AnVICE/src-proto/Makefile src/arch/android/AnVICE/src-proto/com/Makefile src/arch/android/AnVICE/src-proto/com/locnet/Makefile src/arch/android/AnVICE/src-proto/com/locnet/vice/Makefile src/arch/beos/Makefile src/arch/gtk3/Makefile src/arch/msdos/Makefile src/arch/os2/Makefile src/arch/os2/dialogs/Makefile src/arch/os2/doc/Makefile src/arch/os2/fonts/Makefile src/arch/os2/icons/Makefile src/arch/os2/kbd/Makefile src/arch/os2/snippets/Makefile src/arch/os2/unused/Makefile src/arch/os2/unused/pm/Makefile src/arch/os2/watcom/Makefile src/arch/sdl/Makefile src/arch/sdl/msvc-files/Makefile src/arch/sdl/qnx4/Makefile src/arch/sdl/sortix-files/Makefile src/arch/sdl/syllable-files/Makefile src/arch/sdl/win32-watcom/Makefile src/arch/unix/Makefile src/arch/unix/gui/Makefile src/arch/unix/minix/Makefile src/arch/unix/next_open_rhap/Makefile src/arch/unix/next_open_rhap/vice.info src/arch/unix/qnx4/Makefile src/arch/unix/qnx6/Makefile src/arch/unix/readline/Makefile src/arch/unix/sco_sol/Makefile src/arch/unix/skyos/Makefile src/arch/unix/skyos/icons/Makefile src/arch/unix/x11/Makefile src/arch/unix/x11/gnome/Makefile src/arch/unix/x11/xaw/Makefile src/arch/unix/x11/xaw/widgets/Makefile src/arch/unix/macosx/Makefile src/arch/unix/macosx/cocoa/Makefile src/arch/unix/macosx/cocoa/view/Makefile src/arch/unix/macosx/cocoa/menu/Makefile src/arch/unix/macosx/cocoa/dialog/Makefile src/arch/unix/macosx/Resources/Makefile src/arch/unix/macosx/Resources/English.lproj/Makefile src/arch/watcom-source-wrappers/Makefile src/arch/win32/Makefile src/arch/win32/vice-version.bat src/arch/win32/evc/Makefile src/arch/win32/mingw32/Makefile src/arch/win32/msvc/Makefile src/arch/win32/msvc/wpcap/Makefile src/arch/win32/msvc/wpcap/net/Makefile src/arch/win32/utils/Makefile src/arch/win32/vs_tmpl/Makefile src/arch/win32/watcom/Makefile src/buildtools/Makefile src/c128/Makefile src/c64/Makefile src/c64/cart/Makefile src/c64dtv/Makefile src/scpu64/Makefile src/cbm2/Makefile src/core/Makefile src/crtc/Makefile src/diag/Makefile src/diskimage/Makefile src/drive/Makefile src/drive/iec/Makefile src/drive/iec/c64exp/Makefile src/drive/iec/plus4exp/Makefile src/drive/iec128dcr/Makefile src/drive/iecieee/Makefile src/drive/ieee/Makefile src/drive/tcbm/Makefile src/fileio/Makefile src/fsdevice/Makefile src/gfxoutputdrv/Makefile src/hwsiddrv/Makefile src/iecbus/Makefile src/imagecontents/Makefile src/iodrv/Makefile src/joyport/Makefile src/lib/Makefile src/lib/ffmpeg/Makefile src/lib/p64/Makefile src/mididrv/Makefile src/monitor/Makefile src/parallel/Makefile src/pet/Makefile src/platform/Makefile src/plus4/Makefile src/printerdrv/Makefile src/raster/Makefile src/rs232drv/Makefile src/rtc/Makefile src/samplerdrv/Makefile src/serial/Makefile src/sid/Makefile src/socketdrv/Makefile src/sounddrv/Makefile src/tape/Makefile src/tapeport/Makefile src/userport/Makefile src/vdc/Makefile src/vdrive/Makefile src/vic20/Makefile src/vic20/cart/Makefile src/vicii/Makefile src/viciisc/Makefile src/viciivsid/Makefile src/video/Makefile src/version.h src/vice-version.sh po/Makefile.in"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -24751,6 +25654,10 @@ else
   am__EXEEXT_FALSE=
 fi
 
+if test -z "${DUMMY_COMPILE_TRUE}" && test -z "${DUMMY_COMPILE_FALSE}"; then
+  as_fn_error $? "conditional \"DUMMY_COMPILE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${GNOMEUI_TRUE}" && test -z "${GNOMEUI_FALSE}"; then
   as_fn_error $? "conditional \"GNOMEUI\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -25030,6 +25937,14 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${MAKE_BINDIST_TRUE}" && test -z "${MAKE_BINDIST_FALSE}"; then
   as_fn_error $? "conditional \"MAKE_BINDIST\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${NATIVE_GTK3_COMPILE_TRUE}" && test -z "${NATIVE_GTK3_COMPILE_FALSE}"; then
+  as_fn_error $? "conditional \"NATIVE_GTK3_COMPILE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${NATIVE_GTK3_COMPILE_TRUE}" && test -z "${NATIVE_GTK3_COMPILE_FALSE}"; then
+  as_fn_error $? "conditional \"NATIVE_GTK3_COMPILE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${SUPPORT_CMDLINE_TOOLS_TRUE}" && test -z "${SUPPORT_CMDLINE_TOOLS_FALSE}"; then
@@ -26388,6 +27303,7 @@ do
     "src/arch/android/AnVICE/src-proto/com/locnet/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/android/AnVICE/src-proto/com/locnet/Makefile" ;;
     "src/arch/android/AnVICE/src-proto/com/locnet/vice/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/android/AnVICE/src-proto/com/locnet/vice/Makefile" ;;
     "src/arch/beos/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/beos/Makefile" ;;
+    "src/arch/gtk3/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/gtk3/Makefile" ;;
     "src/arch/msdos/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/msdos/Makefile" ;;
     "src/arch/os2/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/os2/Makefile" ;;
     "src/arch/os2/dialogs/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/os2/dialogs/Makefile" ;;
@@ -26402,6 +27318,7 @@ do
     "src/arch/sdl/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/sdl/Makefile" ;;
     "src/arch/sdl/msvc-files/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/sdl/msvc-files/Makefile" ;;
     "src/arch/sdl/qnx4/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/sdl/qnx4/Makefile" ;;
+    "src/arch/sdl/sortix-files/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/sdl/sortix-files/Makefile" ;;
     "src/arch/sdl/syllable-files/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/sdl/syllable-files/Makefile" ;;
     "src/arch/sdl/win32-watcom/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/sdl/win32-watcom/Makefile" ;;
     "src/arch/unix/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/unix/Makefile" ;;
@@ -26437,6 +27354,7 @@ do
     "src/arch/win32/utils/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/win32/utils/Makefile" ;;
     "src/arch/win32/vs_tmpl/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/win32/vs_tmpl/Makefile" ;;
     "src/arch/win32/watcom/Makefile") CONFIG_FILES="$CONFIG_FILES src/arch/win32/watcom/Makefile" ;;
+    "src/buildtools/Makefile") CONFIG_FILES="$CONFIG_FILES src/buildtools/Makefile" ;;
     "src/c128/Makefile") CONFIG_FILES="$CONFIG_FILES src/c128/Makefile" ;;
     "src/c64/Makefile") CONFIG_FILES="$CONFIG_FILES src/c64/Makefile" ;;
     "src/c64/cart/Makefile") CONFIG_FILES="$CONFIG_FILES src/c64/cart/Makefile" ;;
@@ -26458,12 +27376,15 @@ do
     "src/fileio/Makefile") CONFIG_FILES="$CONFIG_FILES src/fileio/Makefile" ;;
     "src/fsdevice/Makefile") CONFIG_FILES="$CONFIG_FILES src/fsdevice/Makefile" ;;
     "src/gfxoutputdrv/Makefile") CONFIG_FILES="$CONFIG_FILES src/gfxoutputdrv/Makefile" ;;
+    "src/hwsiddrv/Makefile") CONFIG_FILES="$CONFIG_FILES src/hwsiddrv/Makefile" ;;
     "src/iecbus/Makefile") CONFIG_FILES="$CONFIG_FILES src/iecbus/Makefile" ;;
     "src/imagecontents/Makefile") CONFIG_FILES="$CONFIG_FILES src/imagecontents/Makefile" ;;
+    "src/iodrv/Makefile") CONFIG_FILES="$CONFIG_FILES src/iodrv/Makefile" ;;
     "src/joyport/Makefile") CONFIG_FILES="$CONFIG_FILES src/joyport/Makefile" ;;
     "src/lib/Makefile") CONFIG_FILES="$CONFIG_FILES src/lib/Makefile" ;;
     "src/lib/ffmpeg/Makefile") CONFIG_FILES="$CONFIG_FILES src/lib/ffmpeg/Makefile" ;;
     "src/lib/p64/Makefile") CONFIG_FILES="$CONFIG_FILES src/lib/p64/Makefile" ;;
+    "src/mididrv/Makefile") CONFIG_FILES="$CONFIG_FILES src/mididrv/Makefile" ;;
     "src/monitor/Makefile") CONFIG_FILES="$CONFIG_FILES src/monitor/Makefile" ;;
     "src/parallel/Makefile") CONFIG_FILES="$CONFIG_FILES src/parallel/Makefile" ;;
     "src/pet/Makefile") CONFIG_FILES="$CONFIG_FILES src/pet/Makefile" ;;
@@ -26476,6 +27397,7 @@ do
     "src/samplerdrv/Makefile") CONFIG_FILES="$CONFIG_FILES src/samplerdrv/Makefile" ;;
     "src/serial/Makefile") CONFIG_FILES="$CONFIG_FILES src/serial/Makefile" ;;
     "src/sid/Makefile") CONFIG_FILES="$CONFIG_FILES src/sid/Makefile" ;;
+    "src/socketdrv/Makefile") CONFIG_FILES="$CONFIG_FILES src/socketdrv/Makefile" ;;
     "src/sounddrv/Makefile") CONFIG_FILES="$CONFIG_FILES src/sounddrv/Makefile" ;;
     "src/tape/Makefile") CONFIG_FILES="$CONFIG_FILES src/tape/Makefile" ;;
     "src/tapeport/Makefile") CONFIG_FILES="$CONFIG_FILES src/tapeport/Makefile" ;;
@@ -27378,13 +28300,8 @@ else
         real_arch="Amiga"
     fi
     if test x"$is_beos" = "xyes"; then
-        if test x"$is_beos_x11" = "xyes"; then
-            show_arch="BeOS-X11 (treated as Unix)"
-            real_arch="Unix"
-        else
-            show_arch="BeOS"
-            real_arch="BeOS"
-        fi
+        show_arch="BeOS"
+        real_arch="BeOS"
     fi
     if test x"$is_dos" = "xyes"; then
         show_arch="DOS"
@@ -27427,9 +28344,7 @@ if test x"$show_arch" = "xAmiga"; then
     fi
 fi
 if test x"$is_beos" = "xyes"; then
-    if test x"$is_beos_x11" != "xyes"; then
-        show_gui="BeOS"
-    fi
+    show_gui="BeOS"
 fi
 if test x"$is_dos" = "xyes"; then
     show_gui="Allegro"
@@ -27454,16 +28369,16 @@ if test x"$enable_sdlui2" = "xyes"; then
     show_gui="SDL2"
 fi
 
+if test x"$enable_native_gtk3ui" = "xyes"; then
+    show_gui="NATIVE GTK3"
+fi
+
 if test "x$ac_cv_header_sys_audio_h" = xyes; then
     HAVE_SYS_AUDIO_H_SUPPORT="yes"
 fi
 
 if test "x$ac_cv_header_sys_audioio_h" = xyes; then
     HAVE_SYS_AUDIOIO_H_SUPPORT="yes"
-fi
-
-if test "x$ac_cv_header_devices_ahi_h" = xyes; then
-    HAVE_DEVICES_AHI_H_SUPPORT="yes"
 fi
 
 if test "x$ac_cv_func_SDL_NumJoysticks" = xyes; then
@@ -27525,7 +28440,7 @@ echo "SOUND"
 echo "-----"
 
 if test x"$real_arch" != "xAmiga"; then
-    echo "PortAudio sound input support: $USE_PORTAUDIO_SUPPORT"
+    echo "PortAudio sound input support: $USE_PORTAUDIO_SUPPORT (--enable/disable-portaudio)"
 fi
 
 if test x"$real_arch" = "xUnix"; then
@@ -27546,7 +28461,7 @@ if test x"$real_arch" = "xDOS"; then
 fi
 
 if test x"$real_arch" = "xAmiga"; then
-    echo "AHI sound support            : $HAVE_DEVICES_AHI_H_SUPPORT"
+    echo "AHI sound support            : $HAVE_DEVICES_AHI_H_SUPPORT (--enable/disable-ahi)"
 fi
 
 if test x"$real_arch" = "xWin32"; then
@@ -27569,8 +28484,8 @@ if test x"$real_arch" = "xUnix" -o x"$real_arch" = "xOSX" -o x"$real_arch" = "xW
 fi
 
 if test x"$real_arch" != "xOSX" -a x"$real_arch" != "xBeOS"; then
-    echo "Catweasel MK3 support        : $HAVE_CATWEASELMKIII_SUPPORT"
-    echo "HardSID support              : $HAVE_HARDSID_SUPPORT"
+    echo "Catweasel MK3 support        : $HAVE_CATWEASELMKIII_SUPPORT (--enable/disable-catweasel)"
+    echo "HardSID support              : $HAVE_HARDSID_SUPPORT (--enable/disable-hardsid)"
 fi
 
 if test x"$real_arch" = "xUnix" -o x"$real_arch" = "xDOS" -o x"$real_arch" = "xWin32"; then
@@ -27591,7 +28506,7 @@ echo ""
 echo "SCREENSHOTS"
 echo "-----------"
 
-echo "GIF encoding support : $HAVE_GIF_SUPPORT"
+echo "GIF encoding support : $HAVE_GIF_SUPPORT (--with/without-gif)"
 echo "JPEG encoding support: $HAVE_JPEG_SUPPORT (--with/without-jpeg)"
 echo "PNG encoding support : $HAVE_PNG_SUPPORT (--with/without-png)"
 
@@ -27703,7 +28618,7 @@ echo "MISC"
 echo "----"
 
 echo "ReSID support              : $HAVE_RESID_SUPPORT (--with/without-resid)"
-echo "Memmap support             : $FEATURE_CPUMEMHISTORY_SUPPORT (--enable/disable-memmap)"
+echo "65xx CPU history support   : $FEATURE_CPUMEMHISTORY_SUPPORT (--enable/disable-cpuhistory)"
 echo "Debug support              : $DEBUG_SUPPORT (--enable/disable-debug)"
 echo "Embedded data files support: $USE_EMBEDDED_SUPPORT (--enable/disable-embedded)"
 

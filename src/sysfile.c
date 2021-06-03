@@ -115,7 +115,7 @@ static int set_system_path(const char *val, void *param)
 static const resource_string_t resources_string[] = {
     { "Directory", "$$", RES_EVENT_NO, NULL,
       &system_path, set_system_path, NULL },
-    { NULL },
+    RESOURCE_STRING_LIST_END
 };
 
 /* Command-line options.  */
@@ -126,7 +126,7 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_PATH, IDCLS_DEFINE_SYSTEM_FILES_PATH,
       NULL, NULL },
-    { NULL },
+    CMDLINE_LIST_END
 };
 
 /* ------------------------------------------------------------------------- */

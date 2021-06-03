@@ -94,7 +94,7 @@ static const resource_int_t resources_int[] = {
       &keepaspect, set_keepaspect, NULL },
     { "TrueAspectRatio", 1, RES_EVENT_NO, NULL,
       &trueaspect, set_trueaspect, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 int video_arch_resources_init(void)
@@ -145,7 +145,7 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
       NULL, N_("Do not keep aspect ratio when scaling (freescale)") },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 int video_arch_cmdline_options_init(void)

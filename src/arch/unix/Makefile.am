@@ -1,5 +1,9 @@
 # Makefile.am for the Unix version of `libarch.a'.
 
+if DUMMY_COMPILE
+SUBDIRS = minix next_open_rhap qnx4 qnx6 sco_sol skyos
+endif
+
 if MACOSX_COCOA
 SUBDIRS = macosx
 else
@@ -11,9 +15,9 @@ SUBDIRS = gui x11 macosx
 endif
 else
 if NEED_READLINE
-SUBDIRS = gui minix next_open_rhap qnx4 qnx6 readline sco_sol skyos x11
+SUBDIRS = gui readline x11
 else
-SUBDIRS = gui minix next_open_rhap qnx4 qnx6 sco_sol skyos x11
+SUBDIRS = gui x11
 endif
 endif
 endif
@@ -45,42 +49,21 @@ libarch_a_SOURCES = \
 	archdep.c \
 	archdep.h \
 	blockdev.c \
-	catweaselmkiii-drv.c \
 	coproc.h \
 	coproc.c \
-	cw.h \
-	cw-device.c \
-	cw-pci.c \
 	dynlib.c \
 	fullscreenarch.h \
-	hardsid-drv.c \
-	hs.h \
-	hs-linux.c \
-	hs-isa.c \
-	hs-pci.c \
 	icon.h \
-	io-access.c \
-	io-access.h \
 	joy.c \
 	joy.h \
 	joy_usb.c \
 	kbd.h \
-	mididrv.c \
 	mousedrv.c \
 	mousedrv.h \
 	openGL_sync.h \
-	parsid-drv.c \
-	pci-drv.c \
-	pci-drv.h \
-	ps.h \
-	ps-file.c \
-	ps-ieee1284.c \
-	ps-io.c \
 	rs232dev.c \
 	signals.c \
-	socketimpl.h \
 	rawnetarch.c \
-	ssi2001-drv.c \
 	types.h \
 	ui.h \
 	uimenu.h \

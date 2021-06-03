@@ -56,7 +56,8 @@ am_libjoyport_a_OBJECTS = bbrtc.$(OBJEXT) cardkey.$(OBJEXT) \
 	joyport.$(OBJEXT) joystick.$(OBJEXT) lightpen.$(OBJEXT) \
 	mouse.$(OBJEXT) paperclip64.$(OBJEXT) \
 	rushware_keypad.$(OBJEXT) sampler2bit.$(OBJEXT) \
-	sampler4bit.$(OBJEXT)
+	sampler4bit.$(OBJEXT) script64_dongle.$(OBJEXT) \
+	vizawrite64_dongle.$(OBJEXT)
 libjoyport_a_OBJECTS = $(am_libjoyport_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -134,6 +135,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -197,6 +200,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -371,7 +376,11 @@ libjoyport_a_SOURCES = \
 	sampler2bit.c \
 	sampler2bit.h \
 	sampler4bit.c \
-	sampler4bit.h
+	sampler4bit.h \
+	script64_dongle.c \
+	script64_dongle.h \
+	vizawrite64_dongle.c \
+	vizawrite64_dongle.h
 
 all: all-am
 
@@ -434,6 +443,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rushware_keypad.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sampler2bit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sampler4bit.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/script64_dongle.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vizawrite64_dongle.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

@@ -1,10 +1,9 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 15 December 2016 -->
+     from ../../doc/vice.texi on 30 March 2017 -->
 
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
 <TITLE>VICE Manual - 13  c1541</TITLE>
 <style type="text/css">
     @import 'vice.css';
@@ -182,9 +181,57 @@ ones.
 <DD>
 Attach <CODE>diskimage</CODE> to <CODE>unit</CODE> (default unit is 8).
 
-<DT><CODE>block &#60;track&#62; &#60;sector&#62; &#60;disp&#62; [&#60;drive&#62;]</CODE>
+<DT><CODE>bam [&#60;unit&#62;] | &#60;track-min&#62; &#60;track-max&#62; [&#60;unit&#62;]</CODE>
+<DD>
+Show the BAM of <CODE>unit</CODE>, optionally displaying only the entries for
+<CODE>track-min</CODE> to <CODE>track-max</CODE>
+
+<DT><CODE>bcopy &#60;src-trk&#62; &#60;src-sec&#62; &#60;dst-trk&#62; &#60;dst-sec&#62; [&#60;src-unit&#62; [&#60;dst-unit&#62;]]</CODE>
+<DD>
+Copy a block to another block, optionally specifying different source and
+destination units. The block is copied using all 256 bytes.
+
+<DT><CODE>bfill &#60;track&#62; &#60;sector&#62; &#60;value&#62; [&#60;unit&#62;]</CODE>
+<DD>
+Fill a block with a single value.
+
+<DT><CODE>block &#60;track&#62; &#60;sector&#62; [&#60;offset&#62; [&#60;unit&#62;]]</CODE>
 <DD>
 Show specified disk block in hex form.
+
+<DT><CODE>bpoke [@unit:&#60;unit&#62;] &#60;track&#62; &#60;sector&#62; &#60;offset&#62; &#60;data ...&#62;</CODE>
+<DD>
+Store one or more bytes of <CODE>data</CODE> into a block. The <CODE>data</CODE> can be
+specified using prefixes:
+<DL COMPACT>
+
+<DT><CODE>0b or %</CODE>
+<DD>
+binary value (`%11111111`)
+<DT><CODE>&#38;</CODE>
+<DD>
+octal value (`&#38;377`)
+<DT><CODE>0x or $</CODE>
+<DD>
+hexadecimal value (`$ff`)
+</DL>
+The &#60;unit&#62; is optional, and when used must use the CBM DOS notation for the
+unit number, for example `@9:`.
+
+<DT><CODE>bread &#60;filename&#62; &#60;track&#62; &#60;sector&#62; [&#60;unit&#62;]</CODE>
+<DD>
+Read a block from a disk image and write it to the host filesystem as
+<CODE>filename</CODE>.
+
+<DT><CODE>bwrite &#60;filename&#62; &#60;track&#62; &#60;sector&#62; [&#60;unit&#62;]</CODE>
+<DD>
+Write data from the host filesystem using <CODE>filename</CODE> as input. At most 256
+bytes are written to the disk image.
+
+<DT><CODE>chain &#60;track&#62; &#60;sector&#62; [&#60;unit&#62;]</CODE>
+<DD>
+Show block chain starting at (<CODE>track</CODE>,<CODE>sector</CODE>). The last number
+shown is the number of bytes used in the final block.
 
 <DT><CODE>copy &#60;source1&#62; [&#60;source2&#62; ... &#60;sourceN&#62;] &#60;destination&#62;</CODE>
 <DD>
@@ -209,7 +256,8 @@ If <CODE>unit</CODE> is specified, format the disk in unit <CODE>unit</CODE>.  I
 <CODE>type</CODE> and <CODE>imagename</CODE> are specified, create a new image named
 <CODE>imagename</CODE>, attach it to unit 8 and format it.  <CODE>type</CODE> is a
 disk image type, and must be either <CODE>x64</CODE>, <CODE>d64</CODE> (both VC1541/2031),
-<CODE>g64</CODE> (VC1541/2031 but in GCR coding), <CODE>d71</CODE> (VC1571), <CODE>d81</CODE>
+<CODE>g64</CODE> (VC1541/2031 but in GCR coding), <CODE>d71</CODE> (VC1571), 
+<CODE>g71</CODE> (VC1571 but in GCR coding), <CODE>d81</CODE>
 (VC1581), <CODE>d80</CODE> (CBM8050) or <CODE>d82</CODE> (CBM8250/1001).
 Otherwise, format the disk in the current unit, if any.
 
@@ -289,9 +337,13 @@ is the current unit).
 Validate the disk in unit <CODE>unit</CODE>.  If <CODE>unit</CODE> is not specified,
 validate the disk in the current unit.
 
-<DT><CODE>verbose</CODE>
+<DT><CODE>verbose ["off"]</CODE>
 <DD>
-Enable verbose output.
+Enable or disable verbose output.
+
+<DT><CODE>version</CODE>
+<DD>
+Show C1541 version string
 
 <DT><CODE>write &#60;source&#62; [&#60;destination&#62;]</CODE>
 <DD>
@@ -311,7 +363,7 @@ Create an X64 disk image out of a set of four Zipcoded files named
 <H2><A NAME="SEC305" HREF="vice_toc.html#TOC305">13.4  Executing shell commands</A></H2>
 
 <P>
-If you want to execute a shell command from withing <CODE>c1541</CODE>, just
+If you want to execute a shell command from within <CODE>c1541</CODE>, just
 prepend it with an exclamation mark (<CODE>!</CODE>).  For example,
 
 </P>

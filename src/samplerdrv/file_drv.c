@@ -2142,7 +2142,7 @@ static int set_sample_name(const char *name, void *param)
 static const resource_string_t resources_string[] = {
     { "SampleName", "", RES_EVENT_NO, NULL,
       &sample_name, set_sample_name, NULL },
-    { NULL }
+    RESOURCE_STRING_LIST_END
 };
 
 static int sampler_file_resources_init(void)
@@ -2168,7 +2168,7 @@ static const cmdline_option_t cmdline_options[] =
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_SPECIFY_SAMPLE_NAME,
       NULL, NULL },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 int sampler_file_cmdline_options_init(void)

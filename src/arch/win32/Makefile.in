@@ -52,17 +52,12 @@ libarch_a_AR = $(AR) $(ARFLAGS)
 libarch_a_LIBADD =
 am_libarch_a_OBJECTS = archdep.$(OBJEXT) blockdev.$(OBJEXT) \
 	c128ui.$(OBJEXT) c64ui.$(OBJEXT) c64dtvui.$(OBJEXT) \
-	catweaselmkiii-drv.$(OBJEXT) cbm2ui.$(OBJEXT) \
-	cbm5x0ui.$(OBJEXT) console.$(OBJEXT) cw-dll.$(OBJEXT) \
-	cw-pci.$(OBJEXT) dinput_handle.$(OBJEXT) dynlib.$(OBJEXT) \
-	fullscrn.$(OBJEXT) gifdrv.$(OBJEXT) hardsid-drv.$(OBJEXT) \
-	hs-dll.$(OBJEXT) hs-isa.$(OBJEXT) hs-pci.$(OBJEXT) \
-	intl.$(OBJEXT) joy.$(OBJEXT) kbd.$(OBJEXT) \
-	lightpendrv.$(OBJEXT) mididrv.$(OBJEXT) mousedrv.$(OBJEXT) \
-	parsid-drv.$(OBJEXT) petui.$(OBJEXT) plus4ui.$(OBJEXT) \
-	ps-dll.$(OBJEXT) ps-ieee1284.$(OBJEXT) ps-io.$(OBJEXT) \
-	rawnetarch.$(OBJEXT) rs232dev.$(OBJEXT) scpu64ui.$(OBJEXT) \
-	signals.$(OBJEXT) ssi2001-drv.$(OBJEXT) statusbar.$(OBJEXT) \
+	cbm2ui.$(OBJEXT) cbm5x0ui.$(OBJEXT) console.$(OBJEXT) \
+	dinput_handle.$(OBJEXT) dynlib.$(OBJEXT) fullscrn.$(OBJEXT) \
+	gifdrv.$(OBJEXT) intl.$(OBJEXT) joy.$(OBJEXT) kbd.$(OBJEXT) \
+	lightpendrv.$(OBJEXT) mousedrv.$(OBJEXT) petui.$(OBJEXT) \
+	plus4ui.$(OBJEXT) rawnetarch.$(OBJEXT) rs232dev.$(OBJEXT) \
+	scpu64ui.$(OBJEXT) signals.$(OBJEXT) statusbar.$(OBJEXT) \
 	ui-resources.$(OBJEXT) ui.$(OBJEXT) uiacia.$(OBJEXT) \
 	uiattach.$(OBJEXT) uiautostart.$(OBJEXT) uic128.$(OBJEXT) \
 	uic128model.$(OBJEXT) uic64burstmod.$(OBJEXT) \
@@ -217,6 +212,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -280,6 +277,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -454,24 +453,15 @@ libarch_a_SOURCES = \
 	c128ui.c \
 	c64ui.c \
 	c64dtvui.c \
-	catweaselmkiii-drv.c \
 	cbm2ui.c \
 	cbm5x0ui.c \
 	console.c \
-	cw.h \
-	cw-dll.c \
-	cw-pci.c \
 	dinput_handle.c \
 	dinput_handle.h \
 	dynlib.c \
 	fullscrn.c \
 	fullscrn.h \
 	gifdrv.c \
-	hardsid-drv.c \
-	hs.h \
-	hs-dll.c \
-	hs-isa.c \
-	hs-pci.c \
 	intl.c \
 	intl.h \
 	joy.c \
@@ -480,17 +470,11 @@ libarch_a_SOURCES = \
 	kbd.h \
 	lightpendrv.c \
 	lightpendrv.h \
-	mididrv.c \
 	mousedrv.c \
 	mousedrv.h \
 	msvc-d3d.h \
-	parsid-drv.c \
 	petui.c \
 	plus4ui.c \
-	ps.h \
-	ps-dll.c \
-	ps-ieee1284.c \
-	ps-io.c \
 	rawnetarch.c \
 	res.rc \
 	resacia.rc \
@@ -560,8 +544,6 @@ libarch_a_SOURCES = \
 	rs232dev.c \
 	scpu64ui.c \
 	signals.c \
-	socketimpl.h \
-	ssi2001-drv.c \
 	statusbar.c \
 	statusbar.h \
 	types.h \
@@ -764,7 +746,6 @@ libarch_a_SOURCES = \
 	videoarch.h \
 	vsidui.c \
 	vsyncarch.c \
-	wininpoutp.h \
 	winjoy.h \
 	winkbd.h \
 	winlong.h \
@@ -868,37 +849,24 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c128ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64dtvui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64ui.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/catweaselmkiii-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cbm2ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cbm5x0ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/console.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cw-dll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cw-pci.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dinput_handle.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dynlib.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fullscrn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gifdrv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hardsid-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-dll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-isa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-pci.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/intl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kbd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lightpendrv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mididrv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mousedrv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parsid-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/petui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plus4ui.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-dll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-ieee1284.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-io.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rawnetarch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rs232dev.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scpu64ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/signals.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssi2001-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statusbar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ui-resources.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ui.Po@am__quote@

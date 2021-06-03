@@ -6,11 +6,14 @@ else
 extra_includes =
 endif
 
+if DUMMY_COMPILE
 SUBDIRS = \
 	msvc-files \
 	qnx4 \
+	sortix-files \
 	syllable-files \
 	win32-watcom
+endif
 
 AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
@@ -35,6 +38,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
 	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/gfxoutputdrv \
 	-I$(top_srcdir)/src
 
 noinst_LIBRARIES = libarch.a
@@ -43,21 +47,13 @@ libarch_a_SOURCES = \
 	archdep.c \
 	archdep.h \
 	blockdev.c \
-	catweaselmkiii-drv.c \
 	console.c \
 	console_unix.c \
 	coproc.c \
 	coproc.h \
-	cw-device.c \
-	cw-pci.c \
 	dynlib.c \
 	fullscreen.c \
 	fullscreenarch.h \
-	hardsid-drv.c \
-	hs-device.c \
-	hs-isa.c \
-	hs-pci.c \
-	io-access.c \
 	joy.c \
 	joy.h \
 	kbd.c \
@@ -104,6 +100,8 @@ libarch_a_SOURCES = \
 	menu_joyport.h \
 	menu_joystick.c \
 	menu_joystick.h \
+	menu_media.c \
+	menu_media.h \
 	menu_midi.c \
 	menu_midi.h \
 	menu_monitor.c \
@@ -154,20 +152,12 @@ libarch_a_SOURCES = \
 	menu_vic20hw.h \
 	menu_video.c \
 	menu_video.h \
-	mididrv.c \
 	mousedrv.c \
 	mousedrv.h \
-	parsid-drv.c \
-	pci-drv.c \
-	ps-device.c \
-	ps-ieee1284.c \
-	ps-io.c \
 	rawnetarch.c \
 	rs232dev.c \
 	sdlmain.c \
 	signals.c \
-	socketimpl.h \
-	ssi2001-drv.c \
 	types.h \
 	ui.c \
 	ui.h \
@@ -208,14 +198,11 @@ EXTRA_DIST = \
 	archdep_amiga.h \
 	archdep_beos.c \
 	archdep_beos.h \
-	archdep_cegcc.c \
-	archdep_cegcc.h \
 	archdep_unix.c \
 	archdep_unix.h \
 	archdep_win32.c \
 	archdep_win32.h \
-	archdep_xbox.c \
-	archdep_xbox.h \
+	beos-io-access.h \
 	console_amiga.c \
 	console_sdl.c \
 	console_unix.c \

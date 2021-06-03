@@ -42,24 +42,15 @@ libarch_a_SOURCES = \
 	c128ui.c \
 	c64ui.c \
 	c64dtvui.c \
-	catweaselmkiii-drv.c \
 	cbm2ui.c \
 	cbm5x0ui.c \
 	console.c \
-	cw.h \
-	cw-dll.c \
-	cw-pci.c \
 	dinput_handle.c \
 	dinput_handle.h \
 	dynlib.c \
 	fullscrn.c \
 	fullscrn.h \
 	gifdrv.c \
-	hardsid-drv.c \
-	hs.h \
-	hs-dll.c \
-	hs-isa.c \
-	hs-pci.c \
 	intl.c \
 	intl.h \
 	joy.c \
@@ -68,17 +59,11 @@ libarch_a_SOURCES = \
 	kbd.h \
 	lightpendrv.c \
 	lightpendrv.h \
-	mididrv.c \
 	mousedrv.c \
 	mousedrv.h \
 	msvc-d3d.h \
-	parsid-drv.c \
 	petui.c \
 	plus4ui.c \
-	ps.h \
-	ps-dll.c \
-	ps-ieee1284.c \
-	ps-io.c \
 	rawnetarch.c \
 	res.rc \
 	resacia.rc \
@@ -148,8 +133,6 @@ libarch_a_SOURCES = \
 	rs232dev.c \
 	scpu64ui.c \
 	signals.c \
-	socketimpl.h \
-	ssi2001-drv.c \
 	statusbar.c \
 	statusbar.h \
 	types.h \
@@ -352,7 +335,6 @@ libarch_a_SOURCES = \
 	videoarch.h \
 	vsidui.c \
 	vsyncarch.c \
-	wininpoutp.h \
 	winjoy.h \
 	winkbd.h \
 	winlong.h \

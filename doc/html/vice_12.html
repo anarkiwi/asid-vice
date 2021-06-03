@@ -1,10 +1,9 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 15 December 2016 -->
+     from ../../doc/vice.texi on 30 March 2017 -->
 
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
 <TITLE>VICE Manual - 12  Monitor</TITLE>
 <style type="text/css">
     @import 'vice.css';
@@ -106,7 +105,7 @@ a watchpoint is triggered, the monitor is entered.
 <DT><SAMP>`memmap'</SAMP>
 <DD>
 The memmap keeps track of RAM/ROM/IO read/write/execute
-accesses. The feature must be enabled with "--enable-memmap"
+accesses. The feature must be enabled with "--enable-cpuhistory"
 configure option, as it might decrease performance notably on
 slower hardware. The option also enables CPU history.
 
@@ -143,7 +142,7 @@ only.
 <DT><CODE>chis [&#60;count&#62;]</CODE>
 <DD>
 Show &#60;count&#62; last executed commands.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 <DT><CODE>dump "&#60;filename&#62;"</CODE>
 <DD>
@@ -275,14 +274,14 @@ Show the memmap. The mask can be specified to show only those
 locations with accesses of certain type(s). The mask is a number
 with the bits "ioRWXrwx", where RWX are for ROM and rwx for RAM.
 Optionally, an address range can be specified.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 <DT><CODE>memmapzap</CODE>
 <DD>
 <DT><CODE>mmzap</CODE>
 <DD>
 Clear the memmap.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 <DT><CODE>memmapsave "&#60;filename&#62;" &#60;format&#62;</CODE>
 <DD>
@@ -290,7 +289,7 @@ Clear the memmap.
 <DD>
 Save the memmap as a picture. <CODE>format</CODE>:
 0 = BMP, 1 = PCX, 2 = PNG, 3 = GIF, 4 = IFF.
-(disabled by default; configure with --enable-memmap to enable)
+(disabled by default; configure with --enable-cpuhistory to enable)
 
 <DT><CODE>memchar [&#60;data_type&#62;] [&#60;address_opt_range&#62;]</CODE>
 <DD>

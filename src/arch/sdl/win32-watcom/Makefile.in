@@ -110,6 +110,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -173,6 +175,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -355,6 +359,7 @@ EXTRA_DIST = \
 	gentranslate32.tgt \
 	genwt.bat \
 	gfxoutputdrv.tgt \
+	hwsiddrv.tgt \
 	iec.tgt \
 	iec128dcr.tgt \
 	iecbus.tgt \
@@ -364,6 +369,7 @@ EXTRA_DIST = \
 	joyport.tgt \
 	maincpu.tgt \
 	make-watcom-bindist.bat \
+	mididrv.tgt \
 	monitor.tgt \
 	p64.tgt \
 	parallel.tgt \
@@ -382,6 +388,7 @@ EXTRA_DIST = \
 	scpu64.tgt \
 	serial.tgt \
 	sid.tgt \
+	socketdrv.tgt \
 	sounddrv.tgt \
 	tape.tgt \
 	tapeport.tgt \

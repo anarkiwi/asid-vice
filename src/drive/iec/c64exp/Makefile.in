@@ -51,7 +51,8 @@ libdriveiecc64exp_a_AR = $(AR) $(ARFLAGS)
 libdriveiecc64exp_a_LIBADD =
 am_libdriveiecc64exp_a_OBJECTS = c64exp-cmdline-options.$(OBJEXT) \
 	c64exp-resources.$(OBJEXT) iec-c64exp.$(OBJEXT) \
-	dolphindos3.$(OBJEXT) profdos.$(OBJEXT) supercard.$(OBJEXT)
+	dolphindos3.$(OBJEXT) profdos.$(OBJEXT) stardos-exp.$(OBJEXT) \
+	supercard.$(OBJEXT)
 libdriveiecc64exp_a_OBJECTS = $(am_libdriveiecc64exp_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -129,6 +130,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -192,6 +195,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -349,6 +354,8 @@ libdriveiecc64exp_a_SOURCES = \
 	dolphindos3.h \
 	profdos.c \
 	profdos.h \
+	stardos-exp.c \
+	stardos-exp.h \
 	supercard.c \
 	supercard.h
 
@@ -405,6 +412,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dolphindos3.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iec-c64exp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/profdos.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stardos-exp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/supercard.Po@am__quote@
 
 .c.o:

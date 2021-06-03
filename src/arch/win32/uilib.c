@@ -40,6 +40,7 @@
 #include <commdlg.h>
 
 #include "archdep.h"
+#include "charset.h"
 #include "cbmimage.h"
 #include "cmdline.h"
 #include "diskimage.h"
@@ -79,7 +80,7 @@ static uilib_filefilter_t uilib_filefilter[] = {
     /* 0008 */ { IDS_SNAPSHOT_FILES_FILTER, TEXT("*.vsf") },
     /* 0010 */ { IDS_PRGP00_FILES_FILTER, TEXT("*.prg;*.p00") },
     /* 0020 */ { IDS_TAPE_IMAGE_FILES_FILTER, TEXT("*.t64;*.tap") },
-    /* 0040 */ { IDS_DISK_IMAGE_FILES_FILTER, TEXT("*.d64;*.d67;*.d71;*.d80;*.d81;*.d82;*.d1m;*.d2m;*.d4m;*.g64;*.g41;*.p64;*.x64") },
+    /* 0040 */ { IDS_DISK_IMAGE_FILES_FILTER, TEXT("*.d64;*.d67;*.d71;*.d80;*.d81;*.d82;*.d1m;*.d2m;*.d4m;*.g64*;*.g41;*.p64;*.x64") },
     /* 0080 */ { IDS_CBM_IMAGE_FILES_FILTER, TEXT("*.d64;*.d67;*.d71;*.d80;*.d81;*.d82;*.d1m;*.d2m;*.d4m;*.g64;*.g41;*.p64;*.x64;*.t64;*.tap;*.prg;*.p00") },
     /* 0100 */ { IDS_IDE64_IMAGE_FILES_FILTER, TEXT("*.fdd;*.hdd;*.iso;*.cfa") },
     /* 0200 */ { IDS_CRT_FILES_FILTER, TEXT("*.crt") },
@@ -521,6 +522,8 @@ static UINT_PTR APIENTRY uilib_select_disk_hook_proc(HWND hwnd, UINT uimsg, WPAR
                         GetDlgItemText(hwnd, IDC_BLANK_IMAGE_NAME, disk_name, 17);
                         GetDlgItemText(hwnd, IDC_BLANK_IMAGE_ID, disk_id, 3);
                         format_name = lib_msprintf("%s,%s", disk_name, disk_id);
+                        /* translate to PETSCII */
+                        charset_petconvstring((BYTE*)format_name, 0);
                         if (vdrive_internal_create_format_disk_image(filename, format_name, image_type[cnt]) < 0) {
                             ui_error(translate_text(IDS_CANNOT_CREATE_IMAGE));
                             lib_free(format_name);

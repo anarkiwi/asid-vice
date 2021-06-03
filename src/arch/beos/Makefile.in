@@ -51,25 +51,21 @@ libarch_a_AR = $(AR) $(ARFLAGS)
 libarch_a_LIBADD =
 am_libarch_a_OBJECTS = archdep.$(OBJEXT) blockdev.$(OBJEXT) \
 	c128ui.$(OBJEXT) c64ui.$(OBJEXT) c64dtvui.$(OBJEXT) \
-	catweaselmkiii-drv.$(OBJEXT) cbm2ui.$(OBJEXT) \
-	cbm5x0ui.$(OBJEXT) console.$(OBJEXT) hardsid-drv.$(OBJEXT) \
-	hs-isa.$(OBJEXT) hs-pci.$(OBJEXT) io-access.$(OBJEXT) \
-	joy.$(OBJEXT) kbd.$(OBJEXT) mousedrv.$(OBJEXT) \
-	parsid-drv.$(OBJEXT) pci-drv.$(OBJEXT) petui.$(OBJEXT) \
+	cbm2ui.$(OBJEXT) cbm5x0ui.$(OBJEXT) console.$(OBJEXT) \
+	joy.$(OBJEXT) kbd.$(OBJEXT) mousedrv.$(OBJEXT) petui.$(OBJEXT) \
 	plus4ui.$(OBJEXT) scpu64ui.$(OBJEXT) signals.$(OBJEXT) \
-	ssi2001-drv.$(OBJEXT) statusbar.$(OBJEXT) ui.$(OBJEXT) \
-	ui_autostart.$(OBJEXT) ui_cbm2.$(OBJEXT) ui_cbm5x0.$(OBJEXT) \
-	ui_cia.$(OBJEXT) ui_datasette.$(OBJEXT) ui_drive.$(OBJEXT) \
-	ui_device.$(OBJEXT) ui_file.$(OBJEXT) ui_ide64.$(OBJEXT) \
-	ui_ide64usb.$(OBJEXT) ui_joystick.$(OBJEXT) \
-	ui_keymap.$(OBJEXT) ui_netplay.$(OBJEXT) ui_pet.$(OBJEXT) \
-	ui_printer.$(OBJEXT) ui_ram.$(OBJEXT) ui_sid.$(OBJEXT) \
-	ui_sidcart.$(OBJEXT) ui_sound.$(OBJEXT) ui_ted.$(OBJEXT) \
-	ui_vic20.$(OBJEXT) ui_vic.$(OBJEXT) ui_vicii.$(OBJEXT) \
-	ui_video.$(OBJEXT) uicmdline.$(OBJEXT) uimon.$(OBJEXT) \
-	vic20ui.$(OBJEXT) viceapp.$(OBJEXT) vicemenu.$(OBJEXT) \
-	vicewindow.$(OBJEXT) video.$(OBJEXT) vsidui.$(OBJEXT) \
-	vsyncarch.$(OBJEXT)
+	statusbar.$(OBJEXT) ui.$(OBJEXT) ui_autostart.$(OBJEXT) \
+	ui_cbm2.$(OBJEXT) ui_cbm5x0.$(OBJEXT) ui_cia.$(OBJEXT) \
+	ui_datasette.$(OBJEXT) ui_drive.$(OBJEXT) ui_device.$(OBJEXT) \
+	ui_file.$(OBJEXT) ui_ide64.$(OBJEXT) ui_ide64usb.$(OBJEXT) \
+	ui_joystick.$(OBJEXT) ui_keymap.$(OBJEXT) ui_netplay.$(OBJEXT) \
+	ui_pet.$(OBJEXT) ui_printer.$(OBJEXT) ui_ram.$(OBJEXT) \
+	ui_sid.$(OBJEXT) ui_sidcart.$(OBJEXT) ui_sound.$(OBJEXT) \
+	ui_ted.$(OBJEXT) ui_vic20.$(OBJEXT) ui_vic.$(OBJEXT) \
+	ui_vicii.$(OBJEXT) ui_video.$(OBJEXT) uicmdline.$(OBJEXT) \
+	uimon.$(OBJEXT) vic20ui.$(OBJEXT) viceapp.$(OBJEXT) \
+	vicemenu.$(OBJEXT) vicewindow.$(OBJEXT) video.$(OBJEXT) \
+	vsidui.$(OBJEXT) vsyncarch.$(OBJEXT)
 libarch_a_OBJECTS = $(am_libarch_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -152,6 +148,8 @@ FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
 GENCAT = @GENCAT@
 GFXOUTPUT_DRIVERS = @GFXOUTPUT_DRIVERS@
 GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
 GREP = @GREP@
@@ -215,6 +213,8 @@ PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
+PNG_CFLAGS = @PNG_CFLAGS@
+PNG_LIBS = @PNG_LIBS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -385,31 +385,19 @@ libarch_a_SOURCES = \
 	c128ui.cc \
 	c64ui.cc \
 	c64dtvui.cc \
-	catweaselmkiii-drv.c \
 	cbm2ui.cc \
 	cbm5x0ui.cc \
 	console.c \
-	hardsid-drv.c \
-	hs.h \
-	hs-isa.c \
-	hs-pci.c \
-	io-access.c \
-	io-access.h \
 	joy.cc \
 	joy.h \
 	kbd.c \
 	kbd.h \
 	mousedrv.cc \
 	mousedrv.h \
-	parsid-drv.c \
-	pci-drv.c \
-	pci-drv.h \
 	petui.cc \
 	plus4ui.cc \
 	scpu64ui.cc \
 	signals.c \
-	socketimpl.h \
-	ssi2001-drv.c \
 	statusbar.cc \
 	statusbar.h \
 	types.h \
@@ -539,24 +527,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c128ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64dtvui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64ui.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/catweaselmkiii-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cbm2ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cbm5x0ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/console.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hardsid-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-isa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-pci.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/io-access.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kbd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mousedrv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parsid-drv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pci-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/petui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plus4ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scpu64ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/signals.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssi2001-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statusbar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ui_autostart.Po@am__quote@

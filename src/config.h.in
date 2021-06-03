@@ -51,7 +51,7 @@
 /* Enable support for the TextField widget. */
 #undef ENABLE_TEXTFIELD
 
-/* Use the memmap feature. */
+/* Use the 65xx cpu history feature. */
 #undef FEATURE_CPUMEMHISTORY
 
 /* Define to 1 if `TIOCGWINSZ' requires <sys/ioctl.h>. */
@@ -111,6 +111,9 @@
 /* Define to 1 if you have the `bind' function. */
 #undef HAVE_BIND
 
+/* Use backtrace facility of libC or libexecinfo */
+#undef HAVE_BT_SYMBOLS
+
 /* Define to 1 if you have the <ByteOrder.h> header file. */
 #undef HAVE_BYTEORDER_H
 
@@ -143,6 +146,9 @@
 
 /* Define to 1 if you have the `dcgettext' function. */
 #undef HAVE_DCGETTEXT
+
+/* Add native GTK3 UI debugging code. */
+#undef HAVE_DEBUG_GTK3UI
 
 /* Define to 1 if you have the declaration of `sys_siglist', and to 0 if you
    don't. */
@@ -996,6 +1002,9 @@
 
 /* Enable mpg123 mp3 decoding support. */
 #undef USE_MPG123
+
+/* Use native GTK3 UI. */
+#undef USE_NATIVE_GTK3
 
 /* Enable oss support. */
 #undef USE_OSS

@@ -238,7 +238,7 @@ static int set_video_halve_framerate(int value, void *param)
 static const resource_string_t resources_string[] = {
     { "FFMPEGFormat", "avi", RES_EVENT_NO, NULL,
       &ffmpeg_format, set_container_format, NULL },
-    { NULL }
+    RESOURCE_STRING_LIST_END
 };
 
 static const resource_int_t resources_int[] = {
@@ -254,7 +254,7 @@ static const resource_int_t resources_int[] = {
       &video_codec, set_video_codec, NULL },
     { "FFMPEGVideoHalveFramerate", 0, RES_EVENT_NO, NULL,
       &video_halve_framerate, set_video_halve_framerate, NULL },
-    { NULL }
+    RESOURCE_INT_LIST_END
 };
 
 static int ffmpegdrv_resources_init(void)
@@ -281,7 +281,7 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_VALUE, IDCLS_SET_VIDEO_STREAM_BITRATE,
       NULL, NULL },
-    { NULL }
+    CMDLINE_LIST_END
 };
 
 static int ffmpegdrv_cmdline_options_init(void)
@@ -1012,11 +1012,9 @@ static int ffmpegdrv_write(screenshot_t *screenshot)
     return 0;
 }
 
-static void ffmpegdrv_shutdown(void)
-{
-    ffmpeglib_close(&ffmpeglib);
-    lib_free(ffmpeg_format);
-}
+
+static void ffmpegdrv_shutdown(void);
+
 
 static gfxoutputdrv_t ffmpeg_drv = {
     "FFMPEG",
@@ -1036,6 +1034,28 @@ static gfxoutputdrv_t ffmpeg_drv = {
     , NULL
 #endif
 };
+
+
+static void ffmpegdrv_shutdown(void)
+{
+    int i = 0;
+
+    ffmpeglib_close(&ffmpeglib);
+
+    while (ffmpeg_drv.formatlist[i].name != NULL) {
+        lib_free(ffmpeg_drv.formatlist[i].name);
+        if (ffmpeg_drv.formatlist[i].audio_codecs != NULL) {
+            lib_free(ffmpeg_drv.formatlist[i].audio_codecs);
+        }
+        if (ffmpeg_drv.formatlist[i].video_codecs != NULL) {
+            lib_free(ffmpeg_drv.formatlist[i].video_codecs);
+        }
+        i++;
+    }
+    lib_free(ffmpeg_drv.formatlist);
+
+    lib_free(ffmpeg_format);
+}
 
 static void ffmpeg_get_formats_and_codecs(void)
 {
