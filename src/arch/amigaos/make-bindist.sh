@@ -1,10 +1,32 @@
 #!/bin/sh
-# make-bindist.sh for the AmigaOS ports
+
 #
-# written by Marco van den Heuvel <blackystardust68@yahoo.com>
+# make-bindist.sh - make binary distribution for the AmigaOS ports
 #
-# make-bindist.sh <strip> <vice-version> <host-cpu> <host-system> <enable_arch> <zip|nozip> <x64sc-included> <top-srcdir> <exe-ext>
-#                 $1      $2             $3         $4            $5            $6          $7               $8           $9
+# Written by
+#  Marco van den Heuvel <blackystardust68@yahoo.com>
+#
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
+# Usage: make-bindist.sh <strip> <vice-version> <host-cpu> <host-system> <enable_arch> <zip|nozip> <x64sc-included> <top-srcdir> <exe-ext>
+#                         $1      $2             $3         $4            $5            $6          $7               $8           $9
+#
 
 STRIP=$1
 VICEVERSION=$2
@@ -22,7 +44,7 @@ else
   SCFILE=""
 fi
 
-EMULATORS="x64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic"
+EMULATORS="x64 x64dtv $SCFILE xscpu64 x128 xcbm2 xcbm5x0 xpet xplus4 xvic"
 CONSOLE_TOOLS="c1541 cartconv petcat"
 EXECUTABLES="$EMULATORS $CONSOLE_TOOLS vsid"
 
@@ -105,10 +127,15 @@ else
 fi
 cp -a $TOPSCRDIR/data/C128 $TOPSCRDIR/data/C64 $TOPSCRDIR/data/C64DTV $TOPSCRDIR/data/CBM-II $TOPSCRDIR/data/DRIVES VICE-$AMIGAFLAVOR
 cp -a $TOPSCRDIR/data/PET $TOPSCRDIR/data/PLUS4 $TOPSCRDIR/data/PRINTER $TOPSCRDIR/data/VIC20 VICE-$AMIGAFLAVOR
-cp -a $TOPSCRDIR/data/fonts VICE-$AMIGAFLAVOR
+cp -a $TOPSCRDIR/data/SCPU64 $TOPSCRDIR/data/fonts VICE-$AMIGAFLAVOR
 cp -a $TOPSCRDIR/doc/html VICE-$AMIGAFLAVOR
+rm VICE-$AMIGAFLAVOR/html/checklinks.sh
 cp $TOPSCRDIR/FEEDBACK $TOPSCRDIR/README VICE-$AMIGAFLAVOR
+cp $TOPSCRDIR/COPYING $TOPSCRDIR/NEWS VICE-$AMIGAFLAVOR
 cp $TOPSCRDIR/doc/readmes/Readme-Amiga.txt VICE-$AMIGAFLAVOR
+mkdir VICE-$AMIGAFLAVOR/doc
+cp $TOPSCRDIR/doc/vice.guide VICE-$AMIGAFLAVOR/doc
+cp $TOPSCRDIR/doc/vice.pdf VICE-$AMIGAFLAVOR/doc
 if test x"$HOSTSYSTEM" = "xwarpos"; then
   for i in $EXECUTABLES
   do
@@ -124,6 +151,7 @@ if test x"$HOSTSYSTEM" = "xmorphos"; then
   else
     cp VICE-$AMIGAFLAVOR/x64sc.info VICE-$AMIGAFLAVOR/x64sc\ \(no\ sound\).info
   fi
+  cp VICE-$AMIGAFLAVOR/xscpu64.info VICE-$AMIGAFLAVOR/xscpu64\ \(no\ sound\).info
   cp VICE-$AMIGAFLAVOR/x128.info VICE-$AMIGAFLAVOR/x128\ \(no\ sound\).info
   cp VICE-$AMIGAFLAVOR/xvic.info VICE-$AMIGAFLAVOR/xvic\ \(no\ sound\).info
   cp VICE-$AMIGAFLAVOR/xpet.info VICE-$AMIGAFLAVOR/xpet\ \(no\ sound\).info
@@ -139,6 +167,7 @@ else
   else
     cp VICE-$AMIGAFLAVOR/x64sc.exe.info VICE-$AMIGAFLAVOR/x64sc\ \(no\ sound\).exe.info
   fi
+  cp VICE-$AMIGAFLAVOR/xscpu64.exe.info VICE-$AMIGAFLAVOR/xscpu64\ \(no\ sound\).exe.info
   cp VICE-$AMIGAFLAVOR/x128.exe.info VICE-$AMIGAFLAVOR/x128\ \(no\ sound\).exe.info
   cp VICE-$AMIGAFLAVOR/xvic.exe.info VICE-$AMIGAFLAVOR/xvic\ \(no\ sound\).exe.info
   cp VICE-$AMIGAFLAVOR/xpet.exe.info VICE-$AMIGAFLAVOR/xpet\ \(no\ sound\).exe.info

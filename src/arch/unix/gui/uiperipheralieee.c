@@ -33,12 +33,11 @@
 #include "attach.h"
 #include "lib.h"
 #include "resources.h"
+#include "uidrive.h"
 #include "uimenu.h"
 #include "uiperipheral.h"
-#include "uiprinterieee.h"
 #include "vsync.h"
 
-UI_MENU_DEFINE_TOGGLE(VirtualDevices)
 UI_MENU_DEFINE_TOGGLE(FSDevice8ConvertP00)
 UI_MENU_DEFINE_TOGGLE(FSDevice9ConvertP00)
 UI_MENU_DEFINE_TOGGLE(FSDevice10ConvertP00)
@@ -57,8 +56,6 @@ UI_MENU_DEFINE_TOGGLE(AttachDevice10Readonly)
 UI_MENU_DEFINE_TOGGLE(AttachDevice11Readonly)
 
 static ui_menu_entry_t fsdevice_drive8_submenu[] = {
-    { N_("Device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device8_type_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Read only access"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_AttachDevice8Readonly, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
@@ -70,12 +67,15 @@ static ui_menu_entry_t fsdevice_drive8_submenu[] = {
       NULL, NULL },
     { N_("Hide non-P00 files"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_FSDevice8HideCBMFiles,
       NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Drive RPM"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_rpm_settings, (ui_callback_data_t)8, NULL },
+    { N_("Drive wobble"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_wobble_settings, (ui_callback_data_t)8, NULL },
     { NULL }
 };
 
 static ui_menu_entry_t fsdevice_drive9_submenu[] = {
-    { N_("Device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device9_type_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Read only access"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_AttachDevice9Readonly, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
@@ -87,12 +87,15 @@ static ui_menu_entry_t fsdevice_drive9_submenu[] = {
       NULL, NULL },
     { N_("Hide non-P00 files"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_FSDevice9HideCBMFiles,
       NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Drive RPM"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_rpm_settings, (ui_callback_data_t)9, NULL },
+    { N_("Drive wobble"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_wobble_settings, (ui_callback_data_t)9, NULL },
     { NULL }
 };
 
 static ui_menu_entry_t fsdevice_drive10_submenu[] = {
-    { N_("Device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device10_type_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Read only access"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_AttachDevice10Readonly, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
@@ -104,12 +107,15 @@ static ui_menu_entry_t fsdevice_drive10_submenu[] = {
       (ui_callback_t)toggle_FSDevice10SaveP00, NULL, NULL },
     { N_("Hide non-P00 files"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_FSDevice10HideCBMFiles, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Drive RPM"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_rpm_settings, (ui_callback_data_t)10, NULL },
+    { N_("Drive wobble"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_wobble_settings, (ui_callback_data_t)10, NULL },
     { NULL }
 };
 
 static ui_menu_entry_t fsdevice_drive11_submenu[] = {
-    { N_("Device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device11_type_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Read only access"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_AttachDevice11Readonly, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
@@ -121,29 +127,34 @@ static ui_menu_entry_t fsdevice_drive11_submenu[] = {
       (ui_callback_t)toggle_FSDevice11SaveP00, NULL, NULL },
     { N_("Hide non-P00 files"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_FSDevice11HideCBMFiles, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Drive RPM"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_rpm_settings, (ui_callback_data_t)11, NULL },
+    { N_("Drive wobble"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)drive_wobble_settings, (ui_callback_data_t)11, NULL },
     { NULL }
 };
 
-ui_menu_entry_t peripheralieee_settings_submenu[] = {
-    { N_("Device #8"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive8_submenu },
-    { N_("Device #9"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive9_submenu },
-    { N_("Device #10"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive10_submenu },
-    { N_("Device #11"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive11_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Printer settings"), UI_MENU_TYPE_NORMAL, NULL, NULL, printerieee_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Enable Virtual Devices"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_VirtualDevices,
-      NULL, NULL },
-#ifdef HAVE_RAWDRIVE
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("RAW Block Device Name"), UI_MENU_TYPE_DOTS, (ui_callback_t)uiperipheral_set_rawdevice_name,
-      (ui_callback_data_t)"RawDriveDriver", NULL },
-#endif
+ui_menu_entry_t peripheralieee_settings_drive8_submenu[] = {
+    { N_("Drive #8 device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device8_type_submenu },
+    { N_("Drive #8 options"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive8_submenu },
     { NULL }
 };
 
-ui_menu_entry_t ui_peripheralieee_settings_menu[] = {
-    { N_("Peripheral settings"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, peripheralieee_settings_submenu },
+ui_menu_entry_t peripheralieee_settings_drive9_submenu[] = {
+    { N_("Drive #9 device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device9_type_submenu },
+    { N_("Drive #9 options"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive9_submenu },
+    { NULL }
+};
+
+ui_menu_entry_t peripheralieee_settings_drive10_submenu[] = {
+    { N_("Drive #10 device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device10_type_submenu },
+    { N_("Drive #10 options"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive10_submenu },
+    { NULL }
+};
+
+ui_menu_entry_t peripheralieee_settings_drive11_submenu[] = {
+    { N_("Drive #11 device type"), UI_MENU_TYPE_NORMAL, NULL, NULL, uiperipheral_set_device11_type_submenu },
+    { N_("Drive #11 options"), UI_MENU_TYPE_NORMAL, NULL, NULL, fsdevice_drive11_submenu },
     { NULL }
 };

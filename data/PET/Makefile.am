@@ -21,7 +21,9 @@ roms = \
 	waterloo-c000.901898-03.bin \
 	waterloo-d000.901898-04.bin \
 	waterloo-e000.901897-01.bin \
-	waterloo-f000.901898-05.bin
+	waterloo-f000.901898-05.bin \
+	hre-9000.324992-02.bin \
+	hre-a000.324993-02.bin
 
 romsets = \
 	rom1g.vrs \
@@ -30,7 +32,8 @@ romsets = \
 	rom4b40.vrs \
 	rom4b80.vrs \
 	rom4g40.vrs \
-	romsuperpet.vrs
+	romsuperpet.vrs \
+	hre.vrs
 
 palettes = \
 	amber.vpl \
@@ -38,36 +41,39 @@ palettes = \
 	white.vpl
 
 x11_keymaps = \
-	x11_bdep.vkm \
-	x11_bdep_de.vkm \
-	x11_bdes.vkm \
-	x11_bdes_de.vkm \
-	x11_bgrp.vkm \
-	x11_bgrp_de.vkm \
-	x11_bgrs.vkm \
-	x11_bgrs_de.vkm \
-	x11_bukp.vkm \
-	x11_bukp_de.vkm \
-	x11_buks.vkm \
-	x11_buks_de.vkm
+	x11_sym.vkm \
+	x11_bude_pos.vkm \
+	x11_bude_pos_de.vkm \
+	x11_bude_sym.vkm \
+	x11_bude_sym_de.vkm \
+	x11_grus_pos.vkm \
+	x11_grus_pos_de.vkm \
+	x11_grus_sym.vkm \
+	x11_grus_sym_de.vkm \
+	x11_buuk_pos.vkm \
+	x11_buuk_pos_de.vkm \
+	x11_buuk_sym.vkm \
+	x11_buuk_sym_de.vkm
 
 sdl_keymaps = \
-	sdl_buks.vkm \
-	sdl_bgrs.vkm
+	sdl_sym.vkm \
+	sdl_buuk_sym.vkm \
+	sdl_grus_sym.vkm
 
 extra_keymaps = \
-	amiga_bgrs.vkm \
-	amiga_buks.vkm \
+	amiga_grus_sym.vkm \
+	amiga_buuk_sym.vkm \
 	beos_bgrs.vkm \
 	beos_buks.vkm \
 	dos_bgrs.vkm \
 	dos_buks.vkm \
 	os2.vkm \
 	os2_40.vkm \
-	osx_sym_gr.vkm \
+	osx_grus_sym.vkm \
 	osx_sym_uk.vkm \
-	win_sym_gr.vkm \
-	win_sym_uk.vkm
+	win_grus_sym.vkm \
+	win_sym_uk.vkm \
+	win_sym.vkm
 
 win32_files = \
 	win_hotkeys.vhk \

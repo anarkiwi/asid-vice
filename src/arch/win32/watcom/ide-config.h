@@ -9,14 +9,20 @@
 #define RETSIGTYPE                 void
 #define HAS_JOYSTICK               1
 #define HAVE_MOUSE                 1
-#define HAVE_HARDSID               1
-#define HAVE_RS232                 1
+#define HAVE_LIGHTPEN              1
+#define HAVE_RS232DEV              1
+#define HAVE_RS232NET              1
 #define HAVE_NETWORK               1
 #define HAVE_DYNLIB_SUPPORT        1
 
 #define HAVE_RESID                 1
 #define HAVE_RESID_FP              1
 #define HAVE_RESID_DTV             1
+
+#define HAVE_SSI2001               1
+#define HAVE_HARDSID               1
+#define HAVE_CATWEASELMKIII        1
+#define HAVE_PARSID                1
 
 #define HAS_LONGLONG_INTEGER       1
 #define HAS_UNLOCKRESOURCE         1
@@ -40,9 +46,6 @@
 #define HAVE_WINIOCTL_H            1
 #define DWORD_IS_LONG              1
 #define HAVE_OPENCBM               1
-#define HAVE_FFMPEG                1
-#define HAVE_FFMPEG_SWSCALE        1
-#define HAVE_FFMPEG_HEADER_SUBDIRS 1
 #define HAVE_MIDI                  1
 #define HAVE_CRTDBG                1
 #define HAS_TRANSLATION            1
@@ -53,6 +56,17 @@
 #define HAVE_GETCWD                1
 #define HAVE_DSOUND_LIB            1
 #define USE_DXSOUND                1
+#define HAVE_TIME_T_IN_TIME_H      1
+
+#define HAVE_STRTOUL            1
+#define HAVE_STRTOK_R			1
+#define HAVE_STRREV			1
+#define HAVE_STRLWR			1
+#define HAVE_STRLCPY			1
+#define HAVE_LTOA			1
+#define HAVE_ULTOA			1
+#define HAVE_VSNPRINTF		1
+#define HAVE_SNPRINTF			1
 
 #define __i386__                   1
 
@@ -75,6 +89,7 @@
 #define _WIN32
 #define WIN32
 
+#define WIN32_COMPILE           1
 #define WATCOM_COMPILE          1
 #define _MSC_VER                1
 

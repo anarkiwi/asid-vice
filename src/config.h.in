@@ -1,4 +1,4 @@
-/* src/config.h.in.  Generated from configure.in by autoheader.  */
+/* src/config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
@@ -21,32 +21,20 @@
 /* Should we enable Amigaos support. */
 #undef AMIGA_SUPPORT
 
+/* Are we compiling for either BeOS or Haiku? */
+#undef BEOS_COMPILE
+
 /* Enable support for BSD style joysticks. */
 #undef BSD_JOYSTICK
 
 /* Enable cegcc support. */
 #undef CEGCC_COMPILE
 
+/* Enable plain darwin compilation */
+#undef DARWIN_COMPILE
+
 /* NLS datadirname. */
 #undef DATADIRNAME
-
-/* Enable debugging code */
-#undef DEBUG
-
-/* Use debugging of the zfile */
-#undef DEBUG_ZFILE
-
-/* Enable DINGOO compilation */
-#undef DINGOO
-
-/* Enable native DINGOO compilation */
-#undef DINGOO_NATIVE
-
-/* Enable DINGUX compilation */
-#undef DINGUX
-
-/* Enable SDL DINGUX compilation */
-#undef DINGUX_SDL
 
 /* Can we use the dos WATTCP library? */
 #undef DOS_TCP
@@ -66,11 +54,8 @@
 /* Use the memmap feature. */
 #undef FEATURE_CPUMEMHISTORY
 
-/* Enable GP2X compilation */
-#undef GP2X
-
-/* Enable SDL GP2X compilation */
-#undef GP2X_SDL
+/* Define to 1 if `TIOCGWINSZ' requires <sys/ioctl.h>. */
+#undef GWINSZ_IN_SYS_IOCTL
 
 /* Enable emulation for digital joysticks. */
 #undef HAS_DIGITAL_JOYSTICK
@@ -117,7 +102,7 @@
 /* Define to 1 if you have the <artsc.h> header file. */
 #undef HAVE_ARTSC_H
 
-/* Dingoo has atexit */
+/* Define to 1 if you have the `atexit' function. */
 #undef HAVE_ATEXIT
 
 /* Enable AudioUnit support. */
@@ -126,17 +111,29 @@
 /* Define to 1 if you have the `bind' function. */
 #undef HAVE_BIND
 
-/* Define to 1 if you have the <byteorder.h> header file. */
+/* Define to 1 if you have the <ByteOrder.h> header file. */
 #undef HAVE_BYTEORDER_H
+
+/* Enable Cairo rendering support */
+#undef HAVE_CAIRO
 
 /* Support for Catweasel MKIII. */
 #undef HAVE_CATWEASELMKIII
+
+/* Support for direct PCI I/O access Catweasel MKIII. */
+#undef HAVE_CATWEASELMKIII_IO
 
 /* Define to 1 if you have the <commctrl.h> header file. */
 #undef HAVE_COMMCTRL_H
 
 /* Define to 1 if you have the `connect' function. */
 #undef HAVE_CONNECT
+
+/* Define to 1 if you have the <CoreServices/CoreServices.h> header file. */
+#undef HAVE_CORESERVICES_CORESERVICES_H
+
+/* Define to 1 if you have the <CoreVideo/CVHostTime.h> header file. */
+#undef HAVE_COREVIDEO_CVHOSTTIME_H
 
 /* Define to 1 if you have the <cwsid.h> header file. */
 #undef HAVE_CWSID_H
@@ -153,6 +150,12 @@
 
 /* Define to 1 if you have the <devices/ahi.h> header file. */
 #undef HAVE_DEVICES_AHI_H
+
+/* Define to 1 if you have the <dev/ppbus/ppbconf.h> header file. */
+#undef HAVE_DEV_PPBUS_PPBCONF_H
+
+/* Define to 1 if you have the <dev/ppbus/ppi.h> header file. */
+#undef HAVE_DEV_PPBUS_PPI_H
 
 /* Use DirectInput joystick driver */
 #undef HAVE_DINPUT
@@ -197,14 +200,29 @@
 /* Have FFMPEG av* libs available */
 #undef HAVE_FFMPEG
 
+/* Have FFMPEG avresample lib available */
+#undef HAVE_FFMPEG_AVRESAMPLE
+
 /* FFMPEG uses subdirs for headers */
 #undef HAVE_FFMPEG_HEADER_SUBDIRS
+
+/* Have FFMPEG swresample lib available */
+#undef HAVE_FFMPEG_SWRESAMPLE
 
 /* Have FFMPEG swscale lib available */
 #undef HAVE_FFMPEG_SWSCALE
 
+/* Define to 1 if you have the <FLAC/stream_decoder.h> header file. */
+#undef HAVE_FLAC_STREAM_DECODER_H
+
 /* Define to 1 if you have the `fork' function. */
 #undef HAVE_FORK
+
+/* Support for FreeBSD par port device file. */
+#undef HAVE_FREEBSD_PARPORT_HEADERS
+
+/* Define to 1 if you have the `fseeko' function. */
+#undef HAVE_FSEEKO
 
 /* Enable Fullscreen support. */
 #undef HAVE_FULLSCREEN
@@ -245,6 +263,9 @@
 /* Support for HardSID. */
 #undef HAVE_HARDSID
 
+/* Support for PCI/ISA HardSID. */
+#undef HAVE_HARDSID_IO
+
 /* Define to 1 if you have the `htonl' function. */
 #undef HAVE_HTONL
 
@@ -265,6 +286,12 @@
 
 /* Define to 1 if you have the `in8' function. */
 #undef HAVE_IN8
+
+/* Define to 1 if you have the `inb' function. */
+#undef HAVE_INB
+
+/* Define to 1 if you have the `inb_p' function. */
+#undef HAVE_INB_P
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -290,8 +317,20 @@
 /* Define to 1 if you have the `bsd' library (-lbsd). */
 #undef HAVE_LIBBSD
 
+/* Define to 1 if you have the `bz2' library (-lbz2). */
+#undef HAVE_LIBBZ2
+
+/* Define to 1 if you have the <libc.h> header file. */
+#undef HAVE_LIBC_H
+
+/* Define to 1 if you have the `FLAC' library (-lFLAC). */
+#undef HAVE_LIBFLAC
+
 /* Define to 1 if you have the <libgen.h> header file. */
 #undef HAVE_LIBGEN_H
+
+/* Define to 1 if you have the `iconv' library (-liconv). */
+#undef HAVE_LIBICONV
 
 /* Define to 1 if you have the `ieee1284' library (-lieee1284). */
 #undef HAVE_LIBIEEE1284
@@ -299,11 +338,29 @@
 /* use libintl for NLS. */
 #undef HAVE_LIBINTL_H
 
+/* Define to 1 if you have the `lzma' library (-llzma). */
+#undef HAVE_LIBLZMA
+
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
+/* Define to 1 if you have the `ogg' library (-logg). */
+#undef HAVE_LIBOGG
+
 /* Define to 1 if you have the `ossaudio' library (-lossaudio). */
 #undef HAVE_LIBOSSAUDIO
+
+/* Define to 1 if you have the 'pciutils' library. */
+#undef HAVE_LIBPCI
+
+/* Define to 1 if you have the `posix' library (-lposix). */
+#undef HAVE_LIBPOSIX
+
+/* Define to 1 if you have the `pthread' library (-lpthread). */
+#undef HAVE_LIBPTHREAD
+
+/* Define to 1 if you have the `rt' library (-lrt). */
+#undef HAVE_LIBRT
 
 /* Define to 1 if you have the <libusbhid.h> header file. */
 #undef HAVE_LIBUSBHID_H
@@ -311,17 +368,47 @@
 /* Define to 1 if you have the <libusb.h> header file. */
 #undef HAVE_LIBUSB_H
 
+/* Define to 1 if you have the `va' library (-lva). */
+#undef HAVE_LIBVA
+
+/* Define to 1 if you have the `vorbis' library (-lvorbis). */
+#undef HAVE_LIBVORBIS
+
+/* Define to 1 if you have the `vorbisenc' library (-lvorbisenc). */
+#undef HAVE_LIBVORBISENC
+
+/* Define to 1 if you have the `vorbisfile' library (-lvorbisfile). */
+#undef HAVE_LIBVORBISFILE
+
 /* Is libXpm available? */
 #undef HAVE_LIBXPM
 
+/* Enable lightpen support */
+#undef HAVE_LIGHTPEN
+
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
+
+/* Define to 1 if you have the <linux/hardsid.h> header file. */
+#undef HAVE_LINUX_HARDSID_H
+
+/* Define to 1 if you have the <linux/parport.h> header file. */
+#undef HAVE_LINUX_PARPORT_H
+
+/* Support for Linux par port device file. */
+#undef HAVE_LINUX_PARPORT_HEADERS
+
+/* Define to 1 if you have the <linux/ppdev.h> header file. */
+#undef HAVE_LINUX_PPDEV_H
 
 /* Define to 1 if you have the <linux/soundcard.h> header file. */
 #undef HAVE_LINUX_SOUNDCARD_H
 
 /* Define to 1 if you have the `listen' function. */
 #undef HAVE_LISTEN
+
+/* Define to 1 if you have the `ltoa' function. */
+#undef HAVE_LTOA
 
 /* Define to 1 if you have the <machine/cpufunc.h> header file. */
 #undef HAVE_MACHINE_CPUFUNC_H
@@ -362,6 +449,9 @@
 /* Enable 1351 mouse support */
 #undef HAVE_MOUSE
 
+/* Define to 1 if you have the <mpg123.h> header file. */
+#undef HAVE_MPG123_H
+
 /* Use nanosleep instead of usleep */
 #undef HAVE_NANOSLEEP
 
@@ -373,6 +463,9 @@
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #undef HAVE_NETINET_IN_H
+
+/* Define to 1 if you have the <netinet/tcp.h> header file. */
+#undef HAVE_NETINET_TCP_H
 
 /* Enable netplay support */
 #undef HAVE_NETWORK
@@ -386,8 +479,20 @@
 /* Define to 1 if you have the `out8' function. */
 #undef HAVE_OUT8
 
+/* Define to 1 if you have the `outb' function. */
+#undef HAVE_OUTB
+
+/* Define to 1 if you have the `outb_p' function. */
+#undef HAVE_OUTB_P
+
+/* Enable support for Pango */
+#undef HAVE_PANGO
+
 /* Support for ParSID. */
 #undef HAVE_PARSID
+
+/* Support for The Final Ethernet */
+#undef HAVE_PCAP
 
 /* A libpcap version with pcap_inject is available */
 #undef HAVE_PCAP_INJECT
@@ -395,8 +500,17 @@
 /* A libpcap version with pcap_sendpacket is available */
 #undef HAVE_PCAP_SENDPACKET
 
+/* Define to 1 if you have the <pci/pci.h> header file. */
+#undef HAVE_PCI_PCI_H
+
 /* Can we use the PNG library? */
 #undef HAVE_PNG
+
+/* Define to 1 if you have the <portaudio.h> header file. */
+#undef HAVE_PORTAUDIO_H
+
+/* Support for file device based access to ParSID. */
+#undef HAVE_PORTSID
 
 /* Define to 1 if you have the <process.h> header file. */
 #undef HAVE_PROCESS_H
@@ -419,11 +533,17 @@
 /* Enable QuickTime support. */
 #undef HAVE_QUICKTIME
 
+/* Define to 1 if you have the `random' function. */
+#undef HAVE_RANDOM
+
 /* Support for block device disk image access. */
 #undef HAVE_RAWDRIVE
 
 /* Are we using the readline library replacement? */
 #undef HAVE_READLINE
+
+/* Define to 1 if you have the <readline/readline.h> header file. */
+#undef HAVE_READLINE_READLINE_H
 
 /* Define to 1 if you have the `recv' function. */
 #undef HAVE_RECV
@@ -437,17 +557,26 @@
 /* This version provides ReSID-DTV support. */
 #undef HAVE_RESID_DTV
 
-/* This version provides ReSID_FP support. */
-#undef HAVE_RESID_FP
-
 /* Define to 1 if you have the `rewinddir' function. */
 #undef HAVE_REWINDDIR
 
 /* Does the `readline' library support `rl_readline_name'? */
 #undef HAVE_RLNAME
 
-/* Enable RS232 emulation. */
-#undef HAVE_RS232
+/* Enable RS232 device emulation. */
+#undef HAVE_RS232DEV
+
+/* Enable RS232 network support */
+#undef HAVE_RS232NET
+
+/* Define to 1 if you have the <SDL2/SDL_audio.h> header file. */
+#undef HAVE_SDL2_SDL_AUDIO_H
+
+/* Define to 1 if you have the <SDL2/SDL.h> header file. */
+#undef HAVE_SDL2_SDL_H
+
+/* Define to 1 if you have the <SDL2/SDL_main.h> header file. */
+#undef HAVE_SDL2_SDL_MAIN_H
 
 /* Enable SDLmain replacement */
 #undef HAVE_SDLMAIN
@@ -485,11 +614,11 @@
 /* Use more accurate buffer fill reporting */
 #undef HAVE_SND_PCM_AVAIL
 
+/* Define to 1 if you have the `snprintf' function. */
+#undef HAVE_SNPRINTF
+
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
-
-/* Define to 1 if you have the <socket.h> header file. */
-#undef HAVE_SOCKET_H
 
 /* Define to 1 if the system has the type `socklen_t'. */
 #undef HAVE_SOCKLEN_T
@@ -497,8 +626,14 @@
 /* Define to 1 if you have the <soundcard.h> header file. */
 #undef HAVE_SOUNDCARD_H
 
+/* Support for SSI2001 (ISA SID card). */
+#undef HAVE_SSI2001
+
 /* Static linking for lame libs */
 #undef HAVE_STATIC_LAME
+
+/* Do we have an ISO C99 compliant vswprintf function? */
+#undef HAVE_STDC_VSWPRINTF
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -508,6 +643,9 @@
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the `stpcpy' function. */
+#undef HAVE_STPCPY
 
 /* Define to 1 if you have the `strcasecmp' function. */
 #undef HAVE_STRCASECMP
@@ -524,8 +662,26 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
+/* Define to 1 if you have the `strlcpy' function. */
+#undef HAVE_STRLCPY
+
+/* Define to 1 if you have the `strlwr' function. */
+#undef HAVE_STRLWR
+
 /* Define to 1 if you have the `strncasecmp' function. */
 #undef HAVE_STRNCASECMP
+
+/* Define to 1 if you have the `strrev' function. */
+#undef HAVE_STRREV
+
+/* Define to 1 if you have the `strtok' function. */
+#undef HAVE_STRTOK
+
+/* Define to 1 if you have the `strtok_r' function. */
+#undef HAVE_STRTOK_R
+
+/* Define to 1 if you have the `strtoul' function. */
+#undef HAVE_STRTOUL
 
 /* Define to 1 if you have the `swab' function. */
 #undef HAVE_SWAB
@@ -577,8 +733,14 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
-/* Support for The Final Ethernet */
-#undef HAVE_TFE
+/* Is the type time_t defined in <time.h>? */
+#undef HAVE_TIME_T_IN_TIME_H
+
+/* Is the type time_t defined in <sys/types.h>? */
+#undef HAVE_TIME_T_IN_TYPES_H
+
+/* Define to 1 if you have the `ultoa' function. */
+#undef HAVE_ULTOA
 
 /* Define to 1 if you have the <UMS/UMSAudioDevice.h> header file. */
 #undef HAVE_UMS_UMSAUDIODEVICE_H
@@ -607,6 +769,15 @@
 /* Define to 1 if you have the <vfork.h> header file. */
 #undef HAVE_VFORK_H
 
+/* Define to 1 if you have the <vorbis/vorbisfile.h> header file. */
+#undef HAVE_VORBIS_VORBISFILE_H
+
+/* Define to 1 if you have the `vsnprintf' function. */
+#undef HAVE_VSNPRINTF
+
+/* Enable VTE support */
+#undef HAVE_VTE
+
 /* Define to 1 if you have the <wchar.h> header file. */
 #undef HAVE_WCHAR_H
 
@@ -622,8 +793,14 @@
 /* Use new XShm header */
 #undef HAVE_X11_EXTENSIONS_SHMPROTO_H
 
+/* Define to 1 if you have the <X11/IntrinsicI.h> header file. */
+#undef HAVE_X11_INTRINSICI_H
+
 /* Define to 1 if you have the <X11/Sunkeysym.h> header file. */
 #undef HAVE_X11_SUNKEYSYM_H
+
+/* Define to 1 if you have the <X11/XKlib.h> header file. */
+#undef HAVE_X11_XKLIB_H
 
 /* Define to 1 if you have the <X11/xpm.h> header file. */
 #undef HAVE_X11_XPM_H
@@ -730,8 +907,17 @@
 /* Enable Rhapsody 5.x support */
 #undef RHAPSODY_COMPILE
 
+/* Enable SCO Unix 4.x support */
+#undef SCO4UNIX_COMPILE
+
 /* Enable amiga shared SDL library support. */
 #undef SDL_AMIGA_INLINE
+
+/* FFMPEG libraries are shared */
+#undef SHARED_FFMPEG
+
+/* The size of `time_t', as computed by sizeof. */
+#undef SIZEOF_TIME_T
 
 /* The size of `unsigned int', as computed by sizeof. */
 #undef SIZEOF_UNSIGNED_INT
@@ -742,8 +928,17 @@
 /* The size of `unsigned short', as computed by sizeof. */
 #undef SIZEOF_UNSIGNED_SHORT
 
+/* FFMPEG libraries are static */
+#undef STATIC_FFMPEG
+
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* time_t is 32 bit */
+#undef TIME_T_IS_32BIT
+
+/* time_t is 64 bit */
+#undef TIME_T_IS_64BIT
 
 /* Enable SCO Unixware 7.x support */
 #undef UNIXWARE_COMPILE
@@ -763,6 +958,9 @@
 /* Enable aRts support. */
 #undef USE_ARTS
 
+/* Are we using the BeOS native UI? */
+#undef USE_BEOS_UI
+
 /* Enable new color management code. */
 #undef USE_COLOR_MANAGEMENT
 
@@ -777,6 +975,9 @@
 
 /* Use embedded data files. */
 #undef USE_EMBEDDED
+
+/* Enable FLAC support. */
+#undef USE_FLAC
 
 /* Define when using gcc */
 #undef USE_GCC
@@ -793,20 +994,44 @@
 /* Enable MITSHM extensions. */
 #undef USE_MITSHM
 
+/* Enable mpg123 mp3 decoding support. */
+#undef USE_MPG123
+
 /* Enable oss support. */
 #undef USE_OSS
+
+/* Enable portaudio sampling support. */
+#undef USE_PORTAUDIO
 
 /* Enable pulseaudio support. */
 #undef USE_PULSE
 
+/* Enable SDL2 prefix for header inclusion. */
+#undef USE_SDL2_PREFIX
+
 /* Enable SDL UI support. */
 #undef USE_SDLUI
+
+/* Enable SDL2 UI support. */
+#undef USE_SDLUI2
 
 /* Enable SDL sound support. */
 #undef USE_SDL_AUDIO
 
 /* Enable SDL prefix for header inclusion. */
 #undef USE_SDL_PREFIX
+
+/* define when using the svn revision in addition to the version */
+#undef USE_SVN_REVISION
+
+/* Enable multithreaded UI. */
+#undef USE_UI_THREADS
+
+/* Enable ogg/vorbis support. */
+#undef USE_VORBIS
+
+/* Enable Xaw3d. */
+#undef USE_XAW3D
 
 /* Are we using the Unix/X11/Xaw ui? */
 #undef USE_XAWUI
@@ -823,6 +1048,9 @@
 /* Win32 Version string. */
 #undef VERSION_RC
 
+/* Where should we lookup for data files? */
+#undef VICEDIR
+
 /* Support for The Final Ethernet */
 #undef VICE_USE_LIBNET_1_1
 
@@ -832,14 +1060,11 @@
 /* Are we compiling for win32? */
 #undef WIN32_COMPILE
 
+/* Use WinNT Unicode API calls. */
+#undef WIN32_UNICODE_SUPPORT
+
 /* Have windres ignore code page pragmas */
 #undef WINDRES_CP_IGNORE
-
-/* Enable WIZ compilation */
-#undef WIZ
-
-/* Enable SDL WIZ compilation */
-#undef WIZ_SDL
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
@@ -866,6 +1091,12 @@
    `char[]'. */
 #undef YYTEXT_POINTER
 
+/* Number of bits in a file offset, on hosts where this is settable. */
+#undef _FILE_OFFSET_BITS
+
+/* Define for large files, on AIX-style hosts. */
+#undef _LARGE_FILES
+
 /* define when using the alpha compaq compiler */
 #undef __DECALPHA__
 
@@ -886,6 +1117,9 @@
 
 /* ss_family is not defined here, use __ss_family instead */
 #undef ss_family
+
+/* Define to `int' if <sys/types.h> does not define. */
+#undef ssize_t
 
 /* Define as `fork' if `vfork' does not work. */
 #undef vfork

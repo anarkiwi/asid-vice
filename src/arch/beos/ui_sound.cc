@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marcus Sutton <loggedoubt@gmail.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -25,8 +26,9 @@
  */
  
 #include <Box.h>
-#include <CheckBox.h>
+#include <OptionPopUp.h>
 #include <RadioButton.h>
+#include <Slider.h>
 #include <string.h>
 #include <Window.h>
 
@@ -39,6 +41,19 @@ extern "C" {
 #include "vsync.h"
 }
 
+static int ui_sound_mode_count = 3;
+static int ui_sound_mode[] = {
+    SOUND_OUTPUT_SYSTEM,
+    SOUND_OUTPUT_MONO,
+    SOUND_OUTPUT_STEREO
+};
+
+static const char *ui_sound_mode_text[] = {
+    "System",
+    "Mono",
+    "Stereo"
+};
+
 static int ui_sound_freq_count = 3;
 static int ui_sound_freq[] = {
     11025,
@@ -46,13 +61,21 @@ static int ui_sound_freq[] = {
     44100
 };
 
-static int ui_sound_buffer_count = 5;
 static int ui_sound_buffer[] = {
+    20,
+    25,
+    30,
+    40,
+    50,
+    60,
+    80,
     100,
     150,
     200,
+    250,
     300,
-    350
+    350,
+    0
 };
 
 static int ui_sound_adjusting_count = 3;
@@ -62,23 +85,28 @@ static int ui_sound_adjusting[] = {
     SOUND_ADJUST_EXACT
 };
 
-static char *ui_sound_adjusting_text[] = {
+static const char *ui_sound_adjusting_text[] = {
     "Flexible",
     "Adjusting",
     "Exact"
 };
 
-static int ui_sound_fragment_size_count = 3;
+static int ui_sound_fragment_size_count = 5;
+
 static int ui_sound_fragment_size[] = {
+    SOUND_FRAGMENT_VERY_SMALL,
     SOUND_FRAGMENT_SMALL,
     SOUND_FRAGMENT_MEDIUM,
-    SOUND_FRAGMENT_LARGE
+    SOUND_FRAGMENT_LARGE,
+    SOUND_FRAGMENT_VERY_LARGE
 };
 
-static char *ui_sound_fragment_size_text[] = {
+static const char *ui_sound_fragment_size_text[] = {
+    "Very small",
     "Small",
     "Medium",
-    "Large"
+    "Large",
+    "Very large"
 };
 
 class SoundWindow : public BWindow {
@@ -86,19 +114,23 @@ class SoundWindow : public BWindow {
         SoundWindow();
         ~SoundWindow();
         virtual void MessageReceived(BMessage *msg);
-};	
+    private:
+        BSlider *main_vol_slider;
+        BSlider *drive_vol_slider;
+};
 
 static SoundWindow *soundwindow = NULL;
 
 SoundWindow::SoundWindow() 
-    : BWindow(BRect(50, 50, 450, 190), "Sound settings", B_TITLED_WINDOW_LOOK, B_MODAL_APP_WINDOW_FEEL, B_NOT_ZOOMABLE | B_NOT_RESIZABLE) 
+    : BWindow(BRect(50, 50, 530, 270), "Sound settings", B_TITLED_WINDOW_LOOK, B_MODAL_APP_WINDOW_FEEL, B_NOT_ZOOMABLE | B_NOT_RESIZABLE) 
 {
     BView *background;
     BRect r;
     BBox *box;
     BMessage *msg;
+    BOptionPopUp *option_popup;
     BRadioButton *radiobutton;
-    char str[128];
+    char str[12];
     int i;
     int res_value;
 
@@ -107,10 +139,75 @@ SoundWindow::SoundWindow()
     background->SetViewColor(220, 220, 220, 0);
     AddChild(background);
 
-    /* Frequency */
+    // Main volume slider
     r = Bounds();
+    r.right = r.left + r.Width() / 2;
+    r.InsetBy(5, 5);
+    r.bottom = 80;
+    box = new BBox(r, "SoundVolume");
+    box->SetViewColor(220, 220, 220, 0);
+
+    resources_get_int("SoundVolume", &res_value);
+    msg = new BMessage(MESSAGE_SOUND_VOLUME);
+    main_vol_slider = new BSlider(BRect(10, 10, r.Width() - 10, 30), "SoundVolume",
+                        "Main volume", msg, 0, 100, B_TRIANGLE_THUMB);
+    main_vol_slider->SetValue(res_value);
+    main_vol_slider->SetHashMarks(B_HASH_MARKS_BOTTOM);
+    main_vol_slider->SetHashMarkCount(11);
+    main_vol_slider->SetLimitLabels("0", "100");
+    box->AddChild(main_vol_slider);
+    
+    background->AddChild(box);
+
+    // Drive sound volume slider
+    r = Bounds();
+    r.right = r.left + r.Width() / 2;
+    r.OffsetBy(r.Width(), 0);
+    r.InsetBy(5, 5);
+    r.bottom = 80;
+    box = new BBox(r, "DriveSoundEmulationVolume");
+    box->SetViewColor(220, 220, 220, 0);
+
+    resources_get_int("DriveSoundEmulationVolume", &res_value);
+    msg = new BMessage(MESSAGE_SOUND_DRIVE_VOLUME);
+    drive_vol_slider = new BSlider(BRect(10, 10, r.Width() - 10, 30), "DriveSoundEmulationVolume",
+                        "Drive sound emulation volume", msg, 0, 4000, B_TRIANGLE_THUMB);
+    drive_vol_slider->SetValue(res_value);
+    drive_vol_slider->SetHashMarks(B_HASH_MARKS_BOTTOM);
+    drive_vol_slider->SetHashMarkCount(11);
+    drive_vol_slider->SetLimitLabels("0", "100");
+    box->AddChild(drive_vol_slider);
+    
+    background->AddChild(box);
+
+    /* Mode */
+    r = Bounds();
+    r.top = 80;
     r.right = r.left + r.Width() / 4;
     r.InsetBy(5, 5);
+    r.bottom -= 30;
+    box = new BBox(r, "Sound Mode");
+    box->SetViewColor(220, 220, 220, 0);
+    box->SetLabel("Sound Mode");
+
+    resources_get_int("SoundOutput", &res_value);
+
+    for (i = 0; i < ui_sound_adjusting_count; i++) {
+        msg = new BMessage(MESSAGE_SOUND_MODE);
+        msg->AddInt32("mode", i);
+        radiobutton = new BRadioButton(BRect(10, 20 + 20 * i, r.Width() - 10, 35 + 20 * i), ui_sound_mode_text[i], ui_sound_mode_text[i], msg);
+        radiobutton->SetValue(res_value == i);
+        box->AddChild(radiobutton);
+    }
+    background->AddChild(box);
+
+    /* Frequency */
+    r = Bounds();
+    r.top = 80;
+    r.right = r.left + r.Width() / 4;
+    r.OffsetBy(r.Width(), 0);
+    r.InsetBy(5, 5);
+    r.bottom -= 30;
     box = new BBox(r, "Frequency");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("Frequency");
@@ -120,7 +217,7 @@ SoundWindow::SoundWindow()
     for (i = 0; i < ui_sound_freq_count; i++) {
         msg = new BMessage(MESSAGE_SOUND_FREQ);
         msg->AddInt32("frequency", ui_sound_freq[i]);
-        sprintf(str, "%d", ui_sound_freq[i]);
+        sprintf(str, "%d Hz", ui_sound_freq[i]);
         radiobutton = new BRadioButton(BRect(10, 20 + 20 * i, r.Width() - 10, 35 + 20 * i), str, str, msg);
         radiobutton->SetValue(res_value == ui_sound_freq[i]);
         box->AddChild(radiobutton);
@@ -129,31 +226,26 @@ SoundWindow::SoundWindow()
 
     /* Buffer */
     r = Bounds();
-    r.right = r.left + r.Width() / 4;
-    r.OffsetBy(r.Width(), 0);
+    r.right = r.left + r.Width() / 2;
     r.InsetBy(5, 5);
-    box = new BBox(r, "Buffer Size");
-    box->SetViewColor(220, 220, 220, 0);
-    box->SetLabel("Buffer Size");
+    r.top = r.bottom - 25;
 
     resources_get_int("SoundBufferSize", &res_value);
 
-    for (i = 0; i < ui_sound_buffer_count; i++) {
-        msg = new BMessage(MESSAGE_SOUND_BUFF);
-        msg->AddInt32("buffer", ui_sound_buffer[i]);
-        sprintf(str, "%d", ui_sound_buffer[i]);
-        radiobutton = new BRadioButton(BRect(10, 20 + 20 * i, r.Width() - 10, 35 + 20 * i), str, str, msg);
-        radiobutton->SetValue(res_value == ui_sound_buffer[i]);
-        box->AddChild(radiobutton);
+    option_popup = new BOptionPopUp(r, "Buffer Size", "Buffer Size", new BMessage(MESSAGE_SOUND_BUFF));
+    for (i = 0; ui_sound_buffer[i]; i++) {
+        sprintf(str, "%d msec", ui_sound_buffer[i]);
+        option_popup->AddOption(str, ui_sound_buffer[i]);
     }
-    background->AddChild(box);
+    option_popup->SelectOptionFor(res_value);
+    background->AddChild(option_popup);
 
     /* Fragment size */
     r = Bounds();
+    r.top = 80;
     r.right = r.left + r.Width() / 4;
     r.OffsetBy(2 * r.Width(), 0);
     r.InsetBy(5, 5);
-    r.bottom -= 20;
     box = new BBox(r, "Fragment Size");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("Fragment Size");
@@ -165,22 +257,23 @@ SoundWindow::SoundWindow()
         msg->AddInt32("fragment", i);
         radiobutton = new BRadioButton(BRect(10, 20 + 20 * i, r.Width() - 10, 35 + 20 * i), ui_sound_fragment_size_text[i], ui_sound_fragment_size_text[i], msg);
         radiobutton->SetValue(res_value == ui_sound_fragment_size[i]);
-        box->AddChild(radiobutton); 	 
+        box->AddChild(radiobutton);
     }
     background->AddChild(box);
 
     /* Sync method */
     r = Bounds();
+    r.top = 80;
     r.right = r.left + r.Width() / 4;
     r.OffsetBy(3 * r.Width(), 0);
     r.InsetBy(5, 5);
-    r.bottom -= 20;
+    r.bottom -= 30;
     box = new BBox(r, "Sync Method");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("Sync Method");
 
     resources_get_int("SoundSpeedAdjustment", &res_value);
-	
+
     for (i = 0; i < ui_sound_adjusting_count; i++) {
         msg = new BMessage(MESSAGE_SOUND_SYNC);
         msg->AddInt32("sync", i);
@@ -208,7 +301,7 @@ void SoundWindow::MessageReceived(BMessage *msg)
             resources_set_int("SoundSampleRate", res_value);
             break;
         case MESSAGE_SOUND_BUFF:
-            msg->FindInt32("buffer", &res_value);
+            msg->FindInt32("be:value", &res_value);
             resources_set_int("SoundBufferSize", res_value);
             break;
         case MESSAGE_SOUND_SYNC:
@@ -219,6 +312,19 @@ void SoundWindow::MessageReceived(BMessage *msg)
             msg->FindInt32("fragment", &res_value);
             resources_set_int("SoundFragmentSize", res_value);
             break;
+        case MESSAGE_SOUND_MODE:
+            msg->FindInt32("mode", &res_value);
+            resources_set_int("SoundOutput", res_value);
+            break;
+        case MESSAGE_SOUND_VOLUME:
+            res_value = main_vol_slider->Value();
+            resources_set_int("SoundVolume", res_value);
+            break;
+        case MESSAGE_SOUND_DRIVE_VOLUME:
+            res_value = drive_vol_slider->Value();
+            resources_set_int("DriveSoundEmulationVolume", res_value);
+            break;
+
         default:
             BWindow::MessageReceived(msg);
     }

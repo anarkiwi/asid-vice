@@ -2,7 +2,7 @@
  * petvia.h - PET VIA emulation.
  *
  * Written by
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -39,4 +39,3 @@ extern BYTE via_peek(WORD addr);
 extern void via_store(WORD addr, BYTE value);
 
 #endif
-

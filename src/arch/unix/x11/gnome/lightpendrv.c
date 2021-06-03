@@ -24,6 +24,8 @@
  *
  */
 
+/* #define DEBUG_LIGHTPEN */
+
 #include "vice.h"
 
 #ifdef HAVE_MOUSE
@@ -33,7 +35,7 @@
 #include "uiarch.h"
 #include "videoarch.h"
 
-/* #define LP_DEBUG 1  */
+/******************************************************************************/
 
 static GdkCursor *cursor;
 static int buttons;
@@ -59,19 +61,27 @@ void x11_lightpen_update(void)
     int x, y;
     int h, w;
     float fx, fy;
+    GtkAllocation allocation;
 
     if (c && lightpen_enabled)  {
-        gdk_window_set_cursor(c->emuwindow->window, cursor);
+        gdk_window_set_cursor(gtk_widget_get_window(c->emuwindow), cursor);
         gdk_display_get_window_at_pointer(
                 gtk_widget_get_display(c->emuwindow), &x, &y);
-        gdk_drawable_get_size(c->emuwindow->window, &w, &h);
-        fx = w / (float) (c->geometry->screen_size.width - c->offx);
+        /* gdk_drawable_get_size(gtk_widget_get_window(c->emuwindow), &w, &h); */
+        gtk_widget_get_allocation(c->emuwindow, &allocation);
+        w = allocation.width;
+        h = allocation.height;
+
+        fx = w / (float) (c->geometry->screen_size.width);
         fy = h / (float) (c->geometry->last_displayed_line -
                 c->geometry->first_displayed_line + 1);
 
-#ifdef LP_DEBUG
-        fprintf(stderr,"pre : x = %i, y = %i, b = %02x, w: %d, h:%d, fx = %f, fy = %f\n",
-                x, y, buttons, w, h, fx, fy);
+#ifdef DEBUG_LIGHTPEN
+        fprintf(stderr,"pre : x = %i, y = %i, b = %02x, w: %d, h:%d, fx = %f, fy = %f divx:%d divy:%d   out: x=%i y=%i (%i-%i)\n",
+                x, y, buttons, w, h, fx, fy,
+                c->geometry->screen_size.width , c->geometry->last_displayed_line - c->geometry->first_displayed_line + 1,
+                (int)(x / fx), (int)(y / fy), c->geometry->first_displayed_line, c->geometry->last_displayed_line
+               );
 #endif
         x /= fx;
         y /= fy;
@@ -79,7 +89,7 @@ void x11_lightpen_update(void)
         lightpen_update(c->app_shell, x, y, buttons);
     } else {
         if (c) {
-            gdk_window_set_cursor(c->emuwindow->window, NULL);
+            gdk_window_set_cursor(gtk_widget_get_window(c->emuwindow), NULL);
         }
         buttons = 0;
     }

@@ -2,7 +2,7 @@
  * vic20-resources.c
  *
  * Written by
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -41,10 +41,7 @@
 #include "vic20-resources.h"
 #include "vic20mem.h"
 #include "vic20rom.h"
-
-
-#define KBD_INDEX_VIC20_SYM 0
-#define KBD_INDEX_VIC20_POS 1
+#include "vic-resources.h"
 
 /* What sync factor between the CPU and the drive?  If equal to
    `MACHINE_SYNC_PAL', the same as PAL machines.  If equal to
@@ -67,65 +64,88 @@ int ram_block_1_enabled;
 int ram_block_2_enabled;
 int ram_block_3_enabled;
 int ram_block_5_enabled;
+int vflimod_enabled;
 
 /* ------------------------------------------------------------------------- */
 
 static int set_chargen_rom_name(const char *val, void *param)
 {
-    if (util_string_set(&chargen_rom_name, val))
+    if (util_string_set(&chargen_rom_name, val)) {
         return 0;
+    }
 
     return vic20rom_load_chargen(chargen_rom_name);
 }
 
 static int set_kernal_rom_name(const char *val, void *param)
 {
-    if (util_string_set(&kernal_rom_name, val))
+    if (util_string_set(&kernal_rom_name, val)) {
         return 0;
+    }
 
     return vic20rom_load_kernal(kernal_rom_name);
 }
 
 static int set_basic_rom_name(const char *val, void *param)
 {
-    if (util_string_set(&basic_rom_name, val))
+    if (util_string_set(&basic_rom_name, val)) {
         return 0;
+    }
 
     return vic20rom_load_basic(basic_rom_name);
 }
 
 static int set_ram_block_0_enabled(int value, void *param)
 {
-    ram_block_0_enabled = value;
+    ram_block_0_enabled = value ? 1 : 0;
+
     mem_initialize_memory();
+
     return 0;
 }
 
 static int set_ram_block_1_enabled(int value, void *param)
 {
-    ram_block_1_enabled = value;
+    ram_block_1_enabled = value ? 1 : 0;
+
     mem_initialize_memory();
+
     return 0;
 }
 
 static int set_ram_block_2_enabled(int value, void *param)
 {
-    ram_block_2_enabled = value;
+    ram_block_2_enabled = value ? 1 : 0;
+
     mem_initialize_memory();
+
     return 0;
 }
 
 static int set_ram_block_3_enabled(int value, void *param)
 {
-    ram_block_3_enabled = value;
+    ram_block_3_enabled = value ? 1 : 0;
+
     mem_initialize_memory();
+
     return 0;
 }
 
 static int set_ram_block_5_enabled(int value, void *param)
 {
-    ram_block_5_enabled = value;
+    ram_block_5_enabled = value ? 1 : 0;
+
     mem_initialize_memory();
+
+    return 0;
+}
+
+static int set_vflimod_enabled(int value, void *param)
+{
+    vflimod_enabled = value ? 1 : 0;
+
+    mem_initialize_memory();
+
     return 0;
 }
 
@@ -133,22 +153,25 @@ static int set_sync_factor(int val, void *param)
 {
     int change_timing = 0;
 
-    if (sync_factor != val)
+    if (sync_factor != val) {
         change_timing = 1;
+    }
 
     switch (val) {
-      case MACHINE_SYNC_PAL:
-        sync_factor = val;
-        if (change_timing)
-            machine_change_timing(MACHINE_SYNC_PAL);
-        break;
-      case MACHINE_SYNC_NTSC:
-        sync_factor = val;
-        if (change_timing)
-            machine_change_timing(MACHINE_SYNC_NTSC);
-        break;
-      default:
-        return -1;
+        case MACHINE_SYNC_PAL:
+            sync_factor = val;
+            if (change_timing) {
+                machine_change_timing(MACHINE_SYNC_PAL, vic_resources.border_mode);
+            }
+            break;
+        case MACHINE_SYNC_NTSC:
+            sync_factor = val;
+            if (change_timing) {
+                machine_change_timing(MACHINE_SYNC_NTSC, vic_resources.border_mode);
+            }
+            break;
+        default:
+            return -1;
     }
     return 0;
 }
@@ -161,12 +184,6 @@ static const resource_string_t resources_string[] =
       &kernal_rom_name, set_kernal_rom_name, NULL },
     { "BasicName", "basic", RES_EVENT_NO, NULL,
       &basic_rom_name, set_basic_rom_name, NULL },
-#ifdef COMMON_KBD
-    { "KeymapSymFile", KBD_VIC20_SYM, RES_EVENT_NO, NULL,
-      &machine_keymap_file_list[0], keyboard_set_keymap_file, (void *)0 },
-    { "KeymapPosFile", KBD_VIC20_POS, RES_EVENT_NO, NULL,
-      &machine_keymap_file_list[1], keyboard_set_keymap_file, (void *)1 },
-#endif
     {NULL}
 };
 
@@ -184,17 +201,16 @@ static const resource_int_t resources_int[] =
       &ram_block_3_enabled, set_ram_block_3_enabled, NULL },
     { "RAMBlock5", 0, RES_EVENT_SAME, NULL,
       &ram_block_5_enabled, set_ram_block_5_enabled, NULL },
-#ifdef COMMON_KBD
-    { "KeymapIndex", KBD_INDEX_VIC20_DEFAULT, RES_EVENT_NO, NULL,
-      &machine_keymap_index, keyboard_set_keymap_index, NULL },
-#endif
+    { "VFLImod", 0, RES_EVENT_SAME, NULL,
+      &vflimod_enabled, set_vflimod_enabled, NULL },
     {NULL}
 };
 
 int vic20_resources_init(void)
 {
-    if (resources_register_string(resources_string) < 0)
+    if (resources_register_string(resources_string) < 0) {
         return -1;
+    }
 
     return resources_register_int(resources_int);
 }
@@ -204,7 +220,4 @@ void vic20_resources_shutdown(void)
     lib_free(chargen_rom_name);
     lib_free(basic_rom_name);
     lib_free(kernal_rom_name);
-    lib_free(machine_keymap_file_list[0]);
-    lib_free(machine_keymap_file_list[1]);
 }
-

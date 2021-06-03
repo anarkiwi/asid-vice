@@ -5,6 +5,7 @@
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Tibor Biczo <crown@mail.matav.hu>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -42,6 +43,7 @@
 #include "imagecontents.h"
 #include "intl.h"
 #include "lib.h"
+#include "machine.h"
 #include "opencbmlib.h"
 #include "printer.h"
 #include "res.h"
@@ -54,6 +56,18 @@
 #include "uiperipheral.h"
 #include "winlong.h"
 #include "winmain.h"
+
+static int has_userport_printer(void)
+{
+    switch (machine_class) {
+        case VICE_MACHINE_NONE:
+        case VICE_MACHINE_PLUS4:
+        case VICE_MACHINE_C64DTV:
+        case VICE_MACHINE_VSID:
+            return 0;
+    }
+    return 1;
+}
 
 /* -------------------------------------------------------------------------- */
 /*                             Disk Peripherals (8-11)                        */
@@ -71,7 +85,6 @@ static void enable_controls_for_disk_device_type(HWND hwnd, int type)
     EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_WRITEP00), type == IDC_SELECTDIR);
     EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_HIDENONP00), type == IDC_SELECTDIR);
 }
-
 
 static void enable_controls(HWND hwnd)
 {
@@ -368,19 +381,6 @@ static BOOL store_dialog_results(HWND hwnd, unsigned int num)
     TCHAR st[MAX_PATH];
     int devtype = ATTACH_DEVICE_NONE;
 
-    if (IsDlgButtonChecked(hwnd, IDC_SELECTDISK) == BST_CHECKED) {
-        GetDlgItemText(hwnd, IDC_DISKIMAGE, st, MAX_PATH);
-        system_wcstombs(s, st, MAX_PATH);
-        if (file_system_attach_disk(num, s) < 0 ) {
-            ui_error(translate_text(IDS_CANNOT_ATTACH_FILE));
-            return 0;
-        }
-    } else {
-        if ((IsDlgButtonChecked(hwnd, IDC_SELECTDIR) == BST_CHECKED) && file_system_get_disk_name(num)) {
-            file_system_detach_disk(num);
-        }
-    }
-
     if (iec_available_busses() & IEC_BUS_IEC) {
         resources_set_int_sprintf("IECDevice%d", (IsDlgButtonChecked(hwnd, IDC_TOGGLE_USEIECDEVICE) == BST_CHECKED), num);
     }
@@ -406,38 +406,59 @@ static BOOL store_dialog_results(HWND hwnd, unsigned int num)
     system_wcstombs(s, st, MAX_PATH);
     resources_set_string_sprintf("FSDevice%dDir", s, num);
 
+    if (IsDlgButtonChecked(hwnd, IDC_SELECTDISK) == BST_CHECKED) {
+        GetDlgItemText(hwnd, IDC_DISKIMAGE, st, MAX_PATH);
+        system_wcstombs(s, st, MAX_PATH);
+        if (file_system_attach_disk(num, s) < 0 ) {
+            ui_error(translate_text(IDS_CANNOT_ATTACH_FILE));
+            return 0;
+        }
+    } else {
+        if ((IsDlgButtonChecked(hwnd, IDC_SELECTDIR) == BST_CHECKED) && file_system_get_disk_name(num)) {
+            file_system_detach_disk(num);
+        }
+    }
+
     return 1;
 }
 
 static void browse_diskimage(HWND hwnd)
 {
     TCHAR *st_name;
+    char *name;
 
-    st_name = uilib_select_file(hwnd, translate_text(IDS_ATTACH_DISK_IMAGE), UILIB_FILTER_ALL | UILIB_FILTER_DISK | UILIB_FILTER_ZIP, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DISK);
+    name = uilib_select_file(hwnd, intl_translate_tcs(IDS_ATTACH_DISK_IMAGE),
+                    UILIB_FILTER_ALL | UILIB_FILTER_DISK | UILIB_FILTER_ZIP,
+                    UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DISK);
 
+    st_name = system_mbstowcs_alloc(name);
     if (st_name != NULL) {
         SetDlgItemText(hwnd, IDC_DISKIMAGE, st_name);
-        lib_free(st_name);
+        system_mbstowcs_free(st_name);
     }
+
+    lib_free(name);
 }
 
 static void autostart_diskimage(HWND hwnd)
 {
     TCHAR *st_name;
+    char *name;
 
-    st_name = uilib_select_file(hwnd, translate_text(IDS_AUTOSTART_DISK_IMAGE), UILIB_FILTER_ALL | UILIB_FILTER_DISK | UILIB_FILTER_ZIP, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DISK);
+    name = uilib_select_file(hwnd, intl_translate_tcs(IDS_AUTOSTART_DISK_IMAGE),
+                    UILIB_FILTER_ALL | UILIB_FILTER_DISK | UILIB_FILTER_ZIP,
+                    UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DISK);
 
+    st_name = system_mbstowcs_alloc(name);
     if (st_name != NULL) {
-        char *name;
-
         SetDlgItemText(hwnd, IDC_DISKIMAGE, st_name);
-        name = system_wcstombs_alloc(st_name);
         if (autostart_autodetect(name, "*", 0, AUTOSTART_MODE_RUN) < 0) {
             ui_error(translate_text(IDS_CANNOT_AUTOSTART_FILE));
         }
-        system_wcstombs_free(name);
-        lib_free(st_name);
+        system_mbstowcs_free(st_name);
     }
+
+    lib_free(name);
 }
 
 static void browse_dir(HWND hwnd)
@@ -449,7 +470,7 @@ static void browse_dir(HWND hwnd)
     bi.hwndOwner = hwnd;
     bi.pidlRoot = NULL;
     bi.pszDisplayName = st;
-    bi.lpszTitle = translate_text(IDS_SELECT_FS_DIRECTORY);
+    bi.lpszTitle = intl_translate_tcs(IDS_SELECT_FS_DIRECTORY);
     bi.ulFlags = 0;
     bi.lpfn = NULL;
     bi.lParam = 0;
@@ -493,7 +514,7 @@ static BOOL CALLBACK dialog_proc(unsigned int num, HWND hwnd, UINT msg, WPARAM w
                 case IDC_SELECTNONE:
                     enable_controls_for_disk_device_type(hwnd, LOWORD(wparam));
                     break;
-  	          case IDC_TOGGLE_USEIECDEVICE:
+                case IDC_TOGGLE_USEIECDEVICE:
                     enable_controls(hwnd);
                     break;
                 case IDC_BROWSEDISK:
@@ -561,9 +582,35 @@ static const char *ui_printer_driver_ascii[] = {
     NULL
 };
 
-static const char *ui_printer_output[] = {
-    "Text",
-    "Graphics",
+static const TCHAR *ui_userprinter_driver[] = {
+    TEXT("ASCII"),
+    TEXT("NL10"),
+    TEXT("RAW"),
+    NULL
+};
+
+static const char *ui_userprinter_driver_ascii[] = {
+    "ascii",
+    "nl10",
+    "raw",
+    NULL
+};
+
+static const TCHAR *ui_plotter_driver[] = {
+    TEXT("1520"),
+    TEXT("RAW"),
+    NULL
+};
+
+static const char *ui_plotter_driver_1520[] = {
+    "1520",
+    "raw",
+    NULL
+};
+
+static const TCHAR *ui_printer_output[] = {
+    TEXT("Text"),
+    TEXT("Graphics"),
     NULL
 };
 
@@ -725,16 +772,34 @@ static void init_printer_dialog(unsigned int num, HWND hwnd)
     resources_get_int(printer_name, &res_value);
     printer_hwnd = GetDlgItem(hwnd, IDC_PRINTER_TYPE);
     for (res_value_loop = 0; ui_printer[res_value_loop]; res_value_loop++) {
-        SendMessage(printer_hwnd, CB_ADDSTRING, 0, (LPARAM)translate_text(ui_printer[res_value_loop]));
+        SendMessage(printer_hwnd, CB_ADDSTRING, 0, (LPARAM)intl_translate_tcs(ui_printer[res_value_loop]));
     }
     SendMessage(printer_hwnd, CB_SETCURSEL, (WPARAM)res_value, 0);
 
     resources_get_string_sprintf("%sDriver", &res_string, printer_name);
     printer_hwnd = GetDlgItem(hwnd, IDC_PRINTER_DRIVER);
-    for (res_value_loop = 0; ui_printer_driver[res_value_loop]; res_value_loop++) {
-        SendMessage(printer_hwnd, CB_ADDSTRING, 0, (LPARAM)ui_printer_driver[res_value_loop]);
-        if (!strcmp(ui_printer_driver_ascii[res_value_loop], res_string)) {
-            current = res_value_loop;
+    if (num == 6) {
+        for (res_value_loop = 0; ui_plotter_driver[res_value_loop]; res_value_loop++) {
+            SendMessage(printer_hwnd, CB_ADDSTRING, 0, (LPARAM)ui_plotter_driver[res_value_loop]);
+            if (!strcmp(ui_plotter_driver_1520[res_value_loop], res_string)) {
+                current = res_value_loop;
+            }
+        }
+    } else {
+        if (num == 0) {
+            for (res_value_loop = 0; ui_userprinter_driver[res_value_loop]; res_value_loop++) {
+                SendMessage(printer_hwnd, CB_ADDSTRING, 0, (LPARAM)ui_userprinter_driver[res_value_loop]);
+                if (!strcmp(ui_userprinter_driver_ascii[res_value_loop], res_string)) {
+                    current = res_value_loop;
+                }
+            }
+        } else {
+            for (res_value_loop = 0; ui_printer_driver[res_value_loop]; res_value_loop++) {
+                SendMessage(printer_hwnd, CB_ADDSTRING, 0, (LPARAM)ui_printer_driver[res_value_loop]);
+                if (!strcmp(ui_printer_driver_ascii[res_value_loop], res_string)) {
+                    current = res_value_loop;
+                }
+            }
         }
     }
     SendMessage(printer_hwnd, CB_SETCURSEL, (WPARAM)current, 0);
@@ -786,7 +851,15 @@ static BOOL store_printer_dialog_results(HWND hwnd, unsigned int num)
 
     resources_set_int(printer_name, (int)SendMessage(GetDlgItem(hwnd, IDC_PRINTER_TYPE), CB_GETCURSEL, 0, 0));
 
-    resources_set_string_sprintf("%sDriver", ui_printer_driver_ascii[SendMessage(GetDlgItem(hwnd, IDC_PRINTER_DRIVER), CB_GETCURSEL, 0, 0)], printer_name);
+    if (num == 6) {
+        resources_set_string_sprintf("%sDriver", ui_plotter_driver_1520[SendMessage(GetDlgItem(hwnd, IDC_PRINTER_DRIVER), CB_GETCURSEL, 0, 0)], printer_name);
+    } else {
+        if (num == 0) {
+            resources_set_string_sprintf("%sDriver", ui_userprinter_driver_ascii[SendMessage(GetDlgItem(hwnd, IDC_PRINTER_DRIVER), CB_GETCURSEL, 0, 0)], printer_name);
+        } else {
+            resources_set_string_sprintf("%sDriver", ui_printer_driver_ascii[SendMessage(GetDlgItem(hwnd, IDC_PRINTER_DRIVER), CB_GETCURSEL, 0, 0)], printer_name);
+        }
+    }
 
     resources_set_string_sprintf("%sOutput", ui_printer_output_ascii[SendMessage(GetDlgItem(hwnd, IDC_PRINTER_OUTPUT), CB_GETCURSEL, 0, 0)], printer_name);
 
@@ -850,8 +923,11 @@ static BOOL CALLBACK printer_dialog_proc(unsigned int num, HWND hwnd, UINT msg, 
                         case 5:
                             printer_formfeed(1);
                             break;
-                        case 0:
+                        case 6:
                             printer_formfeed(2);
+                            break;
+                        case 0:
+                            printer_formfeed(3);
                             break;
                     }
                     break;
@@ -896,7 +972,57 @@ static INT_PTR CALLBACK callback_##num(HWND dialog, UINT msg, WPARAM wparam, LPA
 _CALLBACK_PRINTER(0)
 _CALLBACK_PRINTER(4)
 _CALLBACK_PRINTER(5)
+_CALLBACK_PRINTER(6)
 
+
+#ifdef HAVE_OPENCBM
+static void init_device_7_dialog(HWND hwnd)
+{
+    int res_value;
+
+    /* translate the iec dialog item(s) */
+    uilib_localize_dialog(hwnd, printer_iec_dialog_trans);
+
+    if (iec_available_busses() & IEC_BUS_IEC) {
+        resources_get_int("IECDevice7", &res_value);
+        CheckDlgButton(hwnd, IDC_PRINTER_USEIECDEVICE, res_value ? BST_CHECKED : BST_UNCHECKED);
+    } else {
+        ShowWindow(GetDlgItem(hwnd, IDC_PRINTER_USEIECDEVICE), FALSE);
+        CheckDlgButton(hwnd, IDC_PRINTER_USEIECDEVICE, BST_UNCHECKED);
+    }
+}
+
+static INT_PTR CALLBACK callback_7(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+    switch (msg) {
+        case WM_COMMAND:
+            return FALSE;
+        case WM_NOTIFY:
+            {
+                NMHDR FAR *nmhdr = (NMHDR FAR *)(lparam);
+
+                switch (nmhdr->code) {
+                    case PSN_APPLY:
+                        resources_set_int("IECDevice7", (IsDlgButtonChecked(hwnd, IDC_PRINTER_USEIECDEVICE) == BST_CHECKED));
+                        return TRUE;
+                    case PSN_SETACTIVE:
+                    case PSN_KILLACTIVE:
+                        return TRUE;
+                }
+                break;
+            }
+        case WM_CLOSE:
+            EndDialog(hwnd, 0);
+            return TRUE;
+        case WM_INITDIALOG:
+            system_init_dialog(hwnd);
+            init_device_7_dialog(hwnd);
+            return TRUE;
+    }
+
+    return FALSE;
+}
+#endif
 
 /* -------------------------------------------------------------------------- */
 /*                               Main Dialog                                  */
@@ -904,9 +1030,15 @@ _CALLBACK_PRINTER(5)
 
 static void uiperipheral_dialog(HWND hwnd)
 {
-    PROPSHEETPAGE psp[7];
+    PROPSHEETPAGE psp[9];
     PROPSHEETHEADER psh;
     int i, no_of_drives, no_of_printers;
+#ifdef HAVE_OPENCBM
+    int EXTRA_DEVICES = opencbmlib_is_available();
+#else
+/* EXTRA_DEVICES will get optimized away if compiled without opencbm support */
+#define EXTRA_DEVICES 0
+#endif
 
     for (i = 0; i < 3; i++ ) {
         printertextdevice[i] = lib_malloc(MAX_PATH);
@@ -914,10 +1046,10 @@ static void uiperipheral_dialog(HWND hwnd)
     }
 
     no_of_drives = 4;
-    no_of_printers = 2;
+    no_of_printers = 3;
 
     if (have_printer_userport < 0) {
-        have_printer_userport = (resources_touch("PrinterUserport")) < 0 ? 0 : 1;
+        have_printer_userport = has_userport_printer();
     }
     if (have_printer_userport) {
         no_of_printers++;
@@ -939,68 +1071,94 @@ static void uiperipheral_dialog(HWND hwnd)
         psp[i].pfnCallback = NULL;
     }
 
+#ifdef HAVE_OPENCBM
+    if (EXTRA_DEVICES) {
+        psp[i].dwSize = sizeof(PROPSHEETPAGE);
+        psp[i].dwFlags = PSP_USETITLE /*| PSP_HASHELP*/ ;
+        psp[i].hInstance = winmain_instance;
+#ifdef _ANONYMOUS_UNION
+        psp[i].pszTemplate = MAKEINTRESOURCE(IDD_DEVICE7_SETTINGS_DIALOG);
+        psp[i].pszIcon = NULL;
+#else
+        psp[i].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(IDD_DEVICE7_SETTINGS_DIALOG);
+        psp[i].u2.pszIcon = NULL;
+#endif
+        psp[i].lParam = 0;
+        psp[i].pfnCallback = NULL;
+    }
+#endif
+
     for (i = 0; i < no_of_drives; i++) {
-        psp[no_of_printers + i].dwSize = sizeof(PROPSHEETPAGE);
-        psp[no_of_printers + i].dwFlags = PSP_USETITLE /*| PSP_HASHELP*/ ;
-        psp[no_of_printers + i].hInstance = winmain_instance;
+        psp[no_of_printers + EXTRA_DEVICES + i].dwSize = sizeof(PROPSHEETPAGE);
+        psp[no_of_printers + EXTRA_DEVICES + i].dwFlags = PSP_USETITLE /*| PSP_HASHELP*/ ;
+        psp[no_of_printers + EXTRA_DEVICES + i].hInstance = winmain_instance;
 #ifdef _ANONYMOUS_UNION
 #ifdef HAVE_OPENCBM
         if (opencbmlib_is_available()) {
-            psp[no_of_printers + i].pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_OPENCBM_DIALOG);
+            psp[no_of_printers + EXTRA_DEVICES + i].pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_OPENCBM_DIALOG);
         } else
 #endif
         {
-            psp[no_of_printers + i].pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_DIALOG);
+            psp[no_of_printers + EXTRA_DEVICES + i].pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_DIALOG);
         }
-        psp[no_of_printers + i].pszIcon = NULL;
+        psp[no_of_printers + EXTRA_DEVICES + i].pszIcon = NULL;
 #else
 #ifdef HAVE_OPENCBM
         if (opencbmlib_is_available()) {
-            psp[no_of_printers + i].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_OPENCBM_DIALOG);
+            psp[no_of_printers + EXTRA_DEVICES + i].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_OPENCBM_DIALOG);
         } else 
 #endif
         {
-            psp[no_of_printers + i].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_DIALOG);
+            psp[no_of_printers + EXTRA_DEVICES + i].DUMMYUNIONNAME.pszTemplate = MAKEINTRESOURCE(IDD_DISKDEVICE_DIALOG);
         }
-        psp[no_of_printers + i].u2.pszIcon = NULL;
+        psp[no_of_printers + EXTRA_DEVICES + i].u2.pszIcon = NULL;
 #endif
-        psp[no_of_printers + i].lParam = 0;
-        psp[no_of_printers + i].pfnCallback = NULL;
+        psp[no_of_printers + EXTRA_DEVICES + i].lParam = 0;
+        psp[no_of_printers + EXTRA_DEVICES + i].pfnCallback = NULL;
     }
 
     if (have_printer_userport) {
         psp[0].pfnDlgProc = callback_0;
-        psp[0].pszTitle = translate_text(IDS_PRINTER_USERPORT);
+        psp[0].pszTitle = intl_translate_tcs(IDS_PRINTER_USERPORT);
         i = 1;
-    } else
+    } else {
         i = 0;
+    }
 
     psp[i + 0].pfnDlgProc = callback_4;
-    psp[i + 0].pszTitle = translate_text(IDS_PRINTER_4);
+    psp[i + 0].pszTitle = intl_translate_tcs(IDS_PRINTER_4);
     psp[i + 1].pfnDlgProc = callback_5;
-    psp[i + 1].pszTitle = translate_text(IDS_PRINTER_5);
-    psp[i + 2].pfnDlgProc = callback_8;
-    psp[i + 2].pszTitle = translate_text(IDS_DRIVE_8);
-    psp[i + 3].pfnDlgProc = callback_9;
-    psp[i + 3].pszTitle = translate_text(IDS_DRIVE_9);
-    psp[i + 4].pfnDlgProc = callback_10;
-    psp[i + 4].pszTitle = translate_text(IDS_DRIVE_10);
-    psp[i + 5].pfnDlgProc = callback_11;
-    psp[i + 5].pszTitle = translate_text(IDS_DRIVE_11);
+    psp[i + 1].pszTitle = intl_translate_tcs(IDS_PRINTER_5);
+    psp[i + 2].pfnDlgProc = callback_6;
+    psp[i + 2].pszTitle = intl_translate_tcs(IDS_PRINTER_6);
+#ifdef HAVE_OPENCBM
+    if (EXTRA_DEVICES) {
+        psp[i + 3].pfnDlgProc = callback_7;
+        psp[i + 3].pszTitle = intl_translate_tcs(IDS_DEVICE_7);
+    }
+#endif
+    psp[i + EXTRA_DEVICES + 3].pfnDlgProc = callback_8;
+    psp[i + EXTRA_DEVICES + 3].pszTitle = intl_translate_tcs(IDS_DRIVE_8);
+    psp[i + EXTRA_DEVICES + 4].pfnDlgProc = callback_9;
+    psp[i + EXTRA_DEVICES + 4].pszTitle = intl_translate_tcs(IDS_DRIVE_9);
+    psp[i + EXTRA_DEVICES + 5].pfnDlgProc = callback_10;
+    psp[i + EXTRA_DEVICES + 5].pszTitle = intl_translate_tcs(IDS_DRIVE_10);
+    psp[i + EXTRA_DEVICES + 6].pfnDlgProc = callback_11;
+    psp[i + EXTRA_DEVICES + 6].pszTitle = intl_translate_tcs(IDS_DRIVE_11);
 
     psh.dwSize = sizeof(PROPSHEETHEADER);
     psh.dwFlags = PSH_PROPSHEETPAGE | PSH_NOAPPLYNOW;
     psh.hwndParent = hwnd;
     psh.hInstance = winmain_instance;
-    psh.pszCaption = translate_text(IDS_PERIPHERAL_SETTINGS);
-    psh.nPages = no_of_drives + no_of_printers;
+    psh.pszCaption = intl_translate_tcs(IDS_PERIPHERAL_SETTINGS);
+    psh.nPages = no_of_drives + no_of_printers + EXTRA_DEVICES;
 #ifdef _ANONYMOUS_UNION
     psh.pszIcon = NULL;
-    psh.nStartPage = i + 2;
+    psh.nStartPage = i + 3;
     psh.ppsp = psp;
 #else
     psh.DUMMYUNIONNAME.pszIcon = NULL;
-    psh.u2.nStartPage = i + 2;
+    psh.u2.nStartPage = i + 3;
     psh.u3.ppsp = psp;
 #endif
     psh.pfnCallback = NULL;
@@ -1023,6 +1181,9 @@ void uiperipheral_command(HWND hwnd, WPARAM wparam)
             break;
         case IDM_FORMFEED_PRINTERIEC5:
             printer_formfeed(1);
+            break;
+        case IDM_FORMFEED_PRINTERIEC6:
+            printer_formfeed(2);
             break;
     }
 }

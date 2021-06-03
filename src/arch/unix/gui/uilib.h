@@ -27,7 +27,7 @@
 #ifndef VICE_UILIB_H
 #define VICE_UILIB_H
 
-/* this must be in sync with x11/gnome/uifileentry.c */
+/* this must be in sync with x11/gnome/uifileentry.c and x11/xaw/x11ui.c */
 typedef enum uilib_file_filter_enum_s {
     UILIB_FILTER_ALL,
     UILIB_FILTER_PALETTE,
@@ -46,6 +46,8 @@ typedef enum uilib_file_filter_enum_s {
     UILIB_FILTER_IFF,
     UILIB_FILTER_AIFF,
     UILIB_FILTER_MP3,
+    UILIB_FILTER_FLAC,
+    UILIB_FILTER_VORBIS,
     UILIB_FILTER_SERIAL,
     UILIB_FILTER_VIC20CART,
     UILIB_FILTER_SID,

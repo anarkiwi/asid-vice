@@ -29,12 +29,15 @@
 
 #include "vice.h"
 
-#define SDL_VSID_ACTIVE  (1<<0)
-#define SDL_VSID_REPAINT (1<<1)
+#define SDL_VSID_ACTIVE  (1 << 0)
+#define SDL_VSID_REPAINT (1 << 1)
 extern int sdl_vsid_state;
+
+typedef void (*ui_draw_func_t) (void);
 
 extern void sdl_vsid_activate(void);
 extern void sdl_vsid_close(void);
+extern void sdl_vsid_draw_init(ui_draw_func_t func);
 extern void sdl_vsid_draw(void);
 
 #endif

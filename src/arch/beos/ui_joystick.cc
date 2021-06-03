@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -81,9 +82,9 @@ JoyView::JoyView(BRect r, int joyport) : BView(r, "joy_view", B_FOLLOW_NONE, B_W
     BBox *box;
     BMessage *msg;
     char str[128];
-    char *item_name;
+    const char *item_name;
     char portname[] = "Port X";
-    char *joydevice_name[] = { "None", "Numpad", "Keyset 1", "Keyset 2" };
+    const char *joydevice_name[] = { "None", "Numpad", "Keyset 1", "Keyset 2" };
 
     portname[5] = 'A' + joyport - 1;
 
@@ -128,9 +129,9 @@ JoystickWindow::JoystickWindow(int first_port, int second_port)
     BCheckBox *checkbox;
     int res_value;
 
-    if (first_port == 3 && second_port == 4) {
+    if (first_port == 3) {
         SetTitle("Userport joystick settings");
-    } else if (first_port == 3 && second_port == 0) {
+    } else if (first_port == 5) {
         SetTitle("SIDcart joystick settings");
     } else {
         SetTitle("Joystick settings");
@@ -207,7 +208,7 @@ void JoystickWindow::MessageReceived(BMessage *msg)
 }
 
 /* definition for KeysetWindow */
-static char *keydefine_texts[] = {
+static const char *keydefine_texts[] = {
     "NorthWest",
     "North",
     "NorthEast",
@@ -231,7 +232,7 @@ static struct _point{int x; int y;} keydefine_pos[] = {
     { 80, 30 }
 };
 
-static char *keydefine_resource[] = { 
+static const char *keydefine_resource[] = { 
     "KeySet%dNorthWest",
     "KeySet%dNorth",
     "KeySet%dNorthEast",
@@ -243,8 +244,8 @@ static char *keydefine_resource[] = {
     "KeySet%dFire"
 };
 
-static char *keyset_instruction_first = "Choose a direction by pressing the corresponding button.";
-static char *keyset_instruction_last = "Now press the key for %s or press button again for <None>";
+static const char *keyset_instruction_first = "Choose a direction by pressing the corresponding button.";
+static const char *keyset_instruction_last = "Now press the key for %s or press button again for <None>";
 
 static int keyset[9];
 
@@ -337,72 +338,12 @@ void KeysetWindow::MessageReceived(BMessage *msg)
 }
 
 /* the interface to the ui */
-void ui_joystick() {
+void ui_joystick(int first_port, int second_port)
+{
     thread_id joythread;
     status_t exit_value;
-    int first_port, second_port;
 
-    switch (machine_class) {
-        case VICE_MACHINE_C128:
-        case VICE_MACHINE_C64:
-        case VICE_MACHINE_C64DTV:
-        case VICE_MACHINE_CBM5x0:
-        case VICE_MACHINE_PLUS4:
-        default:
-            first_port = 1;
-            second_port = 2;
-            break;
-        case VICE_MACHINE_CBM6x0:
-        case VICE_MACHINE_PET:
-            first_port = 0;
-            second_port = 0;
-            break;
-        case VICE_MACHINE_VIC20:
-            first_port = 1;
-            second_port = 0;
-            break;
-    }
-
-    if (joywindow != NULL || first_port == 0) {
-        return;
-    }
-
-    joywindow = new JoystickWindow(first_port, second_port);
-
-    vsync_suspend_speed_eval();
-
-    /* wait until window closed */
-    joythread = joywindow->Thread();
-    wait_for_thread(joythread, &exit_value);
-}
-
-void ui_extra_joystick() {
-    thread_id joythread;
-    status_t exit_value;
-    int first_port, second_port;
-
-    switch (machine_class) {
-        case VICE_MACHINE_C128:
-        case VICE_MACHINE_C64:
-        case VICE_MACHINE_C64DTV:
-        case VICE_MACHINE_CBM6x0:
-        case VICE_MACHINE_PET:
-        case VICE_MACHINE_VIC20:
-        default:
-            first_port = 3;
-            second_port = 4;
-            break;
-        case VICE_MACHINE_CBM5x0:
-            first_port = 0;
-            second_port = 0;
-            break;
-        case VICE_MACHINE_PLUS4:
-            first_port = 3;
-            second_port = 0;
-            break;
-    }
-
-    if (joywindow != NULL || first_port == 0) {
+    if (joywindow != NULL) {
         return;
     }
 

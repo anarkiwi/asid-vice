@@ -35,7 +35,6 @@
 #define TED_FULL_BORDERS   1
 #define TED_DEBUG_BORDERS  2
 #define TED_NO_BORDERS     3
-#define TED_BORDER_MODE(v) (v << 12)
 
 struct canvas_refresh_s;
 struct machine_timing_s;
@@ -64,4 +63,3 @@ extern int ted_snapshot_write_module(struct snapshot_s *s);
 extern int ted_snapshot_read_module(struct snapshot_s *s);
 
 #endif
-

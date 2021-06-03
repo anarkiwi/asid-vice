@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "cartridge.h"
+#include "cartio.h"
 #include "keyboard.h"
 #include "lib.h"
 #include "menu_common.h"
@@ -47,6 +48,12 @@ static UI_MENU_CALLBACK(attach_cart_callback)
 
     if (activated) {
         switch (vice_ptr_to_int(param)) {
+            case CARTRIDGE_VIC20_BEHRBONZ:
+                title = "Select " CARTRIDGE_VIC20_NAME_BEHRBONZ " image";
+                break;
+            case CARTRIDGE_VIC20_UM:
+                title = "Select " CARTRIDGE_VIC20_NAME_UM " image";
+                break;
             case CARTRIDGE_VIC20_FP:
                 title = "Select " CARTRIDGE_VIC20_NAME_FP " image";
                 break;
@@ -54,7 +61,7 @@ static UI_MENU_CALLBACK(attach_cart_callback)
                 title = "Select " CARTRIDGE_VIC20_NAME_MEGACART " image";
                 break;
             case CARTRIDGE_VIC20_FINAL_EXPANSION:
-                title = "Select " CARTRIDGE_VIC20_NAME_FP " image";
+                title = "Select " CARTRIDGE_VIC20_NAME_FINAL_EXPANSION " image";
                 break;
             case CARTRIDGE_VIC20_DETECT:
             case CARTRIDGE_VIC20_GENERIC:
@@ -167,7 +174,6 @@ static const ui_menu_entry_t georam_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)1024 },
-#ifndef DINGOO_NATIVE
     { "2048kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
@@ -176,7 +182,6 @@ static const ui_menu_entry_t georam_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)4096 },
-#endif
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("RAM image"),
     { "Image file",
@@ -321,12 +326,22 @@ static const ui_menu_entry_t digimax_vic20_menu[] = {
 /* DS12C887 RTC MENU */
 
 UI_MENU_DEFINE_TOGGLE(DS12C887RTC)
+UI_MENU_DEFINE_TOGGLE(DS12C887RTCRunMode)
 UI_MENU_DEFINE_RADIO(DS12C887RTCbase)
+UI_MENU_DEFINE_TOGGLE(DS12C887RTCSave)
 
 static const ui_menu_entry_t ds12c887rtc_vic20_menu[] = {
     { "Enable " CARTRIDGE_NAME_DS12C887RTC,
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_DS12C887RTC_callback,
+      NULL },
+    { "Start with running oscillator",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_DS12C887RTCRunMode_callback,
+      NULL },
+    { "Save RTC data when changed",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_DS12C887RTCSave_callback,
       NULL },
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("Base address"),
@@ -341,18 +356,62 @@ static const ui_menu_entry_t ds12c887rtc_vic20_menu[] = {
     SDL_MENU_LIST_END
 };
 
+UI_MENU_DEFINE_RADIO(IOCollisionHandling)
+
+static const ui_menu_entry_t iocollision_menu[] = {
+    { "Detach all",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_IOCollisionHandling_callback,
+      (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_ALL },
+    { "Detach last",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_IOCollisionHandling_callback,
+      (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_LAST },
+    { "AND values",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_IOCollisionHandling_callback,
+      (ui_callback_data_t)IO_COLLISION_METHOD_AND_WIRES },
+    SDL_MENU_LIST_END
+};
+
+static UI_MENU_CALLBACK(iocollision_show_type_callback)
+{
+    int type;
+
+    resources_get_int("IOCollisionHandling", &type);
+    switch (type) {
+        case IO_COLLISION_METHOD_DETACH_ALL:
+            return "-> detach all";
+            break;
+        case IO_COLLISION_METHOD_DETACH_LAST:
+            return "-> detach last";
+            break;
+        case IO_COLLISION_METHOD_AND_WIRES:
+            return "-> AND values";
+            break;
+    }
+    return "n/a";
+}
 
 UI_MENU_DEFINE_TOGGLE(CartridgeReset)
 UI_MENU_DEFINE_TOGGLE(FinalExpansionWriteBack)
+UI_MENU_DEFINE_TOGGLE(UltiMemWriteBack)
 UI_MENU_DEFINE_TOGGLE(VicFlashPluginWriteBack)
 UI_MENU_DEFINE_TOGGLE(MegaCartNvRAMWriteBack)
 UI_MENU_DEFINE_FILE_STRING(MegaCartNvRAMfilename)
+
+UI_MENU_DEFINE_TOGGLE(IO2RAM)
+UI_MENU_DEFINE_TOGGLE(IO3RAM)
 
 const ui_menu_entry_t vic20cart_menu[] = {
     { "Attach generic cartridge image",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_GENERIC },
+    { "Attach " CARTRIDGE_VIC20_NAME_BEHRBONZ " image",
+      MENU_ENTRY_DIALOG,
+      attach_cart_callback,
+      (ui_callback_data_t)CARTRIDGE_VIC20_BEHRBONZ },
     { "Attach " CARTRIDGE_VIC20_NAME_MEGACART " image",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
@@ -361,6 +420,10 @@ const ui_menu_entry_t vic20cart_menu[] = {
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_FINAL_EXPANSION },
+    { "Attach " CARTRIDGE_VIC20_NAME_UM " image",
+      MENU_ENTRY_DIALOG,
+      attach_cart_callback,
+      (ui_callback_data_t)CARTRIDGE_VIC20_UM },
     { "Attach " CARTRIDGE_VIC20_NAME_FP " image",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
@@ -379,6 +442,10 @@ const ui_menu_entry_t vic20cart_menu[] = {
       MENU_ENTRY_OTHER,
       set_cart_default_callback,
       NULL },
+    { "I/O collision handling ($9000-$93FF / $9800-$9FFF)",
+      MENU_ENTRY_SUBMENU,
+      iocollision_show_type_callback,
+      (ui_callback_data_t)iocollision_menu },
     { "Reset on cartridge change",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_CartridgeReset_callback,
@@ -387,6 +454,10 @@ const ui_menu_entry_t vic20cart_menu[] = {
     { CARTRIDGE_VIC20_NAME_FINAL_EXPANSION " write back",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_FinalExpansionWriteBack_callback,
+      NULL },
+    { CARTRIDGE_VIC20_NAME_UM " write back",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UltiMemWriteBack_callback,
       NULL },
     { CARTRIDGE_VIC20_NAME_FP " write back",
       MENU_ENTRY_RESOURCE_TOGGLE,
@@ -400,6 +471,14 @@ const ui_menu_entry_t vic20cart_menu[] = {
       MENU_ENTRY_DIALOG,
       file_string_MegaCartNvRAMfilename_callback,
       (ui_callback_data_t)"Select " CARTRIDGE_VIC20_NAME_MEGACART " NvRAM image" },
+    { "I/O-2 RAM",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_IO2RAM_callback,
+      NULL },
+    { "I/O-3 RAM",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_IO3RAM_callback,
+      NULL },
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("MasC=uerade specific cart settings"),
     { CARTRIDGE_NAME_GEORAM,

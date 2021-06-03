@@ -3,7 +3,8 @@
  *
  * Written by
  *  Jouko Valta <jopi@stekt.oulu.fi>
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -32,7 +33,7 @@
 #include "cmdline.h"
 #include "crtc.h"
 #include "datasette.h"
-#include "drivecpu.h"
+#include "drive.h"
 #include "interrupt.h"
 #include "keyboard.h"
 #include "maincpu.h"
@@ -42,6 +43,7 @@
 #include "petpia.h"
 #include "piacore.h"
 #include "resources.h"
+#include "tapeport.h"
 #include "translate.h"
 #include "types.h"
 
@@ -88,7 +90,8 @@ static int diagnostic_pin_enabled;
 
 static int set_diagnostic_pin_enabled(int val, void *param)
 {
-    diagnostic_pin_enabled = val;
+    diagnostic_pin_enabled = val ? 1 : 0;
+
     return 0;
 }
 
@@ -98,7 +101,7 @@ static const resource_int_t resources_int[] = {
     { NULL }
 };
 
-int pia1_init_resources(void)
+int pia1_resources_init(void)
 {
     return resources_register_int(resources_int);
 }
@@ -118,12 +121,14 @@ static const cmdline_option_t cmdline_options[] = {
     { NULL }
 };
 
-int pia1_init_cmdline_options(void)
+int pia1_cmdline_options_init(void)
 {
     return cmdline_register_options(cmdline_options);
 }
 
 static int tape1_sense = 0;
+static int tape1_write_in = 0;
+static int tape1_motor_in = 0;
 
 static int old_cb2_status = 0xff;
 
@@ -132,20 +137,33 @@ void pia1_set_tape_sense(int v)
     tape1_sense = v;
 }
 
+/* FIXME: find out how the pet can read the write and motor lines */
+
+void pia1_set_tape_write_in(int v)
+{
+    tape1_write_in = v;
+}
+
+void pia1_set_tape_motor_in(int v)
+{
+    tape1_motor_in = v;
+}
+
 /* ------------------------------------------------------------------------- */
 /* I/O */
 
 static void pia_set_ca2(int a)
 {
     parallel_cpu_set_eoi((BYTE)((a) ? 0 : 1));
-    if (petres.pet2k)
-        crtc_screen_enable((a)?1:0);
+    if (petres.pet2k) {
+        crtc_screen_enable((a) ? 1 : 0);
+    }
 }
 
 static void pia_set_cb2(int a)
 {
     if (old_cb2_status != a) {
-        datasette_set_motor(!a);
+        tapeport_set_motor(!a);
         old_cb2_status = a;
     }
 }
@@ -187,6 +205,7 @@ E813    CB2         output to cassette #1 motor: 0=on, 1=off
 
 static void store_pa(BYTE byte)
 {
+    tapeport_set_sense_out(byte & 16 ? 1 : 0);
 }
 
 static void store_pb(BYTE byte)
@@ -206,7 +225,7 @@ static BYTE read_pa(void)
 {
     BYTE byte;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     byte = 0xff
            - (tape1_sense ? 16 : 0)
@@ -225,20 +244,21 @@ static BYTE read_pb(void)
 
     row = mypia.port_a & 15;
 
-    if (row < KBD_ROWS)
+    if (row < KBD_ROWS) {
         j = ~keyarr[row];
+    }
 
 #if (defined(DEBUG_PIA) || defined(KBDBUG))
-    if (j < 255)
+    if (j < 255) {
         log_message(mypia_log,
-         "%02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X - row %d  %02x",
-         keyarr[0], keyarr[1], keyarr[2], keyarr[3], keyarr[4],
-         keyarr[5], keyarr[6], keyarr[7], keyarr[8], keyarr[9],
-         row, j);
+                    "%02X %02X %02X %02X %02X  %02X %02X %02X %02X %02X - row %d  %02x",
+                    keyarr[0], keyarr[1], keyarr[2], keyarr[3], keyarr[4],
+                    keyarr[5], keyarr[6], keyarr[7], keyarr[8], keyarr[9],
+                    row, j);
+    }
 #endif
 
     return j;
 }
 
 #include "piacore.c"
-

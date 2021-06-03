@@ -5,6 +5,7 @@
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  groepaz <groepaz@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -116,6 +117,20 @@ static int watchpoints_active;
 
 /* ------------------------------------------------------------------------- */
 
+static BYTE zero_read_watch(WORD addr)
+{
+    addr &= 0xff;
+    monitor_watch_push_load_addr(addr, e_comp_space);
+    return mem_read_tab[mem_config][0](addr);
+}
+
+static void zero_store_watch(WORD addr, BYTE value)
+{
+    addr &= 0xff;
+    monitor_watch_push_store_addr(addr, e_comp_space);
+    mem_write_tab[vbank][mem_config][0](addr, value);
+}
+
 static BYTE read_watch(WORD addr)
 {
     monitor_watch_push_load_addr(addr, e_comp_space);
@@ -142,38 +157,38 @@ void mem_toggle_watchpoints(int flag, void *context)
 
 /* ------------------------------------------------------------------------- */
 
+/* $00/$01 unused bits emulation
+
+   - There are 2 different unused bits, 1) the output bits, 2) the input bits
+   - The output bits can be (re)set when the data-direction is set to output
+     for those bits and the output bits will not drop-off to 0.
+   - When the data-direction for the unused bits is set to output then the
+     unused input bits can be (re)set by writing to them, when set to 1 the
+     drop-off timer will start which will cause the unused input bits to drop
+     down to 0 in a certain amount of time.
+   - When an unused input bit already had the drop-off timer running, and is
+     set to 1 again, the drop-off timer will restart.
+   - when a an unused bit changes from output to input, and the current output
+     bit is 1, the drop-off timer will restart again
+
+    see testprogs/CPU/cpuport for details and tests
+*/
+
 static void clk_overflow_callback(CLOCK sub, void *unused_data)
 {
-    if (pport.data_falloff_bit6) {
-        pport.data_falloff_bit6++;
-        if (pport.data_falloff_bit6 == 3) {
-            pport.data_set_bit6 = 0;
-            pport.data_falloff_bit6 = 0;
-        }
+    if (pport.data_set_clk_bit6 > (CLOCK)0) {
+        pport.data_set_clk_bit6 -= sub;
     }
-
-    if (pport.data_falloff_bit7) {
-        pport.data_falloff_bit7++;
-        if (pport.data_falloff_bit7 == 3) {
-            pport.data_set_bit7 = 0;
-            pport.data_falloff_bit7 = 0;
-        }
-    }
-
-    pport.data_set_clk_bit6 -= sub;
-    pport.data_set_clk_bit7 -= sub;
-}
-
-static void check_data_set_alarm(void)
-{
-    if (pport.data_set_clk_bit6 < maincpu_clk) {
+    if (pport.data_falloff_bit6 && (pport.data_set_clk_bit6 < maincpu_clk)) {
         pport.data_falloff_bit6 = 0;
         pport.data_set_bit6 = 0;
     }
-
-    if (pport.data_set_clk_bit7 < maincpu_clk) {
-        pport.data_set_bit7 = 0;
+    if (pport.data_set_clk_bit7 > (CLOCK)0) {
+        pport.data_set_clk_bit7 -= sub;
+    }
+    if (pport.data_falloff_bit7 && (pport.data_set_clk_bit7 < maincpu_clk)) {
         pport.data_falloff_bit7 = 0;
+        pport.data_set_bit7 = 0;
     }
 }
 
@@ -186,7 +201,7 @@ void mem_pla_config_changed(void)
 {
     mem_config = (((~pport.dir | pport.data) & 0x7) | (export.exrom << 3) | (export.game << 4));
 
-    c64pla_config_changed(tape_sense, 1, 0x17);
+    c64pla_config_changed(tape_sense, 0, 0, 1, 0x17);
 
     if (watchpoints_active) {
         _mem_read_tab_ptr = mem_read_tab_watch;
@@ -204,6 +219,8 @@ void mem_pla_config_changed(void)
 
 BYTE zero_read(WORD addr)
 {
+    BYTE retval;
+
     addr &= 0xff;
 #ifdef FEATURE_CPUMEMHISTORY
     if (!(memmap_state & MEMMAP_STATE_IGNORE)) {
@@ -215,11 +232,37 @@ BYTE zero_read(WORD addr)
         case 0:
             return pport.dir_read;
         case 1:
-            if (pport.data_falloff_bit6 || pport.data_falloff_bit7) {
-                check_data_set_alarm();
+            retval = pport.data_read;
+
+            /* discharge the "capacitor" */
+
+            /* set real value of read bit 6 */
+            if (pport.data_falloff_bit6 && (pport.data_set_clk_bit6 < maincpu_clk)) {
+                pport.data_falloff_bit6 = 0;
+                pport.data_set_bit6 = 0;
             }
 
-            return (pport.data_read & (0xff - (((!pport.data_set_bit6) << 6) + ((!pport.data_set_bit7) << 7))));
+            /* set real value of read bit 7 */
+            if (pport.data_falloff_bit7 && (pport.data_set_clk_bit7 < maincpu_clk)) {
+                pport.data_falloff_bit7 = 0;
+                pport.data_set_bit7 = 0;
+            }
+
+            /* for unused bits in input mode, the value comes from the "capacitor" */
+
+            /* set real value of bit 6 */
+            if (!(pport.dir_read & 0x40)) {
+                retval &= ~0x40;
+                retval |= pport.data_set_bit6;
+            }
+
+            /* set real value of bit 7 */
+            if (!(pport.dir_read & 0x80)) {
+                retval &= ~0x80;
+                retval |= pport.data_set_bit7;
+            }
+
+            return retval;
     }
 
     return mem_ram[addr & 0xff];
@@ -239,20 +282,29 @@ void zero_store(WORD addr, BYTE value)
                 mem_ram[0] = vicii_read_phi1_lowlevel();
                 machine_handle_pending_alarms(maincpu_rmw_flag + 1);
             }
-            if (pport.data_set_bit7 && ((value & 0x80) == 0) && pport.data_falloff_bit7 == 0) {
-                pport.data_falloff_bit7 = 1;
-                pport.data_set_clk_bit7 = maincpu_clk + C64_CPU_DATA_PORT_FALL_OFF_CYCLES;
+            /* when switching an unused bit from output (where it contained a
+               stable value) to input mode (where the input is floating), some
+               of the charge is transferred to the floating input */
+
+
+            /* check if bit 6 has flipped */
+            if ((pport.dir & 0x40)) {
+                if ((pport.dir ^ value) & 0x40) {
+                    pport.data_set_clk_bit6 = maincpu_clk + C64_CPU6510_DATA_PORT_FALL_OFF_CYCLES;
+                    pport.data_set_bit6 = pport.data & 0x40;
+                    pport.data_falloff_bit6 = 1;
+                }
             }
-            if (pport.data_set_bit6 && ((value & 0x40) == 0) && pport.data_falloff_bit6 == 0) {
-                pport.data_falloff_bit6 = 1;
-                pport.data_set_clk_bit6 = maincpu_clk + C64_CPU_DATA_PORT_FALL_OFF_CYCLES;
+
+            /* check if bit 7 has flipped */
+            if ((pport.dir & 0x80)) {
+                if ((pport.dir ^ value) & 0x80) {
+                    pport.data_set_clk_bit7 = maincpu_clk + C64_CPU6510_DATA_PORT_FALL_OFF_CYCLES;
+                    pport.data_set_bit7 = pport.data & 0x80;
+                    pport.data_falloff_bit7 = 1;
+                }
             }
-            if (pport.data_set_bit7 && (value & 0x80) && pport.data_falloff_bit7) {
-                pport.data_falloff_bit7 = 0;
-            }
-            if (pport.data_set_bit6 && (value & 0x40) && pport.data_falloff_bit6) {
-                pport.data_falloff_bit6 = 0;
-            }
+
             if (pport.dir != value) {
                 pport.dir = value;
                 mem_pla_config_changed();
@@ -265,11 +317,19 @@ void zero_store(WORD addr, BYTE value)
                 mem_ram[1] = vicii_read_phi1_lowlevel();
                 machine_handle_pending_alarms(maincpu_rmw_flag + 1);
             }
-            if ((pport.dir & 0x80) && (value & 0x80)) {
-                pport.data_set_bit7 = 1;
+
+            /* when writing to an unused bit that is output, charge the "capacitor",
+               otherwise don't touch it */
+            if (pport.dir & 0x80) {
+                pport.data_set_bit7 = value & 0x80;
+                pport.data_set_clk_bit7 = maincpu_clk + C64_CPU6510_DATA_PORT_FALL_OFF_CYCLES;
+                pport.data_falloff_bit7 = 1;
             }
-            if ((pport.dir & 0x40) && (value & 0x40)) {
-                pport.data_set_bit6 = 1;
+
+            if (pport.dir & 0x40) {
+                pport.data_set_bit6 = value & 0x40;
+                pport.data_set_clk_bit6 = maincpu_clk + C64_CPU6510_DATA_PORT_FALL_OFF_CYCLES;
+                pport.data_falloff_bit6 = 1;
             }
 
             if (pport.data != value) {
@@ -401,12 +461,15 @@ void mem_initialize_memory(void)
 
     mem_limit_init(mem_read_limit_tab);
 
-    /* Default is RAM.  */
-    for (i = 0; i <= 0x100; i++) {
+    /* setup watchpoint tables */
+    mem_read_tab_watch[0] = zero_read_watch;
+    mem_write_tab_watch[0] = zero_store_watch;
+    for (i = 1; i <= 0x100; i++) {
         mem_read_tab_watch[i] = read_watch;
         mem_write_tab_watch[i] = store_watch;
     }
 
+    /* Default is RAM.  */
     for (i = 0; i < NUM_CONFIGS; i++) {
         mem_set_write_hook(i, 0, zero_store);
         mem_read_tab[i][0] = zero_read;
@@ -485,14 +548,21 @@ void mem_initialize_memory(void)
     mem_pla_config_changed();
 }
 
-void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit) {
+void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
+{
     BYTE *p = _mem_read_base_tab_ptr[addr >> 8];
     DWORD limits;
 
-    *base = (p == NULL || addr < 2) ? NULL : p;
-    limits = mem_read_limit_tab_ptr[addr >> 8];
-    *limit = limits & 0xffff;
-    *start = limits >> 16;
+    if (p != NULL && addr > 1) {
+        *base = p;
+        limits = mem_read_limit_tab_ptr[addr >> 8];
+        *limit = limits & 0xffff;
+        *start = limits >> 16;
+    } else {
+        *base = NULL;
+        *limit = 0;
+        *start = 0;
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -501,7 +571,6 @@ void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit) {
 void mem_powerup(void)
 {
     ram_init(mem_ram, 0x10000);
-    cartridge_ram_init();  /* Clean cartridge ram too */
 }
 
 /* ------------------------------------------------------------------------- */
@@ -574,7 +643,7 @@ int mem_rom_trap_allowed(WORD addr)
             case 30:
             case 31:
                 return 1;
-            default: 
+            default:
                 return 0;
         }
     }
@@ -590,28 +659,16 @@ void store_bank_io(WORD addr, BYTE byte)
 {
     switch (addr & 0xff00) {
         case 0xd000:
-            c64io_d000_store(addr, byte);
-            break;
         case 0xd100:
-            c64io_d100_store(addr, byte);
-            break;
         case 0xd200:
-            c64io_d200_store(addr, byte);
-            break;
         case 0xd300:
-            c64io_d300_store(addr, byte);
+            vicii_store(addr, byte);
             break;
         case 0xd400:
-            c64io_d400_store(addr, byte);
-            break;
         case 0xd500:
-            c64io_d500_store(addr, byte);
-            break;
         case 0xd600:
-            c64io_d600_store(addr, byte);
-            break;
         case 0xd700:
-            c64io_d700_store(addr, byte);
+            sid_store(addr, byte);
             break;
         case 0xd800:
         case 0xd900:
@@ -626,10 +683,8 @@ void store_bank_io(WORD addr, BYTE byte)
             cia2_store(addr, byte);
             break;
         case 0xde00:
-            c64io_de00_store(addr, byte);
-            break;
         case 0xdf00:
-            c64io_df00_store(addr, byte);
+            vsid_io_store(addr, byte);
             break;
     }
     return;
@@ -639,21 +694,15 @@ BYTE read_bank_io(WORD addr)
 {
     switch (addr & 0xff00) {
         case 0xd000:
-            return c64io_d000_read(addr);
         case 0xd100:
-            return c64io_d100_read(addr);
         case 0xd200:
-            return c64io_d200_read(addr);
         case 0xd300:
-            return c64io_d300_read(addr);
+            return vicii_read(addr);
         case 0xd400:
-            return c64io_d400_read(addr);
         case 0xd500:
-            return c64io_d500_read(addr);
         case 0xd600:
-            return c64io_d600_read(addr);
         case 0xd700:
-            return c64io_d700_read(addr);
+            return sid_read(addr);
         case 0xd800:
         case 0xd900:
         case 0xda00:
@@ -664,9 +713,8 @@ BYTE read_bank_io(WORD addr)
         case 0xdd00:
             return cia2_read(addr);
         case 0xde00:
-            return c64io_de00_read(addr);
         case 0xdf00:
-            return c64io_df00_read(addr);
+            return vsid_io_read(addr);
     }
     return 0xff;
 }
@@ -675,21 +723,15 @@ static BYTE peek_bank_io(WORD addr)
 {
     switch (addr & 0xff00) {
         case 0xd000:
-            return c64io_d000_peek(addr);
         case 0xd100:
-            return c64io_d100_peek(addr);
         case 0xd200:
-            return c64io_d200_peek(addr);
         case 0xd300:
-            return c64io_d300_peek(addr);
+            return vicii_peek(addr);
         case 0xd400:
-            return c64io_d400_peek(addr);
         case 0xd500:
-            return c64io_d500_peek(addr);
         case 0xd600:
-            return c64io_d600_peek(addr);
         case 0xd700:
-            return c64io_d700_peek(addr);
+            return sid_peek(addr);
         case 0xd800:
         case 0xd900:
         case 0xda00:
@@ -770,8 +812,8 @@ BYTE mem_bank_peek(int bank, WORD addr, void *context)
     switch (bank) {
         case 4:                   /* cart */
         case 0:                   /* current */
-             /* we must check for which bank is currently active, and only use peek_bank_io
-                when needed to avoid side effects */
+            /* we must check for which bank is currently active, and only use peek_bank_io
+               when needed to avoid side effects */
             if (c64meminit_io_config[mem_config]) {
                 if ((addr >= 0xd000) && (addr < 0xe000)) {
                     return peek_bank_io(addr);
@@ -815,7 +857,7 @@ void mem_bank_write(int bank, WORD addr, BYTE byte, void *context)
     mem_ram[addr] = byte;
 }
 
-static int mem_dump_io(WORD addr)
+static int mem_dump_io(void *context, WORD addr)
 {
     if ((addr >= 0xdc00) && (addr <= 0xdc3f)) {
         return ciacore_dump(machine_context.cia1);
@@ -829,10 +871,8 @@ mem_ioreg_list_t *mem_ioreg_list_get(void *context)
 {
     mem_ioreg_list_t *mem_ioreg_list = NULL;
 
-    mon_ioreg_add_list(&mem_ioreg_list, "CIA1", 0xdc00, 0xdc0f, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "CIA2", 0xdd00, 0xdd0f, mem_dump_io);
-
-    io_source_ioreg_add_list(&mem_ioreg_list);
+    mon_ioreg_add_list(&mem_ioreg_list, "CIA1", 0xdc00, 0xdc0f, mem_dump_io, NULL);
+    mon_ioreg_add_list(&mem_ioreg_list, "CIA2", 0xdd00, 0xdd0f, mem_dump_io, NULL);
 
     return mem_ioreg_list;
 }

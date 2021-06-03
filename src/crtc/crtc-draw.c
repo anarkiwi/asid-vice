@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -46,7 +46,7 @@
  * would take 2 tables, each 16 times as big, and that would
  * not be so nice on the cpu cache.
  */
-static DWORD dwg_table[16];
+DWORD dwg_table[16];
 
 static void init_drawing_tables(void)
 {
@@ -87,8 +87,8 @@ static inline void DRAW(int reverse_flag, int offset, int scr_rel,
     int i, d;
     /* pointer to current chargen line */
     chargen_ptr = crtc.chargen_base
-                + crtc.chargen_rel
-                + (crtc.raster.ycounter & 0x0f);
+                  + crtc.chargen_rel
+                  + (crtc.raster.ycounter & 0x0f);
     /* pointer to current screen line */
     screen_ptr = crtc.screen_base;
     screen_rel = ((scr_rel) + (xs));
@@ -98,16 +98,18 @@ static inline void DRAW(int reverse_flag, int offset, int scr_rel,
 
         for (i = (xs); i < (xc); i++) {
             d = *(chargen_ptr
-                + (screen_ptr[screen_rel & crtc.vaddr_mask] << 4));
+                  + (screen_ptr[screen_rel & crtc.vaddr_mask] << 4));
 
             /* FIXME: mask with 0x3fff (screen_rel must be expanded) */
-            if (screen_rel == crsrrel)
+            if (screen_rel == crsrrel) {
                 d ^= 0xff;
+            }
 
             screen_rel++;
 
-            if ((reverse_flag))
+            if ((reverse_flag)) {
                 d ^= 0xff;
+            }
 
             *pw++ = dwg_table[d >> 4];
             *pw++ = dwg_table[d & 0x0f];
@@ -116,11 +118,12 @@ static inline void DRAW(int reverse_flag, int offset, int scr_rel,
         for (i = (xs); i < (xc); i++) {
             /* we use 16 bytes/char character generator */
             d = *(chargen_ptr
-                + (screen_ptr[screen_rel & crtc.vaddr_mask] << 4));
+                  + (screen_ptr[screen_rel & crtc.vaddr_mask] << 4));
             screen_rel++;
 
-            if ((reverse_flag))
+            if ((reverse_flag)) {
                 d ^= 0xff;
+            }
 
             *pw++ = dwg_table[d >> 4];
             *pw++ = dwg_table[d & 0x0f];
@@ -136,7 +139,6 @@ static inline void DRAW(int reverse_flag, int offset, int scr_rel,
     if (crtc.hires_draw_callback) {
         (crtc.hires_draw_callback)(p, xs, xc, scr_rel + xs, crtc.raster.ycounter);
     }
-
 }
 
 static void draw_standard_line(void)
@@ -247,4 +249,3 @@ void crtc_draw_init(void)
 
     setup_modes();
 }
-

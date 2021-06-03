@@ -1,6 +1,6 @@
 SUBDIRS = cart
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -11,7 +11,10 @@ INCLUDES = \
 	-I$(top_srcdir)/src/video \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/vic20/cart \
-	-I$(top_srcdir)/src/lib/p64
+	-I$(top_srcdir)/src/lib/p64 \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv \
+	-I$(top_srcdir)/src/tapeport
 
 noinst_LIBRARIES = libvic20.a
 
@@ -48,6 +51,7 @@ libvic20_a_SOURCES = \
 	vic20datasette.c \
 	vic20drive.c \
 	vic20embedded.c \
+	vic20export.c \
 	vic20iec.c \
 	vic20iec.h \
 	vic20ieeevia.h \
@@ -60,6 +64,8 @@ libvic20_a_SOURCES = \
 	vic20memrom.c \
 	vic20memsnapshot.c \
 	vic20memsnapshot.h \
+	vic20model.c \
+	vic20model.h \
 	vic20printer.c \
 	vic20rom.c \
 	vic20rom.h \

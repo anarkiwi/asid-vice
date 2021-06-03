@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -281,12 +282,12 @@ static TUI_MENU_CALLBACK(joy_hw_callback)
 static TUI_MENU_CALLBACK(userport_type_callback)
 {
     if (been_activated) {
-        resources_set_int("ExtraJoyType", (int)(param));
+        resources_set_int("UserportJoyType", (int)(param));
         ui_update_menus();
     } else {
         int value;
 
-        resources_get_int("ExtraJoyType", &value);
+        resources_get_int("UserportJoyType", &value);
         if (value == ((int)param)) {
             *become_default = 1;
         }
@@ -457,9 +458,9 @@ typedef enum {
     KEYSET_SW,
     KEYSET_W,
     KEYSET_FIRE
-} joystick_direction_t;
+} joy_dir_t;
 
-static const char *joystick_direction_to_string(joystick_direction_t direction)
+static const char *joystick_direction_to_string(joy_dir_t direction)
 {
     static char *s[] = {
         "NorthWest", "North", "NorthEast", "East",
@@ -802,7 +803,7 @@ static tui_menu_item_def_t userport_joy_type_submenu[] = {
     { NULL }
 };
 
-TUI_MENU_DEFINE_TOGGLE(ExtraJoy)
+TUI_MENU_DEFINE_TOGGLE(UserportJoy)
 TUI_MENU_DEFINE_TOGGLE(SIDCartJoy)
 TUI_MENU_DEFINE_TOGGLE(JoyOpposite)
 
@@ -820,18 +821,18 @@ static tui_menu_item_def_t c64_joystick_submenu[] = {
       toggle_JoyOpposite_callback, NULL, 3,
       TUI_MENU_BEH_RESUME, NULL, NULL },
     { "--" },
-    { "Port #_1:",
-      "Specify device for emulation of joystick in port #1",
+    { "Joystick #_1:",
+      "Specify device for emulation of joystick #1",
       get_joystick_device_callback, (void *)1, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_1_submenu, "Joystick #1" },
-    { "Port #_2:",
-      "Specify device for emulation of joystick in port #2",
+    { "Joystick #_2:",
+      "Specify device for emulation of joystick #2",
       get_joystick_device_callback, (void *)2, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_2_submenu, "Joystick #2" },
     { "--" },
     { "_Userport joystick adapter enable",
       "Enable userport joystick adapter",
-      toggle_ExtraJoy_callback, NULL, 3,
+      toggle_UserportJoy_callback, NULL, 3,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { "_Set userport joystick adapter type...",
       "Set userport joystick adapter type",
@@ -882,37 +883,24 @@ static tui_menu_item_def_t c64dtv_joystick_submenu[] = {
       toggle_JoyOpposite_callback, NULL, 3,
       TUI_MENU_BEH_RESUME, NULL, NULL },
     { "--" },
-    { "Port #_1:",
-      "Specify device for emulation of joystick in port #1",
+    { "Joystick #_1:",
+      "Specify device for emulation of joystick #1",
       get_joystick_device_callback, (void *)1, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_1_submenu, "Joystick #1" },
-    { "Port #_2:",
-      "Specify device for emulation of joystick in port #2",
+    { "Joystick #_2:",
+      "Specify device for emulation of joystick #2",
       get_joystick_device_callback, (void *)2, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_2_submenu, "Joystick #2" },
     { "--" },
     { "_Userport joystick adapter enable",
       "Enable userport joystick adapter",
-      toggle_ExtraJoy_callback, NULL, 3,
-      TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "_Set userport joystick adapter type...",
-      "Set userport joystick adapter type",
-      NULL, NULL, 0,
-      TUI_MENU_BEH_CONTINUE, userport_joy_type_submenu, "Userport joystick adapter type" },
-    { "--" },
-    { "S_wap userport adapter",
-      "Swap userport adapter joystick ports",
-      swap_userport_joysticks_callback, NULL, 0,
+      toggle_UserportJoy_callback, NULL, 3,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { "--" },
     { "Extra port #1:",
       "Specify device for emulation of joystick in extra port #1",
       get_joystick_device_callback, (void *)3, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_3_submenu, "Extra joystick #1" },
-    { "Extra port #2:",
-      "Specify device for emulation of joystick in extra port #2",
-      get_joystick_device_callback, (void *)4, 19,
-      TUI_MENU_BEH_CONTINUE, joy_device_4_submenu, "Extra Joystick #2" },
     { "--" },
     { "Configure Keyset _A...",
       "Configure keyboard set A for joystick emulation",
@@ -944,12 +932,12 @@ static tui_menu_item_def_t cbm5x0_joystick_submenu[] = {
       toggle_JoyOpposite_callback, NULL, 3,
       TUI_MENU_BEH_RESUME, NULL, NULL },
     { "--" },
-    { "Port #_1:",
-      "Specify device for emulation of joystick in port #1",
+    { "Joystick #_1:",
+      "Specify device for emulation of joystick #1",
       get_joystick_device_callback, (void *)1, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_1_submenu, "Joystick #1" },
-    { "Port #_2:",
-      "Specify device for emulation of joystick in port #2",
+    { "Joystick #_2:",
+      "Specify device for emulation of joystick #2",
       get_joystick_device_callback, (void *)2, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_2_submenu, "Joystick #2" },
     { "--" },
@@ -985,7 +973,7 @@ static tui_menu_item_def_t pet_joystick_submenu[] = {
     { "--" },
     { "_Userport joystick adapter enable",
       "Enable userport joystick adapter",
-      toggle_ExtraJoy_callback, NULL, 3,
+      toggle_UserportJoy_callback, NULL, 3,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { "_Set userport joystick adapter type...",
       "Set userport joystick adapter type",
@@ -1031,14 +1019,14 @@ static tui_menu_item_def_t vic20_joystick_submenu[] = {
       toggle_JoyOpposite_callback, NULL, 3,
       TUI_MENU_BEH_RESUME, NULL, NULL },
     { "--" },
-    { "Port #_1:",
-      "Specify device for emulation of joystick in port #1",
+    { "Joystick #_1:",
+      "Specify device for emulation of joystick #1",
       get_joystick_device_callback, (void *)1, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_1_submenu, "Joystick #1" },
     { "--" },
     { "_Userport joystick adapter enable",
       "Enable userport joystick adapter",
-      toggle_ExtraJoy_callback, NULL, 3,
+      toggle_UserportJoy_callback, NULL, 3,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { "_Set userport joystick adapter type...",
       "Set userport joystick adapter type",
@@ -1089,12 +1077,12 @@ static tui_menu_item_def_t plus4_joystick_submenu[] = {
       toggle_JoyOpposite_callback, NULL, 3,
       TUI_MENU_BEH_RESUME, NULL, NULL },
     { "--" },
-    { "Port #_1:",
-      "Specify device for emulation of joystick in port #1",
+    { "Joystick #_1:",
+      "Specify device for emulation of joystick #1",
       get_joystick_device_callback, (void *)1, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_1_submenu, "Joystick #1" },
-    { "Port #_2:",
-      "Specify device for emulation of joystick in port #2",
+    { "Joystick #_2:",
+      "Specify device for emulation of joystick #2",
       get_joystick_device_callback, (void *)2, 19,
       TUI_MENU_BEH_CONTINUE, joy_device_2_submenu, "Joystick #2" },
     { "--" },
@@ -1138,6 +1126,7 @@ void uijoystick_init(struct tui_menu *parent_submenu)
         case VICE_MACHINE_C64:
         case VICE_MACHINE_C64SC:
         case VICE_MACHINE_C128:
+        case VICE_MACHINE_SCPU64:
             tui_menu_add(ui_joystick_settings_submenu, c64_joystick_submenu);
             break;
         case VICE_MACHINE_C64DTV:

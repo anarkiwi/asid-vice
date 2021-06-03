@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -39,31 +40,41 @@
 
 #include "mui/uiacia.h"
 #include "mui/uiburstmod.h"
-#include "mui/uic64_256k.h"
+#include "mui/uic64cart.h"
+#include "mui/uic64memoryhacks.h"
 #include "mui/uic64model.h"
+#include "mui/uic64scmodel.h"
+#include "mui/uicpclockf83.h"
+#include "mui/uidatasette.h"
 #include "mui/uidigimax.h"
-#include "mui/uidrivec64vic20.h"
+#include "mui/uidrivec64.h"
 #include "mui/uids12c887rtc.h"
 #include "mui/uieasyflash.h"
 #include "mui/uiexpert.h"
 #include "mui/uigeoram.h"
+#include "mui/uigmod2.h"
 #include "mui/uiide64.h"
+#include "mui/uiiocollisions.h"
+#include "mui/uijoyport.h"
 #include "mui/uijoystick.h"
 #include "mui/uijoystickll.h"
+#include "mui/uikeymap.h"
 #include "mui/uimagicvoice.h"
 #include "mui/uimmc64.h"
 #include "mui/uimmcreplay.h"
 #include "mui/uimouse.h"
-#include "mui/uiplus256k.h"
-#include "mui/uiplus60k.h"
 #include "mui/uiprinter.h"
 #include "mui/uiramcart.h"
 #include "mui/uiretroreplay.h"
 #include "mui/uireu.h"
-#include "mui/uiromc64vic20settings.h"
+#include "mui/uiromc64settings.h"
 #include "mui/uirs232user.h"
+#include "mui/uisampler.h"
 #include "mui/uisid.h"
 #include "mui/uisoundexpander.h"
+#include "mui/uitapelog.h"
+#include "mui/uiuserportds1307rtc.h"
+#include "mui/uiuserportrtc58321a.h"
 #include "mui/uivicii.h"
 #include "mui/uivideo.h"
 
@@ -75,7 +86,14 @@ static const ui_menu_toggle_t c64_ui_menu_toggles[] = {
     { "Mouse", IDM_MOUSE },
     { "CartridgeReset", IDM_TOGGLE_CART_RESET },
     { "SFXSoundSampler", IDM_TOGGLE_SFX_SS },
-    { "UserportRTC", IDM_TOGGLE_USERPORT_RTC },
+    { "SSRamExpansion", IDM_TOGGLE_SS5_32K_ADDON },
+    { "CPMCart", IDM_TOGGLE_CPM_CART },
+    { "UserportDAC", IDM_TOGGLE_USERPORT_DAC },
+    { "UserportDIGIMAX", IDM_TOGGLE_USERPORT_DIGIMAX },
+    { "Userport4bitSampler", IDM_TOGGLE_USERPORT_4BIT_SAMPLER },
+    { "Userport8BSS", IDM_TOGGLE_USERPORT_8BSS },
+    { "TapeSenseDongle", IDM_TOGGLE_TAPE_SENSE_DONGLE },
+    { "DTLBasicDongle", IDM_TOGGLE_DTL_BASIC_DONGLE },
     { NULL, 0 }
 };
 
@@ -84,6 +102,21 @@ static int c64_ui_specific(video_canvas_t *canvas, int idm)
     uic64cart_proc(canvas, idm);
 
     switch (idm) {
+        case IDM_CART_ATTACH_GENERIC:
+            ui_c64cart_generic_settings_dialog(canvas);
+            break;
+        case IDM_CART_ATTACH_FREEZER:
+            ui_c64cart_freezer_settings_dialog(canvas);
+            break;
+        case IDM_CART_ATTACH_UTIL:
+            ui_c64cart_util_settings_dialog(canvas);
+            break;
+        case IDM_CART_ATTACH_GAME:
+            ui_c64cart_game_settings_dialog(canvas);
+            break;
+        case IDM_CART_ATTACH_RAMEX:
+            ui_c64cart_ramex_settings_dialog(canvas);
+            break;
         case IDM_PALETTE_SETTINGS:
             ui_video_palette_settings_dialog(canvas, "VICIIExternalPalette", "VICIIPaletteFile", translate_text(IDS_VICII_PALETTE_FILENAME));
             break;
@@ -117,11 +150,40 @@ static int c64_ui_specific(video_canvas_t *canvas, int idm)
         case IDM_C64_MODEL_DREAN:
             c64model_set(C64MODEL_C64_PAL_N);
             break;
+        case IDM_C64_MODEL_C64SX_PAL:
+            c64model_set(C64MODEL_C64SX_PAL);
+            break;
+        case IDM_C64_MODEL_C64SX_NTSC:
+            c64model_set(C64MODEL_C64SX_NTSC);
+            break;
+        case IDM_C64_MODEL_C64_JAP:
+            c64model_set(C64MODEL_C64_JAP);
+            break;
+        case IDM_C64_MODEL_C64_GS:
+            c64model_set(C64MODEL_C64_GS);
+            break;
+        case IDM_C64_MODEL_PET64_PAL:
+            c64model_set(C64MODEL_PET64_PAL);
+            break;
+        case IDM_C64MODEL_PET64_NTSC:
+            c64model_set(C64MODEL_PET64_NTSC);
+            break;
+        case IDM_C64MODEL_ULTIMAX:
+            c64model_set(C64MODEL_ULTIMAX);
+            break;
         case IDM_C64_MODEL_CUSTOM:
-            ui_c64_model_custom_dialog();
+            if (machine_class == VICE_MACHINE_C64SC) {
+                ui_c64sc_model_custom_dialog();
+            } else {
+                ui_c64_model_custom_dialog();
+            }
             break;
         case IDM_VICII_SETTINGS:
-            ui_vicii_settings_dialog();
+            if (machine_class == VICE_MACHINE_C64SC) {
+                ui_viciisc_settings_dialog();
+            } else {
+                ui_vicii_settings_dialog();
+            }
             break;
         case IDM_SID_SETTINGS:
             ui_sid_settings64_dialog();
@@ -147,14 +209,8 @@ static int c64_ui_specific(video_canvas_t *canvas, int idm)
         case IDM_EXPERT_SETTINGS:
             ui_expert_settings_dialog(canvas);
             break;
-        case IDM_PLUS60K_SETTINGS:
-            ui_plus60k_settings_dialog(canvas);
-            break;
-        case IDM_PLUS256K_SETTINGS:
-            ui_plus256k_settings_dialog(canvas);
-            break;
-        case IDM_C64_256K_SETTINGS:
-            ui_c64_256k_settings_dialog(canvas);
+        case IDM_C64_MEMORY_HACKS_SETTINGS:
+            ui_c64_memory_hacks_settings_dialog(canvas);
             break;
         case IDM_MMC64_SETTINGS:
             ui_mmc64_settings_dialog(canvas);
@@ -165,8 +221,11 @@ static int c64_ui_specific(video_canvas_t *canvas, int idm)
         case IDM_RETROREPLAY_SETTINGS:
             ui_retroreplay_settings_dialog();
             break;
+        case IDM_GMOD2_SETTINGS:
+            ui_gmod2_settings_dialog(canvas);
+            break;
         case IDM_DIGIMAX_SETTINGS:
-            ui_digimax_c64_settings_dialog(canvas);
+            ui_digimax_c64_settings_dialog();
             break;
         case IDM_DS12C887RTC_SETTINGS:
             ui_ds12c887rtc_c64_settings_dialog(canvas);
@@ -184,21 +243,27 @@ static int c64_ui_specific(video_canvas_t *canvas, int idm)
             ui_ide64_settings_dialog(canvas);
             break;
         case IDM_COMPUTER_ROM_SETTINGS:
-            ui_c64vic20_computer_rom_settings_dialog(canvas);
+            ui_c64_computer_rom_settings_dialog(canvas);
             break;
         case IDM_DRIVE_ROM_SETTINGS:
-            ui_c64vic20_drive_rom_settings_dialog(canvas);
+            ui_c64_drive_rom_settings_dialog(canvas);
             break;
-#ifdef HAVE_TFE
+#ifdef HAVE_PCAP
         case IDM_TFE_SETTINGS:
 //          ui_tfe_settings_dialog(hwnd);
             break;
 #endif
         case IDM_DRIVE_SETTINGS:
-            uidrivec64vic20_settings_dialog();
+            uidrivec64_settings_dialog();
             break;
         case IDM_PRINTER_SETTINGS:
             ui_printer_settings_dialog(canvas, 0, 1);
+            break;
+        case IDM_USERPORT_RTC58321A_SETTINGS:
+            ui_userport_rtc58321a_settings_dialog();
+            break;
+        case IDM_USERPORT_DS1307_RTC_SETTINGS:
+            ui_userport_ds1307_rtc_settings_dialog();
             break;
         case IDM_ACIA_SETTINGS:
             ui_acia64_settings_dialog();
@@ -207,7 +272,10 @@ static int c64_ui_specific(video_canvas_t *canvas, int idm)
             ui_rs232user_settings_dialog();
             break;
         case IDM_KEYBOARD_SETTINGS:
-//          uikeyboard_settings_dialog(hwnd, &uikeyboard_config);
+            ui_keymap_settings_dialog(canvas);
+            break;
+        case IDM_JOYPORT_SETTINGS:
+            ui_joyport_settings_dialog(1, 1, 1, 1, 0);
             break;
 #ifdef AMIGA_OS4
         case IDM_JOY_SETTINGS:
@@ -223,6 +291,21 @@ static int c64_ui_specific(video_canvas_t *canvas, int idm)
 #endif
         case IDM_MOUSE_SETTINGS:
             ui_mouse_settings_dialog();
+            break;
+        case IDM_SAMPLER_SETTINGS:
+            ui_sampler_settings_dialog(canvas);
+            break;
+        case IDM_IO_COLLISION_SETTINGS:
+            ui_iocollisions_settings_dialog();
+            break;
+        case IDM_DATASETTE_SETTINGS:
+            ui_datasette_settings_dialog();
+            break;
+        case IDM_TAPELOG_SETTINGS:
+            ui_tapelog_settings_dialog(canvas);
+            break;
+        case IDM_CPCLOCKF83_SETTINGS:
+            ui_cpclockf83_settings_dialog();
             break;
     }
 
@@ -254,5 +337,9 @@ int c64scui_init(void)
 }
 
 void c64ui_shutdown(void)
+{
+}
+
+void c64scui_shutdown(void)
 {
 }

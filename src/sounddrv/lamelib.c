@@ -3,7 +3,7 @@
  *
  * Written by
  *  Christian Vogelgsang <chris@vogelgsang.org>
- * 
+ *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -28,19 +28,10 @@
 
 #if defined(USE_LAMEMP3) && !defined(HAVE_STATIC_LAME)
 
+#include "archdep.h"
 #include "lamelib.h"
 #include "dynlib.h"
 #include "log.h"
-
-#ifdef WIN32
-#define SO_NAME     "lame.dll"
-#else
-#ifdef MACOSX_SUPPORT
-#define SO_NAME     "/opt/local/lib/libmp3lame.dylib"
-#else
-#define SO_NAME     "libmp3lame.so"
-#endif
-#endif
 
 lamelib_t lamelib;
 
@@ -53,14 +44,14 @@ static void *lib_so = NULL;
         log_debug("getting symbol " #_name_ " failed!"); \
         return -1; \
     }
-    
+
 static int load_lib(void)
 {
     if (!lib_so) {
-        lib_so = vice_dynlib_open(SO_NAME);
+        lib_so = vice_dynlib_open(ARCHDEP_LAME_SO_NAME);
 
         if (!lib_so) {
-            log_debug("opening dynamic library " SO_NAME " failed!");
+            log_debug("opening dynamic library " ARCHDEP_LAME_SO_NAME " failed!");
             return -1;
         }
 
@@ -82,7 +73,7 @@ static void free_lib(void)
 {
     if (lib_so) {
         if (vice_dynlib_close(lib_so) != 0) {
-            log_debug("closing dynamic library " SO_NAME " failed!");
+            log_debug("closing dynamic library " ARCHDEP_LAME_SO_NAME " failed!");
         }
     }
     lib_so = NULL;
@@ -101,7 +92,7 @@ static void free_lib(void)
 int lamelib_open(void)
 {
     int result;
-    
+
     result = load_lib();
     if (result != 0) {
         free_lib();

@@ -3,6 +3,7 @@
  *
  * Written by
  *  Thomas Bretz <tbretz@gsi.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -216,9 +217,9 @@ static MRESULT EXPENTRY pm_extra_joystick(HWND hwnd, ULONG msg, MPARAM mp1, MPAR
                     WinEnableControl(hwnd, ID_CALIBRATE, 0);
                 }
 
-                if (machine_class != VICE_MACHINE_PLUS4) {
-                    resources_get_int("ExtraJoy", &joy_enable);
-                    resources_get_int("ExtraJoyType", &joy_type);
+                if (machine_class != VICE_MACHINE_CBM5x0 && machine_class != VICE_MACHINE_PLUS4) {
+                    resources_get_int("UserportJoy", &joy_enable);
+                    resources_get_int("UserportJoyType", &joy_type);
                     if (joy_enable) {
                         if (joy_type == USERPORT_JOYSTICK_HUMMER || joy_type == USERPORT_JOYSTICK_OEM) {
                             WinEnableControl(hwnd, CB_JOY12, 0);
@@ -386,8 +387,8 @@ static MRESULT EXPENTRY pm_calibrate(HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp
                         if (SHORT2FROMMP(mp1) == SPBN_ENDSPIN) {
                             const ULONG val = WinGetSpinVal((HWND)mp2);
 
-                            resources_set_int(ctrl == SPB_UP ? (joy1 ? "joyAup" : "joyBup") : ctrl == SPB_DOWN ? (joy1 ? "joyAdown" : "joyBdown") :
-                                              ctrl == SPB_LEFT ? (joy1 ? "joyAleft" : "joyBleft") : (joy1 ? "joyAright" : "joyBright"), val);
+                            resources_set_int(ctrl == SPB_UP ? (joy1 ? "JoyAup" : "JoyBup") : ctrl == SPB_DOWN ? (joy1 ? "JoyAdown" : "JoyBdown") :
+                                              ctrl == SPB_LEFT ? (joy1 ? "JoyAleft" : "JoyBleft") : (joy1 ? "JoyAright" : "JoyBright"), val);
                         }
                         break;
                 }

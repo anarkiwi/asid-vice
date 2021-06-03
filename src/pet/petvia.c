@@ -2,8 +2,9 @@
  * petvia.c - VIA emulation in the PET.
  *
  * Written by
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -31,7 +32,7 @@
 
 #include "crtc.h"
 #include "datasette.h"
-#include "drivecpu.h"
+#include "drive.h"
 #include "interrupt.h"
 #include "joystick.h"
 #include "keyboard.h"
@@ -42,10 +43,9 @@
 #include "pet.h"
 #include "petsound.h"
 #include "petvia.h"
-#include "printer.h"
+#include "tapeport.h"
 #include "types.h"
-#include "userport_dac.h"
-#include "userport_joystick.h"
+#include "userport.h"
 #include "via.h"
 
 
@@ -73,7 +73,7 @@ static void set_ca2(via_context_t *via_context, int state)
 /* switching userport strobe with CB2 */
 static void set_cb2(via_context_t *via_context, int state)
 {
-    printer_userport_write_strobe(state);
+    store_userport_pa2((BYTE)state);
 }
 
 static void set_int(via_context_t *via_context, unsigned int int_num,
@@ -82,31 +82,20 @@ static void set_int(via_context_t *via_context, unsigned int int_num,
     interrupt_set_irq(maincpu_int_status, int_num, value, rclk);
 }
 
-static void restore_int(via_context_t *via_context, unsigned int int_num,
-                    int value)
+static void restore_int(via_context_t *via_context, unsigned int int_num, int value)
 {
     interrupt_restore_irq(maincpu_int_status, int_num, value);
 }
 
 static void undump_pra(via_context_t *via_context, BYTE byte)
 {
-    printer_userport_write_data(byte);
-
-    /* FIXME: in the upcoming userport system this call needs to be conditional */
-    userport_joystick_store_pbx(byte);
-
-    userport_dac_store(byte);
+    store_userport_pbx(byte);
 }
 
 static void store_pra(via_context_t *via_context, BYTE byte, BYTE myoldpa,
                       WORD addr)
 {
-    printer_userport_write_data(byte);
-
-    /* FIXME: in the upcoming userport system this call needs to be conditional */
-    userport_joystick_store_pbx(byte);
-
-    userport_dac_store(byte);
+    store_userport_pbx(byte);
 }
 
 static void undump_prb(via_context_t *via_context, BYTE byte)
@@ -124,9 +113,9 @@ static void store_prb(via_context_t *via_context, BYTE byte, BYTE myoldpb,
     }
     parallel_cpu_set_nrfd((BYTE)(!(byte & 0x02)));
     parallel_cpu_set_atn((BYTE)(!(byte & 0x04)));
-    if ((byte ^ myoldpb) & 0x8)
-        datasette_toggle_write_bit((~(via_context->via[VIA_DDRB]) | byte)
-                                   & 0x8);
+    if ((byte ^ myoldpb) & 0x8) {
+        tapeport_toggle_write_bit((~(via_context->via[VIA_DDRB]) | byte) & 0x8);
+    }
 }
 
 static void undump_pcr(via_context_t *via_context, BYTE byte)
@@ -134,10 +123,12 @@ static void undump_pcr(via_context_t *via_context, BYTE byte)
 #if 0
     register BYTE tmp = byte;
     /* first set bit 1 and 5 to the real output values */
-    if ((tmp & 0x0c) != 0x0c)
+    if ((tmp & 0x0c) != 0x0c) {
         tmp |= 0x02;
-    if ((tmp & 0xc0) != 0xc0)
+    }
+    if ((tmp & 0xc0) != 0xc0) {
         tmp |= 0x20;
+    }
     crtc_set_char(byte & 2); /* switching PET charrom with CA2 */
                              /* switching userport strobe with CB2 */
 #endif
@@ -150,13 +141,15 @@ static BYTE store_pcr(via_context_t *via_context, BYTE byte, WORD addr)
     if (byte != via_context->via[VIA_PCR]) {
         register BYTE tmp = byte;
         /* first set bit 1 and 5 to the real output values */
-        if ((tmp & 0x0c) != 0x0c)
+        if ((tmp & 0x0c) != 0x0c) {
             tmp |= 0x02;
-        if ((tmp & 0xc0) != 0xc0)
+        }
+        if ((tmp & 0xc0) != 0xc0) {
             tmp |= 0x20;
+        }
         crtc_set_char(byte & 2); /* switching PET charrom with CA2 */
                                  /* switching userport strobe with CB2 */
-        printer_userport_write_strobe(byte & 0x20);
+        store_userport_pa2((byte & 0x20) >> 5);
     }
 #endif
     petsound_store_manual((byte & 0xe0) == 0xe0);   /* Manual control of CB2 sound */
@@ -197,16 +190,17 @@ static void reset(via_context_t *via_context)
     parallel_cpu_set_atn(0);
     parallel_cpu_set_nrfd(0);
 
-    printer_userport_write_data(0xff);
-    printer_userport_write_strobe(1);
+    store_userport_pbx(0xff);
+    store_userport_pa2(1);
 }
 
 inline static BYTE read_pra(via_context_t *via_context, WORD addr)
 {
     BYTE byte = 0xff;
 
-    /* FIXME: in the upcoming userport system this call needs to be conditional */
-    userport_joystick_read_pbx(byte);
+    byte = read_userport_pbx((BYTE)~via_context->via[VIA_DDRA], byte);
+
+    /* The functions below will gradually be removed as the functionality is added to the new userport system. */
 
     /* joystick always pulls low, even if high output, so no
        masking with DDRA */
@@ -219,7 +213,7 @@ static BYTE read_prb(via_context_t *via_context)
 {
     BYTE byte;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     /* read parallel IEC interface line states */
     byte = 255
@@ -231,7 +225,7 @@ static BYTE read_prb(via_context_t *via_context)
 
     /* none of the load changes output register value -> std. masking */
     byte = ((byte & ~(via_context->via[VIA_DDRB]))
-           | (via_context->via[VIA_PRB] & via_context->via[VIA_DDRB]));
+            | (via_context->via[VIA_PRB] & via_context->via[VIA_DDRB]));
     return byte;
 }
 

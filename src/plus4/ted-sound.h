@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -39,4 +40,3 @@ extern void ted_sound_reset(sound_t *psid, CLOCK cpu_clk);
 extern void ted_sound_chip_init(void);
 
 #endif
-

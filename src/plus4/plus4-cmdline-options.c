@@ -33,6 +33,7 @@
 #include "machine.h"
 #include "plus4-cmdline-options.h"
 #include "plus4memcsory256k.h"
+#include "plus4memhacks.h"
 #include "plus4memhannes256k.h"
 #include "plus4model.h"
 #include "translate.h"
@@ -137,23 +138,6 @@ static const cmdline_option_t cmdline_options[] =
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_RAMSIZE, IDCLS_SPECIFY_RAM_INSTALLED,
       NULL, NULL },
-#ifdef COMMON_KBD
-    { "-keymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapIndex", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NUMBER, IDCLS_SPECIFY_KEYMAP_FILE_INDEX,
-      NULL, NULL },
-    { "-symkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapSymFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_SYM_KEYMAP_FILE_NAME,
-      NULL, NULL },
-    { "-poskeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapPosFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_POS_KEYMAP_FILE_NAME,
-      NULL, NULL },
-#endif
     { "-model", CALL_FUNCTION, 1,
       set_plus4_model, NULL, NULL, NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
@@ -164,12 +148,8 @@ static const cmdline_option_t cmdline_options[] =
 
 int plus4_cmdline_options_init(void)
 {
-    if (h256k_cmdline_options_init()<0) {
-      return -1;
+    if (plus4_memory_hacks_cmdline_options_init() < 0) {
+        return -1;
     }
-    if (cs256k_cmdline_options_init()<0) {
-      return -1;
-    }
-
     return cmdline_register_options(cmdline_options);
 }

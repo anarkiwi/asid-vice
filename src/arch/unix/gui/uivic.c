@@ -27,14 +27,15 @@
 #include "vice.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include "fullscreenarch.h"
 #include "lib.h"
 #include "machine.h"
+#include "palette.h"
 #include "resources.h"
 #include "uiapi.h"
 #include "uimenu.h"
-#include "uipalemu.h"
 #include "uipalette.h"
 #include "util.h"
 #include "vic.h"
@@ -54,17 +55,70 @@ static UI_CALLBACK(radio_VICPaletteFile)
     ui_select_palette(w, CHECK_MENUS, UI_MENU_CB_PARAM, "VIC");
 }
 
+static ui_menu_entry_t *attach_palette_submenu;
+
 static ui_menu_entry_t palette_submenu[] = {
     { N_("Internal"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICPaletteFile,
       NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Default"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICPaletteFile,
-      (ui_callback_data_t)"default", NULL },
+    { "", UI_MENU_TYPE_NONE, NULL, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Load custom"), UI_MENU_TYPE_NORMAL, (ui_callback_t)ui_load_palette,
+    { N_("Load custom"), UI_MENU_TYPE_DOTS, (ui_callback_t)ui_load_palette,
       (ui_callback_data_t)"VIC", NULL },
     { NULL }
 };
+
+static ui_menu_entry_t ui_palette_entry = {
+    NULL, UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICPaletteFile,
+    (ui_callback_data_t)0, NULL
+};
+
+static int countgroup(palette_info_t *palettelist, char *chip)
+{
+    int num = 0;
+    while(palettelist->name) {
+        /* printf("name:%s file:%s chip:%s\n",palettelist->name,palettelist->file,palettelist->chip); */
+        if (palettelist->chip && !strcmp(palettelist->chip, chip)) {
+            num++;
+        }
+        palettelist++;
+    }
+    return num;
+}
+
+static void makegroup(palette_info_t *palettelist, ui_menu_entry_t *entry, char *chip)
+{
+    while(palettelist->name) {
+        if (palettelist->chip && !strcmp(palettelist->chip, chip)) {
+            ui_palette_entry.string = palettelist->name;
+            ui_palette_entry.callback_data = (ui_callback_data_t)palettelist->file;
+            memcpy(entry, &ui_palette_entry, sizeof(ui_menu_entry_t));
+            entry++;
+        }
+        palettelist++;
+    }
+    memset(entry, 0, sizeof(ui_menu_entry_t));
+}
+
+static void uipalette_menu_create(void)
+{
+    int num;
+    palette_info_t *palettelist = palette_get_info_list();
+
+    num = countgroup(palettelist, "VIC");
+    /* printf("num:%d\n",num); */
+    attach_palette_submenu = lib_malloc(sizeof(ui_menu_entry_t) * (num + 1));
+    makegroup(palettelist, attach_palette_submenu, "VIC");
+    palette_submenu[2].sub_menu = attach_palette_submenu;
+}
+
+static void uipalette_menu_shutdown(void)
+{
+    if (attach_palette_submenu) {
+        lib_free(attach_palette_submenu);
+        attach_palette_submenu = NULL;
+    }
+}
 
 UI_MENU_DEFINE_RADIO(VICBorderMode)
 
@@ -92,6 +146,8 @@ static ui_menu_entry_t renderer_submenu[] = {
     { NULL }
 };
 
+#define NOTHING(x) x
+
 UI_MENU_DEFINE_TOGGLE(VICDoubleScan)
 UI_MENU_DEFINE_TOGGLE(VICDoubleSize)
 UI_MENU_DEFINE_TOGGLE(VICVideoCache)
@@ -101,9 +157,25 @@ UI_MENU_DEFINE_TOGGLE(VICAudioLeak)
 UI_MENU_DEFINE_TOGGLE(VICHwScale)
 #endif
 
+#ifdef USE_UI_THREADS
+static int get_hw_scale(int m)
+{
+    int n;
+    resources_get_int("VICHwScale", &n);
+    return n && m;
+}
+UI_MENU_DEFINE_TOGGLE_COND(AlphaBlending, VICHwScale, get_hw_scale)
+#endif
+
 #ifdef HAVE_HWSCALE
-UI_MENU_DEFINE_TOGGLE(KeepAspectRatio)
-UI_MENU_DEFINE_TOGGLE(TrueAspectRatio)
+static int get_aspect_enabled(int m)
+{
+    int n;
+    resources_get_int("VICHwScale", &n);
+    return n && m;
+}
+UI_MENU_DEFINE_TOGGLE_COND(KeepAspectRatio, VICHwScale, NOTHING)
+UI_MENU_DEFINE_TOGGLE_COND(TrueAspectRatio, KeepAspectRatio, get_aspect_enabled)
 #ifndef USE_GNOMEUI
 #ifdef HAVE_XVIDEO
 extern UI_CALLBACK(set_custom_aspect_ratio);
@@ -160,10 +232,6 @@ ui_menu_entry_t vic_submenu[] = {
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Render filter"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, renderer_submenu },
-#ifndef USE_GNOMEUI
-    { N_("CRT emulation settings"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, NULL },
-#endif
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Border mode"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, bordermode_submenu },
@@ -182,8 +250,13 @@ ui_menu_entry_t vic_submenu[] = {
     { N_("Set custom aspect ratio"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)set_custom_aspect_ratio,
       (ui_callback_data_t)"AspectRatio", NULL },
-#endif
+#endif /* HAVE_XVIDEO */
 #endif /* USE_GNOMEUI */
+#endif /* HAVE_HWSCALE */
+#ifdef USE_UI_THREADS
+    { N_("Alpha Blending"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_AlphaBlending, NULL, NULL,
+      KEYSYM_v, UI_HOTMOD_META },
 #endif
 #ifdef HAVE_OPENGL_SYNC
     { "--", UI_MENU_TYPE_SEPARATOR },
@@ -205,18 +278,12 @@ ui_menu_entry_t vic_submenu[] = {
 
 void uivic_menu_create(void)
 {
-#ifndef USE_GNOMEUI
-    vic_submenu[5].sub_menu = build_color_menu("VIC");
-    vic_submenu[8].sub_menu = build_crt_menu("VIC");
-#endif
+    uipalette_menu_create();
     UI_FULLSCREEN_MENU_CREATE(VIC)
 }
 
 void uivic_menu_shutdown(void)
 {
-#ifndef USE_GNOMEUI
-    shutdown_color_menu(vic_submenu[5].sub_menu);
-    shutdown_crt_menu(vic_submenu[8].sub_menu);
-#endif
+    uipalette_menu_shutdown();
     UI_FULLSCREEN_MENU_SHUTDOWN(VIC);
 }

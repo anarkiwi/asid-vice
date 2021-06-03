@@ -3,7 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Daniel Sladic <sladic@eecg.toronto.edu>
  *  Ettore Perazzoli <ettore@comm2000.it>
  *
@@ -32,7 +32,6 @@
 #include <stdio.h>
 
 #include "drive.h"
-#include "drivecpu.h"
 #include "drivesync.h"
 #include "drivetypes.h"
 #include "interrupt.h"
@@ -88,8 +87,7 @@ static void set_int(via_context_t *via_context, unsigned int int_num,
     interrupt_set_irq(drive_context->cpu->int_status, int_num, value, rclk);
 }
 
-static void restore_int(via_context_t *via_context, unsigned int int_num,
-                    int value)
+static void restore_int(via_context_t *via_context, unsigned int int_num, int value)
 {
     drive_context_t *drive_context;
 
@@ -115,17 +113,17 @@ void via1d2031_set_atn(via_context_t *via_context, int state)
     if (via1p->drive->type == DRIVE_TYPE_2031) {
         viacore_signal(via_context, VIA_SIG_CA1, state ? VIA_SIG_RISE : 0);
         parallel_drivex_set_nrfd((BYTE)(((!parieee_is_out)
-                                 && (!(via_context->oldpb & 0x02)))
-                                 || (parallel_atn
-                                 && (!(via_context->oldpb & 0x01)))
-                                 || ((!parallel_atn)
-                                 && (via_context->oldpb & 0x01))));
+                                         && (!(via_context->oldpb & 0x02)))
+                                        || (parallel_atn
+                                            && (!(via_context->oldpb & 0x01)))
+                                        || ((!parallel_atn)
+                                            && (via_context->oldpb & 0x01))));
         parallel_drivex_set_ndac((BYTE)(((!parieee_is_out)
-                                 && (!(via_context->oldpb & 0x04)))
-                                 || (parallel_atn
-                                 && (!(via_context->oldpb & 0x01)))
-                                 || ((!parallel_atn)
-                                 && (via_context->oldpb & 0x01))));
+                                         && (!(via_context->oldpb & 0x04)))
+                                        || (parallel_atn
+                                            && (!(via_context->oldpb & 0x01)))
+                                        || ((!parallel_atn)
+                                            && (via_context->oldpb & 0x01))));
     }
 }
 
@@ -156,18 +154,18 @@ static void undump_prb(via_context_t *via_context, BYTE byte)
 
     parieee_is_out = byte & 0x10;
     parallel_drivex_set_bus((BYTE)(parieee_is_out
-                            ? via_context->oldpa : 0xff));
+                                   ? via_context->oldpa : 0xff));
 
     parallel_drivex_set_eoi((BYTE)(parieee_is_out && !(byte & 0x08)));
     parallel_drivex_set_dav((BYTE)(parieee_is_out && !(byte & 0x40)));
     parallel_drivex_set_ndac((BYTE)(((!parieee_is_out)
-                             && (!(byte & 0x04)))
-                             || (parallel_atn && (!(byte & 0x01)))
-                             || ((!parallel_atn) && (byte & 0x01))));
+                                     && (!(byte & 0x04)))
+                                    || (parallel_atn && (!(byte & 0x01)))
+                                    || ((!parallel_atn) && (byte & 0x01))));
     parallel_drivex_set_nrfd((BYTE)(((!parieee_is_out)
-                             && (!(byte & 0x02)))
-                             || (parallel_atn && (!(byte & 0x01)))
-                             || ((!parallel_atn) && (byte & 0x01))));
+                                     && (!(byte & 0x02)))
+                                    || (parallel_atn && (!(byte & 0x01)))
+                                    || ((!parallel_atn) && (byte & 0x01))));
 }
 
 static void store_prb(via_context_t *via_context, BYTE byte, BYTE p_oldpb,
@@ -182,7 +180,7 @@ static void store_prb(via_context_t *via_context, BYTE byte, BYTE p_oldpb,
 
         parieee_is_out = byte & 0x10;
         parallel_drivex_set_bus((BYTE)(parieee_is_out
-                                ? via_context->oldpa : 0xff));
+                                       ? via_context->oldpa : 0xff));
 
         if (parieee_is_out) {
             parallel_drivex_set_eoi((BYTE)(tmp & 0x08));
@@ -192,11 +190,11 @@ static void store_prb(via_context_t *via_context, BYTE byte, BYTE p_oldpb,
             parallel_drivex_set_dav(0);
         }
         parallel_drivex_set_nrfd((BYTE)(((!parieee_is_out) && (tmp & 0x02))
-                                 || (parallel_atn && (tmp & 0x01))
-                                 || ((!parallel_atn) && (byte & 0x01))));
+                                        || (parallel_atn && (tmp & 0x01))
+                                        || ((!parallel_atn) && (byte & 0x01))));
         parallel_drivex_set_ndac((BYTE)(((!parieee_is_out) && (tmp & 0x04))
-                                 || (parallel_atn && (tmp & 0x01))
-                                 || ((!parallel_atn) && (byte & 0x01))));
+                                        || (parallel_atn && (tmp & 0x01))
+                                        || ((!parallel_atn) && (byte & 0x01))));
     }
 }
 
@@ -208,8 +206,9 @@ static void undump_pcr(via_context_t *via_context, BYTE byte)
     via1p = (drivevia1_context_t *)(via_context->prv);
 
     /* FIXME: Is this correct? */
-    if (via1p->number != 0)
+    if (via1p->number != 0) {
         via2d_update_pcr(byte, &drive[0]);
+    }
 #endif
 }
 
@@ -272,19 +271,24 @@ static BYTE read_prb(via_context_t *via_context)
     byte = 0xff;
     if (parieee_is_out) {
         /* talk enable */
-        if (parallel_nrfd)
-            byte &= 0xfd ;
-        if (parallel_ndac)
-            byte &= 0xfb ;
+        if (parallel_nrfd) {
+            byte &= 0xfd;
+        }
+        if (parallel_ndac) {
+            byte &= 0xfb;
+        }
     } else {
         /* listener */
-        if (parallel_eoi)
-            byte &= 0xf7 ;
-        if (parallel_dav)
-            byte &= 0xbf ;
+        if (parallel_eoi) {
+            byte &= 0xf7;
+        }
+        if (parallel_dav) {
+            byte &= 0xbf;
+        }
     }
-    if (!parallel_atn)
+    if (!parallel_atn) {
         byte &= 0x7f;
+    }
 
     byte = (byte & ~(via_context->via[VIA_DDRB]))
            | (via_context->via[VIA_PRB] & via_context->via[VIA_DDRB]);
@@ -352,4 +356,3 @@ void via1d2031_setup_context(drive_context_t *ctxptr)
     via->set_cb2 = set_cb2;
     via->reset = reset;
 }
-

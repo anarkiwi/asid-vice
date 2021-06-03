@@ -80,6 +80,7 @@ ui_menu_entry_t c64dtv_setmodel_submenu[] = {
 UI_MENU_DEFINE_RADIO(DtvRevision)
 UI_MENU_DEFINE_TOGGLE(c64dtvromrw)
 UI_MENU_DEFINE_TOGGLE(HummerADC)
+UI_MENU_DEFINE_TOGGLE(VICIINewLuminances)
 
 UI_CALLBACK(set_c64dtv_rom_name)
 {
@@ -122,6 +123,12 @@ ui_menu_entry_t c64dtv_flash_submenu[] = {
     { NULL }
 };
 
+ui_menu_entry_t c64dtv_luma_fix_submenu[] = {
+    { N_("Enable"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_VICIINewLuminances, NULL, NULL },
+    { NULL }
+};
+
 static ui_menu_entry_t hummeradc_submenu[] = {
     { N_("Enable"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_HummerADC, NULL, NULL },
@@ -129,11 +136,7 @@ static ui_menu_entry_t hummeradc_submenu[] = {
 };
 
 ui_menu_entry_t c64dtv_extension_submenu[] = {
-    { N_("Hummer ADC"), UI_MENU_TYPE_TICK,
+    { N_("Hummer ADC"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, hummeradc_submenu },
-#ifdef HAVE_MOUSE
-    { N_("PS/2 mouse on Userport"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, ps2_mouse_submenu },
-#endif
     { NULL }
 };

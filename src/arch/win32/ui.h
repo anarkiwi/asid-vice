@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -35,6 +36,8 @@
 #undef BYTE
 #undef WORD
 #undef DWORD
+
+#include <windows.h> /* hack to get LPOLESTR etc on some mingw(64) */
 #include <wtypes.h>
 
 #ifndef DUMMYUNIONNAME
@@ -47,11 +50,11 @@
 #  endif
 #endif
 
-#define APPLICATION_CLASS TEXT("VICE")
-#define APPLICATION_CLASS_MAIN TEXT("VICE:Main")
+#define APPLICATION_CLASS            TEXT("VICE")
+#define APPLICATION_CLASS_MAIN       TEXT("VICE:Main")
 #define APPLICATION_FULLSCREEN_CLASS TEXT("VICE:Fullscreen")
-#define CONSOLE_CLASS "VICE:Console"
-#define MONITOR_CLASS "VICE:Monitor"
+#define CONSOLE_CLASS                TEXT("VICE:Console")
+#define MONITOR_CLASS                TEXT("VICE:Monitor")
 
 typedef enum {
     UI_BUTTON_NONE,
@@ -68,10 +71,18 @@ typedef enum {
     UI_BUTTON_AUTOSTART
 } ui_button_t;
 
+struct ui_menu_grey_function_s {
+    /* Function */
+    int (*function)(void);
+    /* ID of the corresponding menu item. */
+    UINT item_id;
+};
+typedef struct ui_menu_grey_function_s ui_menu_grey_function_t;
+
 struct ui_menu_toggle_s {
     /* Name of resource.  */
     const char *name;
-    /* ID of the corresponding menu item.  */
+    /* ID of the corresponding menu item. */
     UINT item_id;
 };
 typedef struct ui_menu_toggle_s ui_menu_toggle_t;
@@ -79,14 +90,14 @@ typedef struct ui_menu_toggle_s ui_menu_toggle_t;
 struct ui_menu_toggle_by_machine_s {
     /* Machine class  */
     int machine_class;
-    /* ID of the corresponding menu item.  */
+    /* ID of the corresponding menu item. */
     UINT item_id;
 };
 typedef struct ui_menu_toggle_by_machine_s ui_menu_toggle_by_machine_t;
 
 struct ui_res_possible_values_s {
     int value;
-    UINT item_id; /* The last item_id has to be zero.  */
+    UINT item_id; /* The last item_id has to be zero. */
 };
 typedef struct ui_res_possible_values_s ui_res_possible_values_t;
 
@@ -110,6 +121,7 @@ extern void ui_exit(void);
 extern void ui_display_speed(float percent, float framerate, int warp_flag);
 extern void ui_display_paused(int flag);
 extern void ui_dispatch_events(void);
+extern void ui_frame_update_gui(void);
 extern void ui_error_string(const char *text);
 
 extern ui_button_t ui_ask_confirmation(const char *title, const char *text);
@@ -135,6 +147,7 @@ extern void ui_resize_canvas_window(struct video_canvas_s *canvas);
 extern FILE *ui_console_save_dialog(HWND hwnd);
 extern int ui_emulation_is_paused(void);
 extern void ui_set_alwaysontop(int alwaysontop);
+extern void ui_pause_emulation(int flag);
 
 struct ui_menu_translation_table_s {
     int idm;
@@ -145,12 +158,13 @@ typedef struct ui_menu_translation_table_s ui_menu_translation_table_t;
 struct ui_popup_translation_table_s {
     int level;
     int ids;
+    void (*dynmenu)(HMENU menu);
 };
 typedef struct ui_popup_translation_table_s ui_popup_translation_table_t;
 
 typedef struct generic_trans_table_s {
     int idm;
-    char *text;
+    TCHAR *text;
 } generic_trans_table_t;
 
 extern void ui_register_translation_tables(ui_menu_translation_table_t *menu_table, ui_popup_translation_table_t *popup_table);

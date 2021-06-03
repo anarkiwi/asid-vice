@@ -35,8 +35,15 @@
 #define VICE_MMC64_H
 
 #include "types.h"
+#include "c64cart.h"
 
-struct export_s;
+#define MMC64_REV_A  0
+#define MMC64_REV_B  1
+
+#define MMC64_TYPE_AUTO  0
+#define MMC64_TYPE_MMC   1
+#define MMC64_TYPE_SD    2
+#define MMC64_TYPE_SDHC  3
 
 /* FIXME: remove global clockport related variables */
 extern int mmc64_clockport_enabled;
@@ -44,11 +51,11 @@ extern int mmc64_hw_clockport;
 
 extern int mmc64_cart_enabled(void);
 extern int mmc64_cart_active(void);
-extern void mmc64_config_init(struct export_s *export);
+extern void mmc64_config_init(export_t *export);
 extern int mmc64_roml_read(WORD addr, BYTE *byte);
 extern void mmc64_roml_store(WORD addr, BYTE byte);
 extern int mmc64_peek_mem(WORD addr, BYTE *value);
-extern void mmc64_passthrough_changed(struct export_s *export);
+extern void mmc64_passthrough_changed(export_t *export);
 
 extern void mmc64_config_setup(BYTE *rawcart);
 

@@ -4,6 +4,7 @@
  * Written by
  *  Tibor Biczo <crown@mail.matav.hu>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -76,6 +77,7 @@
 
 #include "archdep.h"
 #include "ioutil.h"
+#include "keyboard.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
@@ -114,7 +116,58 @@
 #define S_IREAD 0x400
 #endif
 
-static char *orig_workdir;
+#ifndef LANG_ENGLISH
+#define LANG_ENGLISH 0x09
+#endif
+
+#ifndef SUBLANG_ENGLISH_US
+#define SUBLANG_ENGLISH_US 0x01
+#endif
+
+#ifndef SUBLANG_ENGLISH_UK
+#define SUBLANG_ENGLISH_UK 0x02
+#endif
+
+#ifndef LANG_GERMAN
+#define LANG_GERMAN 0x07
+#endif
+
+#ifndef SUBLANG_GERMAN
+#define SUBLANG_GERMAN 0x01
+#endif
+
+#ifndef LANG_DANISH
+#define LANG_DANISH 0x06
+#endif
+
+#ifndef SUBLANG_DANISH_DENMARK
+#define SUBLANG_DANISH_DENMARK 0x01
+#endif
+
+#ifndef LANG_NORWEGIAN
+#define LANG_NORWEGIAN  0x14
+#endif
+
+#ifndef SUBLANG_NORWEGIAN_BOKMAL
+#define SUBLANG_NORWEGIAN_BOKMAL 0x01
+#endif
+
+#ifndef LANG_FINNISH
+#define LANG_FINNISH 0x0b
+#endif
+
+#ifndef SUBLANG_FINNISH_FINLAND
+#define SUBLANG_FINNISH_FINLAND 0x01
+#endif
+
+#ifndef LANG_ITALIAN
+#define LANG_ITALIAN 0x10
+#endif
+
+#ifndef SUBLANG_ITALIAN
+#define SUBLANG_ITALIAN 0x01
+#endif
+
 static char *argv0;
 
 static size_t system_wcstombs(char *mbs, const char *wcs, size_t len)
@@ -191,8 +244,6 @@ static int archdep_init_extra(int *argc, char **argv)
 
     argv0 = lib_stralloc(argv[0]);
 
-    orig_workdir = getcwd(NULL, MAX_PATH);
-
     return 0;
 }
 
@@ -231,13 +282,13 @@ const char *archdep_boot_path(void)
 
     GetModuleFileName(NULL, boot_path, MAX_PATH);
 
-    checkpath=boot_path+strlen(boot_path);
+    checkpath = boot_path + strlen(boot_path);
 
     while (*checkpath != '\\') {
         checkpath--;
     }
     *checkpath = 0;
-    
+
     return boot_path;
 }
 
@@ -278,8 +329,12 @@ char *archdep_default_resource_file_name(void)
 
 char *archdep_default_fliplist_file_name(void)
 {
-    return util_concat(archdep_boot_path(), "\\fliplist-", 
-                       machine_get_name(), ".vfl", NULL);
+    return util_concat(archdep_boot_path(), "\\fliplist-", machine_get_name(), ".vfl", NULL);
+}
+
+char *archdep_default_rtc_file_name(void)
+{
+    return util_concat(archdep_boot_path(), "\\sdl-vice.rtc", NULL);
 }
 
 char *archdep_default_autostart_disk_image_file_name(void)
@@ -300,8 +355,16 @@ char *archdep_default_joymap_file_name(void)
     return util_concat(archdep_boot_path(), "\\sdl-joymap-", machine_get_name(), ".vjm", NULL);
 }
 
+/* windows programs will start with the console detached when SUBSYSTEM:WINDOWS
+   is used (which is the default). SUBSYSTEM:CONSOLE will provide a console
+   output and thus stdout. yes its ugly. */
 FILE *archdep_open_default_log_file(void)
 {
+/* older versions of MSVC used to define _CONSOLE - define manually if you need
+   it */
+#ifdef _CONSOLE
+    return stdout;
+#else
     char *fname;
     FILE *f;
 
@@ -310,16 +373,7 @@ FILE *archdep_open_default_log_file(void)
     lib_free(fname);
 
     return f;
-}
-
-int archdep_num_text_lines(void)
-{
-    return 25;
-}
-
-int archdep_num_text_columns(void)
-{
-    return 80;
+#endif
 }
 
 int archdep_default_logger(const char *level_string, const char *txt)
@@ -430,7 +484,7 @@ cleanup:
 #endif
 }
 
-/* return malloc´d version of full pathname of orig_name */
+/* return malloc'd version of full pathname of orig_name */
 int archdep_expand_path(char **return_path, const char *orig_name)
 {
     /*  Win32 version   */
@@ -559,6 +613,7 @@ int archdep_file_is_chardev(const char *name)
     return 0;
 }
 
+#ifdef SDL_CHOOSE_DRIVES
 char **archdep_list_drives(void)
 {
     DWORD bits, mask;
@@ -585,7 +640,7 @@ char **archdep_list_drives(void)
         mask <<= 1;
         ++i;
     }
-    result[i] = NULL;
+    *p = NULL;
 
     return result;
 }
@@ -601,18 +656,26 @@ char *archdep_get_current_drive(void)
 
 void archdep_set_current_drive(const char *drive)
 {
-    _chdir(drive);
+    if (_chdir(drive)) {
+        ui_error("Failed to change drive to %s", drive);
+    }
 }
+#endif
 
 int archdep_require_vkbd(void)
 {
     return 0;
 }
 
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    unlink(newpath);
+    return rename(oldpath, newpath);
+}
+
 static void archdep_shutdown_extra(void)
 {
     lib_free(argv0);
-    lib_free(orig_workdir);
 }
 
 void archdep_workaround_nop(const char *otto)
@@ -701,3 +764,69 @@ char *archdep_get_runtime_cpu(void)
 #endif
 }
 
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages, constants are defined in winnt.h
+
+   https://msdn.microsoft.com/en-us/library/windows/desktop/dd318693%28v=vs.85%29.aspx
+*/
+int kbd_arch_get_host_mapping(void)
+{
+    int n;
+    int maps[KBD_MAPPING_NUM] = {
+        KBD_MAPPING_US, KBD_MAPPING_UK, KBD_MAPPING_DE, KBD_MAPPING_DA,
+        KBD_MAPPING_NO, KBD_MAPPING_FI, KBD_MAPPING_IT };
+    int langids[KBD_MAPPING_NUM] = {
+        MAKELANGID(LANG_ENGLISH,   SUBLANG_ENGLISH_US),
+        MAKELANGID(LANG_ENGLISH,   SUBLANG_ENGLISH_UK),
+        MAKELANGID(LANG_GERMAN,    SUBLANG_GERMAN),
+        MAKELANGID(LANG_DANISH,    SUBLANG_DANISH_DENMARK),
+        MAKELANGID(LANG_NORWEGIAN, SUBLANG_NORWEGIAN_BOKMAL),
+        MAKELANGID(LANG_FINNISH,   SUBLANG_FINNISH_FINLAND),
+        MAKELANGID(LANG_ITALIAN,   SUBLANG_ITALIAN)
+    };
+    int lang = (int)GetKeyboardLayout(0);
+
+    /* try full match first */
+    lang &= 0xffff; /* lower 16 bit contain the language id */
+    for (n = 0; n < KBD_MAPPING_NUM; n++) {
+        if (lang == langids[n]) {
+            return maps[n];
+        }
+    }
+    /* try only primary language */
+    lang &= 0x3ff; /* lower 10 bit contain the primary language id */
+    for (n = 0; n < KBD_MAPPING_NUM; n++) {
+        if (lang == (langids[n] & 0x3ff)) {
+            return maps[n];
+        }
+    }
+    return KBD_MAPPING_US;
+}
+
+#ifdef IDE_COMPILE
+/* Provide a usleep replacement */
+void usleep(__int64 waitTime)
+{ 
+    __int64 time1 = 0, time2 = 0, freq = 0;
+
+    QueryPerformanceCounter((LARGE_INTEGER *) &time1);
+    QueryPerformanceFrequency((LARGE_INTEGER *)&freq);
+
+    do {
+        QueryPerformanceCounter((LARGE_INTEGER *) &time2);
+    } while((time2-time1) < waitTime);
+}
+#endif
+
+#ifdef USE_SDLUI2
+char *archdep_sdl2_default_renderers[] = {
+    "direct3d11",
+    "direct3d",
+    "opengles",
+    "opengl",
+    NULL
+};
+#endif

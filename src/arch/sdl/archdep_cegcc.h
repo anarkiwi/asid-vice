@@ -76,7 +76,7 @@
 #define ARCHDEP_ETHERNET_DEFAULT_DEVICE ""
 
 /* Default sound fragment size */
-#define ARCHDEP_SOUND_FRAGMENT_SIZE 1
+#define ARCHDEP_SOUND_FRAGMENT_SIZE SOUND_FRAGMENT_MEDIUM
 
 /*
     FIXME: confirm wether SIGPIPE must be handled or not. if the emulator quits
@@ -88,5 +88,11 @@
 #define archdep_signals_init(x)
 #define archdep_signals_pipe_set()
 #define archdep_signals_pipe_unset()
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR WSAGetLastError()
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
 
 #endif

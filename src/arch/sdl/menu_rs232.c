@@ -26,7 +26,7 @@
 
 #include "vice.h"
 
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 
 #include <stdio.h>
 
@@ -268,10 +268,6 @@ const ui_menu_entry_t rs232_nouser_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_radio_callback,
       (ui_callback_data_t)acia1dev_menu },
-    { "ACIA interrupt",
-      MENU_ENTRY_SUBMENU,
-      submenu_radio_callback,
-      (ui_callback_data_t)acia1irq_menu },
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("Host settings"),
     { "Device 1",
@@ -461,5 +457,4 @@ const ui_menu_entry_t rs232_vic20_menu[] = {
     VICE_SDL_RS232_ARCHDEP_ITEMS
     SDL_MENU_LIST_END
 };
-
-#endif /* HAVE_RS232 */
+#endif

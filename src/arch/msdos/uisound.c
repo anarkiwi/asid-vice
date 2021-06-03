@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -94,12 +95,16 @@ static TUI_MENU_CALLBACK(sound_fragment_size_submenu_callback)
     resources_get_int("SoundFragmentSize", &value);
 
     switch (value) {
+        case SOUND_FRAGMENT_VERY_SMALL:
+            return "Very small";
         case SOUND_FRAGMENT_SMALL:
             return "Small";
         case SOUND_FRAGMENT_MEDIUM:
             return "Medium";
         case SOUND_FRAGMENT_LARGE:
             return "Large";
+        case SOUND_FRAGMENT_VERY_LARGE:
+            return "Very large";
         default:
             return "Unknown";
     }
@@ -174,6 +179,10 @@ static tui_menu_item_def_t sound_synchronization_submenu[] = {
 };
 
 static tui_menu_item_def_t sound_fragment_size_submenu[] = {
+    { "_Very small",
+      "Use a very small fragment size",
+      radio_SoundFragmentSize_callback, (void *)SOUND_FRAGMENT_VERY_SMALL, 0,
+      TUI_MENU_BEH_CLOSE, NULL, NULL },
     { "_Small",
       "Use a small fragment size",
       radio_SoundFragmentSize_callback, (void *)SOUND_FRAGMENT_SMALL, 0,
@@ -186,13 +195,71 @@ static tui_menu_item_def_t sound_fragment_size_submenu[] = {
       "Use a large fragment size",
       radio_SoundFragmentSize_callback, (void *)SOUND_FRAGMENT_LARGE, 0,
       TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "V_ery large",
+      "Use a very large fragment size",
+      radio_SoundFragmentSize_callback, (void *)SOUND_FRAGMENT_VERY_LARGE, 0,
+      TUI_MENU_BEH_CLOSE, NULL, NULL },
     { NULL }
 };
+
+static TUI_MENU_CALLBACK(ui_sound_set_volume_callback)
+{
+    if (been_activated) {
+        int current_volume, value;
+        char buf[10];
+
+        resources_get_int("SoundVolume", &current_volume);
+        sprintf(buf, "%d", current_volume);
+
+        if (tui_input_string("Volume", "Enter volume to use (0-100):", buf, 10) == 0) {
+            value = atoi(buf);
+            if (value > 100) {
+                value = 100;
+            } else if (value < 0) {
+                value = 0;
+            }
+            resources_set_int("SoundVolume", value);
+            tui_message("Volume set to : %d", value);
+        } else {
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
+static TUI_MENU_CALLBACK(ui_sound_set_drive_volume_callback)
+{
+    if (been_activated) {
+        int current_volume, value;
+        char buf[10];
+
+        resources_get_int("DriveSoundEmulationVolume", &current_volume);
+        sprintf(buf, "%d", current_volume);
+
+        if (tui_input_string("DriveSoundEmulationVolume", "Enter drive sound volume to use (0-4000):", buf, 10) == 0) {
+            value = atoi(buf);
+            if (value > 4000) {
+                value = 4000;
+            } else if (value < 0) {
+                value = 0;
+            }
+            resources_set_int("DriveSoundEmulationVolume", value);
+            tui_message("Drive sound volume set to : %d", value);
+        } else {
+            return NULL;
+        }
+    }
+    return NULL;
+}
 
 static tui_menu_item_def_t sound_submenu[] = {
     { "Sound _Playback:",
       "Enable sound output",
       toggle_Sound_callback, NULL, 3,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Sound _Volume",
+      "Set the volume to use",
+      ui_sound_set_volume_callback, NULL, 30,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { "_Sample Frequency:",
       "Choose sound output sampling rate",
@@ -215,9 +282,12 @@ static tui_menu_item_def_t sound_submenu[] = {
       "Enable drive sound emulation",
       toggle_DriveSoundEmulation_callback, NULL, 3,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Drive sound volume",
+      "Set the volume to use",
+      ui_sound_set_drive_volume_callback, NULL, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { NULL }
 };
-
 
 void uisound_init(struct tui_menu *parent_submenu)
 {

@@ -6,7 +6,7 @@
  *
  * Based on old code by
  *  Andreas Boose <viceteam@t-online.de>
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Daniel Sladic <sladic@eecg.toronto.edu>
  *  Ettore Perazzoli <ettore@comm2000.it>
  *
@@ -36,10 +36,8 @@
 
 #include "debug.h"
 #include "drive.h"
-#include "drivecpu.h"
 #include "drivesync.h"
 #include "drivetypes.h"
-#include "glue1571.h"
 #include "iecbus.h"
 #include "iecdrive.h"
 #include "interrupt.h"
@@ -74,6 +72,12 @@ BYTE via4000_read(drive_context_t *ctxptr, WORD addr)
 BYTE via4000_peek(drive_context_t *ctxptr, WORD addr)
 {
     return viacore_peek(ctxptr->via4000, addr);
+}
+
+int via4000_dump(drive_context_t *ctxptr, WORD addr)
+{
+    viacore_dump(ctxptr->via4000);
+    return 0;
 }
 
 static void set_ca2(via_context_t *via_context, int state)
@@ -113,17 +117,17 @@ static void undump_pra(via_context_t *via_context, BYTE byte)
 
         *drive_data = ~byte;
         *drive_bus = ((((*drive_data) << 3) & 0x40)
-            | (((*drive_data) << 6)
-            & (((*drive_data) | iecbus->cpu_bus) << 3) & 0x80));
+                      | (((*drive_data) << 6)
+                         & (((*drive_data) | iecbus->cpu_bus) << 3) & 0x80));
 
         iecbus->cpu_port = iecbus->cpu_bus;
-        for (unit = 4; unit < 8+DRIVE_NUM; unit++)
+        for (unit = 4; unit < 8 + DRIVE_NUM; unit++) {
             iecbus->cpu_port &= iecbus->drv_bus[unit];
+        }
 
         iecbus->drv_port = (((iecbus->cpu_port >> 4) & 0x4)
-                           | (iecbus->cpu_port >> 7)
-                           | ((iecbus->cpu_bus << 3) & 0x80));
-
+                            | (iecbus->cpu_port >> 7)
+                            | ((iecbus->cpu_bus << 3) & 0x80));
     } else {
         iec_drive_write((BYTE)(~byte), viap->number);
     }
@@ -148,19 +152,19 @@ static void store_pra(via_context_t *via_context, BYTE byte, BYTE oldpa,
 
             *drive_data = ~byte;
             *drive_bus = ((((*drive_data) << 3) & 0x40)
-                | (((*drive_data) << 6)
-                & (((*drive_data) | iecbus->cpu_bus) << 3) & 0x80));
+                          | (((*drive_data) << 6)
+                             & (((*drive_data) | iecbus->cpu_bus) << 3) & 0x80));
 
             iecbus->cpu_port = iecbus->cpu_bus;
-            for (unit = 4; unit < 8+DRIVE_NUM; unit++)
+            for (unit = 4; unit < 8 + DRIVE_NUM; unit++) {
                 iecbus->cpu_port &= iecbus->drv_bus[unit];
+            }
 
             iecbus->drv_port = (((iecbus->cpu_port >> 4) & 0x4)
-                               | (iecbus->cpu_port >> 7)
-                               | ((iecbus->cpu_bus << 3) & 0x80));
+                                | (iecbus->cpu_port >> 7)
+                                | ((iecbus->cpu_bus << 3) & 0x80));
 
             DEBUG_IEC_BUS_WRITE(iecbus->drv_port);
-
         } else {
             iec_drive_write((BYTE)(~byte), viap->number);
             DEBUG_IEC_BUS_WRITE(~byte);
@@ -214,7 +218,7 @@ static void store_sr(via_context_t *via_context, BYTE byte)
 
     viap = (drivevia_context_t *)(via_context->prv);
 
-    iec_fast_drive_write(~byte, viap->number);
+    iec_fast_drive_write((BYTE)(~byte), viap->number);
 }
 
 static void store_t2l(via_context_t *via_context, BYTE byte)
@@ -234,10 +238,10 @@ static BYTE read_pra(via_context_t *via_context, WORD addr)
 
     if (iecbus != NULL) {
         byte = (((via_context->via[VIA_PRA] & 0x1a)
-               | iecbus->drv_port) ^ 0x85);
+                 | iecbus->drv_port) ^ 0x85);
     } else {
         byte = (((via_context->via[VIA_PRA] & 0x1a)
-               | iec_drive_read(viap->number)) ^ 0x85);
+                 | iec_drive_read(viap->number)) ^ 0x85);
     }
 
     DEBUG_IEC_DRV_READ(byte);
@@ -316,4 +320,3 @@ void via4000_setup_context(drive_context_t *ctxptr)
     via->set_cb2 = set_cb2;
     via->reset = reset;
 }
-

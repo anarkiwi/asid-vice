@@ -19,6 +19,11 @@
 
 #define RESID_SID_CC
 
+#ifdef _M_ARM
+#undef _ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE
+#define _ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE 1
+#endif
+
 #include "sid.h"
 #include <math.h>
 
@@ -37,6 +42,11 @@ SID::SID()
   // Initialize pointers.
   sample = 0;
   fir = 0;
+  fir_N = 0;
+  fir_RES = 0;
+  fir_beta = 0;
+  fir_f_cycles_per_sample = 0;
+  fir_filter_scale = 0;
 
   sid_model = MOS6581;
   voice[0].set_sync_source(&voice[2]);
@@ -48,6 +58,8 @@ SID::SID()
   bus_value = 0;
   bus_value_ttl = 0;
   write_pipeline = 0;
+
+  databus_ttl = 0;
 }
 
 
@@ -67,6 +79,18 @@ SID::~SID()
 void SID::set_chip_model(chip_model model)
 {
   sid_model = model;
+
+  /*
+    results from real C64 (testprogs/SID/bitfade/delayfrq0.prg):
+
+    (new SID) (250469/8580R5) (250469/8580R5)
+    delayfrq0    ~7a000        ~108000
+
+    (old SID) (250407/6581)
+    delayfrq0    ~01d00
+
+   */
+  databus_ttl = sid_model == MOS8580 ? 0xa2000 : 0x1d00;
 
   for (int i = 0; i < 3; i++) {
     voice[i].set_chip_model(model);
@@ -125,16 +149,23 @@ reg8 SID::read(reg8 offset)
 {
   switch (offset) {
   case 0x19:
-    return potx.readPOT();
+    bus_value = potx.readPOT();
+    bus_value_ttl = databus_ttl;
+    break;
   case 0x1a:
-    return poty.readPOT();
+    bus_value = poty.readPOT();
+    bus_value_ttl = databus_ttl;
+    break;
   case 0x1b:
-    return voice[2].wave.readOSC();
+    bus_value = voice[2].wave.readOSC();
+    bus_value_ttl = databus_ttl;
+    break;
   case 0x1c:
-    return voice[2].envelope.readENV();
-  default:
-    return bus_value;
+    bus_value = voice[2].envelope.readENV();
+    bus_value_ttl = databus_ttl;
+    break;
   }
+  return bus_value;
 }
 
 
@@ -147,14 +178,15 @@ void SID::write(reg8 offset, reg8 value)
 {
   write_address = offset;
   bus_value = value;
-  bus_value_ttl = 0x4000;
+  bus_value_ttl = databus_ttl;
 
-  if (sid_model == MOS8580) {
-    // One cycle pipeline delay on the MOS8580; delay write.
+  if (unlikely(sampling == SAMPLE_FAST) && (sid_model == MOS8580)) {
+    // Fake one cycle pipeline delay on the MOS8580
+    // when using non cycle accurate emulation.
+    // This will make the SID detection method work.
     write_pipeline = 1;
   }
   else {
-    // No pipeline delay on the MOS6581; write immediately.
     write();
   }
 }
@@ -529,6 +561,16 @@ bool SID::set_sampling_parameters(double clock_freq, sampling_method method,
     return true;
   }
 
+  // Allocate sample buffer.
+  if (!sample) {
+    sample = new short[RINGSIZE*2];
+  }
+  // Clear sample buffer.
+  for (int j = 0; j < RINGSIZE*2; j++) {
+    sample[j] = 0;
+  }
+  sample_index = 0;
+
   const double pi = 3.1415926535897932385;
 
   // 16 bits -> -96dB stopband attenuation.
@@ -556,15 +598,27 @@ bool SID::set_sampling_parameters(double clock_freq, sampling_method method,
 
   // The filter length is equal to the filter order + 1.
   // The filter length must be an odd number (sinc is symmetric about x = 0).
-  fir_N = int(N*f_cycles_per_sample) + 1;
-  fir_N |= 1;
+  int fir_N_new = int(N*f_cycles_per_sample) + 1;
+  fir_N_new |= 1;
 
   // We clamp the filter table resolution to 2^n, making the fixed point
   // sample_offset a whole multiple of the filter table resolution.
   int res = method == SAMPLE_RESAMPLE ?
     FIR_RES : FIR_RES_FASTMEM;
   int n = (int)ceil(log(res/f_cycles_per_sample)/log(2.0f));
-  fir_RES = 1 << n;
+  int fir_RES_new = 1 << n;
+
+  /* Determine if we need to recalculate table, or whether we can reuse earlier cached copy.
+   * This pays off on slow hardware such as current Android devices.
+   */
+  if (fir && fir_RES_new == fir_RES && fir_N_new == fir_N && beta == fir_beta && f_cycles_per_sample == fir_f_cycles_per_sample && fir_filter_scale == filter_scale) {
+      return true;
+  }
+  fir_RES = fir_RES_new;
+  fir_N = fir_N_new;
+  fir_beta = beta;
+  fir_f_cycles_per_sample = f_cycles_per_sample;
+  fir_filter_scale = filter_scale;
 
   // Allocate memory for FIR tables.
   delete[] fir;
@@ -589,16 +643,6 @@ bool SID::set_sampling_parameters(double clock_freq, sampling_method method,
       fir[fir_offset + j] = (short)round(val);
     }
   }
-
-  // Allocate sample buffer.
-  if (!sample) {
-    sample = new short[RINGSIZE*2];
-  }
-  // Clear sample buffer.
-  for (int j = 0; j < RINGSIZE*2; j++) {
-    sample[j] = 0;
-  }
-  sample_index = 0;
 
   return true;
 }

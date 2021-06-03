@@ -34,7 +34,7 @@
 #include "c64cia.h"
 #include "cia.h"
 #include "interrupt.h"
-#include "drivecpu.h"
+#include "drive.h"
 #include "joystick.h"
 #include "keyboard.h"
 #include "lib.h"
@@ -110,7 +110,7 @@ static void do_reset_cia(cia_context_t *cia_context)
 static void cia1_internal_lightpen_check(BYTE pa, BYTE pb)
 {
     BYTE val = 0xff;
-    BYTE msk = pa & ~joystick_value[2];
+    BYTE msk = pa;
     BYTE m;
     int i;
 
@@ -120,7 +120,7 @@ static void cia1_internal_lightpen_check(BYTE pa, BYTE pb)
         }
     }
 
-    m = val & pb & ~joystick_value[1];
+    m = val & pb;
 
     vicii_set_light_pen(maincpu_clk, !(m & 0x10));
 }
@@ -132,7 +132,7 @@ void cia1_check_lightpen(void)
 
 static void store_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE b)
 {
-    cia1_internal_lightpen_check(b,  machine_context.cia1->old_pb);
+    cia1_internal_lightpen_check(b, machine_context.cia1->old_pb);
 }
 
 static void undump_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE b)
@@ -152,7 +152,7 @@ static BYTE read_ciapa(cia_context_t *cia_context)
 {
     BYTE byte;
     BYTE val = 0xff;
-    BYTE msk = cia_context->old_pb & ~joystick_value[1];
+    BYTE msk = cia_context->old_pb;
     BYTE m;
     int i;
 
@@ -162,7 +162,7 @@ static BYTE read_ciapa(cia_context_t *cia_context)
         }
     }
 
-    byte = (val & (cia_context->c_cia[CIA_PRA] | ~(cia_context->c_cia[CIA_DDRA]))) & ~joystick_value[2];
+    byte = (val & (cia_context->c_cia[CIA_PRA] | ~(cia_context->c_cia[CIA_DDRA])));
 
     return byte;
 }
@@ -171,7 +171,7 @@ static BYTE read_ciapb(cia_context_t *cia_context)
 {
     BYTE byte;
     BYTE val = 0xff;
-    BYTE msk = cia_context->old_pa & ~joystick_value[2];
+    BYTE msk = cia_context->old_pa;
     BYTE m;
     int i;
 
@@ -181,7 +181,7 @@ static BYTE read_ciapb(cia_context_t *cia_context)
         }
     }
 
-    byte = (val & (cia_context->c_cia[CIA_PRB] | ~(cia_context->c_cia[CIA_DDRB]))) & ~joystick_value[1];
+    byte = (val & (cia_context->c_cia[CIA_PRB] | ~(cia_context->c_cia[CIA_DDRB])));
 
     /*
         handle the special case when both port a and port b are programmed as output,
@@ -227,7 +227,7 @@ void cia1_setup_context(machine_context_t *machine_context)
 {
     cia_context_t *cia;
 
-    machine_context->cia1 = lib_calloc(1,sizeof(cia_context_t));
+    machine_context->cia1 = lib_calloc(1, sizeof(cia_context_t));
     cia = machine_context->cia1;
 
     cia->prv = NULL;
@@ -236,7 +236,7 @@ void cia1_setup_context(machine_context_t *machine_context)
     cia->rmw_flag = &maincpu_rmw_flag;
     cia->clk_ptr = &maincpu_clk;
 
-    cia->todticks = C64_PAL_CYCLES_PER_RFSH;
+    cia1_set_timing(cia, C64_PAL_CYCLES_PER_SEC, 50);
 
     ciacore_setup_context(cia);
 
@@ -264,7 +264,11 @@ void cia1_setup_context(machine_context_t *machine_context)
     cia->pre_peek = pre_peek;
 }
 
-void cia1_set_timing(cia_context_t *cia_context, int todticks)
+void cia1_set_timing(cia_context_t *cia_context, int tickspersec, int powerfreq)
 {
-    cia_context->todticks = todticks;
+    cia_context->power_freq = powerfreq;
+    cia_context->ticks_per_sec = tickspersec;
+    cia_context->todticks = tickspersec / powerfreq;
+    cia_context->power_tickcounter = 0;
+    cia_context->power_ticks = 0;
 }

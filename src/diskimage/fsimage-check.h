@@ -1,5 +1,6 @@
-/*
- * fsimage-check.h
+/** \file   src/diskimage/fsimage-check.h
+ *
+ * \brief   Validation functions for disk images - header
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
@@ -33,4 +34,3 @@ extern int fsimage_check_sector(const struct disk_image_s *image, unsigned int t
                                 unsigned int sector);
 
 #endif
-

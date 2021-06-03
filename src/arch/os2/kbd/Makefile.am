@@ -1,6 +1,6 @@
 # Makefile.am for the OS2 version of `libarch.a'.
 
-INCLUDES = 
+AM_CPPFLAGS = 
 
 noinst_LIBRARIES = libkbd.a
 
@@ -13,6 +13,7 @@ libkbd_a_SOURCES = \
 	kbd-c64sc.c \
 	kbd-pet.c \
 	kbd-plus4.c \
+	kbd-scpu64.c \
 	kbd-vic20.c \
 	kbd-vsid.c \
 	kmap-pet.c \

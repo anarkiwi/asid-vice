@@ -4,6 +4,7 @@
  * Written by
  *  Tibor Biczo <crown@mail.matav.hu>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -24,6 +25,9 @@
  *  02111-1307  USA.
  *
  */
+
+/* undefine to use printf instead of OutputDebugString */
+/* #define DEBUGTOCONSOLE */
 
 #include "vice.h"
 
@@ -88,8 +92,15 @@
 #define STDERR_FILENO 2
 
 #if defined(__WATCOMC__) || defined(WATCOM_COMPILE)
+#ifndef _P_WAIT
 #define _P_WAIT P_WAIT
+#endif
 #define _spawnvp spawnvp
+#endif
+
+#ifdef DEBUGTOCONSOLE
+#undef OutputDebugString
+#define OutputDebugString printf
 #endif
 
 static char *orig_workdir;
@@ -120,6 +131,8 @@ int archdep_init(int *argc, char **argv)
     argv0 = lib_stralloc(argv[0]);
 
     orig_workdir = getcwd(NULL, MAX_PATH);
+
+    log_verbose_init(*argc, argv);
 
     return 0;
 }
@@ -186,29 +199,29 @@ typedef DWORD (WINAPI *_GetModuleFileNameEx) (
     DWORD nSize         // maximum characters to retrieve
 );
 
-static BOOL verify_exe(char *file_name)
+static BOOL verify_exe(TCHAR *file_name)
 {
-    DWORD version_info_size;
+    DWORD ver_info_size;
     BOOL bResult = FALSE;
-    char *company_name = NULL;
-    int company_name_length = 0;
+    TCHAR *company_name = NULL;
+    UINT company_name_len = 0;
 
-    version_info_size = GetFileVersionInfoSize(file_name, NULL);
+    ver_info_size = GetFileVersionInfoSize(file_name, NULL);
 
-    if (version_info_size) {
-        BYTE *version_info_buffer = lib_malloc(version_info_size);
+    if (ver_info_size) {
+        BYTE *ver_info_buf = lib_malloc(ver_info_size);
 
-        if (GetFileVersionInfo(file_name, 0, version_info_size, (VOID*)version_info_buffer)) {
-            if (VerQueryValue(version_info_buffer, "\\StringFileInfo\\04090000\\CompanyName", (void*)&company_name, &company_name_length)) {
+        if (GetFileVersionInfo(file_name, 0, ver_info_size, (VOID *)ver_info_buf)) {
+            if (VerQueryValue(ver_info_buf, TEXT("\\StringFileInfo\\04090000\\CompanyName"), (VOID **)&company_name, &company_name_len)) {
                 if (company_name) {
-                    if (strncmp("Vice Team", company_name, company_name_length) == 0) {
+                    if (_tcsncmp(TEXT("Vice Team"), company_name, company_name_len) == 0) {
                         bResult = TRUE;
                     }
                 }
             }
         }
 
-        lib_free(version_info_buffer);
+        lib_free(ver_info_buf);
     }
 
     return bResult;
@@ -230,12 +243,14 @@ const char *archdep_boot_path(void)
 
     possible_trojan_path = NULL;
     if (boot_path == NULL) {
+        TCHAR st_temp[MAX_PATH];
+
         hkernel = LoadLibrary(TEXT("kernel32.dll"));
         if (hkernel) {
             OutputDebugString(TEXT("DLL: kernel32.dll loaded\n"));
 
             OutputDebugString(TEXT("DLL: getting address for CreateToolhelp32Snapshot"));
-            func_CreateToolhelp32Snapshot = (_CreateToolhelp32Snapshot)GetProcAddress(hkernel, TEXT("CreateToolhelp32Snapshot"));
+            func_CreateToolhelp32Snapshot = (_CreateToolhelp32Snapshot)GetProcAddress(hkernel, "CreateToolhelp32Snapshot");
             if (func_CreateToolhelp32Snapshot) {
                 OutputDebugString(TEXT("CreateToolhelp32Snaphshot success\n"));
             }
@@ -244,7 +259,7 @@ const char *archdep_boot_path(void)
             }
 
             OutputDebugString(TEXT("DLL: getting address for Module32First"));
-            func_Module32First = (_Module32First)GetProcAddress(hkernel, TEXT("Module32First"));
+            func_Module32First = (_Module32First)GetProcAddress(hkernel, "Module32First");
             if (func_Module32First) {
                 OutputDebugString(TEXT("Module32First success\n"));
             }
@@ -253,7 +268,7 @@ const char *archdep_boot_path(void)
             }
 
             OutputDebugString(TEXT("DLL: getting address for Module32Next"));
-            func_Module32Next = (_Module32Next)GetProcAddress(hkernel, TEXT("Module32Next"));
+            func_Module32Next = (_Module32Next)GetProcAddress(hkernel, "Module32Next");
             if (func_Module32Next) {
                 OutputDebugString(TEXT("Module32Next success\n"));
             }
@@ -267,7 +282,7 @@ const char *archdep_boot_path(void)
             OutputDebugString(TEXT("DLL: psapi.dll loaded"));
 
             OutputDebugString(TEXT("DLL: getting address for EnumProcessModules"));
-            func_EnumProcessModules = (_EnumProcessModules)GetProcAddress(hpsapi, TEXT("EnumProcessModules"));
+            func_EnumProcessModules = (_EnumProcessModules)GetProcAddress(hpsapi, "EnumProcessModules");
             if (func_EnumProcessModules) {
                 OutputDebugString(TEXT("EnumProcessModules success\n"));
             }
@@ -276,7 +291,11 @@ const char *archdep_boot_path(void)
             }
 
             OutputDebugString(TEXT("DLL: getting address for GetModuleFileNameEx"));
-            func_GetModuleFileNameEx = (_GetModuleFileNameEx)GetProcAddress(hpsapi, TEXT("GetModuleFileNameExA"));
+#ifdef UNICODE
+            func_GetModuleFileNameEx = (_GetModuleFileNameEx)GetProcAddress(hpsapi, "GetModuleFileNameExW");
+#else
+            func_GetModuleFileNameEx = (_GetModuleFileNameEx)GetProcAddress(hpsapi, "GetModuleFileNameExA");
+#endif
             if (func_GetModuleFileNameEx) {
                 OutputDebugString(TEXT("GetModuleFileNameEx success\n"));
             }
@@ -295,12 +314,11 @@ const char *archdep_boot_path(void)
                 int n_modules = cbneed / sizeof(HMODULE);
                 if (func_EnumProcessModules(hproc, modules, cbneed, (LPDWORD)&cbneed)) {
                     for (i = 0; i < n_modules; i++) {
-                        TCHAR st_temp[MAX_PATH];
                         char temp[MAX_PATH];
                         if (func_GetModuleFileNameEx(hproc, modules[i], st_temp, MAX_PATH)) {
                             system_wcstombs(temp, st_temp, MAX_PATH);
                             OutputDebugString(st_temp);
-                            if (verify_exe(temp)) {
+                            if (verify_exe(st_temp)) {
                                 util_fname_split(temp, &boot_path, NULL);
                                 break;
                             } else if (i == 0) {
@@ -313,32 +331,34 @@ const char *archdep_boot_path(void)
             }
             CloseHandle(hproc);
         } else if (func_CreateToolhelp32Snapshot && func_Module32First && func_Module32Next) {
+            char temp[MAX_PATH];
             OutputDebugString(TEXT("BOOT path Win9x method\n"));
             snap = func_CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetCurrentProcessId());
             memset(&ment, 0, sizeof(MODULEENTRY32));
             ment.dwSize = sizeof(MODULEENTRY32);
             func_Module32First(snap, &ment);
             OutputDebugString(ment.szExePath);
+            system_wcstombs(temp, ment.szExePath, MAX_PATH);
             if (verify_exe(ment.szExePath)) {
-                util_fname_split(ment.szExePath, &boot_path, NULL);
+                util_fname_split(temp, &boot_path, NULL);
             } else {
-                possible_trojan_path = lib_stralloc(ment.szExePath);
+                possible_trojan_path = lib_stralloc(temp);
                 while (func_Module32Next(snap, &ment)) {
                     OutputDebugString(ment.szExePath);
                     if (verify_exe(ment.szExePath)) {
-                        util_fname_split(ment.szExePath, &boot_path, NULL);
+                        system_wcstombs(temp, ment.szExePath, MAX_PATH);
+                        util_fname_split(temp, &boot_path, NULL);
                         break;
                     }
                 }
             }
             CloseHandle(snap);
         } else {
-            TCHAR st_temp[MAX_PATH];
             char temp[MAX_PATH];
             OutputDebugString(TEXT("BOOT path NT4 without PSAPI\n"));
             if (GetModuleFileName(NULL, st_temp, MAX_PATH)) {
                 system_wcstombs(temp, st_temp, MAX_PATH);
-                if (!verify_exe(temp)) {
+                if (!verify_exe(st_temp)) {
                     possible_trojan_path = lib_stralloc(temp);
                 }
                 util_fname_split(temp, &boot_path, NULL);
@@ -347,7 +367,8 @@ const char *archdep_boot_path(void)
             }
         }
         OutputDebugString(TEXT("boot path:"));
-        OutputDebugString(boot_path);
+        system_mbstowcs(st_temp, boot_path, MAX_PATH);
+        OutputDebugString(st_temp);
         OutputDebugString(TEXT("\n"));
 
         /* This should not happen, but you never know...  */
@@ -405,6 +426,11 @@ char *archdep_default_fliplist_file_name(void)
     return util_concat(archdep_boot_path(), "\\fliplist-", machine_get_name(), ".vfl", NULL);
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    return util_concat(archdep_boot_path(), "\\vice.rtc", NULL);
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
     const char *home;
@@ -423,16 +449,6 @@ FILE *archdep_open_default_log_file(void)
     lib_free(fname);
 
     return f;
-}
-
-int archdep_num_text_lines(void)
-{
-    return 25;
-}
-
-int archdep_num_text_columns(void)
-{
-    return 80;
 }
 
 int archdep_default_logger(const char *level_string, const char *txt)
@@ -552,7 +568,7 @@ cleanup:
     return retval;
 }
 
-/* return malloc´d version of full pathname of orig_name */
+/* return malloc'd version of full pathname of orig_name */
 int archdep_expand_path(char **return_path, const char *orig_name)
 {
     /*  Win32 version   */
@@ -685,6 +701,12 @@ int archdep_file_is_chardev(const char *name)
     return 0;
 }
 
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    unlink(newpath);
+    return rename(oldpath, newpath);
+}
+
 void archdep_shutdown(void)
 {
     lib_free(boot_path);
@@ -723,3 +745,21 @@ char *archdep_get_runtime_cpu(void)
     return "Unknown CPU";
 #endif
 }
+
+#ifdef IDE_COMPILE
+/* Provide a usleep replacement */
+void usleep(__int64 waitTime)
+{ 
+    __int64 time1 = 0, time2 = 0, freq = 0;
+
+    QueryPerformanceCounter((LARGE_INTEGER *) &time1);
+    QueryPerformanceFrequency((LARGE_INTEGER *)&freq);
+
+    do {
+        QueryPerformanceCounter((LARGE_INTEGER *) &time2);
+    } while((time2-time1) < waitTime);
+}
+#endif
+
+/* include system.c here, instead of compiling it seperatly */
+#include "system.c"

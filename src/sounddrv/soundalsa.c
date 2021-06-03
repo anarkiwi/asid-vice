@@ -27,6 +27,8 @@
 
 #include "vice.h"
 
+#ifdef USE_ALSA
+
 #define ALSA_PCM_NEW_HW_PARAMS_API
 
 #include "alsa/asoundlib.h"
@@ -34,14 +36,18 @@
 #include "log.h"
 #include "sound.h"
 
+/* NetBSD doesn't define ESTRPIPE, this fix I noticed in gstreamer code */
+#ifndef ESTRPIPE
+#define ESTRPIPE EPIPE
+#endif
+
 static snd_pcm_t *handle;
 static int alsa_bufsize;
 static int alsa_fragsize;
 static int alsa_channels;
 static int alsa_can_pause;
 
-static int alsa_init(const char *param, int *speed,
-		     int *fragsize, int *fragnr, int *channels)
+static int alsa_init(const char *param, int *speed, int *fragsize, int *fragnr, int *channels)
 {
     int err, dir;
     unsigned int rate, periods;
@@ -56,7 +62,7 @@ static int alsa_init(const char *param, int *speed,
 
     if ((err = snd_pcm_open(&handle, param, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
         log_message(LOG_DEFAULT, "Playback open error for '%s': %s", param,
-		    snd_strerror(err));
+                    snd_strerror(err));
         return 1;
     }
 
@@ -87,10 +93,10 @@ static int alsa_init(const char *param, int *speed,
     }
     if (rate != (unsigned int)*speed) {
         printf("Rate doesn't match (requested %iHz, got %iHz)", *speed, rate);
-	*speed = rate;
+        *speed = rate;
     }
     /* calculate requested buffer size */
-    alsa_bufsize = (*fragsize)*(*fragnr);
+    alsa_bufsize = (*fragsize) * (*fragnr);
 
     period_size = *fragsize;
     dir = 0;
@@ -101,7 +107,7 @@ static int alsa_init(const char *param, int *speed,
     *fragsize = period_size;
 
     /* number of periods according to the buffer size we wanted, nearest val */
-    *fragnr = (alsa_bufsize + *fragsize/2) / *fragsize;
+    *fragnr = (alsa_bufsize + *fragsize / 2) / *fragsize;
 
     periods = *fragnr;
     dir = 0;
@@ -118,7 +124,7 @@ static int alsa_init(const char *param, int *speed,
         goto fail;
     }
 
-    alsa_bufsize = (*fragsize)*(*fragnr);
+    alsa_bufsize = (*fragsize) * (*fragnr);
     alsa_fragsize = *fragsize;
     alsa_channels = *channels;
 
@@ -133,17 +139,21 @@ fail:
 static int xrun_recovery(snd_pcm_t *handle, int err)
 {
     if (err == -EPIPE) {    /* under-run */
-        if ((err = snd_pcm_prepare(handle)) < 0)
-	    log_message(LOG_DEFAULT, "Can't recover from underrun, prepare failed: %s", snd_strerror(err));
-	return 0;
+        if ((err = snd_pcm_prepare(handle)) < 0) {
+            log_message(LOG_DEFAULT, "Can't recover from underrun, prepare failed: %s", snd_strerror(err));
+        }
+        return 0;
     } else if (err == -ESTRPIPE) {
-        while ((err = snd_pcm_resume(handle)) == -EAGAIN)
-	    sleep(1);       /* wait until the suspend flag is released */
-	if (err < 0) {
-	    if ((err = snd_pcm_prepare(handle)) < 0)
-	        log_message(LOG_DEFAULT, "Can't recover from suspend, prepare failed: %s", snd_strerror(err));
-	}
-	return 0;
+        while ((err = snd_pcm_resume(handle)) == -EAGAIN) {
+            log_message(LOG_DEFAULT, "xrun_recovery: %s", snd_strerror(err));
+            sleep(1);       /* wait until the suspend flag is released */
+        }
+        if (err < 0) {
+            if ((err = snd_pcm_prepare(handle)) < 0) {
+                log_message(LOG_DEFAULT, "Can't recover from suspend, prepare failed: %s", snd_strerror(err));
+            }
+        }
+        return 0;
     }
     return err;
 }
@@ -156,15 +166,15 @@ static int alsa_write(SWORD *pbuf, size_t nr)
 
     while (nr > 0) {
         err = snd_pcm_writei(handle, pbuf, nr);
-	if (err == -EAGAIN) {
-	    continue;
-	}
-	else if (err < 0 && (err = xrun_recovery(handle, err)) < 0) {
-	    log_message(LOG_DEFAULT, "Write error: %s", snd_strerror(err));
-	    return 1;
-	}
-	pbuf += err*alsa_channels;
-	nr -= err;
+        if (err == -EAGAIN) {
+            log_message(LOG_DEFAULT, "Write error: %s", snd_strerror(err));
+            continue;
+        } else if (err < 0 && (err = xrun_recovery(handle, err)) < 0) {
+            log_message(LOG_DEFAULT, "Write error: %s", snd_strerror(err));
+            return 1;
+        }
+        pbuf += err * alsa_channels;
+        nr -= err;
     }
 
     return 0;
@@ -179,8 +189,9 @@ static int alsa_bufferspace(void)
 #endif
     /* keep alsa values real. Values < 0 mean errors, call to alsa_write
      * will resume. */
-    if (space < 0 || space > alsa_bufsize)
+    if (space < 0 || space > alsa_bufsize) {
         space = alsa_bufsize;
+    }
     return space;
 }
 
@@ -243,3 +254,4 @@ int sound_init_alsa_device(void)
 {
     return sound_register_device(&alsa_device);
 }
+#endif

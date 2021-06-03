@@ -1,4 +1,4 @@
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src
@@ -6,6 +6,8 @@ INCLUDES = \
 noinst_LIBRARIES = libcore.a
 
 libcore_a_SOURCES = \
+	ata.c \
+	ata.h \
 	ciacore.c \
 	ciatimer.c \
 	ciatimer.h \
@@ -16,6 +18,8 @@ libcore_a_SOURCES = \
 	fmopl.h \
 	mc6821core.c \
 	mc6821core.h \
+	m93c86.c \
+	m93c86.h \
 	riotcore.c \
 	ser-eeprom.c \
 	ser-eeprom.h \
@@ -24,6 +28,4 @@ libcore_a_SOURCES = \
 	t6721.c \
 	t6721.h \
 	tpicore.c \
-	viacore.c \
-	ata.c \
-	ata.h
+	viacore.c

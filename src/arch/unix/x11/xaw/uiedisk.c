@@ -1,5 +1,5 @@
 /*
- * uiedisk.c - emptydisk dialog for the Xaw widget set.
+ * uiedisk.c - emptydisk dialog for the Xaw(3d) widget set.
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
@@ -35,6 +35,18 @@
 #include <X11/Xlib.h>
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
+
+/* Xaw or Xaw3d */
+#ifdef USE_XAW3D
+#include <X11/Xaw3d/Box.h>
+#include <X11/Xaw3d/Command.h>
+#include <X11/Xaw3d/Form.h>
+#include <X11/Xaw3d/MenuButton.h>
+#include <X11/Xaw3d/Paned.h>
+#include <X11/Xaw3d/SimpleMenu.h>
+#include <X11/Xaw3d/SmeBSB.h>
+#include <X11/Xaw3d/Toggle.h>
+#else
 #include <X11/Xaw/Box.h>
 #include <X11/Xaw/Command.h>
 #include <X11/Xaw/Form.h>
@@ -43,9 +55,14 @@
 #include <X11/Xaw/SimpleMenu.h>
 #include <X11/Xaw/SmeBSB.h>
 #include <X11/Xaw/Toggle.h>
+#endif
 
 #ifndef ENABLE_TEXTFIELD
+#ifdef USE_XAW3D
+#include <X11/Xaw3d/AsciiText.h>
+#else
 #include <X11/Xaw/AsciiText.h>
+#endif
 #else
 #include "widgets/TextField.h"
 #endif
@@ -248,22 +265,17 @@ static void build_emptydisk_dialog(void)
                                               NULL);
     lib_free(filename);
 
+    file_name_field = XtVaCreateManagedWidget("fileNameField",
 #ifndef ENABLE_TEXTFIELD
-    file_name_field = XtVaCreateManagedWidget("fileNameField",
                                               asciiTextWidgetClass, file_name_form,
-                                              XtNfromHoriz, file_name_label,
-                                              XtNwidth, 240,
                                               XtNtype, XawAsciiString,
-                                              XtNeditType, XawtextEdit,
-                                              NULL);
 #else
-    file_name_field = XtVaCreateManagedWidget("fileNameField",
                                               textfieldWidgetClass, file_name_form,
-                                              XtNfromHoriz, file_name_label,
-                                              XtNwidth, 240,
                                               XtNstring, "",         /* Otherwise, it does not work correctly.  */
-                                              NULL);
 #endif
+                                              XtNwidth, 240,
+                                              XtNfromHoriz, file_name_label,
+                                              NULL);
     XtOverrideTranslations(file_name_field, XtParseTranslationTable(text_box_translations));
 
     button_title = util_concat(_("Browse"), "...", NULL);
@@ -287,22 +299,18 @@ static void build_emptydisk_dialog(void)
                                                XtNborderWidth, 0,
                                                NULL);
 
-#ifndef ENABLE_TEXTFIELD
     image_name_field = XtVaCreateManagedWidget("imageNameField",
+#ifndef ENABLE_TEXTFIELD
                                                asciiTextWidgetClass, image_name_form,
-                                               XtNfromHoriz, image_name_label,
-                                               XtNwidth, 240,
                                                XtNtype, XawAsciiString,
                                                XtNeditType, XawtextEdit,
-                                               NULL);
 #else
-    image_name_field = XtVaCreateManagedWidget("imageNameField",
                                                textfieldWidgetClass, image_name_form,
+                                               XtNstring, "",         /* Otherwise, it does not work correctly.  */
+#endif
                                                XtNfromHoriz, image_name_label,
                                                XtNwidth, 240,
-                                               XtNstring, "",         /* Otherwise, it does not work correctly.  */
                                                NULL);
-#endif
     XtOverrideTranslations(image_name_field, XtParseTranslationTable(text_box_translations));
 
     options_form = XtVaCreateManagedWidget("optionsForm",

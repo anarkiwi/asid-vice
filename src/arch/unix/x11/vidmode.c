@@ -153,8 +153,6 @@ static void vidmode_center_canvas(struct video_canvas_s *canvas)
     ui_dispatch_events();
 }
 
-#define EXTRA_BORDER    0
-
 static void vidmode_resize_canvas(struct video_canvas_s *canvas, int uienable)
 {
     int status_h = 0;
@@ -174,26 +172,12 @@ static void vidmode_resize_canvas(struct video_canvas_s *canvas, int uienable)
     fs_h = vm->vdisplay;
     fs_w = vm->hdisplay;
 
-    if (canvas->videoconfig->doublesizex) {
-        xoffs = ((fs_w) - (vm->hdisplay));
-        fs_w /= (canvas->videoconfig->doublesizex + 1);
-    } else {
-        xoffs = (fs_w / 2) - (vm->hdisplay / 2);
-    }
+    xoffs = 0;
+    fs_w /= canvas->videoconfig->scalex;
 
-    if (canvas->videoconfig->doublesizey) {
-        yoffs = ((fs_h) - (vm->vdisplay));
-        fs_h -= status_h;
-        fs_h /= (canvas->videoconfig->doublesizey + 1);
-    } else {
-        yoffs = (fs_h / 2) - (vm->vdisplay / 2);
-        fs_h -= status_h;
-    }
-
-    fs_w += (EXTRA_BORDER * 2);
-    fs_h += (EXTRA_BORDER * 2);
-    xoffs += EXTRA_BORDER;
-    yoffs += EXTRA_BORDER;
+    yoffs = 0;
+    fs_h -= status_h;
+    fs_h /= canvas->videoconfig->scaley;
 
     canvas->draw_buffer->canvas_width = fs_w;
     canvas->draw_buffer->canvas_height = fs_h;
@@ -267,14 +251,18 @@ void vidmode_mouse_moved(struct video_canvas_s *canvas, int x, int y, int leave)
 
         if (wrap) {
             XWarpPointer(vm_display, None, DefaultRootWindow(vm_display), 0, 0, vm->hdisplay, vm->vdisplay, lastx, lasty);
+#if 0
             /* grab the pointer and keyboard */
             XGrabPointer(vm_display, shellwin, 1, PointerMotionMask, GrabModeAsync, GrabModeAsync, shellwin, None, CurrentTime);
+#endif
             vidmode_center_canvas(canvas);
             /* ui_dispatch_events(); */
         }
     } else if (leave == 2) { /* enter the canvas */
+#if 0
         /* grab the pointer and keyboard */
         XGrabPointer(vm_display, shellwin, 1, PointerMotionMask, GrabModeAsync, GrabModeAsync, shellwin, None, CurrentTime);
+#endif
         /* vidmode_center_canvas(canvas); */ /* this crashes ? */
         delayed_center = 1;
     } else {
@@ -328,16 +316,22 @@ int vidmode_enable(struct video_canvas_s *canvas, int enable)
 {
 #ifdef HAVE_FULLSCREEN
     Display *vm_display;
-    Window shellwin;
+    /* Window shellwin; */
 
     if (vm_available == 0) {
+        return -1;
+    }
+
+    ui_dispatch_events();
+
+    if (vm_is_enabled == enable) {
         return 0;
     }
 
     vm_display = x11ui_get_display_ptr();
 
     if (enable) {
-        vm_is_enabled = 0;
+
         log_message(vidmode_log, "Enabling Vidmode with%s", vm_bestmodes[vidmode_selected_mode].name);
         vm = vm_modes[vm_bestmodes[vidmode_selected_mode].modeindex];
 
@@ -347,33 +341,35 @@ int vidmode_enable(struct video_canvas_s *canvas, int enable)
         vidmode_resize_canvas(canvas, canvas->fullscreenconfig->ui_border_top > 0);
         XF86VidModeSwitchToMode(vm_display, screen, vm);
         vidmode_center_canvas(canvas);
-        XWarpPointer(vm_display, None, DefaultRootWindow(vm_display), 0, 0, vm->hdisplay, vm->vdisplay, x + vm->hdisplay / 2, y + vm->vdisplay / 2);
 
+        XWarpPointer(vm_display, None, DefaultRootWindow(vm_display), 0, 0, vm->hdisplay, vm->vdisplay, x + vm->hdisplay / 2, y + vm->vdisplay / 2);
+#if 0
         /* grab the pointer */
         shellwin = x11ui_get_X11_window();
         XGrabPointer(vm_display, shellwin, 1, PointerMotionMask | ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync, shellwin, None, CurrentTime);
-
+#endif
         active_canvas = canvas;
-        vm_is_enabled = 1;
         vm_is_suspended = 0;
     } else {
-        if (!vm_is_enabled) {
-            return 0;
-        }
         log_message(vidmode_log, "Disabling Vidmode");
 
-        /* FIXME: don't ungrab if either mouse or lightpen emulation is enabled */
+        XF86VidModeSwitchToMode(vm_display, screen, vm_modes[0]);
+#if 1
+        /* FIXME: don't ungrab if either mouse or lightpen emulation is enabled.
+         * 
+         *        it should not be necessary to do this here, but without it
+         *        the pointer stays grabbed
+         */
         XUngrabPointer(vm_display, CurrentTime);
         XUngrabKeyboard(vm_display, CurrentTime);
-
-        XF86VidModeSwitchToMode(vm_display, screen, vm_modes[0]);
-
+#endif
         /* restore canvas size for windowed mode */
         canvas->draw_buffer->canvas_width = saved_w;
         canvas->draw_buffer->canvas_height = saved_h;
         video_viewport_resize(canvas, 1);
-        vm_is_enabled = 0;
     }
+    ui_dispatch_events();
+    vm_is_enabled = enable;
 #endif
     return 0;
 }

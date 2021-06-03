@@ -37,58 +37,26 @@
 #include "uimenu.h"
 
 UI_MENU_DEFINE_TOGGLE(Mouse)
-UI_MENU_DEFINE_RADIO(Mousetype)
-UI_MENU_DEFINE_RADIO(Mouseport)
+UI_MENU_DEFINE_TOGGLE(SmartMouseRTCSave)
 
 const ui_menu_entry_t mouse_menu[] = {
-    { "Enable mouse",
+    { "Grab mouse events",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_Mouse_callback,
       NULL },
     SDL_MENU_ITEM_SEPARATOR,
-    SDL_MENU_ITEM_TITLE("Mouse type"),
-    { "1351",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_1351 },
-    { "NEOS",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_NEOS },
-    { "Amiga",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_AMIGA },
-    { "Paddles",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_PADDLE },
-    { "Atari CX-22",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_CX22 },
-    { "Atari ST",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_ST },
-    { "Smart",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_SMART },
-    { "MicroMys",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mousetype_callback,
-      (ui_callback_data_t)MOUSE_TYPE_MICROMYS },
-    SDL_MENU_ITEM_SEPARATOR,
-    SDL_MENU_ITEM_TITLE("Mouse port"),
-    { "Port 1",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mouseport_callback,
-      (ui_callback_data_t)1 },
-    { "Port 2",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_Mouseport_callback,
-      (ui_callback_data_t)2 },
+    { "Save Smart Mouse RTC data when changed",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_SmartMouseRTCSave_callback,
+      NULL },
+    SDL_MENU_LIST_END
+};
+
+const ui_menu_entry_t mouse_grab_menu[] = {
+    { "Grab mouse events",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_Mouse_callback,
+      NULL },
     SDL_MENU_LIST_END
 };
 #endif

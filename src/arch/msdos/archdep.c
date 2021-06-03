@@ -180,6 +180,11 @@ char *archdep_default_fliplist_file_name(void)
                        machine_get_name(), ".vfl", NULL);
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    return util_concat(archdep_boot_path(), "\\vice.rtc", NULL);
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
     const char *home;
@@ -198,22 +203,6 @@ FILE *archdep_open_default_log_file(void)
     lib_free(fname);
 
     return f;
-}
-
-int archdep_num_text_lines(void)
-{
-    struct text_info text_mode_info;
-
-    gettextinfo(&text_mode_info);
-    return text_mode_info.screenheight;
-}
-
-int archdep_num_text_columns(void)
-{
-    struct text_info text_mode_info;
-
-    gettextinfo(&text_mode_info);
-    return text_mode_info.screenwidth;
 }
 
 int archdep_default_logger(const char *level_string, const char *txt)
@@ -304,7 +293,7 @@ cleanup:
     return retval;
 }
 
-/* return malloc´d version of full pathname of orig_name */
+/* return malloc'd version of full pathname of orig_name */
 int archdep_expand_path(char **return_path, const char *orig_name)
 {
     /* MS-DOS version.  */
@@ -425,19 +414,18 @@ int archdep_file_is_chardev(const char *name)
     return 0;
 }
 
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
+}
+
 void archdep_shutdown(void)
 {
 }
 
-static char archdep_os_version[128];
-
 char *archdep_get_runtime_os(void)
 {
-    unsigned short real_version = _get_dos_version(1);
-
-    sprintf(archdep_os_version, "%s v%d.%d", _os_flavor, real_version >> 8, real_version & 0xff);
-
-    return archdep_os_version;
+    return platform_get_dos_runtime_os();
 }
 
 char *archdep_get_runtime_cpu(void)

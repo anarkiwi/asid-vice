@@ -35,6 +35,8 @@
 #include "uidrivec64c128.h"
 #include "uidriveiec.h"
 #include "uimenu.h"
+#include "uiperipheral.h"
+#include "uiperipheraliec.h"
 #include "uiromset.h"
 
 UI_MENU_DEFINE_TOGGLE(DriveTrueEmulation)
@@ -43,6 +45,8 @@ UI_MENU_DEFINE_TOGGLE(DriveSoundEmulation)
 static ui_menu_entry_t set_drive0_type_submenu[] = {
     { N_("None"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive8Type,
       (ui_callback_data_t)DRIVE_TYPE_NONE, NULL },
+    { "1540", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive8Type,
+      (ui_callback_data_t)DRIVE_TYPE_1540, NULL },
     { "1541", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive8Type,
       (ui_callback_data_t)DRIVE_TYPE_1541, NULL },
     { "1541-II", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive8Type,
@@ -79,6 +83,8 @@ static ui_menu_entry_t set_drive0_type_submenu[] = {
 static ui_menu_entry_t set_drive1_type_submenu[] = {
     { N_("None"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive9Type,
       (ui_callback_data_t)DRIVE_TYPE_NONE, NULL },
+    { "1540", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive9Type,
+      (ui_callback_data_t)DRIVE_TYPE_1540, NULL },
     { "1541", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive9Type,
       (ui_callback_data_t)DRIVE_TYPE_1541, NULL },
     { "1541-II", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive9Type,
@@ -105,6 +111,8 @@ static ui_menu_entry_t set_drive1_type_submenu[] = {
 static ui_menu_entry_t set_drive2_type_submenu[] = {
     { N_("None"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive10Type,
       (ui_callback_data_t)DRIVE_TYPE_NONE, NULL },
+    { "1540", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive10Type,
+      (ui_callback_data_t)DRIVE_TYPE_1540, NULL },
     { "1541", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive10Type,
       (ui_callback_data_t)DRIVE_TYPE_1541, NULL },
     { "1541-II", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive10Type,
@@ -141,6 +149,8 @@ static ui_menu_entry_t set_drive2_type_submenu[] = {
 static ui_menu_entry_t set_drive3_type_submenu[] = {
     { N_("None"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive11Type,
       (ui_callback_data_t)DRIVE_TYPE_NONE, NULL },
+    { "1540", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive11Type,
+      (ui_callback_data_t)DRIVE_TYPE_1540, NULL },
     { "1541", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive11Type,
       (ui_callback_data_t)DRIVE_TYPE_1541, NULL },
     { "1541-II", UI_MENU_TYPE_TICK, (ui_callback_t)radio_Drive11Type,
@@ -174,51 +184,64 @@ static ui_menu_entry_t drivec128_settings_submenu[] = {
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Drive #8 model"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, set_drive0_type_submenu },
-    { N_("Drive #8 expansion"), UI_MENU_TYPE_NORMAL,
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, peripheraliec_settings_drive8_submenu },
+    { N_("Drive #8 expansion"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_expansion_control, (ui_callback_data_t)0,
       uidrivec64c128_drive0_expansion_submenu },
-    { N_("Drive #8 40-track image support"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #8 40-track image support"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidrive_extend_policy_control, (ui_callback_data_t)0,
       set_drive0_extend_image_policy_submenu },
-    { N_("Drive #8 idle method"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #8 idle method"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_idle_method_control, (ui_callback_data_t)0,
       set_drive0_idle_method_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Drive #9 model"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, set_drive1_type_submenu },
-    { N_("Drive #9 expansion"), UI_MENU_TYPE_NORMAL,
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, peripheraliec_settings_drive9_submenu },
+    { N_("Drive #9 expansion"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_expansion_control, (ui_callback_data_t)1,
       uidrivec64c128_drive1_expansion_submenu },
-    { N_("Drive #9 40-track image support"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #9 40-track image support"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidrive_extend_policy_control, (ui_callback_data_t)1,
       set_drive1_extend_image_policy_submenu },
-    { N_("Drive #9 idle method"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #9 idle method"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_idle_method_control, (ui_callback_data_t)1,
       set_drive1_idle_method_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Drive #10 model"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, set_drive2_type_submenu },
-    { N_("Drive #10 expansion"), UI_MENU_TYPE_NORMAL,
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, peripheraliec_settings_drive10_submenu },
+    { N_("Drive #10 expansion"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_expansion_control, (ui_callback_data_t)2,
       uidrivec64c128_drive2_expansion_submenu },
-    { N_("Drive #10 40-track image support"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #10 40-track image support"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidrive_extend_policy_control, (ui_callback_data_t)2,
       set_drive2_extend_image_policy_submenu },
-    { N_("Drive #10 idle method"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #10 idle method"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_idle_method_control, (ui_callback_data_t)2,
       set_drive2_idle_method_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Drive #11 model"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, set_drive3_type_submenu },
-    { N_("Drive #11 expansion"), UI_MENU_TYPE_NORMAL,
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, peripheraliec_settings_drive11_submenu },
+    { N_("Drive #11 expansion"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_expansion_control, (ui_callback_data_t)3,
       uidrivec64c128_drive3_expansion_submenu },
-    { N_("Drive #11 40-track image support"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #11 40-track image support"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidrive_extend_policy_control, (ui_callback_data_t)3,
       set_drive3_extend_image_policy_submenu },
-    { N_("Drive #11 idle method"), UI_MENU_TYPE_NORMAL,
+    { N_("Drive #11 idle method"), UI_MENU_TYPE_BL_SUB,
       (ui_callback_t)uidriveiec_idle_method_control, (ui_callback_data_t)3,
       set_drive3_idle_method_submenu },
+#ifdef HAVE_RAWDRIVE
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("RAW Block Device Name"), UI_MENU_TYPE_DOTS, (ui_callback_t)uiperipheral_set_rawdevice_name,
+      (ui_callback_data_t)"RawDriveDriver", NULL },
+#endif
     { NULL }
 };
 
@@ -231,6 +254,9 @@ ui_menu_entry_t ui_drivec128_settings_menu[] = {
 /* ------------------------------------------------------------------------- */
 
 ui_menu_entry_t ui_drivec128_romset_submenu[] = {
+    { N_("Load new 1540 ROM"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)ui_load_rom_file,
+      (ui_callback_data_t)"DosName1540", NULL },
     { N_("Load new 1541 ROM"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)ui_load_rom_file,
       (ui_callback_data_t)"DosName1541", NULL },

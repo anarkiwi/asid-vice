@@ -5,7 +5,7 @@
  *  Andreas Boose <viceteam@t-online.de>
  *  Daniel Sladic <sladic@eecg.toronto.edu>
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Teemu Rantanen <tvr@cs.hut.fi>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -32,5 +32,8 @@
 #define VICE_C64IEC_H
 
 extern void c64iec_init(void);
+extern void c64iec_enable(int val);
+
+extern int c64iec_active;
 
 #endif

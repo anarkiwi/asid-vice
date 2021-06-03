@@ -43,29 +43,44 @@
 #undef HAVE_NANOSLEEP
 #endif
 
-#ifdef USE_SDL_PREFIX
-#  include <SDL/SDL.h>
-#  include <SDL/SDL_keysym.h>
+#ifdef USE_SDL2_PREFIX
+#  include <SDL2/SDL.h>
+#  include <SDL2/SDL_keycode.h>
 #  ifdef INCLUDE_SDL_SYSWM_H
-#    include <SDL/SDL_syswm.h>
+#    include <SDL2/SDL_syswm.h>
 #  endif
 #  ifdef HAVE_SDLMAIN
-#    include <SDL/SDL_main.h>
+#    include <SDL2/SDL_main.h>
 #  endif
-#  ifdef HAVE_HWSCALE
-#    include <SDL/SDL_opengl.h>
-#  endif
+#  include <SDL2/SDL_opengl.h>
 #else
-#  include <SDL.h>
-#  include <SDL_keysym.h>
-#  ifdef INCLUDE_SDL_SYSWM_H
-#    include <SDL_syswm.h>
-#  endif
-#  ifdef HAVE_SDLMAIN
-#    include <SDL_main.h>
-#  endif
-#  ifdef HAVE_HWSCALE
-#    include <SDL_opengl.h>
+#  ifdef USE_SDL_PREFIX
+#    include <SDL/SDL.h>
+#    include <SDL/SDL_keysym.h>
+#    ifdef INCLUDE_SDL_SYSWM_H
+#      include <SDL/SDL_syswm.h>
+#    endif
+#    ifdef HAVE_SDLMAIN
+#      include <SDL/SDL_main.h>
+#    endif
+#    ifdef HAVE_HWSCALE
+#      include <SDL/SDL_opengl.h>
+#    endif
+#  else
+#    include <SDL.h>
+#    include <SDL_keysym.h>
+#    ifdef INCLUDE_SDL_SYSWM_H
+#      include <SDL_syswm.h>
+#    endif
+#    ifdef HAVE_SDLMAIN
+#      include <SDL_main.h>
+#    endif
+#    ifdef HAVE_HWSCALE
+#      include <SDL_version.h>
+#      if (SDL_MAJOR_VERSION == 1)
+#        include <SDL_opengl.h>
+#      endif
+#    endif
 #  endif
 #endif
 
@@ -75,6 +90,20 @@
 
 #ifdef POWERSDL_AMIGA_INLINE
 #  include <ppcinline/powersdl.h>
+#endif
+
+/* Undefine HAVE_HWSCALE for msvc if SDL.dll was compiled without OpenGL support */
+#ifdef IDE_COMPILE
+#  ifndef SDL_VIDEO_OPENGL
+#    undef HAVE_HWSCALE
+#  endif
+#endif
+
+/* Undefine HAVE_SDL_NUMJOYSTICKS for msvc if SDL.dll was compiled without joystick support */
+#ifdef IDE_COMPILE
+#  ifdef SDL_JOYSTICK_DISABLED
+#    undef HAVE_SDL_NUMJOYSTICKS
+#  endif
 #endif
 
 /* restore HAVE_STRDUP definition if it is not defined */

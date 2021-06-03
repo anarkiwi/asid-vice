@@ -60,149 +60,6 @@ static UI_CALLBACK(radio_SidModel)
     }
 }
 
-ui_menu_entry_t sid_model_submenu[] = {
-    { "6581 (FastSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_FASTSID_6581, NULL },
-    { "8580 (FastSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_FASTSID_8580, NULL },
-#ifdef HAVE_RESID
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { "6581 (ReSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESID_6581, NULL },
-    { "8580 (ReSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESID_8580, NULL },
-    { N_("8580 + digi boost (ReSID)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESID_8580D, NULL },
-#endif
-#ifdef HAVE_RESID_FP
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("6581R3 4885 (very light)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_4885, NULL },
-    { N_("6581R3 0486S (light)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_0486S, NULL },
-    { N_("6581R3 3984 (light avg)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_3984, NULL },
-    { N_("6581R4AR 3789 (avg)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R4AR_3789, NULL },
-    { N_("6581R3 4485 (dark)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_4485, NULL },
-    { N_("6581R4 1986S (very dark)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R4_1986S, NULL },
-    { N_("8580 3691 (light)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_3691, NULL },
-    { N_("8580 3691 + digi boost"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_3691D, NULL },
-    { N_("8580 1489 (dark)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_1489, NULL },
-    { N_("8580 1489 + digi boost"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_1489D, NULL },
-#endif
-#if defined(HAVE_CATWEASELMKIII) || defined(HAVE_HARDSID) || defined(HAVE_PARSID)
-    { "--", UI_MENU_TYPE_SEPARATOR },
-#ifdef HAVE_CATWEASELMKIII
-    { "Catweasel MKIII", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_CATWEASELMKIII, NULL },
-#endif
-#ifdef HAVE_HARDSID
-    { "HardSID", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_HARDSID, NULL },
-#endif
-#ifdef HAVE_PARSID
-    { N_("ParSID Port 1"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT1, NULL },
-    { N_("ParSID Port 2"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT2, NULL },
-    { N_("ParSID Port 3"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT3, NULL },
-#endif
-#endif
-    { NULL }
-};
-
-ui_menu_entry_t sid_dtv_model_submenu[] = {
-#ifdef HAVE_RESID
-    { "DTVSID", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESID_DTVSID, NULL },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-#endif
-    { "6581 (FastSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_FASTSID_6581, NULL },
-    { "8580 (FastSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_FASTSID_8580, NULL },
-#ifdef HAVE_RESID_FP
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("6581R3 4885 (very light)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_4885, NULL },
-    { N_("6581R3 0486S (light)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_0486S, NULL },
-    { N_("6581R3 3984 (light avg)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_3984, NULL },
-    { N_("6581R4AR 3789 (avg)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R4AR_3789, NULL },
-    { N_("6581R3 4485 (dark)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R3_4485, NULL },
-    { N_("6581R4 1986S (very dark)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_6581R4_1986S, NULL },
-    { N_("8580 3691 (light)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_3691, NULL },
-    { N_("8580 3691 + digi boost"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_3691D, NULL },
-    { N_("8580 1489 (dark)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_1489, NULL },
-    { N_("8580 1489 + digi boost"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_RESIDFP_8580R5_1489D, NULL },
-#endif
-#if defined(HAVE_CATWEASELMKIII) || defined(HAVE_HARDSID) || defined(HAVE_PARSID)
-    { "--", UI_MENU_TYPE_SEPARATOR },
-#ifdef HAVE_CATWEASELMKIII
-    { "Catweasel MKIII", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_CATWEASELMKIII, NULL },
-#endif
-#ifdef HAVE_HARDSID
-    { "HardSID", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_HARDSID, NULL },
-#endif
-#ifdef HAVE_PARSID
-    { N_("ParSID Port 1"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT1, NULL },
-    { N_("ParSID Port 2"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT2, NULL },
-    { N_("ParSID Port 3"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT3, NULL },
-#endif
-#endif
-    { NULL }
-};
-
-#if 0
-ui_menu_entry_t sid_model_noresid_submenu[] = {
-    { "6581 (FastSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_FASTSID_6581, NULL },
-    { "8580 (FastSID)", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidModel, (ui_callback_data_t)SID_FASTSID_8580, NULL },
-#if defined(HAVE_CATWEASELMKIII) || defined(HAVE_HARDSID) || defined(HAVE_PARSID)
-    { "--", UI_MENU_TYPE_SEPARATOR },
-#ifdef HAVE_CATWEASELMKIII
-    { "Catweasel MKIII", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_CATWEASELMKIII, NULL },
-#endif
-#ifdef HAVE_HARDSID
-    { "HardSID", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_HARDSID, NULL },
-#endif
-#ifdef HAVE_PARSID
-    { N_("ParSID Port 1"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT1, NULL },
-    { N_("ParSID Port 2"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT2, NULL },
-    { N_("ParSID Port 3"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidModel,
-      (ui_callback_data_t)SID_PARSID_PORT3, NULL },
-#endif
-#endif
-    { NULL }
-};
-#endif
-
 #ifdef HAVE_RESID
 UI_MENU_DEFINE_RADIO(SidResidSampling)
 
@@ -218,6 +75,7 @@ ui_menu_entry_t sid_resid_sampling_submenu[] = {
     { NULL }
 };
 
+#if !defined(USE_GNOMEUI)
 UI_CALLBACK(set_sid_resid_passband)
 {
     static char input_string[32];
@@ -248,6 +106,8 @@ UI_CALLBACK(set_sid_resid_passband)
 }
 #endif
 
+#endif
+
 UI_MENU_DEFINE_RADIO(SidStereo)
 
 ui_menu_entry_t sid_extra_sids_submenu[] = {
@@ -256,3 +116,42 @@ ui_menu_entry_t sid_extra_sids_submenu[] = {
     { N_("Two"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereo, (ui_callback_data_t)2, NULL },
     { NULL }
 };
+
+ui_menu_entry_t sid_model_submenu[] = {
+    { "", UI_MENU_TYPE_NONE, NULL, NULL, NULL },
+    { NULL }
+};
+
+static ui_menu_entry_t *attach_sid_model_submenu = NULL;
+
+void uisid_model_menu_create(void)
+{
+    int i;
+    sid_engine_model_t **list = sid_get_engine_model_list();
+
+    for (i = 0; list[i]; ++i) {}
+    attach_sid_model_submenu = lib_calloc((size_t)(i + 1), sizeof(ui_menu_entry_t));
+
+    for (i = 0; list[i]; ++i) {
+        attach_sid_model_submenu[i].string = (ui_callback_data_t)lib_msprintf("%s", list[i]->name);
+        attach_sid_model_submenu[i].type = UI_MENU_TYPE_TICK;
+        attach_sid_model_submenu[i].callback = (ui_callback_t)radio_SidModel;
+        attach_sid_model_submenu[i].callback_data = (ui_callback_data_t)(unsigned long)list[i]->value;
+    }
+    sid_model_submenu[0].sub_menu = attach_sid_model_submenu;
+}
+
+void uisid_model_menu_shutdown(void)
+{
+    int i = 0;
+
+    if (attach_sid_model_submenu) {
+        while (attach_sid_model_submenu[i].string != NULL) {
+            lib_free(attach_sid_model_submenu[i].string);
+            i++;
+        }
+
+        lib_free(attach_sid_model_submenu);
+        attach_sid_model_submenu = NULL;
+    }
+}

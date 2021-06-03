@@ -38,7 +38,7 @@ subdir = src/rtc
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -50,8 +50,9 @@ ARFLAGS = cru
 librtc_a_AR = $(AR) $(ARFLAGS)
 librtc_a_LIBADD =
 am_librtc_a_OBJECTS = bq4830y.$(OBJEXT) ds12c887.$(OBJEXT) \
-	ds1202_1302.$(OBJEXT) ds1216e.$(OBJEXT) rtc.$(OBJEXT) \
-	rtc-58321a.$(OBJEXT)
+	ds1202_1302.$(OBJEXT) ds1216e.$(OBJEXT) ds1307.$(OBJEXT) \
+	ds1602.$(OBJEXT) pcf8583.$(OBJEXT) rtc.$(OBJEXT) \
+	rtc-58321a.$(OBJEXT) rtc-72421.$(OBJEXT)
 librtc_a_OBJECTS = $(am_librtc_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -79,7 +80,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BINDIR = @BINDIR@
+CAIRO_CFLAGS = @CAIRO_CFLAGS@
+CAIRO_LIBS = @CAIRO_LIBS@
 CATALOGS = @CATALOGS@
 CATOBJEXT = @CATOBJEXT@
 CC = @CC@
@@ -111,10 +113,17 @@ EGREP = @EGREP@
 ENABLE_ARCH = @ENABLE_ARCH@
 EXEEXT = @EXEEXT@
 FCCACHE = @FCCACHE@
+FFMPEGSUB = @FFMPEGSUB@
+FFMPEG_AVRESAMPLE_CFLAGS = @FFMPEG_AVRESAMPLE_CFLAGS@
+FFMPEG_AVRESAMPLE_LIBS = @FFMPEG_AVRESAMPLE_LIBS@
 FFMPEG_AV_CFLAGS = @FFMPEG_AV_CFLAGS@
 FFMPEG_AV_LIBS = @FFMPEG_AV_LIBS@
+FFMPEG_DEP = @FFMPEG_DEP@
+FFMPEG_DIR = @FFMPEG_DIR@
 FFMPEG_INCLUDES = @FFMPEG_INCLUDES@
 FFMPEG_LIBS = @FFMPEG_LIBS@
+FFMPEG_SWRESAMPLE_CFLAGS = @FFMPEG_SWRESAMPLE_CFLAGS@
+FFMPEG_SWRESAMPLE_LIBS = @FFMPEG_SWRESAMPLE_LIBS@
 FFMPEG_SWSCALE_CFLAGS = @FFMPEG_SWSCALE_CFLAGS@
 FFMPEG_SWSCALE_LIBS = @FFMPEG_SWSCALE_LIBS@
 FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
@@ -143,12 +152,15 @@ INTLLIBS = @INTLLIBS@
 INTLOBJS = @INTLOBJS@
 IPFC = @IPFC@
 JOY_LIBS = @JOY_LIBS@
+LAMEMP3SUB = @LAMEMP3SUB@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+LIBFFMPEGSUB = @LIBFFMPEGSUB@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBX264SUB = @LIBX264SUB@
 LINKCC = @LINKCC@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -157,8 +169,10 @@ MAKEINFO = @MAKEINFO@
 MAKERTF = @MAKERTF@
 MAX_INLINE_INSN_SINGLE = @MAX_INLINE_INSN_SINGLE@
 MKDIR_P = @MKDIR_P@
+MKFONTDIR_BIN = @MKFONTDIR_BIN@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MSGFMT = @MSGFMT@
+NATIVE_TOOLS_COMPILER = @NATIVE_TOOLS_COMPILER@
 NETPLAY_LIBS = @NETPLAY_LIBS@
 NLS_LOCALEDIR = @NLS_LOCALEDIR@
 OBJC = @OBJC@
@@ -172,10 +186,13 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PANGO_CFLAGS = @PANGO_CFLAGS@
+PANGO_LIBS = @PANGO_LIBS@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
+PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -183,19 +200,18 @@ QUICKTIME_LIBS = @QUICKTIME_LIBS@
 RANLIB = @RANLIB@
 READLINE = @READLINE@
 READLINE_LIBS = @READLINE_LIBS@
+RESIDDTVSUB = @RESIDDTVSUB@
+RESIDSUB = @RESIDSUB@
 RESID_DEP = @RESID_DEP@
 RESID_DIR = @RESID_DIR@
 RESID_DTV_DEP = @RESID_DTV_DEP@
 RESID_DTV_DIR = @RESID_DTV_DIR@
 RESID_DTV_INCLUDES = @RESID_DTV_INCLUDES@
 RESID_DTV_LIBS = @RESID_DTV_LIBS@
-RESID_FP_DEP = @RESID_FP_DEP@
-RESID_FP_DIR = @RESID_FP_DIR@
-RESID_FP_INCLUDES = @RESID_FP_INCLUDES@
-RESID_FP_LIBS = @RESID_FP_LIBS@
 RESID_INCLUDES = @RESID_INCLUDES@
 RESID_LIBS = @RESID_LIBS@
 SDL_EXTRA_LIBS = @SDL_EXTRA_LIBS@
+SDL_VERSION = @SDL_VERSION@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOUND_AIX_OBJ = @SOUND_AIX_OBJ@
@@ -207,6 +223,9 @@ SOUND_SDL_OBJ = @SOUND_SDL_OBJ@
 SOUND_SGI_OBJ = @SOUND_SGI_OBJ@
 SOUND_USS_OBJ = @SOUND_USS_OBJ@
 STRIP = @STRIP@
+SVN = @SVN@
+SVNVERSION = @SVNVERSION@
+TAR = @TAR@
 TEXI2DVI = @TEXI2DVI@
 TEXI2IPF = @TEXI2IPF@
 TFE_LIBS = @TFE_LIBS@
@@ -215,9 +234,11 @@ UNIX_MACOSX_UITYPE = @UNIX_MACOSX_UITYPE@
 USE_INCLUDED_LIBINTL = @USE_INCLUDED_LIBINTL@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+VERSION_COMBINED = @VERSION_COMBINED@
 VERSION_RC = @VERSION_RC@
 VICEDIR = @VICEDIR@
 VICE_SYNC = @VICE_SYNC@
+VICE_UI_THREADS = @VICE_UI_THREADS@
 VICE_VERSION = @VICE_VERSION@
 VICE_VERSION_BUILD = @VICE_VERSION_BUILD@
 VICE_VERSION_MAJOR = @VICE_VERSION_MAJOR@
@@ -236,13 +257,14 @@ XGETTEXT = @XGETTEXT@
 XMKMF = @XMKMF@
 XPET_WINRES = @XPET_WINRES@
 XPLUS4_WINRES = @XPLUS4_WINRES@
+XSCPU64_WINRES = @XSCPU64_WINRES@
 XVIC_WINRES = @XVIC_WINRES@
 X_CFLAGS = @X_CFLAGS@
 X_EXTRA_LIBS = @X_EXTRA_LIBS@
 X_LIBS = @X_LIBS@
 X_PRE_LIBS = @X_PRE_LIBS@
 YACC = @YACC@
-YFLAGS = @YFLAGS@
+YASM = @YASM@
 ZLIB_LIBS = @ZLIB_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -250,7 +272,6 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_sdl_config = @ac_ct_sdl_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -269,6 +290,7 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+ffmpeg_have_bash = @ffmpeg_have_bash@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -290,6 +312,7 @@ prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
+sdl2_config = @sdl2_config@
 sdl_config = @sdl_config@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -305,8 +328,9 @@ x64_LDFLAGS = @x64_LDFLAGS@
 xcbm2_LDFLAGS = @xcbm2_LDFLAGS@
 xpet_LDFLAGS = @xpet_LDFLAGS@
 xplus4_LDFLAGS = @xplus4_LDFLAGS@
+xscpu64_LDFLAGS = @xscpu64_LDFLAGS@
 xvic_LDFLAGS = @xvic_LDFLAGS@
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src
@@ -321,10 +345,18 @@ librtc_a_SOURCES = \
 	ds1202_1302.h \
 	ds1216e.c \
 	ds1216e.h \
+	ds1307.c \
+	ds1307.h \
+	ds1602.c \
+	ds1602.h \
+	pcf8583.c \
+	pcf8583.h \
 	rtc.c \
 	rtc.h \
 	rtc-58321a.c \
-	rtc-58321a.h
+	rtc-58321a.h \
+	rtc-72421.c \
+	rtc-72421.h
 
 all: all-am
 
@@ -378,7 +410,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ds1202_1302.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ds1216e.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ds12c887.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ds1307.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ds1602.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pcf8583.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtc-58321a.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtc-72421.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtc.Po@am__quote@
 
 .c.o:

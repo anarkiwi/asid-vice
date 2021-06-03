@@ -3,8 +3,9 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -61,10 +62,13 @@ extern int pet_mem_init_cmdline_options(void);
 
 extern void mem_initialize_memory(void);
 extern void get_mem_access_tables(read_func_ptr_t **read, store_func_ptr_t **write, BYTE ***base, int **limit);
+extern int petmem_get_screen_columns(void);
+extern int petmem_get_rom_columns(void);
 extern void petmem_check_info(struct petres_s *pi);
 
 extern void petmem_reset(void);
 extern int petmem_superpet_diag(void);
+extern void petmem_set_vidmem(void);
 
 extern int petmem_dump(FILE *fp);
 extern int petmem_undump(FILE *fp);
@@ -73,7 +77,7 @@ extern int petmem_set_conf_info(struct petinfo_s *pi);
 
 extern int spet_ramen;
 extern int spet_bank;
-extern int spet_bank_4k;
+extern void set_spet_bank(int bank);
 extern int spet_ctrlwp;
 extern int spet_diag;
 extern int spet_ramwp;
@@ -90,6 +94,7 @@ struct dongle6702_s {
 extern struct dongle6702_s dongle6702;
 
 extern BYTE petmem_map_reg;
+extern BYTE petmem_ramON;
 extern BYTE petmem_2001_buf_ef[];
 
 extern read_func_t mem6809_read;
@@ -101,7 +106,10 @@ extern void mem6809_store32(WORD addr, DWORD value);
 extern DWORD mem6809_read32(WORD addr);
 #endif
 extern void mem_initialize_memory_6809(void);
+extern void ramsel_changed(void);
 
 extern int superpet_sync(void);
+
+extern BYTE read_unused(WORD addr);
 
 #endif

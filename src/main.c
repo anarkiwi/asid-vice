@@ -7,7 +7,7 @@
  *  Vesa-Matti Puro <vmp@lut.fi>
  *  Jarkko Sonninen <sonninen@lut.fi>
  *  Jouko Valta <jopi@stekt.oulu.fi>
- *  Andr� Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -30,6 +30,8 @@
  *
  */
 
+/* #define DEBUG_MAIN */
+
 #include "vice.h"
 
 #include <stdio.h>
@@ -46,6 +48,7 @@
 #include "drive.h"
 #include "fullscreen.h"
 #include "gfxoutput.h"
+#include "info.h"
 #include "init.h"
 #include "initcmdline.h"
 #ifdef HAS_TRANSLATION
@@ -67,38 +70,67 @@
 #include "version.h"
 #include "video.h"
 
+#ifdef USE_SVN_REVISION
+#include "svnversion.h"
+#endif
 
-int vsid_mode = 0; /* FIXME: remove this if all ports are updated */
+#ifdef DEBUG_MAIN
+#define DBG(x)  printf x
+#else
+#define DBG(x)
+#endif
+
 #ifdef __OS2__
 const
 #endif
 int console_mode = 0;
 int video_disabled_mode = 0;
-static int init_done;
+static int init_done = 0;
+
+
+/** \brief  Size of buffer used to write core team members' names to log/stdout
+ *
+ * 79 characters + 1 byte for '\0'. Assuming a terminal width of 80 characters,
+ * we can only use 79 when calling log_message() since that function adds a
+ * newline to its ouput.
+ */
+#define TERM_TMP_SIZE  80
 
 /* ------------------------------------------------------------------------- */
 
 /* This is the main program entry point.  Call this from `main()'.  */
 int main_program(int argc, char **argv)
 {
-    int i;
+    int i, n;
     char *program_name;
+    int ishelp = 0;
+    char term_tmp[TERM_TMP_SIZE];
+    size_t name_len;
+
+
+    lib_init_rand();
 
     /* Check for -config and -console before initializing the user interface.
        -config  => use specified configuration file
        -console => no user interface
     */
+    DBG(("main:early cmdline(argc:%d)\n", argc));
     for (i = 0; i < argc; i++) {
 #ifndef __OS2__
-        if (strcmp(argv[i], "-console") == 0) {
+        if ((!strcmp(argv[i], "-console")) || (!strcmp(argv[i], "--console"))) {
             console_mode = 1;
             video_disabled_mode = 1;
         } else
 #endif
-        if (strcmp(argv[i], "-config") == 0) {
-            if ((i+1) < argc) {
+        if ((!strcmp(argv[i], "-config")) || (!strcmp(argv[i], "--config"))) {
+            if ((i + 1) < argc) {
                 vice_config_file = lib_stralloc(argv[++i]);
             }
+        } else if ((!strcmp(argv[i], "-help")) ||
+                   (!strcmp(argv[i], "--help")) ||
+                   (!strcmp(argv[i], "-h")) ||
+                   (!strcmp(argv[i], "-?"))) {
+            ishelp = 1;
         }
     }
 
@@ -110,10 +142,14 @@ int main_program(int argc, char **argv)
     textdomain(PACKAGE);
 #endif
 
-    archdep_init(&argc, argv);
+    DBG(("main:archdep_init(argc:%d)\n", argc));
+    if (archdep_init(&argc, argv) != 0) {
+        archdep_startup_log_error("archdep_init failed.\n");
+        return -1;
+    }
 
     if (atexit(main_exit) < 0) {
-        archdep_startup_log_error("atexit");
+        archdep_startup_log_error("atexit failed.\n");
         return -1;
     }
 
@@ -125,9 +161,8 @@ int main_program(int argc, char **argv)
     /* Initialize system file locator.  */
     sysfile_init(machine_name);
 
-    gfxoutput_early_init();
-
-    if (init_resources() < 0 || init_cmdline_options() < 0) {
+    gfxoutput_early_init(ishelp);
+    if ((init_resources() < 0) || (init_cmdline_options() < 0)) {
         return -1;
     }
 
@@ -140,23 +175,26 @@ int main_program(int argc, char **argv)
     /* Initialize the user interface.  `ui_init()' might need to handle the
        command line somehow, so we call it before parsing the options.
        (e.g. under X11, the `-display' option is handled independently).  */
+    DBG(("main:ui_init(argc:%d)\n", argc));
     if (!console_mode && ui_init(&argc, argv) < 0) {
         archdep_startup_log_error("Cannot initialize the UI.\n");
         return -1;
     }
 
 #ifdef HAS_TRANSLATION
-   /* set the default arch language */
+    /* set the default arch language */
     translate_arch_language_init();
 #endif
 
-    /* Load the user's default configuration file.  */
-    if (resources_load(NULL) < 0) {
-        /* The resource file might contain errors, and thus certain
-           resources might have been initialized anyway.  */
-        if (resources_set_defaults() < 0) {
-            archdep_startup_log_error("Cannot set defaults.\n");
-            return -1;
+    if (!ishelp) {
+        /* Load the user's default configuration file.  */
+        if (resources_load(NULL) < 0) {
+            /* The resource file might contain errors, and thus certain
+            resources might have been initialized anyway.  */
+            if (resources_set_defaults() < 0) {
+                archdep_startup_log_error("Cannot set defaults.\n");
+                return -1;
+            }
         }
     }
 
@@ -164,6 +202,7 @@ int main_program(int argc, char **argv)
         archdep_startup_log_error("Cannot startup logging system.\n");
     }
 
+    DBG(("main:initcmdline_check_args(argc:%d)\n", argc));
     if (initcmdline_check_args(argc, argv) < 0) {
         return -1;
     }
@@ -171,7 +210,12 @@ int main_program(int argc, char **argv)
     program_name = archdep_program_name();
 
     /* VICE boot sequence.  */
+    log_message(LOG_DEFAULT, " ");
+#ifdef USE_SVN_REVISION
+    log_message(LOG_DEFAULT, "*** VICE Version %s, rev %s ***", VERSION, VICE_SVN_REV_STRING);
+#else
     log_message(LOG_DEFAULT, "*** VICE Version %s ***", VERSION);
+#endif
     log_message(LOG_DEFAULT, "OS compiled for: %s", platform_get_compile_time_os());
     log_message(LOG_DEFAULT, "GUI compiled for: %s", platform_get_ui());
     log_message(LOG_DEFAULT, "CPU compiled for: %s", platform_get_compile_time_cpu());
@@ -179,14 +223,42 @@ int main_program(int argc, char **argv)
     log_message(LOG_DEFAULT, "Current OS: %s", platform_get_runtime_os());
     log_message(LOG_DEFAULT, "Current CPU: %s", platform_get_runtime_cpu());
     log_message(LOG_DEFAULT, " ");
-    log_message(LOG_DEFAULT, "Welcome to %s, the free portable %s Emulator.",
-                program_name, machine_name);
+    if (machine_class == VICE_MACHINE_VSID) {
+        log_message(LOG_DEFAULT, "Welcome to %s, the free portable SID Player.",
+                    program_name);
+    } else {
+        log_message(LOG_DEFAULT, "Welcome to %s, the free portable %s Emulator.",
+                    program_name, machine_name);
+    }
     log_message(LOG_DEFAULT, " ");
+
     log_message(LOG_DEFAULT, "Current VICE team members:");
-    log_message(LOG_DEFAULT, "D. Lem, A. Matthies, M. Pottendorfer, S. Trikaliotis, M. van den Heuvel,");
-    log_message(LOG_DEFAULT, "C. Vogelgsang, F. Gennari, D. Kahlin, A. Lankila, Groepaz, I. Korb,");
-    log_message(LOG_DEFAULT, "E. Smith, O. Seibert, M. Sutton, U. Schulz, S. Haubenthal, T. Giesel,");
-    log_message(LOG_DEFAULT, "K. Zsolt.");
+    n = 0; *term_tmp = 0;
+    for (i = 0; core_team[i].name != NULL; i++) {
+        name_len = strlen(core_team[i].name);
+        /* XXX: reject names that will never fit, for now */
+        if ((int)name_len + 3 > TERM_TMP_SIZE) {
+            log_warning(LOG_DEFAULT, "%s:%d: name '%s' too large for buffer",
+                    __FILE__, __LINE__, core_team[i].name);
+            break;  /* this will still write out whatever was in the buffer */
+        }
+
+        if (n + (int)name_len + 3 > TERM_TMP_SIZE) {    /* +3 for ", \0" */
+            log_message(LOG_DEFAULT, "%s", term_tmp);
+            strcpy(term_tmp, core_team[i].name);
+            n = (int)name_len;
+        } else {
+            strcat(term_tmp, core_team[i].name);
+            n += (int)name_len;
+        }
+        if (core_team[i + 1].name == NULL) {
+            strcat(term_tmp, ".");
+        } else {
+            strcat(term_tmp, ", ");
+            n += 2;
+        }
+    }
+    log_message(LOG_DEFAULT, "%s", term_tmp);
 
     log_message(LOG_DEFAULT, " ");
     log_message(LOG_DEFAULT, "This is free software with ABSOLUTELY NO WARRANTY.");
@@ -225,4 +297,3 @@ int main_program(int argc, char **argv)
 
     return 0;
 }
-

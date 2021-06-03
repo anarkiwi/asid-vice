@@ -1,12 +1,12 @@
 ## Makefile.am for the Win32 version of `libarch.a'.
 
 if !CROSS
-SUBDIRS = utils
+SUBDIRS = evc mingw32 msvc utils vs_tmpl watcom
 endif
 
 SUFFIXES = .rc
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	@ARCH_INCLUDES@/msvc/wpcap \
 	@ARCH_INCLUDES@/mingw32 \
@@ -17,6 +17,7 @@ INCLUDES = \
 	-I$(top_srcdir)/src/monitor \
 	-I$(top_srcdir)/src/rs232drv \
 	-I$(top_srcdir)/src/c64 \
+	-I$(top_srcdir)/src/c64/cart \
 	-I$(top_srcdir)/src/c64dtv \
 	-I$(top_srcdir)/src/c128 \
 	-I$(top_srcdir)/src/vic20 \
@@ -28,29 +29,37 @@ INCLUDES = \
 	-I$(top_srcdir)/src/imagecontents \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv \
 	-I$(top_srcdir)/src/sid
 
 noinst_LIBRARIES = libarch.a
 
 libarch_a_SOURCES = \
-	mingw32/system.h \
 	archdep.c \
 	archdep.h \
 	blockdev.c \
 	c128ui.c \
 	c64ui.c \
 	c64dtvui.c \
-	catweaselmkiii.c \
+	catweaselmkiii-drv.c \
 	cbm2ui.c \
 	cbm5x0ui.c \
 	console.c \
+	cw.h \
+	cw-dll.c \
+	cw-pci.c \
 	dinput_handle.c \
 	dinput_handle.h \
 	dynlib.c \
 	fullscrn.c \
 	fullscrn.h \
 	gifdrv.c \
-	hardsid.c \
+	hardsid-drv.c \
+	hs.h \
+	hs-dll.c \
+	hs-isa.c \
+	hs-pci.c \
 	intl.c \
 	intl.h \
 	joy.c \
@@ -63,73 +72,86 @@ libarch_a_SOURCES = \
 	mousedrv.c \
 	mousedrv.h \
 	msvc-d3d.h \
-	parsid.c \
+	parsid-drv.c \
 	petui.c \
 	plus4ui.c \
+	ps.h \
+	ps-dll.c \
+	ps-ieee1284.c \
+	ps-io.c \
+	rawnetarch.c \
 	res.rc \
 	resacia.rc \
 	resautostart.rc \
 	resc128.rc \
 	resc64.rc \
 	resc64dtv.rc \
-	resc64_256k.rc \
-	rescbm2common.rc \
+	resc64memoryhacks.rc \
 	rescbm2.rc \
+	rescbm2common.rc \
 	rescbm5x0.rc \
 	rescia.rc \
 	rescommon.h \
+	rescpclockf83.rc \
 	resdigimax.rc \
 	resdqbb.rc \
 	resdrivec128.rc \
 	resdrivec64.rc \
+	resdrivec64dtv.rc \
 	resdrivepetcbm2.rc \
 	resdriveplus4.rc \
 	resdrivevic20.rc \
 	resds12c887rtc.rc \
 	reseasyflash.rc \
+	resethernet.rc \
+	resethernetcart.rc \
 	resexpert.rc \
 	resgeoram.rc \
+	resgmod2.rc \
 	reside64.rc \
+	resiocollisions.rc \
 	resisepic.rc \
-	reslightpen.rc \
+	resjoyport.rc \
+	reskeymap.rc \
 	resmagicvoice.rc \
 	resmidi.rc \
 	resmmc64.rc \
 	resmmcreplay.rc \
 	resmouse.rc \
 	respet.rc \
+	respetcolour.rc \
 	respetdww.rc \
 	respetreu.rc \
-	resplus256k.rc \
 	resplus4.rc \
-	resplus60k.rc \
+	resplus4memoryhacks.rc \
 	resramcart.rc \
 	resretroreplay.rc \
 	resreu.rc \
+	resrrnetmk3.rc \
 	resrs232user.rc \
+	ressampler.rc \
+	resscpu64.rc \
 	ressid.rc \
 	ressidcart.rc \
 	ressiddtv.rc \
 	ressoundexpander.rc \
 	ressoundsampler.rc \
+	restapelog.rc \
 	rested.rc \
-	restfe.rc \
+	resuserportrtc58321a.rc \
+	resuserportrtcds1307.rc \
 	resv364speech.rc \
 	resvic.rc \
 	resvic20.rc \
 	resvicii.rc \
 	resvsid.rc \
-	rs232.c \
 	rs232dev.c \
-	rs232dev.h \
-	rs232net.c \
-	rs232net.h \
+	scpu64ui.c \
 	signals.c \
 	socketimpl.h \
+	ssi2001-drv.c \
 	statusbar.c \
 	statusbar.h \
-	system.c \
-	rawnetarch.c \
 	types.h \
 	ui-resources.c \
 	ui.c \
@@ -144,10 +166,6 @@ libarch_a_SOURCES = \
 	uic128.h \
 	uic128model.c \
 	uic128model.h \
-	uic64.c \
-	uic64.h \
-	uic64_256k.c \
-	uic64_256k.h \
 	uic64burstmod.c \
 	uic64burstmod.h \
 	uic64cart.c \
@@ -156,20 +174,26 @@ libarch_a_SOURCES = \
 	uic64dtv.h \
 	uic64dtvmodel.c \
 	uic64dtvmodel.h \
+	uic64memoryhacks.c \
+	uic64memoryhacks.h \
+	uic64model.c \
+	uic64model.h \
 	uicart.c \
 	uicart.h \
 	uicbm2model.c \
 	uicbm2model.h \
-	uicbm5x0model.c \
-	uicbm5x0model.h \
 	uicbm2set.c \
 	uicbm2set.h \
+	uicbm5x0model.c \
+	uicbm5x0model.h \
 	uicbm5x0set.c \
 	uicbm5x0set.h \
 	uicia.c \
 	uicia.h \
 	uicmdline.c \
 	uiconsole.c \
+	uicpclockf83.c \
+	uicpclockf83.h \
 	uidatasette.c \
 	uidatasette.h \
 	uidigimax.c \
@@ -178,6 +202,8 @@ libarch_a_SOURCES = \
 	uidqbb.h \
 	uidrivec64.c \
 	uidrivec64.h \
+	uidrivec64dtv.c \
+	uidrivec64dtv.h \
 	uidrivec128.c \
 	uidrivec128.h \
 	uidrivepetcbm2.c \
@@ -190,6 +216,10 @@ libarch_a_SOURCES = \
 	uids12c887rtc.h \
 	uieasyflash.c \
 	uieasyflash.h \
+	uiethernet.c \
+	uiethernet.h \
+	uiethernetcart.c \
+	uiethernetcart.h \
 	uievent.c \
 	uievent.h \
 	uiexpert.c \
@@ -198,20 +228,26 @@ libarch_a_SOURCES = \
 	uifliplist.h \
 	uigeoram.c \
 	uigeoram.h \
+	uigmod2.c \
+	uigmod2.h \
 	uihelp.c \
 	uihelp.h \
 	uiide64.c \
 	uiide64.h \
+	uiiocollisions.c \
+	uiiocollisions.h \
 	uiisepic.c \
 	uiisepic.h \
+	uijoyport.c \
+	uijoyport.h \
 	uijoystick.c \
 	uijoystick.h \
 	uikeyboard.c \
 	uikeyboard.h \
+	uikeymap.c \
+	uikeymap.h \
 	uilib.c \
 	uilib.h \
-	uilightpen.c \
-	uilightpen.h \
 	uimagicvoice.c \
 	uimagicvoice.h \
 	uimediafile.c \
@@ -230,6 +266,8 @@ libarch_a_SOURCES = \
 	uinetwork.h \
 	uiperipheral.c \
 	uiperipheral.h \
+	uipetcolour.c \
+	uipetcolour.h \
 	uipetdww.c \
 	uipetdww.h \
 	uipetmodel.c \
@@ -238,16 +276,14 @@ libarch_a_SOURCES = \
 	uipetreu.h \
 	uipetset.c \
 	uipetset.h \
-	uiplus256k.c \
-	uiplus256k.h \
 	uiplus4cart.c \
 	uiplus4cart.h \
 	uiplus4mem.c \
 	uiplus4mem.h \
+	uiplus4memoryhacks.c \
+	uiplus4memoryhacks.h \
 	uiplus4model.c \
 	uiplus4model.h \
-	uiplus60k.c \
-	uiplus60k.h \
 	uiquicksnapshot.c \
 	uiquicksnapshot.h \
 	uiram.c \
@@ -260,18 +296,26 @@ libarch_a_SOURCES = \
 	uireu.h \
 	uirom.c \
 	uirom.h \
+	uirrnetmk3.c \
+	uirrnetmk3.h \
 	uirs232.c \
 	uirs232.h \
 	uirs232user.c \
 	uirs232user.h \
+	uisampler.c \
+	uisampler.h \
+	uiscpu64.c \
+	uiscpu64.h \
+	uiscpu64model.c \
+	uiscpu64model.h \
 	uisid.c \
 	uisid.h \
 	uisidcart.c \
 	uisidcart.h \
 	uisiddtv.c \
 	uisiddtv.h \
-	uisnapshot.h \
 	uisnapshot.c \
+	uisnapshot.h \
 	uisound.c \
 	uisound.h \
 	uisoundexpander.c \
@@ -280,18 +324,24 @@ libarch_a_SOURCES = \
 	uisoundsampler.h \
 	uispeed.c \
 	uispeed.h \
+	uitapelog.c \
+	uitapelog.h \
 	uited.c \
 	uited.h \
-	uitfe.c \
-	uitfe.h \
+	uiuserportrtc58321a.c \
+	uiuserportrtc58321a.h \
+	uiuserportrtcds1307.c \
+	uiuserportrtcds1307.h \
 	uiv364speech.c \
 	uiv364speech.h \
 	uivic.c \
 	uivic.h \
+	uivic20model.c \
+	uivic20model.h \
 	uivicii.h \
 	uivicii.c \
-	uivicset.h \
 	uivicset.c \
+	uivicset.h \
 	uivideo.c \
 	uivideo.h \
 	vic20ui.c \
@@ -302,6 +352,7 @@ libarch_a_SOURCES = \
 	videoarch.h \
 	vsidui.c \
 	vsyncarch.c \
+	wininpoutp.h \
 	winjoy.h \
 	winkbd.h \
 	winlong.h \
@@ -310,350 +361,284 @@ libarch_a_SOURCES = \
 
 if OWCC
 libarch_a_DEPENDENCIES = \
-	resc128.res resc64.res resc64dtv.res rescbm2.res rescbm5x0.res respet.res resplus4.res resvic20.res resvsid.res
+	resc128.res resc64.res resscpu64.res resc64dtv.res rescbm2.res rescbm5x0.res respet.res resplus4.res resvic20.res resvsid.res
 else
 libarch_a_DEPENDENCIES = \
-	resc128.o resc64.o resc64dtv.o rescbm2.o rescbm5x0.o respet.o resplus4.o resvic20.o resvsid.o
+	resc128.o resc64.o resscpu64.o resc64dtv.o rescbm2.o rescbm5x0.o respet.o resplus4.o resvic20.o resvsid.o
 endif
 
 EXTRA_DIST = \
-	evc/config.h \
-	evc/system.c \
-	evc/system.h \
-	msvc/dirent.h \
-	msvc/ide-config.h \
-	msvc/ide-siddefs.h \
-	msvc/ide-siddtvdefs.h \
-	msvc/ide-sidfpdefs.h \
-	msvc/inttypes.h \
-	msvc/stdint.h \
-	msvc/system.h \
-	msvc/wpcap/bittypes.h \
-	msvc/wpcap/ip6_misc.h \
-	msvc/wpcap/pcap-stdinc.h \
-	msvc/wpcap/pcap.h \
-	msvc/wpcap/net/bpf.h \
-	watcom/arch.tgt \
-	watcom/base.tgt \
-	watcom/c128.tgt \
-	watcom/c1541.tgt \
-	watcom/c64.tgt \
-	watcom/c64cart.tgt \
-	watcom/c64commonall.tgt \
-	watcom/c64commoncart.tgt \
-	watcom/c64commonsc.tgt \
-	watcom/c64commonsc128.tgt \
-	watcom/c64commondscdtv.tgt \
-	watcom/c64commonscdtv128.tgt \
-	watcom/c64commonscdtvvsid.tgt \
-	watcom/c64commonscvsid.tgt \
-	watcom/c64commonscvsid128.tgt \
-	watcom/c64commonvsid.tgt \
-	watcom/c64dtv.tgt \
-	watcom/c64exp.tgt \
-	watcom/c64sc.tgt \
-	watcom/cartconv.tgt \
-	watcom/cbm2.tgt \
-	watcom/cbm2common.tgt \
-	watcom/cbm5x0.tgt \
-	watcom/core.tgt \
-	watcom/crtc.tgt \
-	watcom/dirent.h \
-	watcom/diskimage.tgt \
-	watcom/drive.tgt \
-	watcom/fileio.tgt \
-	watcom/fsdevice.tgt \
-	watcom/genic.tgt \
-	watcom/geninfocontrib32.tgt \
-	watcom/gentr.tgt \
-	watcom/gentranslate32.tgt \
-	watcom/genwinres32.tgt \
-	watcom/genwr.tgt \
-	watcom/genwt.bat \
-	watcom/gfxoutputdrv.tgt \
-	watcom/ide-config.h \
-	watcom/ide-siddefs.h \
-	watcom/ide-siddtvdefs.h \
-	watcom/ide-sidfpdefs.h \
-	watcom/iec.tgt \
-	watcom/iec128dcr.tgt \
-	watcom/iecbus.tgt \
-	watcom/iecieee.tgt \
-	watcom/ieee.tgt \
-	watcom/imagecontents.tgt \
-	watcom/maincpu.tgt \
-	watcom/make-watcom-bindist.bat \
-	watcom/monitor.tgt \
-	watcom/p64.tgt \
-	watcom/parallel.tgt \
-	watcom/pet.tgt \
-	watcom/petcat.tgt \
-	watcom/platform.tgt \
-	watcom/plus4.tgt \
-	watcom/plus4exp.tgt \
-	watcom/printerdrv.tgt \
-	watcom/raster.tgt \
-	watcom/README.txt \
-	watcom/resid.tgt \
-	watcom/resid-dtv.tgt \
-	watcom/resid-fp.tgt \
-	watcom/rs232drv.tgt \
-	watcom/serial.tgt \
-	watcom/sid.tgt \
-	watcom/sounddrv.tgt \
-	watcom/system.h \
-	watcom/tape.tgt \
-	watcom/tcbm.tgt \
-	watcom/userport.tgt \
-	watcom/vdc.tgt \
-	watcom/vdrive.tgt \
-	watcom/vic20.tgt \
-	watcom/vic20cart.tgt \
-	watcom/vice.wpj \
-	watcom/vicii.tgt \
-	watcom/viciicommon.tgt \
-	watcom/viciidtv.tgt \
-	watcom/viciinew.tgt \
-	watcom/video.tgt \
-	watcom/vsid.tgt \
-	watcom/vsidlib.tgt \
-	watcom/watcom-ar.sh \
-	watcom/x128.tgt \
-	watcom/x64.tgt \
-	watcom/x64dtv.tgt \
-	watcom/x64sc.tgt \
-	watcom/xcbm2.tgt \
-	watcom/xcbm5x0.tgt \
-	watcom/xpet.tgt \
-	watcom/xplus4.tgt \
-	watcom/xvic.tgt \
-	_vice.dsp \
-	arch.dsp \
-	base.dsp \
-	c128.dsp \
-	c1541.dsp \
-	c64.dsp \
-	c64c64dtv.dsp \
-	c64dtv.dsp \
-	c64dtvstubs.dsp \
-	c64c128.dsp \
-	c64cart.dsp \
-	c64cartsystem.dsp \
-	c64commoncart.dsp \
-	c64exp.dsp \
-	c64sc.dsp \
-	cartconv.dsp \
-	cbm2.dsp \
-	cbm2common.dsp \
-	cbm5x0.dsp \
-	core.dsp \
-	crtc.dsp \
+	c64.ico \
 	dirent.c \
-	diskimage.dsp \
-	drive.dsp \
-	fileio.dsp \
-	fsdevice.dsp \
-	geninfocontrib.dsp \
+	generate_msvc6_project.bat \
+	generate_msvc70_ffmpeg_project.bat \
+	generate_msvc70_project.bat \
+	generate_msvc71_ffmpeg_project.bat \
+	generate_msvc71_project.bat \
+	generate_msvc8_ffmpeg_project.bat \
+	generate_msvc8_project.bat \
+	generate_msvc9_ffmpeg_project.bat \
+	generate_msvc9_project.bat \
+	generate_msvc10_ffmpeg_project.bat \
+	generate_msvc10_project.bat \
+	generate_msvc11_ffmpeg_project.bat \
+	generate_msvc11_project.bat \
+	generate_msvc12_ffmpeg_project.bat \
+	generate_msvc12_project.bat \
+	generate_msvc14_ffmpeg_project.bat \
+	generate_msvc14_project.bat \
 	genmenuid.sh \
-	genmsvcver.dsp \
 	genstringid.sh \
-	gentranslate.dsp \
-	genwinres.dsp \
 	genwinres.sh \
-	gfxoutputdrv.dsp \
-	iec.dsp \
-	iec128dcr.dsp \
-	iecbus.dsp \
-	iecieee.dsp \
-	ieee.dsp \
-	imagecontents.dsp \
-	monitor.dsp \
-	p64.dsp \
-	parallel.dsp \
-	pet.dsp \
-	petcat.dsp \
-	platform.dsp \
-	plus4.dsp \
-	plus4exp.dsp \
-	printerdrv.dsp \
-	raster.dsp \
-	resid.dsp \
-	residdtv.dsp \
-	residfp.dsp \
+	make-bindist.sh \
+	montb.bmp \
 	res.txt \
 	resdialogs.txt \
 	resmenu.txt \
 	resstrings.txt \
-	rs232drv.dsp \
-	rtc.dsp \
-	serial.dsp \
-	sid.dsp \
-	sounddrv.dsp \
-	tape.dsp \
-	tcbm.dsp \
-	userport.dsp \
-	vdc.dsp \
-	vdrive.dsp \
-	vic20.dsp \
-	vic20cart.dsp \
-	vicii.dsp \
-	viciidtv.dsp \
-	viciisc.dsp \
-	video.dsp \
-	vsid.dsp \
-	vsidlib.dsp \
-	x128.dsp \
-	x64.dsp \
-	x64dtv.dsp \
-	x64sc.dsp \
-	xcbm2.dsp \
-	xcbm5x0.dsp \
-	xpet.dsp \
-	xplus4.dsp \
-	xvic.dsp \
-	vice.dsw \
+	system.c \
 	vice.manifest \
-	montb.bmp \
-	make-bindist.sh \
-	make-msvc-bindist.bat \
 	vice-version.bat \
-	vice-version.bat.in \
-	c64.ico 
+	vice-version.bat.in
 
 BUILT_SOURCES = res.h menuid.h stringid.h
 
+if NATIVE_TOOLS
+genwinres:	$(srcdir)/utils/genwinres.c
+	$(NATIVE_TOOLS_COMPILER) -o genwinres $(srcdir)/utils/genwinres.c
+
+res.h menuid.h stringid.h:	$(srcdir)/res.txt $(srcdir)/resdialogs.txt $(srcdir)/resmenu.txt $(srcdir)/resstrings.txt genwinres
+	./genwinres res.h menuid.h stringid.h $(srcdir)/res.txt $(srcdir)/resdialogs.txt $(srcdir)/resmenu.txt $(srcdir)/resstrings.txt
+else
 resall.txt:	$(srcdir)/res.txt $(srcdir)/resdialogs.txt $(srcdir)/resmenu.txt $(srcdir)/resstrings.txt
-@CROSS_TRUE@	cat >$@ $^
+	cat >$@ $^
 
-@CROSS_TRUE@res.h:	resall.txt
-@CROSS_TRUE@	echo "generating "$@
-@CROSS_TRUE@	. $(srcdir)/genwinres.sh <resall.txt >res.h
+res.h:	resall.txt
+	echo "generating "$@
+	. $(srcdir)/genwinres.sh <resall.txt >res.h
 
-@CROSS_TRUE@menuid.h:	resall.txt
-@CROSS_TRUE@	echo "generating "$@
-@CROSS_TRUE@	. $(srcdir)/genmenuid.sh <resall.txt >menuid.h
+menuid.h:	resall.txt
+	echo "generating "$@
+	. $(srcdir)/genmenuid.sh <resall.txt >menuid.h
 
-@CROSS_TRUE@stringid.h:	resall.txt
-@CROSS_TRUE@	echo "generating "$@
-@CROSS_TRUE@	. $(srcdir)/genstringid.sh <resall.txt >stringid.h
-
-@CROSS_FALSE@res.h menuid.h stringid.h:	resall.txt
-@CROSS_FALSE@	(cd utils; $(MAKE))
-@CROSS_FALSE@	utils/genwinres$(EXEEXT) res.h menuid.h stringid.h $(srcdir)/res.txt $(srcdir)/resdialogs.txt $(srcdir)/resmenu.txt $(srcdir)/resstrings.txt
+stringid.h:	resall.txt
+	echo "generating "$@
+	. $(srcdir)/genstringid.sh <resall.txt >stringid.h
+endif
 
 resc128cat.rc: $(srcdir)/resc128.rc $(srcdir)/res.rc res.h \
 	$(srcdir)/resacia.rc $(srcdir)/resrs232user.rc $(srcdir)/ressid.rc \
 	$(srcdir)/resvicii.rc $(srcdir)/resreu.rc $(srcdir)/resgeoram.rc \
 	$(srcdir)/resramcart.rc $(srcdir)/resmmc64.rc $(srcdir)/reside64.rc \
 	$(srcdir)/resdrivec128.rc $(srcdir)/resdigimax.rc \
-	$(srcdir)/resmouse.rc $(srcdir)/restfe.rc $(srcdir)/resmidi.rc \
-	$(srcdir)/reslightpen.rc $(srcdir)/ressoundexpander.rc \
-	$(srcdir)/reseasyflash.rc $(srcdir)/resmagicvoice.rc \
-	$(srcdir)/resexpert.rc $(srcdir)/resautostart.rc \
-	$(srcdir)/resmmcreplay.rc $(srcdir)/resretroreplay.rc \
-	$(srcdir)/rescia.rc $(srcdir)/resds12c887rtc.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/resmidi.rc $(srcdir)/resdqbb.rc \
+	$(srcdir)/resisepic.rc $(srcdir)/resjoyport.rc \
+	$(srcdir)/ressoundexpander.rc $(srcdir)/reseasyflash.rc \
+	$(srcdir)/resmagicvoice.rc $(srcdir)/resexpert.rc \
+	$(srcdir)/resautostart.rc $(srcdir)/resmmcreplay.rc \
+	$(srcdir)/resretroreplay.rc $(srcdir)/rescia.rc \
+	$(srcdir)/resds12c887rtc.rc $(srcdir)/resuserportrtc58321a.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/resuserportrtcds1307.rc \
+	$(srcdir)/resrrnetmk3.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/resgmod2.rc $(srcdir)/resethernet.rc \
+	$(srcdir)/resethernetcart.rc $(srcdir)/reskeymap.rc \
 	$(top_builddir)/src/debug.h
 	cat >resc128cat.rc $(srcdir)/resc128.rc $(srcdir)/res.rc \
 	$(srcdir)/resacia.rc $(srcdir)/reside64.rc $(srcdir)/resreu.rc \
 	$(srcdir)/resgeoram.rc $(srcdir)/resramcart.rc $(srcdir)/resmmc64.rc \
 	$(srcdir)/resrs232user.rc $(srcdir)/ressid.rc $(srcdir)/resvicii.rc \
 	$(srcdir)/resdrivec128.rc $(srcdir)/resdigimax.rc \
-	$(srcdir)/resmouse.rc $(srcdir)/restfe.rc $(srcdir)/reslightpen.rc \
-	$(srcdir)/ressoundexpander.rc $(srcdir)/reseasyflash.rc \
-	$(srcdir)/resmagicvoice.rc $(srcdir)/resexpert.rc \
-	$(srcdir)/resautostart.rc $(srcdir)/resmidi.rc \
-	$(srcdir)/resmmcreplay.rc $(srcdir)/resretroreplay.rc \
-	$(srcdir)/rescia.rc $(srcdir)/resds12c887rtc.rc
+	$(srcdir)/resmouse.rc $(srcdir)/ressoundexpander.rc \
+	$(srcdir)/reseasyflash.rc $(srcdir)/resmagicvoice.rc \
+	$(srcdir)/resexpert.rc $(srcdir)/resautostart.rc $(srcdir)/resmidi.rc \
+	$(srcdir)/resdqbb.rc $(srcdir)/resisepic.rc $(srcdir)/resmmcreplay.rc \
+	$(srcdir)/resretroreplay.rc $(srcdir)/rescia.rc \
+	$(srcdir)/resds12c887rtc.rc $(srcdir)/resjoyport.rc \
+	$(srcdir)/resuserportrtc58321a.rc $(srcdir)/resuserportrtcds1307.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/resrrnetmk3.rc \
+	$(srcdir)/rescpclockf83.rc $(srcdir)/restapelog.rc \
+	$(srcdir)/resiocollisions.rc $(srcdir)/resgmod2.rc \
+	$(srcdir)/resethernet.rc $(srcdir)/resethernetcart.rc \
+	$(srcdir)/reskeymap.rc
 
 resc64cat.rc: $(srcdir)/resc64.rc $(srcdir)/res.rc res.h $(srcdir)/resacia.rc \
 	$(srcdir)/resrs232user.rc $(srcdir)/ressid.rc $(srcdir)/resvicii.rc \
 	$(srcdir)/resreu.rc $(srcdir)/resgeoram.rc $(srcdir)/resramcart.rc \
-	$(srcdir)/resmmc64.rc $(srcdir)/resplus256k.rc $(srcdir)/resplus60k.rc \
-	$(srcdir)/resc64_256k.rc $(srcdir)/reside64.rc \
-	$(srcdir)/resautostart.rc $(srcdir)/resdrivec64.rc \
-	$(srcdir)/resdigimax.rc $(srcdir)/resmouse.rc \
-	$(srcdir)/restfe.rc $(srcdir)/resmidi.rc $(srcdir)/resdqbb.rc \
-	$(srcdir)/resisepic.rc $(srcdir)/reslightpen.rc \
-	$(srcdir)/ressoundexpander.rc $(srcdir)/reseasyflash.rc \
-	$(srcdir)/resmagicvoice.rc $(srcdir)/resexpert.rc \
-	$(srcdir)/resmmcreplay.rc $(srcdir)/resretroreplay.rc \
-	$(srcdir)/resds12c887rtc.rc $(top_builddir)/src/debug.h
+	$(srcdir)/resmmc64.rc $(srcdir)/resc64memoryhacks.rc \
+	$(srcdir)/reside64.rc $(srcdir)/resautostart.rc \
+	$(srcdir)/resdrivec64.rc $(srcdir)/resdigimax.rc $(srcdir)/resmouse.rc \
+	$(srcdir)/resmidi.rc $(srcdir)/resdqbb.rc $(srcdir)/resisepic.rc \
+	$(srcdir)/resjoyport.rc $(srcdir)/ressoundexpander.rc \
+	$(srcdir)/reseasyflash.rc $(srcdir)/resmagicvoice.rc \
+	$(srcdir)/resexpert.rc $(srcdir)/resmmcreplay.rc \
+	$(srcdir)/resretroreplay.rc $(srcdir)/rescia.rc \
+	$(srcdir)/resds12c887rtc.rc $(srcdir)/resuserportrtc58321a.rc \
+	$(srcdir)/resuserportrtcds1307.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resrrnetmk3.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/resgmod2.rc $(srcdir)/resethernet.rc \
+	$(srcdir)/resethernetcart.rc $(srcdir)/reskeymap.rc \
+	$(top_builddir)/src/debug.h
 	cat >resc64cat.rc $(srcdir)/resc64.rc $(srcdir)/res.rc \
 	$(srcdir)/resacia.rc $(srcdir)/resdrivec64.rc \
 	$(srcdir)/reside64.rc $(srcdir)/resreu.rc $(srcdir)/resgeoram.rc \
-	$(srcdir)/resmmc64.rc $(srcdir)/resramcart.rc $(srcdir)/resplus256k.rc \
-	$(srcdir)/resplus60k.rc $(srcdir)/resc64_256k.rc \
-	$(srcdir)/resrs232user.rc $(srcdir)/ressid.rc $(srcdir)/resvicii.rc \
-	$(srcdir)/resdigimax.rc $(srcdir)/resmouse.rc $(srcdir)/restfe.rc \
-	$(srcdir)/resmidi.rc $(srcdir)/resdqbb.rc $(srcdir)/resisepic.rc \
-	$(srcdir)/reslightpen.rc $(srcdir)/reseasyflash.rc \
+	$(srcdir)/resmmc64.rc $(srcdir)/resramcart.rc \
+	$(srcdir)/resc64memoryhacks.rc $(srcdir)/resrs232user.rc \
+	$(srcdir)/ressid.rc $(srcdir)/resvicii.rc $(srcdir)/resdigimax.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/resmidi.rc $(srcdir)/resdqbb.rc \
+	$(srcdir)/resisepic.rc $(srcdir)/reseasyflash.rc \
 	$(srcdir)/resmagicvoice.rc $(srcdir)/resexpert.rc \
 	$(srcdir)/ressoundexpander.rc $(srcdir)/resautostart.rc \
 	$(srcdir)/resmmcreplay.rc $(srcdir)/resretroreplay.rc \
-	$(srcdir)/resds12c887rtc.rc
+	$(srcdir)/rescia.rc $(srcdir)/resds12c887rtc.rc \
+	$(srcdir)/resjoyport.rc $(srcdir)/resuserportrtc58321a.rc \
+	$(srcdir)/resuserportrtcds1307.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resrrnetmk3.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/resgmod2.rc $(srcdir)/resethernet.rc \
+	$(srcdir)/resethernetcart.rc $(srcdir)/reskeymap.rc
+
+resscpu64cat.rc: $(srcdir)/resscpu64.rc $(srcdir)/res.rc res.h \
+	$(srcdir)/resacia.rc $(srcdir)/resrs232user.rc $(srcdir)/ressid.rc \
+	$(srcdir)/resvicii.rc $(srcdir)/resreu.rc $(srcdir)/resgeoram.rc \
+	$(srcdir)/resramcart.rc $(srcdir)/resmmc64.rc $(srcdir)/reside64.rc \
+	$(srcdir)/resautostart.rc $(srcdir)/resdrivec64.rc \
+	$(srcdir)/resdigimax.rc $(srcdir)/resmouse.rc \
+	$(srcdir)/resmidi.rc $(srcdir)/resdqbb.rc $(srcdir)/resisepic.rc \
+	$(srcdir)/ressoundexpander.rc $(srcdir)/reseasyflash.rc \
+	$(srcdir)/resmagicvoice.rc $(srcdir)/resexpert.rc \
+	$(srcdir)/resmmcreplay.rc $(srcdir)/resretroreplay.rc \
+	$(srcdir)/rescia.rc $(srcdir)/resds12c887rtc.rc \
+	$(srcdir)/resuserportrtc58321a.rc $(srcdir)/resuserportrtcds1307.rc \
+	$(srcdir)/resjoyport.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resrrnetmk3.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/resgmod2.rc $(srcdir)/resethernet.rc \
+	$(srcdir)/resethernetcart.rc $(srcdir)/reskeymap.rc \
+	$(top_builddir)/src/debug.h
+	cat >resscpu64cat.rc $(srcdir)/resscpu64.rc $(srcdir)/res.rc \
+	$(srcdir)/resacia.rc $(srcdir)/resdrivec64.rc \
+	$(srcdir)/reside64.rc $(srcdir)/resreu.rc $(srcdir)/resgeoram.rc \
+	$(srcdir)/resmmc64.rc $(srcdir)/resramcart.rc \
+	$(srcdir)/resrs232user.rc $(srcdir)/ressid.rc $(srcdir)/resvicii.rc \
+	$(srcdir)/resdigimax.rc $(srcdir)/resmouse.rc $(srcdir)/resmidi.rc \
+	$(srcdir)/resdqbb.rc $(srcdir)/resisepic.rc $(srcdir)/reseasyflash.rc \
+	$(srcdir)/resmagicvoice.rc $(srcdir)/resexpert.rc \
+	$(srcdir)/ressoundexpander.rc $(srcdir)/resautostart.rc \
+	$(srcdir)/resmmcreplay.rc $(srcdir)/resretroreplay.rc \
+	$(srcdir)/rescia.rc $(srcdir)/resds12c887rtc.rc \
+	$(srcdir)/resjoyport.rc $(srcdir)/resuserportrtc58321a.rc \
+	$(srcdir)/resuserportrtcds1307.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resrrnetmk3.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/resgmod2.rc $(srcdir)/resethernet.rc \
+	$(srcdir)/resethernetcart.rc $(srcdir)/reskeymap.rc
 
 resc64dtvcat.rc : $(srcdir)/resc64dtv.rc $(srcdir)/res.rc res.h \
-	$(srcdir)/ressiddtv.rc $(srcdir)/resvicii.rc $(srcdir)/resdrivec64.rc \
-	$(srcdir)/resautostart.rc $(top_builddir)/src/debug.h
+	$(srcdir)/ressiddtv.rc $(srcdir)/resvicii.rc \
+	$(srcdir)/resdrivec64dtv.rc $(srcdir)/resautostart.rc \
+	$(srcdir)/resjoyport.rc $(srcdir)/ressampler.rc $(srcdir)/reskeymap.rc \
+	$(top_builddir)/src/debug.h
 	cat >resc64dtvcat.rc $(srcdir)/resc64dtv.rc $(srcdir)/res.rc \
-	$(srcdir)/resdrivec64.rc $(srcdir)/ressiddtv.rc \
-	$(srcdir)/resautostart.rc $(srcdir)/resvicii.rc
+	$(srcdir)/resdrivec64dtv.rc $(srcdir)/ressiddtv.rc \
+	$(srcdir)/resautostart.rc $(srcdir)/resjoyport.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/resvicii.rc $(srcdir)/reskeymap.rc
 
 rescbm2cat.rc: $(srcdir)/rescbm2.rc $(srcdir)/rescbm2common.rc \
 	$(srcdir)/res.rc res.h $(srcdir)/resacia.rc $(srcdir)/ressiddtv.rc \
 	$(srcdir)/resdrivepetcbm2.rc $(srcdir)/resautostart.rc \
-	$(srcdir)/rescia.rc $(top_builddir)/src/debug.h
+	$(srcdir)/rescia.rc $(srcdir)/resjoyport.rc $(srcdir)/resmouse.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/resuserportrtc58321a.rc \
+	$(srcdir)/resuserportrtcds1307.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/reskeymap.rc $(top_builddir)/src/debug.h
 	cat >rescbm2cat.rc $(srcdir)/rescbm2.rc $(srcdir)/rescbm2common.rc \
 	$(srcdir)/res.rc $(srcdir)/resacia.rc $(srcdir)/resdrivepetcbm2.rc \
 	$(srcdir)/ressiddtv.rc $(srcdir)/resautostart.rc \
-	$(srcdir)/rescia.rc
+	$(srcdir)/rescia.rc $(srcdir)/resjoyport.rc $(srcdir)/resmouse.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/resuserportrtc58321a.rc \
+	$(srcdir)/resuserportrtcds1307.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/reskeymap.rc
 
 rescbm5x0cat.rc: $(srcdir)/rescbm5x0.rc $(srcdir)/rescbm2common.rc \
 	$(srcdir)/res.rc res.h $(srcdir)/resacia.rc $(srcdir)/ressiddtv.rc \
 	$(srcdir)/resdrivepetcbm2.rc $(srcdir)/resautostart.rc \
-	$(srcdir)/resvicii.rc $(srcdir)/rescia.rc $(top_builddir)/src/debug.h
+	$(srcdir)/resvicii.rc $(srcdir)/rescia.rc $(srcdir)/resjoyport.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/rescpclockf83.rc $(srcdir)/restapelog.rc \
+	$(srcdir)/resiocollisions.rc $(srcdir)/reskeymap.rc \
+	$(top_builddir)/src/debug.h
 	cat >rescbm5x0cat.rc $(srcdir)/rescbm5x0.rc $(srcdir)/rescbm2common.rc \
 	$(srcdir)/res.rc $(srcdir)/resacia.rc $(srcdir)/resdrivepetcbm2.rc \
 	$(srcdir)/ressiddtv.rc $(srcdir)/resvicii.rc $(srcdir)/resautostart.rc \
-	$(srcdir)/rescia.rc
+	$(srcdir)/resjoyport.rc $(srcdir)/rescia.rc $(srcdir)/resmouse.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/reskeymap.rc
 
 respetcat.rc: $(srcdir)/respet.rc $(srcdir)/res.rc res.h $(srcdir)/resacia.rc \
 	$(srcdir)/resdrivepetcbm2.rc $(srcdir)/respetreu.rc \
 	$(srcdir)/resautostart.rc $(srcdir)/ressidcart.rc \
-	$(srcdir)/respetdww.rc $(top_builddir)/src/debug.h
+	$(srcdir)/respetdww.rc $(srcdir)/respetcolour.rc \
+	$(srcdir)/resjoyport.rc $(srcdir)/resmouse.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resuserportrtc58321a.rc $(srcdir)/resuserportrtcds1307.rc \
+	$(srcdir)/rescpclockf83.rc $(srcdir)/restapelog.rc \
+	$(srcdir)/resiocollisions.rc $(srcdir)/reskeymap.rc \
+	$(top_builddir)/src/debug.h
 	cat >respetcat.rc $(srcdir)/respet.rc $(srcdir)/res.rc \
 	$(srcdir)/resacia.rc $(srcdir)/resdrivepetcbm2.rc \
 	$(srcdir)/respetreu.rc $(srcdir)/ressidcart.rc \
-	$(srcdir)/respetdww.rc $(srcdir)/resautostart.rc
+	$(srcdir)/respetdww.rc $(srcdir)/respetcolour.rc \
+	$(srcdir)/resautostart.rc $(srcdir)/resjoyport.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resuserportrtc58321a.rc $(srcdir)/resuserportrtcds1307.rc \
+	$(srcdir)/rescpclockf83.rc $(srcdir)/restapelog.rc \
+	$(srcdir)/resiocollisions.rc $(srcdir)/reskeymap.rc
 
 resplus4cat.rc: $(srcdir)/resplus4.rc $(srcdir)/res.rc res.h \
 	$(srcdir)/resacia.rc $(srcdir)/resdriveplus4.rc \
 	$(srcdir)/resautostart.rc $(srcdir)/ressidcart.rc \
-	$(srcdir)/resv364speech.rc $(srcdir)/rested.rc \
-	$(top_builddir)/src/debug.h
+	$(srcdir)/resv364speech.rc $(srcdir)/rested.rc $(srcdir)/resjoyport.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/resplus4memoryhacks.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/reskeymap.rc $(top_builddir)/src/debug.h
 	cat >resplus4cat.rc $(srcdir)/resplus4.rc $(srcdir)/res.rc \
 	$(srcdir)/resacia.rc $(srcdir)/resdriveplus4.rc \
-	$(srcdir)/resv364speech.rc \
-	$(srcdir)/ressidcart.rc $(srcdir)/resautostart.rc \
-	$(srcdir)/rested.rc
+	$(srcdir)/resv364speech.rc $(srcdir)/ressidcart.rc \
+	$(srcdir)/resautostart.rc $(srcdir)/resjoyport.rc $(srcdir)/rested.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/resplus4memoryhacks.rc \
+	$(srcdir)/ressampler.rc $(srcdir)/rescpclockf83.rc \
+	$(srcdir)/restapelog.rc $(srcdir)/resiocollisions.rc \
+	$(srcdir)/reskeymap.rc
 
 resvic20cat.rc : $(srcdir)/resvic20.rc $(srcdir)/res.rc res.h \
 	$(srcdir)/resrs232user.rc $(srcdir)/resdrivevic20.rc \
 	$(srcdir)/ressidcart.rc $(srcdir)/resmidi.rc \
-	$(srcdir)/resautostart.rc $(srcdir)/reslightpen.rc \
-	$(srcdir)/resacia.rc $(srcdir)/resgeoram.rc \
-	$(srcdir)/resdigimax.rc $(srcdir)/restfe.rc \
-	$(srcdir)/ressoundexpander.rc $(srcdir)/ressoundsampler.rc \
-	$(srcdir)/resvic.rc $(srcdir)/resds12c887rtc.rc \
+	$(srcdir)/resautostart.rc $(srcdir)/resacia.rc $(srcdir)/resgeoram.rc \
+	$(srcdir)/resdigimax.rc $(srcdir)/ressoundexpander.rc \
+	$(srcdir)/ressoundsampler.rc $(srcdir)/resvic.rc \
+	$(srcdir)/resds12c887rtc.rc $(srcdir)/resjoyport.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resuserportrtc58321a.rc $(srcdir)/resuserportrtcds1307.rc \
+	$(srcdir)/rescpclockf83.rc $(srcdir)/restapelog.rc \
+	$(srcdir)/resiocollisions.rc $(srcdir)/resethernet.rc \
+	$(srcdir)/resethernetcart.rc $(srcdir)/reskeymap.rc \
 	$(top_builddir)/src/debug.h
 	cat >resvic20cat.rc $(srcdir)/resvic20.rc $(srcdir)/res.rc \
 	$(srcdir)/resdrivevic20.rc $(srcdir)/resrs232user.rc \
 	$(srcdir)/ressidcart.rc $(srcdir)/resmidi.rc \
-	$(srcdir)/reslightpen.rc $(srcdir)/resautostart.rc \
-	$(srcdir)/resacia.rc $(srcdir)/resgeoram.rc \
-	$(srcdir)/resdigimax.rc $(srcdir)/restfe.rc \
-	$(srcdir)/ressoundexpander.rc $(srcdir)/ressoundsampler.rc \
-	$(srcdir)/resvic.rc $(srcdir)/resds12c887rtc.rc
+	$(srcdir)/resautostart.rc $(srcdir)/resacia.rc $(srcdir)/resgeoram.rc \
+	$(srcdir)/resdigimax.rc $(srcdir)/ressoundexpander.rc \
+	$(srcdir)/ressoundsampler.rc $(srcdir)/resvic.rc \
+	$(srcdir)/resjoyport.rc $(srcdir)/resds12c887rtc.rc \
+	$(srcdir)/resmouse.rc $(srcdir)/ressampler.rc \
+	$(srcdir)/resuserportrtc58321a.rc $(srcdir)/resuserportrtcds1307.rc \
+	$(srcdir)/rescpclockf83.rc $(srcdir)/restapelog.rc \
+	$(srcdir)/resiocollisions.rc $(srcdir)/resethernet.rc \
+	$(srcdir)/resethernetcart.rc $(srcdir)/reskeymap.rc
 
 resvsidcat.rc: $(srcdir)/resvsid.rc $(srcdir)/res.rc res.h $(srcdir)/ressid.rc \
 	$(srcdir)/resvicii.rc $(top_builddir)/src/debug.h
@@ -690,6 +675,22 @@ resc64.o: resc64cat.rc
 	--include-dir $(top_srcdir)/src/arch/win32  \
 	--include-dir $(top_srcdir)/src
 	$(WINDRES) -i resc64.res -o $@
+endif
+
+if OWCC
+resscpu64.res: resscpu64cat.rc
+	wrc -fo=resscpu64.res -r -bt=nt \
+	-i=$(top_builddir)/src \
+	-i=$(top_srcdir)/src/arch/win32 \
+	-i=$(top_srcdir)/src \
+	resscpu64cat.rc
+else
+resscpu64.o: resscpu64cat.rc
+	$(WRC) -i resscpu64cat.rc -o resscpu64.res \
+	--include-dir $(top_builddir)/src \
+	--include-dir $(top_srcdir)/src/arch/win32  \
+	--include-dir $(top_srcdir)/src
+	$(WINDRES) -i resscpu64.res -o $@
 endif
 
 if OWCC

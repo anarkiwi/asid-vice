@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -40,7 +41,8 @@
 #include "attach.h"
 #include "autostart.h"
 #include "datasette.h"
-#include "drivecpu.h"
+#include "drive.h"
+#include "gfxoutput.h"
 #include "imagecontents.h"
 #include "tapecontents.h"
 #include "info.h"
@@ -62,7 +64,9 @@
 #include "ui.h"
 #include "uiattach.h"
 #include "uidrive.h"
+#include "uijoyport.h"
 #include "uijoystick.h"
+#include "uikeymap.h"
 
 #ifdef HAVE_NETWORK
 #include "uinetplay.h"
@@ -70,14 +74,19 @@
 
 #include "uiperipherial.h"
 #include "uiprinter.h"
+#include "uisampler.h"
 #include "uiscreenshot.h"
 #include "uisnapshot.h"
 #include "uisound.h"
 #include "util.h"
 #include "version.h"
+#include "vicefeatures.h"
 #include "video.h"
 #include "videoarch.h"
 
+#ifdef USE_SVN_REVISION
+#include "svnversion.h"
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -89,6 +98,7 @@ tui_menu_t ui_info_submenu;
 tui_menu_t ui_main_menu;
 tui_menu_t ui_quit_submenu;
 tui_menu_t ui_reset_submenu;
+tui_menu_t ui_jamaction_submenu;
 tui_menu_t ui_rom_submenu;
 tui_menu_t ui_screenshot_submenu;
 tui_menu_t ui_settings_submenu;
@@ -348,6 +358,25 @@ static tui_menu_item_def_t datasette_zerogapdelay_submenu[] = {
     { NULL }
 };
 
+static TUI_MENU_CALLBACK(ui_set_tape_wobble_callback)
+{
+    if (been_activated) {
+        int current_wobble, value;
+        char buf[10];
+
+        resources_get_int("DatasetteTapeWobble", &current_wobble);
+        sprintf(buf, "%d", current_wobble);
+
+        if (tui_input_string("Random tape wobble", "Enter the random tape wobble:", buf, 10) == 0) {
+            value = atoi(buf);
+            resources_set_int("DatasetteTapeWobble", value);
+        } else {
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
 static tui_menu_item_def_t datasette_settings_submenu[] = {
     { "_Reset Datasette with CPU:",
       "Reset the datasette when main CPU resets",
@@ -363,6 +392,32 @@ static tui_menu_item_def_t datasette_settings_submenu[] = {
       datasette_zerogapdelay_submenu_callback, NULL, 8,
       TUI_MENU_BEH_CONTINUE, datasette_zerogapdelay_submenu,
       "A zero in tap is..." },
+    { "Random tape wobble",
+      "Set random tape wobble",
+      ui_set_tape_wobble_callback, NULL, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
+/* ------------------------------------------------------------------------- */
+
+/* CPU JAM actions */
+
+TUI_MENU_DEFINE_RADIO(JAMAction)
+
+static tui_menu_item_def_t cpu_jam_actions_submenu[] = {
+    { "_Ask", NULL, radio_JAMAction_callback,
+      (void *)MACHINE_JAM_ACTION_DIALOG, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_Continue", NULL, radio_JAMAction_callback,
+      (void *)MACHINE_JAM_ACTION_CONTINUE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Start _Monitor", NULL, radio_JAMAction_callback,
+      (void *)MACHINE_JAM_ACTION_MONITOR, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_Reset", NULL, radio_JAMAction_callback,
+      (void *)MACHINE_JAM_ACTION_RESET, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_Hard reset", NULL, radio_JAMAction_callback,
+      (void *)MACHINE_JAM_ACTION_HARD_RESET, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_Quit emulator", NULL, radio_JAMAction_callback,
+      (void *)MACHINE_JAM_ACTION_QUIT, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
     { NULL }
 };
 
@@ -531,7 +586,7 @@ static TUI_MENU_CALLBACK(hard_reset_callback)
 static TUI_MENU_CALLBACK(reset_drive_callback)
 {
     if (been_activated) {
-        drivecpu_trigger_reset((unsigned int)param);
+        drive_cpu_trigger_reset((unsigned int)param);
     }
 
     *become_default = 0;
@@ -566,46 +621,130 @@ static tui_menu_item_def_t reset_submenu[] = {
 
 /* ------------------------------------------------------------------------- */
 
+static char *center_text_70(char *text)
+{
+    char *retval = NULL;
+    char *spaces;
+    int space_size = (70 - strlen(text)) / 2;
+
+    spaces = lib_malloc(space_size + 1);
+    memset(spaces, 32, space_size);
+    spaces[space_size] = 0;
+
+    retval = util_concat(spaces, text, NULL);
+    lib_free(spaces);
+
+    return retval;
+}
+
+static char *authors_start[] = {
+    "V I C E",
+#ifdef USE_SVN_REVISION
+    "Version " VERSION "rev " VICE_SVN_REV_STRING,
+#else
+    "Version " VERSION,
+#endif
+#ifdef UNSTABLE
+    "(unstable)",
+#endif
+    NULL
+};
+
+static char *authors_end[] = {
+    "Official VICE homepage:",
+    "http://vice-emu.sourceforge.net/",
+    NULL
+};
+
+#ifdef UNSTABLE
+static char *authors_unstable[] = {
+    "WARNING: this is an *unstable* test version!",
+    "Please check out the homepage for the latest updates.",
+    NULL
+};
+#endif
+
 /* this is getting too big for a static dialog, so it's been
    turned into a scrolling text view. */
 static TUI_MENU_CALLBACK(show_copyright_callback)
 {
     if (been_activated) {
-        const char *str_list = "\n"
-                               "                               V I C E\n"
-                               "                             Version " VERSION "\n"
+        char *str_list;
+        char *tmp1, tmp2;
+        int i;
+        
+        str_list = lib_stralloc("\n");
+        for (i = 0; authors_start[i]; i++) {
+            tmp1 = center_text_70(authors_start[i]);
+            tmp2 = util_concat(str_list, tmp1, "\n", NULL);
+            lib_free(tmp1);
+            lib_free(str_list);
+            str_list = tmp2;
+        }
+        tmp1 = util_concat(str_list, "\n", NULL);
+        lib_free(str_list);
+        str_list = tmp1;
+        for (i = 0; core_team[i].name; i++) {
+            tmp1 = util_concat("Copyright (c) ", core_team[i].years, " ", core_team[i].name, NULL);
+            tmp2 = center_text_70(tmp1);
+            lib_free(tmp1);
+            tmp1 = util_concat(str_list, tmp2, "\n", NULL);
+            lib_free(str_list);
+            str_list = tmp1;
+        }
+        tmp1 = util_concat(str_list, "\n", NULL);
+        lib_free(str_list);
+        str_list = tmp1;
+        for (i = 0; authors_end[i]; i++) {
+            tmp1 = center_text_70(authors_end[i]);
+            tmp2 = util_concat(str_list, tmp1, "\n", NULL);
+            lib_free(tmp1);
+            lib_free(str_list);
+            str_list = tmp2;
+        }
 #ifdef UNSTABLE
-                               "                              (unstable)\n"
+        tmp1 = util_concat(str_list, "\n", NULL);
+        lib_free(str_list);
+        str_list = tmp1;
+        for (i = 0; authors_unstable[i]; i++) {
+            tmp1 = center_text_70(authors_unstable[i]);
+            tmp2 = util_concat(str_list, tmp1, "\n", NULL);
+            lib_free(tmp1);
+            lib_free(str_list);
+            str_list = tmp2;
+        }
 #endif
-                               "\n"
-                               "                   Copyright (c) 1998-2012 Dag Lem\n"
-                               "               Copyright (c) 1999-2012 Andreas Matthies\n"
-                               "             Copyright (c) 1999-2012 Martin Pottendorfer\n"
-                               "             Copyright (c) 2005-2012 Marco van den Heuvel\n"
-                               "             Copyright (c) 2006-2012 Christian Vogelgsang\n"
-                               "               Copyright (c) 2007-2012 Fabrizio Gennari\n"
-                               "                Copyright (c) 2007-2012 Daniel Kahlin\n"
-                               "               Copyright (c) 2008-2012 Antti S. Lankila\n"
-                               "                   Copyright (c) 2009-2012 Groepaz\n"
-                               "                  Copyright (c) 2009-2012 Ingo Korb\n"
-                               "                 Copyright (c) 2009-2012 Errol Smith\n"
-                               "                 Copyright (c) 2010-2012 Olaf Seibert\n"
-                               "                 Copyright (c) 2011-2012 Marcus Sutton\n"
-                               "                 Copyright (c) 2011-2012 Ulrich Schulz\n"
-                               "                Copyright (c) 2011-2012 Stefan Haubenthal\n"
-                               "                 Copyright (c) 2011-2012 Thomas Giesel\n"
-                               "                  Copyright (c) 2011-2012 Kajtar Zsolt\n"
-                               "            Copyright (c) 2012-2012 Benjamin 'BeRo' Rosseaux\n"
-                               "\n"
-                               "                       Official VICE homepage:\n"
-                               "                   http://vice-emu.sourceforge.net/\n"
-#ifdef UNSTABLE
-                               "\n"
-                               "             WARNING: this is an *unstable* test version!\n"
-                               "        Please check out the homepage for the latest updates.\n"
-#endif
-                               "\n";
+        tmp1 = util_concat(str_list, "\n", NULL);
+        lib_free(str_list);
+        str_list = tmp1;
         tui_view_text(70, 20, NULL, str_list);
+        lib_free(str_list);
+    }
+    return NULL;
+}
+
+static TUI_MENU_CALLBACK(show_features_callback)
+{
+    if (been_activated) {
+        feature_list_t *list;
+        char *str, *lstr;
+        unsigned int len = 0;
+
+        list = vice_get_feature_list();
+        while (list->symbol) {
+            len += strlen(list->descr) + strlen(list->symbol) + (15);
+            ++list;
+        }
+        str = lib_malloc(len);
+        lstr = str;
+        list = vice_get_feature_list();
+        while (list->symbol) {
+            sprintf(lstr, "%s\n%s\n%s\n\n", list->isdefined ? "yes " : "no  ", list->descr, list->symbol);
+            lstr += strlen(lstr);
+            ++list;
+        }
+        tui_view_text(70, 20, NULL, str);
+        lib_free(str);
     }
     return NULL;
 }
@@ -635,6 +774,10 @@ static tui_menu_item_def_t info_submenu[] = {
       "VICE is distributed WITHOUT ANY WARRANTY!",
       show_info_callback, (void *)info_warranty_text, 0,
       TUI_MENU_BEH_CONTINUE },
+    { "Compile time features",
+      "VICE compile time features",
+      show_features_callback, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { NULL }
 };
 
@@ -719,7 +862,18 @@ static void create_ui_video_submenu(void)
     tui_menu_add_separator(ui_video_submenu);
 
     ui_screenshot_submenu = tui_menu_create("Screenshot Commands", 1);
-    tui_menu_add(ui_screenshot_submenu, ui_screenshot_menu_def);
+    switch (machine_class) {
+        default:
+            tui_menu_add(ui_screenshot_submenu, ui_screenshot_menu_def_vic_vicii_vdc);
+            break;
+        case VICE_MACHINE_PET:
+        case VICE_MACHINE_CBM6x0:
+            tui_menu_add(ui_screenshot_submenu, ui_screenshot_menu_def_crtc);
+            break;
+        case VICE_MACHINE_PLUS4:
+            tui_menu_add(ui_screenshot_submenu, ui_screenshot_menu_def_ted);
+            break;
+    }
 
     tui_menu_add_submenu(ui_video_submenu, "_Screenshot Commands...",
                          "Commands for saving screenshots",
@@ -895,8 +1049,14 @@ static void create_special_submenu(int has_serial_traps)
 
 /* ------------------------------------------------------------------------- */
 
-void ui_create_main_menu(int has_tape, int has_drive, int has_serial_traps, int number_joysticks, int has_datasette)
+void ui_create_main_menu(int has_tape, int has_drive, int has_serial_traps, int number_joysticks, int has_datasette, const tui_menu_item_def_t *d)
 {
+    int port1 = (number_joysticks & 16) >> 4;
+    int port2 = (number_joysticks & 8) >> 3;
+    int port3 = (number_joysticks & 4) >> 2;
+    int port4 = (number_joysticks & 2) >> 1;
+    int port5 = number_joysticks & 1;
+
     /* Main menu. */
     ui_main_menu = tui_menu_create(NULL, 1);
 
@@ -1014,7 +1174,7 @@ void ui_create_main_menu(int has_tape, int has_drive, int has_serial_traps, int 
                          TUI_MENU_BEH_CONTINUE);
 
     if (has_drive) {
-        uidrive_init(ui_main_menu);
+        uidrive_init(ui_main_menu, d);
     }
 
     if (has_datasette) {
@@ -1027,9 +1187,12 @@ void ui_create_main_menu(int has_tape, int has_drive, int has_serial_traps, int 
                              TUI_MENU_BEH_CONTINUE);
     }
 
-    uisound_init(ui_main_menu);
+    uikeymap_init(ui_main_menu);
 
-    uijoystick_init(ui_main_menu);
+    uisound_init(ui_main_menu);
+    uisampler_init(ui_main_menu);
+
+    uijoyport_init(ui_main_menu, port1, port2, port3, port4, port5);
 
     ui_rom_submenu = tui_menu_create("Firmware ROM Settings", 1);
     tui_menu_add(ui_rom_submenu, rom_submenu);
@@ -1102,6 +1265,13 @@ void ui_create_main_menu(int has_tape, int has_drive, int has_serial_traps, int 
                       monitor_callback,
                       NULL, 0,
                       TUI_MENU_BEH_RESUME);
+
+    ui_jamaction_submenu = tui_menu_create("Default CPU JAM action", 1);
+    tui_menu_add(ui_jamaction_submenu, cpu_jam_actions_submenu);
+    tui_menu_add_submenu(ui_main_menu, "_JAM action ",
+                         "Default CPU JAM action",
+                         ui_jamaction_submenu,
+                         NULL, NULL, 0);
 
     ui_reset_submenu = tui_menu_create("Reset?", 1);
     tui_menu_add(ui_reset_submenu, reset_submenu);

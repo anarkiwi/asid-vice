@@ -2,7 +2,7 @@
 
 SUBDIRS = view menu dialog
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src/drive \
@@ -15,33 +15,34 @@ INCLUDES = \
 	-I$(top_srcdir)/src/sid \
 	-I$(top_srcdir)/src/vdrive \
 	-I$(top_srcdir)/src/raster \
+	-I$(top_srcdir)/src/joyport \
 	-I$(top_srcdir)/src
 
 noinst_LIBRARIES = libarchmacosxcocoa.a
 
 noinst_HEADERS = \
-   kbd.h \
-   viceapplication.h \
-   viceapplicationprotocol.h \
-   vicemachine.h \
+	kbd.h \
+	viceapplication.h \
+	viceapplicationprotocol.h \
+	vicemachine.h \
 	vicemachinenotifier.h \
-   vicemachineprotocol.h \
-   vicenotifications.h \
-   videoarch.h \
-   videoparam.h
+	vicemachineprotocol.h \
+	vicenotifications.h \
+	videoarch.h \
+	videoparam.h
    
 libarchmacosxcocoa_a_SOURCES = \
-   ui-resources.c \
-   ui-cmdline-options.c \
-   console.m \
-   fullscreen.m \
-   kbd.m \
-   main.m \
-   mousedrv.m \
-   ui.m \
-   uimon.m \
-   viceapplication.m \
-   vicemachine.m \
+	ui-resources.c \
+	ui-cmdline-options.c \
+	console.m \
+	fullscreen.m \
+	kbd.m \
+	main.m \
+	mousedrv.m \
+	ui.m \
+	uimon.m \
+	viceapplication.m \
+	vicemachine.m \
 	vicemachinenotifier.m \
-   video.m \
-   vsidui.m
+	video.m \
+	vsidui.m

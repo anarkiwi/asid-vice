@@ -38,7 +38,7 @@ subdir = src/c64
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -50,9 +50,10 @@ ARFLAGS = cru
 libc64_a_AR = $(AR) $(ARFLAGS)
 libc64_a_LIBADD =
 am_libc64_a_OBJECTS = c64-cmdline-options.$(OBJEXT) \
-	c64-resources.$(OBJEXT) c64-snapshot.$(OBJEXT) c64.$(OBJEXT) \
-	c64_256k.$(OBJEXT) c64bus.$(OBJEXT) c64cia1.$(OBJEXT) \
-	c64cia2.$(OBJEXT) c64datasette.$(OBJEXT) c64drive.$(OBJEXT) \
+	c64-memory-hacks.$(OBJEXT) c64-resources.$(OBJEXT) \
+	c64-snapshot.$(OBJEXT) c64.$(OBJEXT) c64_256k.$(OBJEXT) \
+	c64bus.$(OBJEXT) c64cia1.$(OBJEXT) c64cia2.$(OBJEXT) \
+	c64cpu.$(OBJEXT) c64datasette.$(OBJEXT) c64drive.$(OBJEXT) \
 	c64embedded.$(OBJEXT) c64export.$(OBJEXT) c64fastiec.$(OBJEXT) \
 	c64gluelogic.$(OBJEXT) c64iec.$(OBJEXT) c64io.$(OBJEXT) \
 	c64keyboard.$(OBJEXT) c64mem.$(OBJEXT) c64meminit.$(OBJEXT) \
@@ -77,20 +78,20 @@ libc64c64dtv_a_AR = $(AR) $(ARFLAGS)
 libc64c64dtv_a_LIBADD =
 am_libc64c64dtv_a_OBJECTS = c64bus.$(OBJEXT) c64drive.$(OBJEXT) \
 	c64fastiec.$(OBJEXT) c64keyboard.$(OBJEXT) \
-	c64parallel.$(OBJEXT) c64printer.$(OBJEXT) c64rom.$(OBJEXT) \
-	c64romset.$(OBJEXT) c64rsuser.$(OBJEXT) c64video.$(OBJEXT) \
-	patchrom.$(OBJEXT)
+	c64parallel.$(OBJEXT) c64rom.$(OBJEXT) c64romset.$(OBJEXT) \
+	c64rsuser.$(OBJEXT) c64video.$(OBJEXT) patchrom.$(OBJEXT)
 libc64c64dtv_a_OBJECTS = $(am_libc64c64dtv_a_OBJECTS)
 libc64sc_a_AR = $(AR) $(ARFLAGS)
 libc64sc_a_LIBADD =
 am_libc64sc_a_OBJECTS = c64-cmdline-options.$(OBJEXT) \
-	c64-resources.$(OBJEXT) c64-snapshot.$(OBJEXT) c64.$(OBJEXT) \
-	c64_256k.$(OBJEXT) c64bus.$(OBJEXT) c64cia1.$(OBJEXT) \
-	c64cia2.$(OBJEXT) c64cpu.$(OBJEXT) c64datasette.$(OBJEXT) \
-	c64drive.$(OBJEXT) c64embedded.$(OBJEXT) c64export.$(OBJEXT) \
-	c64fastiec.$(OBJEXT) c64gluelogic.$(OBJEXT) c64iec.$(OBJEXT) \
-	c64io.$(OBJEXT) c64keyboard.$(OBJEXT) c64memsc.$(OBJEXT) \
-	c64meminit.$(OBJEXT) c64memlimit.$(OBJEXT) c64memrom.$(OBJEXT) \
+	c64-memory-hacks.$(OBJEXT) c64-resources.$(OBJEXT) \
+	c64-snapshot.$(OBJEXT) c64.$(OBJEXT) c64_256k.$(OBJEXT) \
+	c64bus.$(OBJEXT) c64cia1.$(OBJEXT) c64cia2.$(OBJEXT) \
+	c64cpusc.$(OBJEXT) c64datasette.$(OBJEXT) c64drive.$(OBJEXT) \
+	c64embedded.$(OBJEXT) c64export.$(OBJEXT) c64fastiec.$(OBJEXT) \
+	c64gluelogic.$(OBJEXT) c64iec.$(OBJEXT) c64io.$(OBJEXT) \
+	c64keyboard.$(OBJEXT) c64memsc.$(OBJEXT) c64meminit.$(OBJEXT) \
+	c64memlimit.$(OBJEXT) c64memrom.$(OBJEXT) \
 	c64memsnapshot.$(OBJEXT) c64scmodel.$(OBJEXT) \
 	c64parallel.$(OBJEXT) c64pla.$(OBJEXT) c64printer.$(OBJEXT) \
 	c64rom.$(OBJEXT) c64romset.$(OBJEXT) c64rsuser.$(OBJEXT) \
@@ -98,19 +99,30 @@ am_libc64sc_a_OBJECTS = c64-cmdline-options.$(OBJEXT) \
 	plus256k.$(OBJEXT) plus60k.$(OBJEXT) psid.$(OBJEXT) \
 	reloc65.$(OBJEXT)
 libc64sc_a_OBJECTS = $(am_libc64sc_a_OBJECTS)
+libc64scpu64_a_AR = $(AR) $(ARFLAGS)
+libc64scpu64_a_LIBADD =
+am_libc64scpu64_a_OBJECTS = c64bus.$(OBJEXT) c64cia1.$(OBJEXT) \
+	c64cia2.$(OBJEXT) c64datasette.$(OBJEXT) c64drive.$(OBJEXT) \
+	c64embedded.$(OBJEXT) c64export.$(OBJEXT) c64fastiec.$(OBJEXT) \
+	c64iec.$(OBJEXT) c64io.$(OBJEXT) c64keyboard.$(OBJEXT) \
+	c64memsnapshot.$(OBJEXT) c64parallel.$(OBJEXT) \
+	c64printer.$(OBJEXT) c64romset.$(OBJEXT) c64rsuser.$(OBJEXT) \
+	c64sound.$(OBJEXT) c64video.$(OBJEXT) patchrom.$(OBJEXT) \
+	reloc65.$(OBJEXT)
+libc64scpu64_a_OBJECTS = $(am_libc64scpu64_a_OBJECTS)
 libvsid_a_AR = $(AR) $(ARFLAGS)
 libvsid_a_LIBADD =
-am_libvsid_a_OBJECTS = c64-cmdline-options.$(OBJEXT) \
-	c64embedded.$(OBJEXT) c64export.$(OBJEXT) \
-	c64gluelogic.$(OBJEXT) c64io.$(OBJEXT) c64keyboard.$(OBJEXT) \
-	c64meminit.$(OBJEXT) c64memlimit.$(OBJEXT) c64memrom.$(OBJEXT) \
-	c64memsnapshot.$(OBJEXT) c64model.$(OBJEXT) c64pla.$(OBJEXT) \
-	c64rom.$(OBJEXT) c64romset.$(OBJEXT) c64rsuser.$(OBJEXT) \
-	c64sound.$(OBJEXT) c64video.$(OBJEXT) patchrom.$(OBJEXT) \
-	psid.$(OBJEXT) reloc65.$(OBJEXT) vsid.$(OBJEXT) \
-	vsid-resources.$(OBJEXT) vsid-snapshot.$(OBJEXT) \
-	vsidcia1.$(OBJEXT) vsidcia2.$(OBJEXT) vsidmem.$(OBJEXT) \
-	vsidstubs.$(OBJEXT)
+am_libvsid_a_OBJECTS = c64embedded.$(OBJEXT) c64gluelogic.$(OBJEXT) \
+	c64keyboard.$(OBJEXT) c64memlimit.$(OBJEXT) \
+	c64memrom.$(OBJEXT) c64model.$(OBJEXT) c64rom.$(OBJEXT) \
+	c64romset.$(OBJEXT) c64rsuser.$(OBJEXT) c64video.$(OBJEXT) \
+	vsid-debugcart.$(OBJEXT) patchrom.$(OBJEXT) psid.$(OBJEXT) \
+	reloc65.$(OBJEXT) vsid.$(OBJEXT) \
+	vsid-cmdline-options.$(OBJEXT) vsid-resources.$(OBJEXT) \
+	vsid-snapshot.$(OBJEXT) vsidcia1.$(OBJEXT) vsidcia2.$(OBJEXT) \
+	vsidcpu.$(OBJEXT) vsidmem.$(OBJEXT) vsidmeminit.$(OBJEXT) \
+	vsidmemsnapshot.$(OBJEXT) vsidpla.$(OBJEXT) \
+	vsidsound.$(OBJEXT) vsidstubs.$(OBJEXT)
 libvsid_a_OBJECTS = $(am_libvsid_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -122,10 +134,10 @@ CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(libc64_a_SOURCES) $(libc64c128_a_SOURCES) \
 	$(libc64c64dtv_a_SOURCES) $(libc64sc_a_SOURCES) \
-	$(libvsid_a_SOURCES)
+	$(libc64scpu64_a_SOURCES) $(libvsid_a_SOURCES)
 DIST_SOURCES = $(libc64_a_SOURCES) $(libc64c128_a_SOURCES) \
 	$(libc64c64dtv_a_SOURCES) $(libc64sc_a_SOURCES) \
-	$(libvsid_a_SOURCES)
+	$(libc64scpu64_a_SOURCES) $(libvsid_a_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-dvi-recursive install-exec-recursive \
@@ -180,7 +192,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BINDIR = @BINDIR@
+CAIRO_CFLAGS = @CAIRO_CFLAGS@
+CAIRO_LIBS = @CAIRO_LIBS@
 CATALOGS = @CATALOGS@
 CATOBJEXT = @CATOBJEXT@
 CC = @CC@
@@ -212,10 +225,17 @@ EGREP = @EGREP@
 ENABLE_ARCH = @ENABLE_ARCH@
 EXEEXT = @EXEEXT@
 FCCACHE = @FCCACHE@
+FFMPEGSUB = @FFMPEGSUB@
+FFMPEG_AVRESAMPLE_CFLAGS = @FFMPEG_AVRESAMPLE_CFLAGS@
+FFMPEG_AVRESAMPLE_LIBS = @FFMPEG_AVRESAMPLE_LIBS@
 FFMPEG_AV_CFLAGS = @FFMPEG_AV_CFLAGS@
 FFMPEG_AV_LIBS = @FFMPEG_AV_LIBS@
+FFMPEG_DEP = @FFMPEG_DEP@
+FFMPEG_DIR = @FFMPEG_DIR@
 FFMPEG_INCLUDES = @FFMPEG_INCLUDES@
 FFMPEG_LIBS = @FFMPEG_LIBS@
+FFMPEG_SWRESAMPLE_CFLAGS = @FFMPEG_SWRESAMPLE_CFLAGS@
+FFMPEG_SWRESAMPLE_LIBS = @FFMPEG_SWRESAMPLE_LIBS@
 FFMPEG_SWSCALE_CFLAGS = @FFMPEG_SWSCALE_CFLAGS@
 FFMPEG_SWSCALE_LIBS = @FFMPEG_SWSCALE_LIBS@
 FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
@@ -244,12 +264,15 @@ INTLLIBS = @INTLLIBS@
 INTLOBJS = @INTLOBJS@
 IPFC = @IPFC@
 JOY_LIBS = @JOY_LIBS@
+LAMEMP3SUB = @LAMEMP3SUB@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+LIBFFMPEGSUB = @LIBFFMPEGSUB@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBX264SUB = @LIBX264SUB@
 LINKCC = @LINKCC@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -258,8 +281,10 @@ MAKEINFO = @MAKEINFO@
 MAKERTF = @MAKERTF@
 MAX_INLINE_INSN_SINGLE = @MAX_INLINE_INSN_SINGLE@
 MKDIR_P = @MKDIR_P@
+MKFONTDIR_BIN = @MKFONTDIR_BIN@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MSGFMT = @MSGFMT@
+NATIVE_TOOLS_COMPILER = @NATIVE_TOOLS_COMPILER@
 NETPLAY_LIBS = @NETPLAY_LIBS@
 NLS_LOCALEDIR = @NLS_LOCALEDIR@
 OBJC = @OBJC@
@@ -273,10 +298,13 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PANGO_CFLAGS = @PANGO_CFLAGS@
+PANGO_LIBS = @PANGO_LIBS@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
+PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -284,19 +312,18 @@ QUICKTIME_LIBS = @QUICKTIME_LIBS@
 RANLIB = @RANLIB@
 READLINE = @READLINE@
 READLINE_LIBS = @READLINE_LIBS@
+RESIDDTVSUB = @RESIDDTVSUB@
+RESIDSUB = @RESIDSUB@
 RESID_DEP = @RESID_DEP@
 RESID_DIR = @RESID_DIR@
 RESID_DTV_DEP = @RESID_DTV_DEP@
 RESID_DTV_DIR = @RESID_DTV_DIR@
 RESID_DTV_INCLUDES = @RESID_DTV_INCLUDES@
 RESID_DTV_LIBS = @RESID_DTV_LIBS@
-RESID_FP_DEP = @RESID_FP_DEP@
-RESID_FP_DIR = @RESID_FP_DIR@
-RESID_FP_INCLUDES = @RESID_FP_INCLUDES@
-RESID_FP_LIBS = @RESID_FP_LIBS@
 RESID_INCLUDES = @RESID_INCLUDES@
 RESID_LIBS = @RESID_LIBS@
 SDL_EXTRA_LIBS = @SDL_EXTRA_LIBS@
+SDL_VERSION = @SDL_VERSION@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOUND_AIX_OBJ = @SOUND_AIX_OBJ@
@@ -308,6 +335,9 @@ SOUND_SDL_OBJ = @SOUND_SDL_OBJ@
 SOUND_SGI_OBJ = @SOUND_SGI_OBJ@
 SOUND_USS_OBJ = @SOUND_USS_OBJ@
 STRIP = @STRIP@
+SVN = @SVN@
+SVNVERSION = @SVNVERSION@
+TAR = @TAR@
 TEXI2DVI = @TEXI2DVI@
 TEXI2IPF = @TEXI2IPF@
 TFE_LIBS = @TFE_LIBS@
@@ -316,9 +346,11 @@ UNIX_MACOSX_UITYPE = @UNIX_MACOSX_UITYPE@
 USE_INCLUDED_LIBINTL = @USE_INCLUDED_LIBINTL@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+VERSION_COMBINED = @VERSION_COMBINED@
 VERSION_RC = @VERSION_RC@
 VICEDIR = @VICEDIR@
 VICE_SYNC = @VICE_SYNC@
+VICE_UI_THREADS = @VICE_UI_THREADS@
 VICE_VERSION = @VICE_VERSION@
 VICE_VERSION_BUILD = @VICE_VERSION_BUILD@
 VICE_VERSION_MAJOR = @VICE_VERSION_MAJOR@
@@ -337,13 +369,14 @@ XGETTEXT = @XGETTEXT@
 XMKMF = @XMKMF@
 XPET_WINRES = @XPET_WINRES@
 XPLUS4_WINRES = @XPLUS4_WINRES@
+XSCPU64_WINRES = @XSCPU64_WINRES@
 XVIC_WINRES = @XVIC_WINRES@
 X_CFLAGS = @X_CFLAGS@
 X_EXTRA_LIBS = @X_EXTRA_LIBS@
 X_LIBS = @X_LIBS@
 X_PRE_LIBS = @X_PRE_LIBS@
 YACC = @YACC@
-YFLAGS = @YFLAGS@
+YASM = @YASM@
 ZLIB_LIBS = @ZLIB_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -351,7 +384,6 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_sdl_config = @ac_ct_sdl_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -370,6 +402,7 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+ffmpeg_have_bash = @ffmpeg_have_bash@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -391,6 +424,7 @@ prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
+sdl2_config = @sdl2_config@
 sdl_config = @sdl_config@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -406,9 +440,10 @@ x64_LDFLAGS = @x64_LDFLAGS@
 xcbm2_LDFLAGS = @xcbm2_LDFLAGS@
 xpet_LDFLAGS = @xpet_LDFLAGS@
 xplus4_LDFLAGS = @xplus4_LDFLAGS@
+xscpu64_LDFLAGS = @xscpu64_LDFLAGS@
 xvic_LDFLAGS = @xvic_LDFLAGS@
 SUBDIRS = cart
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -420,42 +455,40 @@ INCLUDES = \
 	-I$(top_srcdir)/src/tape \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/viciisc \
+	-I$(top_srcdir)/src/viciivsid \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/video \
-	-I$(top_srcdir)/src/rtc
+	-I$(top_srcdir)/src/rtc \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv \
+	-I$(top_srcdir)/src/tapeport
 
-noinst_LIBRARIES = libvsid.a libc64.a libc64sc.a libc64c128.a libc64c64dtv.a
+noinst_LIBRARIES = libvsid.a libc64.a libc64sc.a libc64c128.a libc64c64dtv.a libc64scpu64.a
 libvsid_a_SOURCES = \
-	c64-cmdline-options.c \
-	c64-cmdline-options.h \
 	c64embedded.c \
-	c64export.c \
-	c64export.h \
 	c64gluelogic.c \
 	c64gluelogic.h \
-	c64io.c \
 	c64keyboard.c \
 	c64keyboard.h \
-	c64meminit.c \
 	c64meminit.h \
 	c64memlimit.c \
 	c64memlimit.h \
 	c64memrom.c \
 	c64memrom.h \
-	c64memsnapshot.c \
 	c64memsnapshot.h \
 	c64model.c \
 	c64model.h \
 	c64parallel.h \
-	c64pla.c \
 	c64pla.h \
 	c64rom.c \
 	c64rom.h \
 	c64romset.c \
 	c64rsuser.c \
 	c64rsuser.h \
-	c64sound.c \
 	c64video.c \
+	vsid-debugcart.c \
+	vsid-debugcart.h \
+	musdrv.h \
 	patchrom.c \
 	patchrom.h \
 	psid.c \
@@ -463,16 +496,24 @@ libvsid_a_SOURCES = \
 	psiddrv.a65 \
 	reloc65.c \
 	vsid.c \
+	vsid-cmdline-options.c \
 	vsid-resources.c \
 	vsid-snapshot.c \
 	vsidcia1.c \
 	vsidcia2.c \
+	vsidcpu.c \
 	vsidmem.c \
+	vsidmeminit.c \
+	vsidmemsnapshot.c \
+	vsidpla.c \
+	vsidsound.c \
 	vsidstubs.c
 
 libc64_a_SOURCES = \
 	c64-cmdline-options.c \
 	c64-cmdline-options.h \
+	c64-memory-hacks.c \
+	c64-memory-hacks.h \
 	c64-resources.c \
 	c64-resources.h \
 	c64-snapshot.c \
@@ -486,11 +527,11 @@ libc64_a_SOURCES = \
 	c64cia.h \
 	c64cia1.c \
 	c64cia2.c \
+	c64cpu.c \
 	c64datasette.c \
 	c64drive.c \
 	c64embedded.c \
 	c64export.c \
-	c64export.h \
 	c64fastiec.c \
 	c64fastiec.h \
 	c64gluelogic.c \
@@ -539,6 +580,8 @@ libc64_a_SOURCES = \
 libc64sc_a_SOURCES = \
 	c64-cmdline-options.c \
 	c64-cmdline-options.h \
+	c64-memory-hacks.c \
+	c64-memory-hacks.h \
 	c64-resources.c \
 	c64-resources.h \
 	c64-snapshot.c \
@@ -552,12 +595,11 @@ libc64sc_a_SOURCES = \
 	c64cia.h \
 	c64cia1.c \
 	c64cia2.c \
-	c64cpu.c \
+	c64cpusc.c \
 	c64datasette.c \
 	c64drive.c \
 	c64embedded.c \
 	c64export.c \
-	c64export.h \
 	c64fastiec.c \
 	c64fastiec.h \
 	c64gluelogic.c \
@@ -612,7 +654,6 @@ libc64c64dtv_a_SOURCES = \
 	c64keyboard.h \
 	c64parallel.c \
 	c64parallel.h \
-	c64printer.c \
 	c64rom.c \
 	c64rom.h \
 	c64romset.c \
@@ -629,7 +670,6 @@ libc64c128_a_SOURCES = \
 	c64cia2.c \
 	c64datasette.c \
 	c64export.c \
-	c64export.h \
 	c64gluelogic.c \
 	c64gluelogic.h \
 	c64iec.c \
@@ -651,6 +691,38 @@ libc64c128_a_SOURCES = \
 	c64sound.c \
 	patchrom.c \
 	patchrom.h
+
+libc64scpu64_a_SOURCES = \
+	c64bus.c \
+	c64cart.h \
+	c64cia.h \
+	c64cia1.c \
+	c64cia2.c \
+	c64datasette.c \
+	c64drive.c \
+	c64embedded.c \
+	c64export.c \
+	c64fastiec.c \
+	c64fastiec.h \
+	c64iec.c \
+	c64iec.h \
+	c64io.c \
+	c64keyboard.c \
+	c64keyboard.h \
+	c64memsnapshot.c \
+	c64memsnapshot.h \
+	c64model.h \
+	c64parallel.c \
+	c64parallel.h \
+	c64printer.c \
+	c64romset.c \
+	c64rsuser.c \
+	c64rsuser.h \
+	c64sound.c \
+	c64video.c \
+	patchrom.c \
+	patchrom.h \
+	reloc65.c
 
 BUILT_SOURCES = psiddrv.h
 EXTRA_DIST = 
@@ -709,6 +781,10 @@ libc64sc.a: $(libc64sc_a_OBJECTS) $(libc64sc_a_DEPENDENCIES) $(EXTRA_libc64sc_a_
 	-rm -f libc64sc.a
 	$(libc64sc_a_AR) libc64sc.a $(libc64sc_a_OBJECTS) $(libc64sc_a_LIBADD)
 	$(RANLIB) libc64sc.a
+libc64scpu64.a: $(libc64scpu64_a_OBJECTS) $(libc64scpu64_a_DEPENDENCIES) $(EXTRA_libc64scpu64_a_DEPENDENCIES) 
+	-rm -f libc64scpu64.a
+	$(libc64scpu64_a_AR) libc64scpu64.a $(libc64scpu64_a_OBJECTS) $(libc64scpu64_a_LIBADD)
+	$(RANLIB) libc64scpu64.a
 libvsid.a: $(libvsid_a_OBJECTS) $(libvsid_a_DEPENDENCIES) $(EXTRA_libvsid_a_DEPENDENCIES) 
 	-rm -f libvsid.a
 	$(libvsid_a_AR) libvsid.a $(libvsid_a_OBJECTS) $(libvsid_a_LIBADD)
@@ -721,6 +797,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64-cmdline-options.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64-memory-hacks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64-resources.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64-snapshot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64.Po@am__quote@
@@ -729,6 +806,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64cia1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64cia2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64cpu.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64cpusc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64datasette.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64drive.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/c64embedded.Po@am__quote@
@@ -759,12 +837,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plus60k.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/psid.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/reloc65.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsid-cmdline-options.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsid-debugcart.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsid-resources.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsid-snapshot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsid.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidcia1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidcia2.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidcpu.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidmem.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidmeminit.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidmemsnapshot.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidpla.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidsound.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsidstubs.Po@am__quote@
 
 .c.o:

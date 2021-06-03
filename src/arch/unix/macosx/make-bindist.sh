@@ -1,9 +1,33 @@
 #!/bin/bash
-# make-bindist.sh for Mac OSX
-# written by Christian Vogelgsang <chris@vogelgsang.org>
+
 #
-# make-bindist.sh <top_srcdir> <strip> <vice-version> <--enable-arch> <zip|nozip> <x64sc-included> <ui_type> [bin_format]
-#                 $1           $2      $3             $4              $5          $6               $7        $8
+# make-bindist.sh - make binary distribution for the Mac OSX port
+#
+# Written by
+#  Christian Vogelgsang <chris@vogelgsang.org>
+#
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
+# Usage: make-bindist.sh <top_srcdir> <strip> <vice-version> <--enable-arch> <zip|nozip> <x64sc-included> <ui_type> [bin_format]
+#                         $1           $2      $3             $4              $5          $6               $7        $8
+#
+
 RUN_PATH=`dirname $0`
 
 echo "Generating Mac OSX binary distribution."
@@ -30,12 +54,12 @@ if [ ! -x $TEST_BIN ]; then
   exit 1
 fi
 if [ x"$BIN_FORMAT" = "x" ]; then
-  BIN_TYPE=`file $TEST_BIN | grep "$TEST_BIN:" | cut -f3,4 -d" "`
-  if [ x"$BIN_TYPE" = "xexecutable i386" ]; then
+  BIN_TYPE=`file $TEST_BIN | grep "$TEST_BIN:" | sed -e 's/executable//g' -e 's/Mach-O//g' -e 's/64-bit//g' | awk '{print $2}'`
+  if [ x"$BIN_TYPE" = "xi386" ]; then
     BIN_FORMAT=i386
-  elif [ x"$BIN_TYPE" = "x64-bit executable" ]; then
+  elif [ x"$BIN_TYPE" = "xx86_64" ]; then
     BIN_FORMAT=x86_64
-  elif [ x"$BIN_TYPE" = "xexecutable ppc" ]; then
+  elif [ x"$BIN_TYPE" = "xppc" ]; then
     BIN_FORMAT=ppc
   else
     echo "fatal: unknown bin type '$BIN_TYPE'"
@@ -72,12 +96,13 @@ else
 fi
 
 # define emulators and command line tools
-EMULATORS="x64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic"
+EMULATORS="x64 xscpu64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic"
 TOOLS="c1541 petcat cartconv"
 
 # define data files for emulators
 ROM_COMMON="DRIVES PRINTER"
 ROM_x64=C64
+ROM_xscpu64=SCPU64
 ROM_x64sc=C64
 ROM_x64dtv=C64DTV
 ROM_x128=C128

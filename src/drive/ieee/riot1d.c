@@ -2,7 +2,7 @@
  * riot1d.c - RIOT1 emulation in the SFD1001, 8050 and 8250 disk drive.
  *
  * Written by
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -46,6 +46,18 @@ void riot1_store(drive_context_t *ctxptr, WORD addr, BYTE data)
 BYTE riot1_read(drive_context_t *ctxptr, WORD addr)
 {
     return riotcore_read(ctxptr->riot1, addr);
+}
+
+BYTE riot1_peek(drive_context_t *ctxptr, WORD addr)
+{
+    return riotcore_peek(ctxptr->riot1, addr);
+}
+
+int riot1_dump(drive_context_t *ctxptr, WORD addr)
+{
+    /* TODO: implement dump feature */
+    /* riotcore_dump(ctxptr->riot1, addr); */
+    return -1;
 }
 
 static void set_irq(riot_context_t *riot_context, int fl, CLOCK clk)
@@ -95,13 +107,13 @@ static void reset(riot_context_t *riot_context)
 static BYTE read_pra(riot_context_t *riot_context)
 {
     return (parallel_bus & ~(riot_context->riot_io)[1])
-        | (riot_context->riot_io[0] & riot_context->riot_io[1]);
+           | (riot_context->riot_io[0] & riot_context->riot_io[1]);
 }
 
 static BYTE read_prb(riot_context_t *riot_context)
 {
     return (0xff & ~(riot_context->riot_io)[3])
-        | (riot_context->riot_io[2] & riot_context->riot_io[3]);
+           | (riot_context->riot_io[2] & riot_context->riot_io[3]);
 }
 
 void riot1_init(drive_context_t *ctxptr)
@@ -137,4 +149,3 @@ void riot1_setup_context(drive_context_t *ctxptr)
     riot->set_irq = set_irq;
     riot->restore_irq = restore_irq;
 }
-

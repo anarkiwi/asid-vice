@@ -32,6 +32,8 @@
 #include "vice.h"
 
 #include "debug.h"
+#include "lib.h"
+#include "log.h"
 #include "maincpu.h"
 #include "types.h"
 #include "vicii-chip-model.h"
@@ -40,12 +42,9 @@
 #include "vicii-fetch.h"
 #include "vicii-irq.h"
 #include "vicii-lightpen.h"
+#include "vicii-resources.h"
 #include "vicii.h"
 #include "viciitypes.h"
-
-#ifdef DEBUG
-#include "log.h"
-#endif
 
 static inline void check_badline(void)
 {
@@ -56,7 +55,6 @@ static inline void check_badline(void)
     } else {
         vicii.bad_line = 0;
     }
-
 }
 
 static inline void check_sprite_display(void)
@@ -65,12 +63,12 @@ static inline void check_sprite_display(void)
     int enable = vicii.regs[0x15];
 
     for (i = 0, b = 1; i < VICII_NUM_SPRITES; i++, b <<= 1) {
-        unsigned int y = vicii.regs[i*2 + 1];
+        unsigned int y = vicii.regs[i * 2 + 1];
         vicii.sprite[i].mc = vicii.sprite[i].mcbase;
 
         if (vicii.sprite_dma & b) {
-            if ( (enable & b) && (y == (vicii.raster_line & 0xff)) ) {
-                    vicii.sprite_display_bits |= b;
+            if ((enable & b) && (y == (vicii.raster_line & 0xff))) {
+                vicii.sprite_display_bits |= b;
             }
         } else {
             vicii.sprite_display_bits &= ~b;
@@ -119,9 +117,9 @@ static inline void check_sprite_dma(void)
     int y_exp = vicii.regs[0x17];
 
     for (i = 0, b = 1; i < VICII_NUM_SPRITES; i++, b <<= 1) {
-        unsigned int y = vicii.regs[i*2 + 1];
+        unsigned int y = vicii.regs[i * 2 + 1];
 
-        if ((enable & b) && (y == (vicii.raster_line & 0xff)) && !(vicii.sprite_dma & b) ) {
+        if ((enable & b) && (y == (vicii.raster_line & 0xff)) && !(vicii.sprite_dma & b)) {
             turn_sprite_dma_on(i, y_exp & b);
         }
     }
@@ -186,7 +184,7 @@ static inline void check_hborder(unsigned int cycle_flags)
     int csel = vicii.regs[0x16] & 0x08;
 
     /* Left border ends at cycles 17 (csel=1) or 18 (csel=0) on PAL. */
-    if ( cycle_is_check_border_l(cycle_flags, csel) ) {
+    if (cycle_is_check_border_l(cycle_flags, csel)) {
         check_vborder_bottom(vicii.raster_line);
         vicii.vborder = vicii.set_vborder;
         if (vicii.vborder == 0) {
@@ -194,7 +192,7 @@ static inline void check_hborder(unsigned int cycle_flags)
         }
     }
     /* Right border starts at cycles 56 (csel=0) or 57 (csel=1) on PAL. */
-    if ( cycle_is_check_border_r(cycle_flags, csel) ) {
+    if (cycle_is_check_border_r(cycle_flags, csel)) {
         vicii.main_border = 1;
     }
 }
@@ -220,7 +218,7 @@ static inline void vicii_cycle_start_of_frame(void)
 static inline void vicii_cycle_end_of_line(void)
 {
     vicii_raster_draw_handler();
-    if (vicii.raster_line == vicii.screen_height-1) {
+    if (vicii.raster_line == vicii.screen_height - 1) {
         vicii.start_of_frame = 1;
     }
 }
@@ -256,6 +254,7 @@ int vicii_cycle(void)
 {
     int ba_low = 0;
     int can_sprite_sprite, can_sprite_background;
+    int may_crash;
 
     /*VICII_DEBUG_CYCLE(("cycle: line %i, clk %i", vicii.raster_line, vicii.raster_cycle));*/
 
@@ -292,16 +291,16 @@ int vicii_cycle(void)
 
     /* clear any collision registers as initiated by $d01e or $d01f reads */
     switch (vicii.clear_collisions) {
-    case 0x1e:
-        vicii.sprite_sprite_collisions = 0;
-        vicii.clear_collisions = 0;
-        break;
-    case 0x1f:
-        vicii.sprite_background_collisions = 0;
-        vicii.clear_collisions = 0;
-        break;
-    default:
-        break;
+        case 0x1e:
+            vicii.sprite_sprite_collisions = 0;
+            vicii.clear_collisions = 0;
+            break;
+        case 0x1f:
+            vicii.sprite_background_collisions = 0;
+            vicii.clear_collisions = 0;
+            break;
+        default:
+            break;
     }
 
     /* Trigger collision IRQs */
@@ -344,7 +343,7 @@ int vicii_cycle(void)
      * Trigger a raster IRQ if the raster comparison goes from
      * non-match to match.
      */
-    if ((vicii.raster_line == vicii.raster_irq_line)) {
+    if (vicii.raster_line == vicii.raster_irq_line) {
         if (!vicii.raster_irq_triggered) {
             vicii_irq_raster_trigger();
             vicii.raster_irq_triggered = 1;
@@ -357,7 +356,7 @@ int vicii_cycle(void)
     check_vborder_top(vicii.raster_line);
     /* Check vertical border flag */
     check_vborder_bottom(vicii.raster_line);
-    if ( vicii.raster_cycle == VICII_PAL_CYCLE(1) ) {
+    if (vicii.raster_cycle == VICII_PAL_CYCLE(1)) {
         vicii.vborder = vicii.set_vborder;
     }
 
@@ -398,14 +397,42 @@ int vicii_cycle(void)
      *
      */
 
+    may_crash = !vicii.bad_line && vicii.idle_state; /* flag for "VSP bug" simulation */
+
     /* Check DEN bit on first DMA line */
     if ((vicii.raster_line == VICII_FIRST_DMA_LINE) && !vicii.allow_bad_lines) {
-        vicii.allow_bad_lines = (vicii.regs[0x11] & 0x10) ? 1 : 0; 
+        vicii.allow_bad_lines = (vicii.regs[0x11] & 0x10) ? 1 : 0;
     }
 
     /* Check badline condition, trigger fetches */
     if (vicii.allow_bad_lines) {
         check_badline();
+    }
+
+    /* simulate the "VSP bug" problem */
+    if(vicii_resources.vsp_bug_enabled) {
+        /* FIXME: no support for "vsp channels", see VSP Lab (http://csdb.dk/release/?id=120810) */
+        if(vicii.bad_line && may_crash && (vicii.raster_cycle >= VICII_PAL_CYCLE(16)) &&
+           (vicii.raster_cycle < VICII_PAL_CYCLE(55))) {
+            int page, row;
+            for(page = 0; page < 256; page++) {
+                int seen0 = 0, seen1 = 0, fragile, result;
+                int firstrow = 7;
+                for(row = firstrow; row <= 0xff; row += 8) {
+                    seen0 |= vicii.ram_base_phi1[(page << 8) | row] ^ 255;
+                    seen1 |= vicii.ram_base_phi1[(page << 8) | row];
+                }
+                fragile = seen0 & seen1;
+                if(fragile && (lib_unsigned_rand(0, 0xff) < 10)) {
+                    result = fragile & lib_unsigned_rand(0, 0xff);
+                    for(row = firstrow; row <= 0xff; row += 8) {
+                        log_message(vicii.log, "VSP Bug: Corrupting %04x, fragile %02x, new bits %02x", (page << 8) | row, fragile, result);
+                        vicii.ram_base_phi1[(page << 8) | row] &= ~fragile;
+                        vicii.ram_base_phi1[(page << 8) | row] |= result;
+                    }
+                }
+            }
+        }
     }
 
     /* Update VC (Cycle 14 on PAL) */
@@ -421,7 +448,7 @@ int vicii_cycle(void)
     /* Update RC (Cycle 58 on PAL) */
     /* if (vicii.raster_cycle == VICII_PAL_CYCLE(58)) { */
     if (cycle_is_update_rc(vicii.cycle_flags)) {
-        /* `rc' makes the chip go to idle state when it reaches the 
+        /* `rc' makes the chip go to idle state when it reaches the
            maximum value.  */
         if (vicii.rc == 7) {
             vicii.idle_state = 1;
@@ -439,7 +466,7 @@ int vicii_cycle(void)
      *
      */
 
-    /* Check BA for matrix fetch */ 
+    /* Check BA for matrix fetch */
     if (vicii.bad_line && cycle_is_fetch_ba(vicii.cycle_flags)) {
         ba_low = 1;
     }
@@ -457,12 +484,12 @@ int vicii_cycle(void)
     } else {
         /* this needs to be +1 because it gets decremented already in the
            first ba cycle */
-        vicii.prefetch_cycles = 3+1;
+        vicii.prefetch_cycles = 3 + 1;
     }
 
 
     /* Matrix fetch */
-     if (vicii.bad_line && cycle_may_fetch_c(vicii.cycle_flags) ) {
+    if (vicii.bad_line && cycle_may_fetch_c(vicii.cycle_flags)) {
 #ifdef DEBUG
         if (debug.maincpu_traceflg) {
             log_debug("DMA at cycle %d   %d", vicii.raster_cycle, maincpu_clk);
@@ -483,6 +510,15 @@ int vicii_cycle(void)
     }
 
     return ba_low;
+}
+
+/* The REU can use an additional cycle at the point where the dma of sprite 0 is turned on */
+/* this is because of late setting of BA due to internal delays */
+/* The CPU can't use this cycle as it checks the state later */
+int vicii_cycle_reu(void)
+{
+    int check = vicii.raster_cycle == VICII_PAL_CYCLE(54) && (vicii.regs[0x15] & 1) && (vicii.regs[1] == (vicii.raster_line & 0xff)) && !(vicii.sprite_dma & 1);
+    return vicii_cycle() && !check;
 }
 
 /* Steal cycles from CPU  */

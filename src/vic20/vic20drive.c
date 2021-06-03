@@ -38,8 +38,8 @@
 
 int machine_drive_resources_init(void)
 {
-    return drive_resources_type_init(DRIVE_TYPE_1541) /* FIXME: we should emulate 1540 */
-        | iec_drive_resources_init() | ieee_drive_resources_init();
+    return drive_resources_type_init(DRIVE_TYPE_1540)
+           | iec_drive_resources_init() | ieee_drive_resources_init();
 }
 
 void machine_drive_resources_shutdown(void)
@@ -50,8 +50,7 @@ void machine_drive_resources_shutdown(void)
 
 int machine_drive_cmdline_options_init(void)
 {
-    return iec_drive_cmdline_options_init()
-        | ieee_drive_cmdline_options_init();
+    return iec_drive_cmdline_options_init() | ieee_drive_cmdline_options_init();
 }
 
 void machine_drive_init(struct drive_context_s *drv)
@@ -105,22 +104,14 @@ void machine_drive_rom_setup_image(unsigned int dnr)
     ieee_drive_rom_setup_image(dnr);
 }
 
-int machine_drive_rom_read(unsigned int type, WORD addr, BYTE *data)
-{
-    if (iec_drive_rom_read(type, addr, data) == 0)
-        return 0;
-    if (ieee_drive_rom_read(type, addr, data) == 0)
-        return 0;
-
-    return -1;
-}
-
 int machine_drive_rom_check_loaded(unsigned int type)
 {
-    if (iec_drive_rom_check_loaded(type) == 0)
+    if (iec_drive_rom_check_loaded(type) == 0) {
         return 0;
-    if (ieee_drive_rom_check_loaded(type) == 0)
+    }
+    if (ieee_drive_rom_check_loaded(type) == 0) {
         return 0;
+    }
 
     return -1;
 }
@@ -134,12 +125,15 @@ void machine_drive_rom_do_checksum(unsigned int dnr)
 int machine_drive_snapshot_read(struct drive_context_s *ctxptr,
                                 struct snapshot_s *s)
 {
-    if (iec_drive_snapshot_read(ctxptr, s) < 0)
+    if (iec_drive_snapshot_read(ctxptr, s) < 0) {
         return -1;
-    if (iecieee_drive_snapshot_read(ctxptr, s) < 0)
+    }
+    if (iecieee_drive_snapshot_read(ctxptr, s) < 0) {
         return -1;
-    if (ieee_drive_snapshot_read(ctxptr, s) < 0)
+    }
+    if (ieee_drive_snapshot_read(ctxptr, s) < 0) {
         return -1;
+    }
 
     return 0;
 }
@@ -147,12 +141,15 @@ int machine_drive_snapshot_read(struct drive_context_s *ctxptr,
 int machine_drive_snapshot_write(struct drive_context_s *ctxptr,
                                  struct snapshot_s *s)
 {
-    if (iec_drive_snapshot_write(ctxptr, s) < 0)
+    if (iec_drive_snapshot_write(ctxptr, s) < 0) {
         return -1;
-    if (iecieee_drive_snapshot_write(ctxptr, s) < 0)
+    }
+    if (iecieee_drive_snapshot_write(ctxptr, s) < 0) {
         return -1;
-    if (ieee_drive_snapshot_write(ctxptr, s) < 0)
+    }
+    if (ieee_drive_snapshot_write(ctxptr, s) < 0) {
         return -1;
+    }
 
     return 0;
 }
@@ -181,6 +178,4 @@ void machine_drive_flush(void)
 
 void machine_drive_stub(void)
 {
-
 }
-

@@ -37,7 +37,6 @@
 #include "cia.h"
 #include "drive-snapshot.h"
 #include "drive.h"
-#include "drivecpu.h"
 #include "ioutil.h"
 #include "joystick.h"
 #include "keyboard.h"
@@ -67,7 +66,7 @@ int c64_snapshot_write(const char *name, int save_roms, int save_disks, int even
     sound_snapshot_prepare();
 
     /* Execute drive CPUs to get in sync with the main CPU.  */
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     if (maincpu_snapshot_write_module(s) < 0
         || c64_snapshot_write_module(s, save_roms) < 0
@@ -99,6 +98,7 @@ int c64_snapshot_read(const char *name, int event_mode)
 
     if (major != SNAP_MAJOR || minor != SNAP_MINOR) {
         log_error(LOG_DEFAULT, "Snapshot version (%d.%d) not valid: expecting %d.%d.", major, minor, SNAP_MAJOR, SNAP_MINOR);
+        snapshot_set_error(SNAPSHOT_MODULE_INCOMPATIBLE);
         goto fail;
     }
 

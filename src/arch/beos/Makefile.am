@@ -2,7 +2,7 @@
 
 SUFFIXES=.def
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -10,6 +10,7 @@ INCLUDES = \
 	-I$(top_srcdir)/src/vdrive \
 	-I$(top_srcdir)/src/monitor \
 	-I$(top_srcdir)/src/c64 \
+	-I$(top_srcdir)/src/c64/cart \
 	-I$(top_srcdir)/src/c64dtv \
 	-I$(top_srcdir)/src/c128 \
 	-I$(top_srcdir)/src/vic20 \
@@ -21,7 +22,9 @@ INCLUDES = \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
-	-I$(top_srcdir)/src/sid
+	-I$(top_srcdir)/src/sid \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv
 
 noinst_LIBRARIES = libarch.a
 
@@ -32,27 +35,44 @@ libarch_a_SOURCES = \
 	c128ui.cc \
 	c64ui.cc \
 	c64dtvui.cc \
+	catweaselmkiii-drv.c \
 	cbm2ui.cc \
 	cbm5x0ui.cc \
 	console.c \
-	constants.h \
+	hardsid-drv.c \
+	hs.h \
+	hs-isa.c \
+	hs-pci.c \
+	io-access.c \
+	io-access.h \
 	joy.cc \
 	joy.h \
 	kbd.c \
 	kbd.h \
 	mousedrv.cc \
 	mousedrv.h \
+	parsid-drv.c \
+	pci-drv.c \
+	pci-drv.h \
 	petui.cc \
 	plus4ui.cc \
+	scpu64ui.cc \
 	signals.c \
 	socketimpl.h \
+	ssi2001-drv.c \
 	statusbar.cc \
 	statusbar.h \
 	types.h \
 	ui.cc \
 	ui.h \
+	ui_autostart.cc \
+	ui_autostart.h \
 	ui_cbm2.cc \
 	ui_cbm2.h \
+	ui_cbm5x0.cc \
+	ui_cbm5x0.h \
+	ui_cia.cc \
+	ui_cia.h \
 	ui_datasette.cc \
 	ui_datasette.h \
 	ui_drive.cc \
@@ -63,12 +83,18 @@ libarch_a_SOURCES = \
 	ui_file.h \
 	ui_ide64.cc \
 	ui_ide64.h \
+	ui_ide64usb.cc \
+	ui_ide64usb.h \
 	ui_joystick.cc \
 	ui_joystick.h \
+	ui_keymap.cc \
+	ui_keymap.h \
 	ui_netplay.cc \
 	ui_netplay.h \
 	ui_pet.cc \
 	ui_pet.h \
+	ui_printer.cc \
+	ui_printer.h \
 	ui_ram.cc \
 	ui_ram.h \
 	ui_sid.cc \
@@ -102,6 +128,23 @@ libarch_a_SOURCES = \
 	vsyncarch.c
 
 EXTRA_DIST = \
+	constants.txt \
+	genconstants.c \
 	make-bindist.sh \
 	ppc-ar.sh \
 	ppc-cc.sh
+
+BUILT_SOURCES = constants.h
+
+if NATIVE_TOOLS
+genconstants:	$(srcdir)/genconstants.c
+	$(NATIVE_TOOLS_COMPILER) -o genconstants $(srcdir)/genconstants.c \
+		-I$(top_builddir)/src -I$(top_srcdir)/src \
+		-I$(top_srcdir)/src/joyport @ARCH_INCLUDES@
+
+constants.h:	$(srcdir)/constants.txt genconstants
+	./genconstants $(srcdir)/constants.txt constants.h
+else
+constants.h:	$(srcdir)/constants.txt
+	echo "need native tools support to generate "$@
+endif

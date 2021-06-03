@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -43,16 +44,20 @@
 #include "types.h"
 #include "ui.h"
 #include "uidigimax.h"
+#include "uidrive.h"
 #include "uids12c887rtc.h"
+#ifdef HAVE_PCAP
+#include "uiethernetcart.h"
+#endif
 #include "uigeoram.h"
-#include "uilightpen.h"
+#include "uiiocollisions.h"
 #include "uisidcart.h"
 #include "uisoundexpander.h"
 #include "uisoundsampler.h"
-#ifdef HAVE_TFE
-#include "uitfe.h"
-#endif
+#include "uitapeport.h"
+#include "uivic20model.h"
 #include "uivideo.h"
+#include "uiuserport.h"
 #include "util.h"
 #include "vic20ui.h"
 
@@ -123,6 +128,10 @@ static tui_menu_item_def_t attach_cartridge_menu_items[] = {
       "Attach a generic cartridge image",
       attach_cartridge_callback, (void *)CARTRIDGE_VIC20_GENERIC, 30,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Behr Bonz cartridge:",
+      "Attach a Behr Bonz cartridge image",
+      attach_cartridge_callback, (void *)CARTRIDGE_VIC20_BEHRBONZ, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { "Mega-Cart cartridge:",
       "Attach a Mega-Cart cartridge image",
       attach_cartridge_callback, (void *)CARTRIDGE_VIC20_MEGACART, 30,
@@ -130,6 +139,10 @@ static tui_menu_item_def_t attach_cartridge_menu_items[] = {
     { "Final Expansion cartridge:",
       "Attach a Final Expansion cartridge image",
       attach_cartridge_callback, (void *)CARTRIDGE_VIC20_FINAL_EXPANSION, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "UltiMem cartridge:",
+      "Attach a UltiMem image",
+      attach_cartridge_callback, (void *)CARTRIDGE_VIC20_UM, 30,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { "Vic Flash Plugin cartridge:",
       "Attach a Vic Flash Plugin image",
@@ -280,14 +293,7 @@ TUI_MENU_DEFINE_TOGGLE(RAMBlock2)
 TUI_MENU_DEFINE_TOGGLE(RAMBlock3)
 TUI_MENU_DEFINE_TOGGLE(RAMBlock5)
 
-TUI_MENU_DEFINE_TOGGLE(Mouse)
-
 static tui_menu_item_def_t special_menu_items[] = {
-    { "Enable _Paddles:",
-      "Enable paddles emulation",
-      toggle_Mouse_callback, NULL, 3,
-      TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "--" },
     { "Choose Common _Memory Configuration...",
       "Choose memory configuration from a set of common ones.",
       NULL, NULL, 0,
@@ -338,31 +344,40 @@ static TUI_MENU_CALLBACK(load_rom_file_callback)
 
 static tui_menu_item_def_t rom_menu_items[] = {
     { "--" },
-    { "Load new _Kernal ROM...",
+    { "Load new Kernal ROM...",
       "Load new Kernal ROM",
       load_rom_file_callback, "KernalName", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _BASIC ROM...",
+    { "Load new BASIC ROM...",
       "Load new BASIC ROM",
       load_rom_file_callback, "BasicName", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _Character ROM...",
+    { "Load new Character ROM...",
       "Load new Character ROM",
       load_rom_file_callback, "ChargenName", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new 15_41 ROM...",
+    { "--" },
+    { "Load new 1540 ROM...",
+      "Load new 1540 ROM",
+      load_rom_file_callback, "DosName1540", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 1541 ROM...",
       "Load new 1541 ROM",
       load_rom_file_callback, "DosName1541", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new 1541-_II ROM...",
+    { "Load new 1541-II ROM...",
       "Load new 1541-II ROM",
       load_rom_file_callback, "DosName1541ii", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new 15_71 ROM...",
+    { "Load new 1570 ROM...",
+      "Load new 1570 ROM",
+      load_rom_file_callback, "DosName1570", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 1571 ROM...",
       "Load new 1571 ROM",
       load_rom_file_callback, "DosName1571", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new 15_81 ROM...",
+    { "Load new 1581 ROM...",
       "Load new 1581 ROM",
       load_rom_file_callback, "DosName1581", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
@@ -374,11 +389,23 @@ static tui_menu_item_def_t rom_menu_items[] = {
       "Load new 4000 ROM",
       load_rom_file_callback, "DosName4000", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _2031 ROM...",
+    { "Load new 2031 ROM...",
       "Load new 2031 ROM",
       load_rom_file_callback, "DosName2031", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _1001 ROM...",
+    { "Load new 2040 ROM...",
+      "Load new 2040 ROM",
+      load_rom_file_callback, "DosName2040", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 3040 ROM...",
+      "Load new 3040 ROM",
+      load_rom_file_callback, "DosName3040", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 4040 ROM...",
+      "Load new 4040 ROM",
+      load_rom_file_callback, "DosName4040", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 1001 ROM...",
       "Load new 1001 ROM",
       load_rom_file_callback, "DosName1001", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
@@ -399,6 +426,28 @@ TUI_MENU_DEFINE_TOGGLE(VicFlashPluginWriteBack)
 static tui_menu_item_def_t vic_flash_plugin_menu_items[] = {
     { "_Enable write-back to cart file:", "Enable write-back to cart file",
       toggle_VicFlashPluginWriteBack_callback, NULL, 3,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
+TUI_MENU_DEFINE_TOGGLE(UltiMemWriteBack)
+
+static tui_menu_item_def_t ultimem_menu_items[] = {
+    { "_Enable write-back to cart file:", "Enable write-back to cart file",
+      toggle_UltiMemWriteBack_callback, NULL, 3,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
+TUI_MENU_DEFINE_TOGGLE(IO2RAM)
+TUI_MENU_DEFINE_TOGGLE(IO3RAM)
+
+static tui_menu_item_def_t io_ram_menu_items[] = {
+    { "Enable I/O-2 RAM:", "Enable I/O-2 RAM",
+      toggle_IO2RAM_callback, NULL, 3,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Enable I/O-3 RAM:", "Enable I/O-3 RAM",
+      toggle_IO3RAM_callback, NULL, 3,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { NULL }
 };
@@ -439,6 +488,15 @@ static tui_menu_item_def_t megacart_menu_items[] = {
     { NULL }
 };
 
+TUI_MENU_DEFINE_TOGGLE(VFLImod)
+
+static tui_menu_item_def_t vflimod_menu_items[] = {
+    { "_Enable VFLI modification:", "Enable VFLI modification",
+      toggle_VFLImod_callback, NULL, 3,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
 /* ------------------------------------------------------------------------- */
 
 int vic20ui_init(void)
@@ -446,13 +504,18 @@ int vic20ui_init(void)
     tui_menu_t ui_ioextensions_submenu;
     tui_menu_t ui_final_expansion_submenu;
     tui_menu_t ui_vic_flash_plugin_submenu;
+    tui_menu_t ui_ultimem_submenu;
     tui_menu_t ui_megacart_submenu;
+    tui_menu_t ui_io_ram_submenu;
+    tui_menu_t ui_vflimod_submenu;
 
-    ui_create_main_menu(1, 1, 1, 1, 1);
+    ui_create_main_menu(1, 1, 1, 0x16, 1, drivevic20_settings_submenu);
 
     tui_menu_add(ui_attach_submenu, attach_cartridge_menu_items);
     tui_menu_add(ui_detach_submenu, detach_cartridge_menu_items);
     tui_menu_add(ui_special_submenu, special_menu_items);
+
+    uivic20model_init(ui_special_submenu);
 
     ui_ioextensions_submenu = tui_menu_create("I/O Extensions", 1);
 
@@ -462,8 +525,9 @@ int vic20ui_init(void)
                          NULL, 0,
                          TUI_MENU_BEH_CONTINUE);
 
-    uilightpen_init(ui_ioextensions_submenu);
-    uisidcart_init(ui_ioextensions_submenu, "$9800", "$9C00", "VIC20");
+    uiiocollisions_init(ui_ioextensions_submenu);
+
+    uisidcart_init(ui_ioextensions_submenu, "$9800", "$9C00", "VIC20", 0x9800, 0x9c00);
 
     ui_final_expansion_submenu = tui_menu_create("Final Expansion settings", 1);
 
@@ -485,6 +549,16 @@ int vic20ui_init(void)
                          NULL, 0,
                          TUI_MENU_BEH_CONTINUE);
 
+    ui_ultimem_submenu = tui_menu_create("UltiMem settings", 1);
+
+    tui_menu_add(ui_ultimem_submenu, ultimem_menu_items);
+
+    tui_menu_add_submenu(ui_ioextensions_submenu, "_UltiMem settings...",
+                         "UltiMem settings",
+                         ui_ultimem_submenu,
+                         NULL, 0,
+                         TUI_MENU_BEH_CONTINUE);
+
     ui_megacart_submenu = tui_menu_create("Mega-Cart settings", 1);
 
     tui_menu_add(ui_megacart_submenu, megacart_menu_items);
@@ -495,14 +569,38 @@ int vic20ui_init(void)
                          NULL, 0,
                          TUI_MENU_BEH_CONTINUE);
 
+    ui_io_ram_submenu = tui_menu_create("I/O RAM settings", 1);
+
+    tui_menu_add(ui_io_ram_submenu, io_ram_menu_items);
+
+    tui_menu_add_submenu(ui_ioextensions_submenu, "_I/O RAM settings...",
+                         "I/O RAM settings",
+                         ui_io_ram_submenu,
+                         NULL, 0,
+                         TUI_MENU_BEH_CONTINUE);
+
+    ui_vflimod_submenu = tui_menu_create("VFLI modification settings", 1);
+
+    tui_menu_add(ui_vflimod_submenu, vflimod_menu_items);
+
+    tui_menu_add_submenu(ui_ioextensions_submenu, "_VFLI modification settings...",
+                         "VFLI modification  settings",
+                         ui_vflimod_submenu,
+                         NULL, 0,
+                         TUI_MENU_BEH_CONTINUE);
+
     uidigimax_vic20_init(ui_ioextensions_submenu);
     uids12c887rtc_vic20_init(ui_ioextensions_submenu);
     uigeoram_vic20_init(ui_ioextensions_submenu);
     uisoundexpander_vic20_init(ui_ioextensions_submenu);
     uisoundsampler_init(ui_ioextensions_submenu);
-#ifdef HAVE_TFE
-    uitfe_vic20_init(ui_ioextensions_submenu);
+#ifdef HAVE_PCAP
+    uiethernetcart_vic20_init(ui_ioextensions_submenu);
 #endif
+
+    uiuserport_pet_vic20_init(ui_ioextensions_submenu);
+
+    uitapeport_init(ui_ioextensions_submenu);
 
     tui_menu_add(ui_rom_submenu, rom_menu_items);
 

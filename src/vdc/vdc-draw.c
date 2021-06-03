@@ -47,6 +47,12 @@
 /* foreground(4) | background(4) | nibble(4) -> 4 pixels.  */
 static DWORD hr_table[16 * 16 * 16];
 
+/* foreground(4) | background(4) | nibble(4) -> 8 pixels (double width)
+   pdl table is the low (right) nibble into 4 bytes, pdh the high (left) */
+static DWORD pdl_table[16 * 16 * 16];
+static DWORD pdh_table[16 * 16 * 16];
+
+
 /* solid cursor (no blink), no cursor, 1/16 refresh blink, 1/32 refresh blink */
 static const BYTE crsrblink[4] = { 0x01, 0x00, 0x08, 0x10 };
 
@@ -76,12 +82,24 @@ static void init_drawing_tables(void)
 
                 fp = f;
                 bp = b;
-                offset = (f << 8) | (b << 4);
-                p = (BYTE *)(hr_table + offset + i);
-
+                offset = (f << 8) | (b << 4) | i;
+                
+                p = (BYTE *)(hr_table + offset);
                 *p = i & 0x8 ? fp : bp;
                 *(p + 1) = i & 0x4 ? fp : bp;
                 *(p + 2) = i & 0x2 ? fp : bp;
+                *(p + 3) = i & 0x1 ? fp : bp;
+
+                p = (BYTE *)(pdh_table + offset);
+                *p = i & 0x8 ? fp : bp;
+                *(p + 1) = i & 0x8 ? fp : bp;
+                *(p + 2) = i & 0x4 ? fp : bp;
+                *(p + 3) = i & 0x4 ? fp : bp;
+
+                p = (BYTE *)(pdl_table + offset);
+                *p = i & 0x2 ? fp : bp;
+                *(p + 1) = i & 0x2 ? fp : bp;
+                *(p + 2) = i & 0x1 ? fp : bp;
                 *(p + 3) = i & 0x1 ? fp : bp;
             }
         }
@@ -93,28 +111,34 @@ static void init_drawing_tables(void)
 inline static BYTE get_attr_char_data(BYTE c, BYTE a, int l, BYTE *char_mem,
                                       int bytes_per_char, int blink,
                                       int revers, int curpos, int index)
-                                      /* c = character, a = attributes, l = line of char required , char_mem = pointer to character memory
-                                      bytes_per_char = number of bytes per char definition
-                                      blink / revers - these don't seem to be used
-                                      curpos = where in the screen memory the cursor is
-                                      index = where in the screen memory we are, to check against the cursor */
+/* c = character, a = attributes, l = line of char required , char_mem = pointer to character memory
+bytes_per_char = number of bytes per char definition
+blink / revers - these don't seem to be used
+curpos = where in the screen memory the cursor is
+index = where in the screen memory we are, to check against the cursor */
 {
     BYTE data;
     /* bit mask used for register 22, to determine the number of pixels in a char actually displayed */
     /* The 8th value is 0x00 (no pixels) instead of 0xFF (all pixels) as might be expected as this results in blank chars on real VDC */
-    static const BYTE mask[16] = { 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0x00,
-                             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-    static const BYTE semigfxtest[16] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
-                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    static const BYTE semigfxmask[16] = { 0x7F, 0x3F, 0x1F, 0x0F, 0x07, 0x03, 0x01, 0x00,
-                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    static const BYTE mask[16] = {
+        0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0x00,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+    };
+    static const BYTE semigfxtest[16] = {
+        0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+    static const BYTE semigfxmask[16] = {
+        0x7F, 0x3F, 0x1F, 0x0F, 0x07, 0x03, 0x01, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
     if (a & VDC_ALTCHARSET_ATTR) {
         /* swich to alternate charset if appropriate attribute bit set */
         char_mem += 0x1000;
     }
 
     if (l > (signed)vdc.regs[23]) {
-        /* Return nothing if > Vertical Character Pxl Spc (?) */
+        /* Return nothing if > Vertical Character Size */
         data = 0x00;
     } else {
         /* mask against r[22] - pixels per char mask */
@@ -133,9 +157,9 @@ inline static BYTE get_attr_char_data(BYTE c, BYTE a, int l, BYTE *char_mem,
 
     if (vdc.regs[25] & 0x20) {
         /* Semi-graphics mode */
-        if (data & semigfxtest[ vdc.regs[22] & 0x0F ]) {
+        if (data & semigfxtest[vdc.regs[22] & 0x0F]) {
             /* if the far right pixel is on.. */
-            data |= semigfxmask[ vdc.regs[22] & 0x0F ];
+            data |= semigfxmask[vdc.regs[22] & 0x0F];
             /* .. mask the rest of the right hand side on */
         }
     }
@@ -185,7 +209,7 @@ inline static int cache_data_fill_attr_text(BYTE *dest,
     - VDC screen memory - using attributes (*attr) - VDC attribute memory -,
     at vertical character reference (l) from VDC memory character set
     (*char_mem) */
-    
+
     if (no_check) {
         /* fill *dest regardless of any changes */
         /* xs/xe seem to the start & end of any data that was updated/filled */
@@ -203,7 +227,7 @@ inline static int cache_data_fill_attr_text(BYTE *dest,
         /* compare destination to data to look for any differences */
         for (i = 0; i < length; i++, src++, attr++) {
             if (dest[i] != get_attr_char_data(src[0], attr[0], l, char_mem,
-                bytes_per_char, blink, revers, curpos, i)) {
+                                              bytes_per_char, blink, revers, curpos, i)) {
                 break;
             }
         }
@@ -260,13 +284,13 @@ inline static int cache_data_fill_attr_text_const(BYTE *dest,
                                          curpos, i);
         }
         /* dest data was updated */
-        return 1; 
+        return 1;
     } else {
         BYTE b;
 
         for (i = 0; i < length; i++, src++) {
             if (dest[i] != get_attr_char_data(src[0], attr, l, char_mem,
-                bytes_per_char, blink, revers, curpos, i)) {
+                                              bytes_per_char, blink, revers, curpos, i)) {
                 break;
             }
         }
@@ -301,21 +325,22 @@ inline static int cache_data_fill(BYTE *dest,
                                   unsigned int *xe,
                                   int no_check,
                                   int reverse)
-    /* Bitmap mode - fill (*dest) with (length) bytes of bitmap data from (*src) */
+/* Bitmap mode - fill (*dest) with (length) bytes of bitmap data from (*src) */
 {
     unsigned int i;
 
     if (no_check) {
         *xs = 0;
         *xe = length - 1;
-        for (i = 0; i < length; i++, src += src_step)
+        for (i = 0; i < length; i++, src += src_step) {
             /* vdc memory is a simple linear bitmap so copy it directly, reversing if needed */
             dest[i] = src[0] ^ reverse;
+        }
         return 1;
     } else {
-        for (i = 0; i < length && dest[i] == (src[0] ^ reverse);
-            i++, src += src_step)
-          /* do nothing */ ;
+        for (i = 0; i < length && dest[i] == (src[0] ^ reverse); i++, src += src_step) {
+            /* do nothing */
+        }
 
         if (i < length) {
             *xs = *xe = i;
@@ -335,8 +360,7 @@ inline static int cache_data_fill(BYTE *dest,
 
 /*-----------------------------------------------------------------------*/
 
-static int get_std_text(raster_cache_t *cache, unsigned int *xs,    
-                        unsigned int *xe, int rr)
+static int get_std_text(raster_cache_t *cache, unsigned int *xs, unsigned int *xe, int rr)
 /* aka raster_modes_fill_cache() in raster */
 {
     /* fill the line cache in text mode.
@@ -347,7 +371,7 @@ static int get_std_text(raster_cache_t *cache, unsigned int *xs,
 
        c) the attribute RAM
     */
-    
+
     /* r=return value, cursor_pos=the cursor position in screen memory so that it can be drawn correctly */
     int r, cursor_pos;
 
@@ -357,44 +381,44 @@ static int get_std_text(raster_cache_t *cache, unsigned int *xs,
         /* attribute mode */
         /* get the character definition data, with any attributes applied from attribute memory, into the raster cache foreground_data */
         r = cache_data_fill_attr_text(cache->foreground_data,
-                                vdc.ram + vdc.screen_adr + vdc.mem_counter,
-                                vdc.ram + vdc.attribute_adr + vdc.mem_counter,
-                                vdc.ram + vdc.chargen_adr,
-                                vdc.bytes_per_char,
-                                vdc.screen_text_cols,
-                                vdc.raster.ycounter,
-                                xs, xe,
-                                rr,
-                                0,
-                                0,
-                                cursor_pos);
+                                      vdc.ram + vdc.screen_adr + vdc.mem_counter,
+                                      vdc.ram + vdc.attribute_adr + vdc.mem_counter,
+                                      vdc.ram + vdc.chargen_adr,
+                                      vdc.bytes_per_char,
+                                      vdc.screen_text_cols,
+                                      vdc.raster.ycounter,
+                                      xs, xe,
+                                      rr,
+                                      0,
+                                      0,
+                                      cursor_pos);
         /* fill the raster cache color_data_1 with the attributes from vdc memory */
         r |= raster_cache_data_fill(cache->color_data_1,
-                                vdc.ram + vdc.attribute_adr + vdc.mem_counter,
-                                vdc.screen_text_cols,
-                                xs, xe,
-                                rr);
+                                    vdc.ram + vdc.attribute_adr + vdc.mem_counter,
+                                    vdc.screen_text_cols,
+                                    xs, xe,
+                                    rr);
     } else {
         /* monochrome mode - attributes from register 26 */
         /* get the character definition data, fixed attributes (only background colour, which doesn't actually do anything to these functions!) */
         r = cache_data_fill_attr_text_const(cache->foreground_data,
-                                vdc.ram + vdc.screen_adr + vdc.mem_counter,
-                                (BYTE)(vdc.regs[26] & 0x0f),
-                                vdc.ram + vdc.chargen_adr,
-                                vdc.bytes_per_char,
-                                (int)vdc.screen_text_cols,
-                                vdc.raster.ycounter,
-                                xs, xe,
-                                rr,
-                                0,
-                                0,
-                                cursor_pos);
+                                            vdc.ram + vdc.screen_adr + vdc.mem_counter,
+                                            (BYTE)(vdc.regs[26] & 0x0f),
+                                            vdc.ram + vdc.chargen_adr,
+                                            vdc.bytes_per_char,
+                                            (int)vdc.screen_text_cols,
+                                            vdc.raster.ycounter,
+                                            xs, xe,
+                                            rr,
+                                            0,
+                                            0,
+                                            cursor_pos);
         /* fill the raster cache color_data_1 with the foreground colour from vdc reg 26 */
         r |= raster_cache_data_fill_const(cache->color_data_1,
-                                (BYTE)(vdc.regs[26] >> 4),
-                                (int)vdc.screen_text_cols,
-                                xs, xe,
-                                rr);
+                                          (BYTE)(vdc.regs[26] >> 4),
+                                          (int)vdc.screen_text_cols,
+                                          xs, xe,
+                                          rr);
     }
 
     return r;
@@ -405,49 +429,72 @@ static void draw_std_text_cached(raster_cache_t *cache, unsigned int xs,
 /* aka raster_modes_draw_line_cached() in raster */
 {
     BYTE *p;
-    DWORD *table_ptr;
+    DWORD *table_ptr, *pdl_ptr, *pdh_ptr;
 
-    unsigned int i;
-
+    unsigned int i, charwidth;
+    if (vdc.regs[25] & 0x10) { /* double pixel a.k.a 40column mode */
+        charwidth = 2 * (vdc.regs[22] >> 4);
+    } else { /* 80 column mode */
+        charwidth = 1 + (vdc.regs[22] >> 4);
+    }
     p = vdc.raster.draw_buffer_ptr
         + vdc.border_width
         - (vdc.regs[22] >> 4)
+        + ((vdc.regs[25] & 0x10) ? 1 : 0)
         + vdc.xsmooth
-        + xs * 8;
+        + xs * charwidth;
     table_ptr = hr_table + ((vdc.regs[26] & 0x0f) << 4);
+    pdl_ptr = pdl_table + ((vdc.regs[26] & 0x0f) << 4);
+    pdh_ptr = pdh_table + ((vdc.regs[26] & 0x0f) << 4);
 
-    for (i = xs; i <= (unsigned int)xe; i++, p += 8) {
-        DWORD *ptr = table_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
-        int d = cache->foreground_data[i];
-
-        *((DWORD *)p) = *(ptr + (d >> 4));
-        *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+    if (vdc.regs[25] & 0x10) { /* double pixel mode */
+        for (i = xs; i <= (unsigned int)xe; i++, p += charwidth) {
+            DWORD *pdwl = pdl_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
+            DWORD *pdwh = pdh_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
+            int d = cache->foreground_data[i];
+            *((DWORD *)p) = *(pdwh + (d >> 4));
+            *((DWORD *)p + 1) = *(pdwl + (d >> 4));
+            *((DWORD *)p + 2) = *(pdwh + (d & 0x0f));
+            *((DWORD *)p + 3) = *(pdwl + (d & 0x0f));
+        }
+    } else { /* normal text size */
+        for (i = xs; i <= (unsigned int)xe; i++, p += charwidth) { /* FIXME rendering in the intercharacter gap when charwidth >8 */
+            DWORD *ptr = table_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
+            int d = cache->foreground_data[i];
+            *((DWORD *)p) = *(ptr + (d >> 4));
+            *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+        }
     }
+
     /* fill the last few pixels of the display with bg colour if smooth scroll != 0 - if needed */
-    if (i == vdc.screen_text_cols) { 
-        for (i = vdc.xsmooth; i < (unsigned)(vdc.regs[22] >> 4) ; i++, p++) {
+    if (i == vdc.screen_text_cols) {
+        for (i = vdc.xsmooth; i < (unsigned)(vdc.regs[22] >> 4); i++, p++) {
             *p = (vdc.regs[26] & 0x0f);
         }
     }
 }
 
 static void draw_std_text(void)
-/* raster_modes_draw_line() in raster */
+/* raster_modes_draw_line() in raster - draw text mode when cache is not used
+   This draws one raster line of text directly into the raster buffer
+   (vdc.raster.draw_buffer_ptr), which is one byte per pixel, based on the VDC
+   screen, attr(ibute) and char(set) ram (which are one byte per 8 pixels */
 {
     BYTE *p;
-    DWORD *table_ptr;
+    DWORD *table_ptr, *pdl_ptr, *pdh_ptr;
     BYTE *attr_ptr, *screen_ptr, *char_ptr;
 
     unsigned int i, d;
     unsigned int cpos = 0xffff;
 
-	cpos = vdc.crsrpos - vdc.screen_adr - vdc.mem_counter;
+    cpos = vdc.crsrpos - vdc.screen_adr - vdc.mem_counter;
 
     p = vdc.raster.draw_buffer_ptr
         + vdc.border_width
         - (vdc.regs[22] >> 4)
+        + ((vdc.regs[25] & 0x10) ? 1 : 0)
         + vdc.xsmooth;
-    
+
     attr_ptr = vdc.ram + vdc.attribute_adr + vdc.mem_counter;
     screen_ptr = vdc.ram + vdc.screen_adr + vdc.mem_counter;
     char_ptr = vdc.ram + vdc.chargen_adr + vdc.raster.ycounter;
@@ -456,62 +503,95 @@ static void draw_std_text(void)
         /* attribute mode */
         /* regs[26] & 0xf is the background colour */
         table_ptr = hr_table + ((vdc.regs[26] & 0x0f) << 4);
-        for (i = 0; i < vdc.screen_text_cols; i++, p += 8) {
-            DWORD *ptr = table_ptr + ((*(attr_ptr + i) & 0x0f) << 8);
-
+        pdl_ptr = pdl_table + ((vdc.regs[26] & 0x0f) << 4);
+        pdh_ptr = pdh_table + ((vdc.regs[26] & 0x0f) << 4);
+        for (i = 0; i < vdc.screen_text_cols; i++, p += ((vdc.regs[25] & 0x10) ? 16 : 8)) {
             d = *(char_ptr
-                + ((*(attr_ptr + i) & VDC_ALTCHARSET_ATTR) ? 0x1000 : 0)
-                + (*(screen_ptr + i) * vdc.bytes_per_char));
+                  + ((*(attr_ptr + i) & VDC_ALTCHARSET_ATTR) ? 0x1000 : 0)
+                  + (*(screen_ptr + i) * vdc.bytes_per_char));
 
+            /* set underline if the underline attrib is set for this char */
             if ((vdc.raster.ycounter == vdc.regs[29]) && (*(attr_ptr + i) & VDC_UNDERLINE_ATTR)) {
-                    /* TODO - figure out if the pixels per char applies to the underline */
-                    d = 0xFF;
+                /* TODO - figure out if the pixels per char applies to the underline */
+                d = 0xFF;
             }
+
+            /* blink if the blink attribute is set for this char */
             if (vdc.attribute_blink && (*(attr_ptr + i) & VDC_FLASH_ATTR)) {
                 d = 0x00;
             }
+
+            /* reverse if the reverse attribute is set for this char */
             if (*(attr_ptr + i) & VDC_REVERSE_ATTR) {
                 d ^= 0xff;
             }
-            if (cpos == i) {
+
+            if (cpos == i) { /* handle cursor if this is the cursor */
                 if ((vdc.frame_counter | 1) & crsrblink[(vdc.regs[10] >> 5) & 3]) {
-                    /* invert current byte of the character? */
-                    if ((vdc.raster.ycounter >= (unsigned)(vdc.regs[10] & 0x1F)) && (vdc.raster.ycounter < (unsigned)(vdc.regs[11] & 0x1F))) {
+                    /* invert current byte of the character if we are within the cursor area */
+                    if ((vdc.raster.ycounter >= (unsigned)(vdc.regs[10] & 0x1F)) /* top of cursor */
+                    && (vdc.raster.ycounter < (unsigned)(vdc.regs[11] & 0x1F))) { /* bottom of cursor */
                         /* The VDC cursor reverses the char */
                         d ^= 0xFF;
                     }
                 }
             }
-            if (vdc.regs[24] & VDC_REVERSE_ATTR) {
+
+            if (vdc.regs[24] & VDC_REVERSE_ATTR) { /* whole screen reverse */
                 d ^= 0xff;
             }
-            *((DWORD *)p) = *(ptr + (d >> 4));
-            *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+
+            /* actually render the byte into 8 bytes of colour pixels using the lookup tables */
+            if (vdc.regs[25] & 0x10) { /* double pixel mode */
+                DWORD *pdwl = pdl_ptr + ((*(attr_ptr + i) & 0x0f) << 8);
+                DWORD *pdwh = pdh_ptr + ((*(attr_ptr + i) & 0x0f) << 8);
+                *((DWORD *)p) = *(pdwh + (d >> 4));
+                *((DWORD *)p + 1) = *(pdwl + (d >> 4));
+                *((DWORD *)p + 2) = *(pdwh + (d & 0x0f));
+                *((DWORD *)p + 3) = *(pdwl + (d & 0x0f));
+            } else { /* normal text size */
+                DWORD *ptr = table_ptr + ((*(attr_ptr + i) & 0x0f) << 8);
+                *((DWORD *)p) = *(ptr + (d >> 4));
+                *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+            }
         }
     } else {
         /* monochrome mode - attributes from register 26 */
         DWORD *ptr = hr_table + (vdc.regs[26] << 4);
-        for (i = 0; i < vdc.screen_text_cols; i++, p += 8) {
-            d = *(char_ptr
-                + (*(screen_ptr + i) * vdc.bytes_per_char));
-            if (cpos == i) {
+        DWORD *pdwl = pdl_table + (vdc.regs[26] << 4);  /* Pointers into the lookup tables */
+        DWORD *pdwh = pdh_table + (vdc.regs[26] << 4);
+        for (i = 0; i < vdc.screen_text_cols; i++, p += ((vdc.regs[25] & 0x10) ? 16 : 8)) {
+            d = *(char_ptr + (*(screen_ptr + i) * vdc.bytes_per_char));
+
+            if (cpos == i) { /* handle cursor if this is the cursor */
                 if ((vdc.frame_counter | 1) & crsrblink[(vdc.regs[10] >> 5) & 3]) {
-                    /* invert current byte of the character? */
-                    if ((vdc.raster.ycounter >= (unsigned)(vdc.regs[10] & 0x1F)) && (vdc.raster.ycounter < (unsigned)(vdc.regs[11] & 0x1F))) {
+                    /* invert current byte of the character if we are within the cursor area */
+                    if ((vdc.raster.ycounter >= (unsigned)(vdc.regs[10] & 0x1F)) /* top of cursor */
+                    && (vdc.raster.ycounter < (unsigned)(vdc.regs[11] & 0x1F))) { /* bottom of cursor */
                         /* The VDC cursor reverses the char */
                         d ^= 0xFF;
                     }
                 }
             }
-            if (vdc.regs[24] & VDC_REVERSE_ATTR) {
+
+            if (vdc.regs[24] & VDC_REVERSE_ATTR) { /* whole screen reverse */
                 d ^= 0xff;
             }
-            *((DWORD *)p) = *(ptr + (d >> 4));
-            *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+
+            /* actually render the byte into 8 bytes of colour pixels using the lookup tables */
+            if (vdc.regs[25] & 0x10) { /* double pixel mode */
+                *((DWORD *)p) = *(pdwh + (d >> 4));
+                *((DWORD *)p + 1) = *(pdwl + (d >> 4));
+                *((DWORD *)p + 2) = *(pdwh + (d & 0x0f));
+                *((DWORD *)p + 3) = *(pdwl + (d & 0x0f));
+            } else { /* normal text size */
+                *((DWORD *)p) = *(ptr + (d >> 4));
+                *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+            }
         }
     }
     /* fill the last few pixels of the display with bg colour if smooth scroll != 0 */
-    for (i = vdc.xsmooth; i < (unsigned)(vdc.regs[22] >> 4) ; i++, p++) {
+    for (i = vdc.xsmooth; i < (unsigned)(vdc.regs[22] >> 4); i++, p++) {
         *p = (vdc.regs[26] & 0x0f);
     }
 }
@@ -526,7 +606,7 @@ static int get_std_bitmap(raster_cache_t *cache, unsigned int *xs,
 
     r = cache_data_fill(cache->foreground_data,
                         vdc.ram + vdc.screen_adr + vdc.bitmap_counter,
-                        vdc.screen_text_cols+1,
+                        vdc.screen_text_cols + 1,
                         1,
                         xs, xe,
                         rr,
@@ -537,14 +617,14 @@ static int get_std_bitmap(raster_cache_t *cache, unsigned int *xs,
         r |= raster_cache_data_fill(cache->color_data_1,
                                     vdc.ram + vdc.attribute_adr
                                     + vdc.mem_counter + vdc.attribute_offset,
-                                    vdc.screen_text_cols+1,
+                                    vdc.screen_text_cols + 1,
                                     xs, xe,
                                     rr);
     } else {
         /* monochrome mode - attributes from register 26 */
         r |= raster_cache_data_fill_const(cache->color_data_1,
                                           (BYTE)(vdc.regs[26] >> 4),
-                                          (int)vdc.screen_text_cols+1,
+                                          (int)vdc.screen_text_cols + 1,
                                           xs, xe,
                                           rr);
     }
@@ -556,38 +636,72 @@ static void draw_std_bitmap_cached(raster_cache_t *cache, unsigned int xs,
 /* raster_modes_draw_line_cached() in raster */
 {
     BYTE *p;
-    DWORD *table_ptr, *ptr;
+    DWORD *table_ptr, *pdl_ptr, *pdh_ptr;
+    DWORD *ptr, *pdwl, *pdwh;
 
-    unsigned int i,d,j,fg,bg;
-
+    unsigned int i, d, j, fg, bg, charwidth;
+    if (vdc.regs[25] & 0x10) { /* double pixel a.k.a 40column mode */
+        charwidth = 2 * (vdc.regs[22] >> 4);
+    } else { /* 80 column mode */
+        charwidth = 1 + (vdc.regs[22] >> 4);
+    }
     p = vdc.raster.draw_buffer_ptr
         + vdc.border_width
         + vdc.xsmooth
         - (vdc.regs[22] >> 4)
-        + xs * 8;
+        + ((vdc.regs[25] & 0x10) ? 1 : 0)
+        + xs * charwidth;
 
+    /* TODO: See if we even need to split these renderers between attr/mono, because the attr data is filled either way. draw_std_text_cached mode() doesn't differentiate */
     if (vdc.regs[25] & 0x40) {
         /* attribute mode */
-        for (i = xs; i <= (unsigned int)xe; i++, p += 8) {
-            d = cache->foreground_data[i];
+        if (vdc.regs[25] & 0x10) { /* double pixel mode */
+            for (i = xs; i <= (unsigned int)xe; i++, p += charwidth) {
+                d = cache->foreground_data[i];
+                pdwl = pdl_table + ((cache->color_data_1[i] & 0x0f) << 8) + (cache->color_data_1[i] & 0xf0);
+                pdwh = pdh_table + ((cache->color_data_1[i] & 0x0f) << 8) + (cache->color_data_1[i] & 0xf0);
+                *((DWORD *)p) = *(pdwh + (d >> 4));
+                *((DWORD *)p + 1) = *(pdwl + (d >> 4));
+                *((DWORD *)p + 2) = *(pdwh + (d & 0x0f));
+                *((DWORD *)p + 3) = *(pdwl + (d & 0x0f));
+            }
+        } else { /* normal text size */
+            for (i = xs; i <= (unsigned int)xe; i++, p += charwidth) {
+                d = cache->foreground_data[i];
 
-            table_ptr = hr_table + (cache->color_data_1[i] & 0xf0);
-            ptr = table_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
+                table_ptr = hr_table + (cache->color_data_1[i] & 0xf0);
+                ptr = table_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
 
-            *((DWORD *)p) = *(ptr + (d >> 4));
-            *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+                *((DWORD *)p) = *(ptr + (d >> 4));
+                *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+            }
         }
     } else {
         /* monochrome mode - attributes from register 26 */
-        table_ptr = hr_table + ((vdc.regs[26] & 0x0f) << 4);
+        if (vdc.regs[25] & 0x10) { /* double pixel mode */
+            pdl_ptr = pdl_table + ((vdc.regs[26] & 0x0f) << 4);
+            pdh_ptr = pdh_table + ((vdc.regs[26] & 0x0f) << 4);
+            
+            for (i = xs; i <= (unsigned int)xe; i++, p += charwidth) {
+                d = cache->foreground_data[i];
+                pdwl = pdl_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
+                pdwh = pdh_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
+                *((DWORD *)p) = *(pdwh + (d >> 4));
+                *((DWORD *)p + 1) = *(pdwl + (d >> 4));
+                *((DWORD *)p + 2) = *(pdwh + (d & 0x0f));
+                *((DWORD *)p + 3) = *(pdwl + (d & 0x0f));
+            }
+        } else { /* normal text size */
+            table_ptr = hr_table + ((vdc.regs[26] & 0x0f) << 4);
 
-        for (i = xs; i <= (unsigned int)xe; i++, p += 8) {
-            int d = cache->foreground_data[i];
+            for (i = xs; i <= (unsigned int)xe; i++, p += charwidth) {
+                d = cache->foreground_data[i];
 
-            ptr = table_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
+                ptr = table_ptr + ((cache->color_data_1[i] & 0x0f) << 8);
 
-            *((DWORD *)p) = *(ptr + (d >> 4));
-            *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+                *((DWORD *)p) = *(ptr + (d >> 4));
+                *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+            }
         }
     }
 
@@ -606,7 +720,7 @@ static void draw_std_bitmap_cached(raster_cache_t *cache, unsigned int xs,
         bg = vdc.regs[26] & 0x0F;
         fg = vdc.regs[26] >> 4;
     }
-    for (i = vdc.xsmooth, j = 0x80; i < (unsigned)(vdc.regs[22] >> 4) ; i++, p++, j >>= 1) {
+    for (i = vdc.xsmooth, j = 0x80; i < (unsigned)(vdc.regs[22] >> 4); i++, p++, j >>= 1) {
         if (d & j) {
             /* foreground */
             *p = fg;
@@ -618,46 +732,56 @@ static void draw_std_bitmap_cached(raster_cache_t *cache, unsigned int xs,
 
 
 void draw_std_bitmap(void)
-/* raster_modes_draw_line() in raster */
+/* raster_modes_draw_line() in raster - draw bitmap mode when cache is not used
+   See draw_std_text(), this is for bitmap mode. */
 {
     BYTE *p;
-    DWORD *table_ptr;
     BYTE *attr_ptr, *bitmap_ptr;
 
-    unsigned int i,d,j,fg,bg;
+    unsigned int i, d, j, fg, bg;
 
     p = vdc.raster.draw_buffer_ptr
         + vdc.border_width
         - (vdc.regs[22] >> 4)
+        + ((vdc.regs[25] & 0x10) ? 1 : 0)
         + vdc.xsmooth;
 
     attr_ptr = vdc.ram + vdc.attribute_adr + vdc.mem_counter + vdc.attribute_offset;
     bitmap_ptr = vdc.ram + vdc.screen_adr + vdc.bitmap_counter;
 
-    for (i = 0; i < vdc.mem_counter_inc; i++, p+= 8) {
-        DWORD *ptr;
+    for (i = 0; i < vdc.mem_counter_inc; i++, p += ((vdc.regs[25] & 0x10) ? 16 : 8)) {
+        DWORD *ptr, *pdwl, *pdwh;
 
         if (vdc.regs[25] & 0x40) {
             /* attribute mode */
-            table_ptr = hr_table + (*(attr_ptr + i) & 0xf0);
-            ptr = table_ptr + ((*(attr_ptr + i) & 0x0f) << 8);
+            ptr = hr_table + (*(attr_ptr + i) & 0xf0) + ((*(attr_ptr + i) & 0x0f) << 8);
+            pdwl = pdl_table + (*(attr_ptr + i) & 0xf0) + ((*(attr_ptr + i) & 0x0f) << 8);
+            pdwh = pdh_table + (*(attr_ptr + i) & 0xf0) + ((*(attr_ptr + i) & 0x0f) << 8);
         } else {
             /* monochrome mode - attributes from register 26 */
-            table_ptr = hr_table + ((vdc.regs[26] & 0x0f) << 4);
-            ptr = table_ptr + ((vdc.regs[26] & 0xf0) << 4);
+            ptr = hr_table + (vdc.regs[26] << 4);
+            pdwl = pdl_table + (vdc.regs[26] << 4);  /* Pointers into the lookup tables */
+            pdwh = pdh_table + (vdc.regs[26] << 4);
         }
 
-        d = *(bitmap_ptr + i);
+        d = *(bitmap_ptr + i); /* grab the data byte from the bitmap */
 
-        if (vdc.regs[24] & VDC_REVERSE_ATTR) {
-            /* reverse screen bit */
+        if (vdc.regs[24] & VDC_REVERSE_ATTR) { /* whole screen reverse */
             d ^= 0xff;
         }
 
-        *((DWORD *)p) = *(ptr + (d >> 4));
-        *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+        /* actually render the byte into 8 bytes of colour pixels using the lookup tables */
+        if (vdc.regs[25] & 0x10) { /* double pixel mode */
+            *((DWORD *)p) = *(pdwh + (d >> 4));
+            *((DWORD *)p + 1) = *(pdwl + (d >> 4));
+            *((DWORD *)p + 2) = *(pdwh + (d & 0x0f));
+            *((DWORD *)p + 3) = *(pdwl + (d & 0x0f));
+        } else { /* normal pixel size */
+            *((DWORD *)p) = *(ptr + (d >> 4));
+            *((DWORD *)p + 1) = *(ptr + (d & 0x0f));
+        }
     }
-    
+
     /* fill the last few pixels of the display with bg colour if xsmooth scroll != maximum  */
     d = *(bitmap_ptr + i);
     if (vdc.regs[24] & VDC_REVERSE_ATTR) { /* reverse screen bit */
@@ -669,10 +793,10 @@ void draw_std_bitmap(void)
         bg = *(attr_ptr + i) & 0x0F;
     } else {
         /* monochrome mode - attributes from register 26 */
-        fg = vdc.regs[26] >> 4;    
-        bg = vdc.regs[26] & 0x0F;            
+        fg = vdc.regs[26] >> 4;
+        bg = vdc.regs[26] & 0x0F;
     }
-    for (i = vdc.xsmooth, j = 0x80; i < (unsigned)(vdc.regs[22] >> 4) ; i++, p++, j >>= 1) {
+    for (i = vdc.xsmooth, j = 0x80; i < (unsigned)(vdc.regs[22] >> 4); i++, p++, j >>= 1) {
         if (d & j) {
             /* foreground */
             *p = fg;
@@ -718,8 +842,8 @@ static void draw_idle_cached(raster_cache_t *cache, unsigned int xs,
 }
 
 static void draw_idle(void)
-/* raster_modes_draw_line() in raster */
-{
+/* raster_modes_draw_line() in raster - draw idle mode (just border) when cache is not used */
+{ /* TODO - can't we just memset()?? Or just let the border code in raster look after this?? */
     BYTE *p;
     DWORD idleval;
 
@@ -728,11 +852,16 @@ static void draw_idle(void)
     p = vdc.raster.draw_buffer_ptr + vdc.border_width
         + vdc.raster.xsmooth;
 
+    /* border colour is just the screen background colour from reg 26 bits 0-3 */
     idleval = *(hr_table + ((vdc.regs[26] & 0x0f) << 4));
 
-    for (i = 0; i < vdc.mem_counter_inc; i++, p+= 8) {
+    for (i = 0; i < vdc.mem_counter_inc; i++, p += ((vdc.regs[25] & 0x10) ? 16 : 8)) {
         *((DWORD *)p) = idleval;
         *((DWORD *)p + 1) = idleval;
+        if (vdc.regs[25] & 0x10) { /* double pixel mode */
+            *((DWORD *)p + 2) = idleval;
+            *((DWORD *)p + 3) = idleval;
+        }
     }
 }
 
@@ -767,4 +896,3 @@ void vdc_draw_init(void)
 
     setup_modes();
 }
-

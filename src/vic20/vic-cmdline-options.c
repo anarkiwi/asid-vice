@@ -42,30 +42,30 @@
 
 int border_set_func(const char *value, void *extra_param)
 {
-   int video;
+    int video;
 
-   resources_get_int("MachineVideoStandard", &video);
+    resources_get_int("MachineVideoStandard", &video);
 
-   if (strcmp(value, "1") == 0 || strcmp(value, "full") == 0) {
-       vic_resources.border_mode = VIC_FULL_BORDERS;
-   } else if (strcmp(value, "2") == 0 || strcmp(value, "debug") == 0) {
-       vic_resources.border_mode = VIC_DEBUG_BORDERS;
-   } else if (strcmp(value, "3") == 0 || strcmp(value, "none") == 0) {
-       vic_resources.border_mode = VIC_NO_BORDERS;
-   } else {
-       vic_resources.border_mode = VIC_NORMAL_BORDERS;
-   }
+    if (strcmp(value, "1") == 0 || strcmp(value, "full") == 0) {
+        vic_resources.border_mode = VIC_FULL_BORDERS;
+    } else if (strcmp(value, "2") == 0 || strcmp(value, "debug") == 0) {
+        vic_resources.border_mode = VIC_DEBUG_BORDERS;
+    } else if (strcmp(value, "3") == 0 || strcmp(value, "none") == 0) {
+        vic_resources.border_mode = VIC_NO_BORDERS;
+    } else {
+        vic_resources.border_mode = VIC_NORMAL_BORDERS;
+    }
 
-   machine_change_timing(video ^ VIC_BORDER_MODE(vic_resources.border_mode));
+    machine_change_timing(video, vic_resources.border_mode);
 
-   return 0;
+    return 0;
 }
 
 /* VIC command-line options.  */
 static const cmdline_option_t cmdline_options[] =
 {
     { "-VICborders", CALL_FUNCTION, 1,
-      border_set_func, NULL, "VICBorderMode", (void *)0,
+      border_set_func, NULL, "VICBorderMode", NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_MODE, IDCLS_SET_BORDER_MODE,
       NULL, NULL },
@@ -74,9 +74,9 @@ static const cmdline_option_t cmdline_options[] =
 
 int vic_cmdline_options_init(void)
 {
-    if (raster_cmdline_options_chip_init("VIC", vic.video_chip_cap) < 0)
+    if (raster_cmdline_options_chip_init("VIC", vic.video_chip_cap) < 0) {
         return -1;
+    }
 
     return cmdline_register_options(cmdline_options);
 }
-

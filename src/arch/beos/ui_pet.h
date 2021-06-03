@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -27,7 +28,6 @@
 #ifndef VICE__UI_PET_H__
 #define VICE__UI_PET_H__
 
-const uint32 MESSAGE_PET_MODEL    = 'MP01';
 const uint32 MESSAGE_PET_MEMORY   = 'MP02';
 const uint32 MESSAGE_PET_VIDEO    = 'MP03';
 const uint32 MESSAGE_PET_IOSIZE   = 'MP04';

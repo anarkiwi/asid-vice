@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -150,55 +150,70 @@ static int set_html_browser_command(const char *val, void *param)
 
 static int set_use_private_colormap(int val, void *param)
 {
-    ui_resources.use_private_colormap = val;
+    ui_resources.use_private_colormap = val ? 1 : 0;
+
     return 0;
 }
 
 static int set_save_resources_on_exit(int val, void *param)
 {
-    ui_resources.save_resources_on_exit = val;
+    ui_resources.save_resources_on_exit = val ? 1 : 0;
+
     return 0;
 }
 
 static int set_confirm_on_exit(int val, void *param)
 {
-    ui_resources.confirm_on_exit = val;
+    ui_resources.confirm_on_exit = val ? 1 : 0;
+
     return 0;
 }
 
-static const resource_string_t resources_string[] = {
-    { "HTMLBrowserCommand", 
 #ifdef MACOSX_SUPPORT    
-      "/usr/bin/open %s",
+#define HTML_BROWSER_COMMAND_DEFAULT "/usr/bin/open %s"
 #else
-      "firefox %s",
+#define HTML_BROWSER_COMMAND_DEFAULT "firefox %s"
 #endif
-      RES_EVENT_NO, NULL,
-      &ui_resources.html_browser_command,
-      set_html_browser_command, NULL },
+
+static const resource_string_t resources_string[] = {
+    { "HTMLBrowserCommand", HTML_BROWSER_COMMAND_DEFAULT, RES_EVENT_NO, NULL,
+      &ui_resources.html_browser_command, set_html_browser_command, NULL },
     { NULL }
 };
 
 #if defined (USE_XF86_EXTENSIONS) && (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
 static int fullscreen_set_fs(int val, void *param)
 {
-    ui_resources.fs_enabled_pending = val;
+    ui_resources.fs_enabled_pending = val ? 1 : 0;
+
     return 0;
 }
 #endif
 
-/*
-    FIXME: WindowXXX should be per window (for x128)
-*/
-static const resource_int_t resources_int[] = {
-    { "PrivateColormap", 0, RES_EVENT_NO, NULL,
-      &ui_resources.use_private_colormap, set_use_private_colormap, NULL },
+/* FIXME: these are used to workaround the initial size problem in GTK and
+          should be removed once the X11 ui is completely fixed.
+ */
+#ifdef USE_GNOMEUI
+static int tophint, bothint;
+
+static int set_tophint(int d, void *param)
+{
+    tophint = d;
+    return 0;
+}
+
+static int set_bothint(int d, void *param)
+{
+    bothint = d;
+    return 0;
+}
+#endif
+
+static const resource_int_t common_resources_int[] = {
     { "SaveResourcesOnExit", 0, RES_EVENT_NO, NULL,
       &ui_resources.save_resources_on_exit, set_save_resources_on_exit, NULL },
     { "ConfirmOnExit", 1, RES_EVENT_NO, NULL,
       &ui_resources.confirm_on_exit, set_confirm_on_exit, NULL },
-    { "DisplayDepth", 0, RES_EVENT_NO, NULL,
-      &ui_resources.depth, set_depth, NULL },
     { "Window0Width", 0, RES_EVENT_NO, NULL,
       &ui_resources.window0_width, set_width0, NULL },
     { "Window0Height", 0, RES_EVENT_NO, NULL,
@@ -207,9 +222,26 @@ static const resource_int_t resources_int[] = {
       &ui_resources.window0_xpos, set_xpos0, NULL },
     { "Window0Ypos", -1, RES_EVENT_NO, NULL,
       &ui_resources.window0_ypos, set_ypos0, NULL },
+    { NULL }
+};
+
+static const resource_int_t resources_int[] = {
+    { "PrivateColormap", 0, RES_EVENT_NO, NULL,
+      &ui_resources.use_private_colormap, set_use_private_colormap, NULL },
+    { "DisplayDepth", 0, RES_EVENT_NO, NULL,
+      &ui_resources.depth, set_depth, NULL },
 #if defined (USE_XF86_EXTENSIONS) && (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
     { "UseFullscreen", 0, RES_EVENT_NO, NULL,
       &ui_resources.fs_enabled_pending, fullscreen_set_fs, NULL },
+#endif
+/* FIXME: these are used to workaround the initial size problem in GTK and
+          should be removed once the X11 ui is completely fixed.
+ */
+#ifdef USE_GNOMEUI
+    { "WindowTopHint", 0, RES_EVENT_NO, NULL,
+      &tophint, set_tophint, NULL },
+    { "WindowBotHint", 0, RES_EVENT_NO, NULL,
+      &bothint, set_bothint, NULL },
 #endif
     { NULL }
 };
@@ -240,7 +272,13 @@ int ui_resources_init(void)
         }
     }
 
-    return resources_register_int(resources_int);
+    if (machine_class != VICE_MACHINE_VSID) {
+        if (resources_register_int(resources_int) < 0) {
+            return -1;
+        }
+    }
+
+    return resources_register_int(common_resources_int);
 }
 
 void ui_resources_shutdown(void)

@@ -124,6 +124,15 @@ static BYTE mc6821_read(drive_context_t *drv, WORD addr)
     return mc6821core_read(&my6821[drv->mynumber], port /* rs1 */, reg /* rs0 */);
 }
 
+static BYTE mc6821_peek(drive_context_t *drv, WORD addr)
+{
+    int port, reg;
+
+    port = (addr >> 1) & 1; /* rs1 */
+    reg = (addr >> 0) & 1;  /* rs0 */
+    return mc6821core_peek(&my6821[drv->mynumber], port /* rs1 */, reg /* rs0 */);
+}
+
 /*-----------------------------------------------------------------------*/
 
 void dd3_set_signal(drive_context_t *drv)
@@ -150,16 +159,23 @@ void dd3_reset(drive_context_t *drv)
 
 void dd3_mem_init(struct drive_context_s *drv, unsigned int type)
 {
-    drivecpud_context_t *cpud;
+    drivecpud_context_t *cpud = drv->cpud;
 
-    cpud = drv->cpud;
+    if (drv->drive->parallel_cable != DRIVE_PC_DD3) {
+        return;
+    }
 
     /* Setup parallel cable */
-    if (type == DRIVE_TYPE_1541 || type == DRIVE_TYPE_1541II
-        || type == DRIVE_TYPE_1570 || type == DRIVE_TYPE_1571
-        || type == DRIVE_TYPE_1571CR) {
-        if (drv->drive->parallel_cable == DRIVE_PC_DD3) {
-            drivemem_set_func(cpud, 0x50, 0x60, mc6821_read, mc6821_store);
-        }
+    switch (type) {
+    case DRIVE_TYPE_1540:
+    case DRIVE_TYPE_1541:
+    case DRIVE_TYPE_1541II:
+    case DRIVE_TYPE_1570:
+    case DRIVE_TYPE_1571:
+    case DRIVE_TYPE_1571CR:
+        drivemem_set_func(cpud, 0x50, 0x60, mc6821_read, mc6821_store, mc6821_peek, NULL, 0);
+        break;
+    default:
+        break;
     }
 }

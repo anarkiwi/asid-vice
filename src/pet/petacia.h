@@ -2,7 +2,7 @@
  * petacia.h - Definitions for a 6551 ACIA interface
  *
  * Written by
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -44,4 +44,3 @@ extern int acia1_snapshot_read_module(struct snapshot_s *);
 extern int acia1_snapshot_write_module(struct snapshot_s *);
 
 #endif
-

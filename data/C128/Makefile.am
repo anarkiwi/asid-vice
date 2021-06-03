@@ -8,6 +8,7 @@ roms = \
 	chargen \
 	chargfr \
 	chargse \
+	chargch \
 	kernal \
 	kernal64 \
 	kernalde \
@@ -15,7 +16,8 @@ roms = \
 	kernalfr \
 	kernalit \
 	kernalno \
-	kernalse
+	kernalse \
+	kernalch
 
 romsets = \
 	default.vrs
@@ -24,20 +26,27 @@ palettes = \
 	c64hq.vpl \
 	c64s.vpl \
 	ccs64.vpl \
-	default.vpl \
 	frodo.vpl \
 	godot.vpl \
 	pc64.vpl \
 	vdc_deft.vpl \
 	vdc_comp.vpl \
-	vice.vpl
+	vice.vpl \
+	pepto-ntsc-sony.vpl \
+	pepto-ntsc.vpl \
+	pepto-pal.vpl \
+	pepto-palold.vpl \
+	community-colors.vpl \
+	ptoing.vpl \
+	deekay.vpl \
+	rgb.vpl
 
 x11_keymaps = \
 	x11_sym.vkm \
 	x11_pos.vkm
 
 sdl_keymaps = \
-	sdl_sym.vkm
+	sdl_pos.vkm
 
 extra_keymaps = \
 	amiga_sym.vkm \

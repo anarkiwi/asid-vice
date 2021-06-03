@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -77,19 +78,14 @@
 #define ARCHDEP_ETHERNET_DEFAULT_DEVICE "eth0"
 
 /* Default sound fragment size */
-#define ARCHDEP_SOUND_FRAGMENT_SIZE 1
+#define ARCHDEP_SOUND_FRAGMENT_SIZE SOUND_FRAGMENT_MEDIUM
 
 extern const char *archdep_home_path(void);
 
-/* set this path to customize the preference storage */ 
+/* set this path to customize the preference storage */
 extern const char *archdep_pref_path;
 
-/* Define the default system directory (where the ROMs are).  */
-#ifdef __NetBSD__
-#define LIBDIR PREFIX "/share/vice"
-#else
-#define LIBDIR PREFIX "/lib/vice"
-#endif
+#define LIBDIR VICEDIR
 
 #if defined(__FreeBSD__) || defined(__NetBSD__)
 #define DOCDIR PREFIX "/share/doc/vice"
@@ -100,11 +96,34 @@ extern const char *archdep_pref_path;
 #define VICEUSERDIR ".vice"
 
 /*
-    these are used if the monitor is in remote mode. in this case we might
+    these are used for socket send/recv. in this case we might
     get SIGPIPE if the connection is unexpectedly closed.
 */
 extern void archdep_signals_init(int do_core_dumps);
 extern void archdep_signals_pipe_set(void);
 extern void archdep_signals_pipe_unset(void);
+
+#ifdef MACOSX_SUPPORT
+#define MAKE_SO_NAME_VERSION_PROTO(name, version)  "/opt/local/lib/lib" #name "." #version ".dylib"
+#else
+#define MAKE_SO_NAME_VERSION_PROTO(name, version)  "lib" #name ".so." #version
+#endif
+
+/* add second level macro to allow expansion and stringification */
+#define ARCHDEP_MAKE_SO_NAME_VERSION(n, v) MAKE_SO_NAME_VERSION_PROTO(n, v)
+
+#ifdef MACOSX_SUPPORT
+#define ARCHDEP_OPENCBM_SO_NAME  "/opt/opencbm/lib/libopencbm.dylib"
+#define ARCHDEP_LAME_SO_NAME     "/opt/local/lib/libmp3lame.dylib"
+#else
+#define ARCHDEP_OPENCBM_SO_NAME  "libopencbm.so"
+#define ARCHDEP_LAME_SO_NAME     "libmp3lame.so"
+#endif
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR errno
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
 
 #endif

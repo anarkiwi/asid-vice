@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * 16/24bpp support added by
  *  Steven Tieu <stieu@physics.ubc.ca>
@@ -38,10 +38,10 @@
 extern void crtc_store(WORD addr, BYTE value);
 extern BYTE crtc_read(WORD addr);
 extern BYTE crtc_peek(WORD addr);
+extern int crtc_dump(void);
 
 extern void crtc_set_char(int crom);
 
 extern void crtc_update_memory_ptrs(void);
 
 #endif
-

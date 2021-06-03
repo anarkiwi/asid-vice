@@ -35,47 +35,54 @@
 #include "c64dtvmem.h"
 #include "c64dtvmeminit.h"
 #include "c64memrom.h"
+#include "debugcart.h"
 #include "sid.h"
 #include "vicii-mem.h"
 
-#define NUM_SEGMENTS 8
+#define NUM_SEGMENTS 7
 #define NUM_CONFIGS 8
 
-static const int mstart[NUM_SEGMENTS] = { 0x00, 0x01, 0x40, 0x80,
-                                          0xa0, 0xc0, 0xd0, 0xe0 };
+static const int mstart[NUM_SEGMENTS] = {
+    0x00, 0x40, 0x80,
+    0xa0, 0xc0, 0xd0, 0xe0
+};
 
-static const int mend[NUM_SEGMENTS] = { 0x00, 0x3f, 0x7f, 0x9f,
-                                        0xbf, 0xcf, 0xdf, 0xff };
+static const int mend[NUM_SEGMENTS] = {
+    0x3f, 0x7f, 0x9f,
+    0xbf, 0xcf, 0xdf, 0xff
+};
 
-static const int limit_tab[NUM_SEGMENTS][NUM_CONFIGS] = {
-    /* 0000-00ff */
-    {     -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1 },
-
-    /* 0100-3fff */
-    { 0x3ffd, 0x3ffd, 0x3ffd, 0x3ffd, 0x3ffd, 0x3ffd, 0x3ffd, 0x3ffd },
+static const DWORD limit_tab[NUM_SEGMENTS][NUM_CONFIGS] = {
+    /* 0000-3fff */
+    { 0x00023ffd, 0x00023ffd, 0x00023ffd, 0x00023ffd, 0x00023ffd, 0x00023ffd, 0x00023ffd, 0x00023ffd },
 
     /* 4000-7fff */
-    { 0x7ffd, 0x7ffd, 0x7ffd, 0x7ffd, 0x7ffd, 0x7ffd, 0x7ffd, 0x7ffd },
+    { 0x40007ffd, 0x40007ffd, 0x40007ffd, 0x40007ffd, 0x40007ffd, 0x40007ffd, 0x40007ffd, 0x40007ffd },
 
     /* 8000-9fff */
-    { 0xbffd, 0xbffd, 0xbffd, 0x9ffd, 0xbffd, 0xbffd, 0xbffd, 0x9ffd },
+    { 0x8000bffd, 0x8000bffd, 0x8000bffd, 0x80009ffd, 0x8000bffd, 0x8000bffd, 0x8000bffd, 0x80009ffd },
 
     /* a000-bfff */
-    { 0xbffd, 0xbffd, 0xbffd, 0xbffd, 0xbffd, 0xbffd, 0xbffd, 0xbffd },
+    { 0x8000bffd, 0x8000bffd, 0x8000bffd, 0xa000bffd, 0x8000bffd, 0x8000bffd, 0x8000bffd, 0xa000bffd },
 
     /* c000-cfff */
-    { 0xfffd, 0xcffd, 0xcffd, 0xcffd, 0xfffd, 0xcffd, 0xcffd, 0xcffd },
+    { 0xc000fffd, 0xc000cffd, 0xc000cffd, 0xc000cffd, 0xc000fffd, 0xc000cffd, 0xc000cffd, 0xc000cffd },
 
     /* d000-dfff */
-    { 0xfffd, 0xdffd, 0xdffd, 0xdffd, 0xfffd,     -1,     -1,     -1 },
+    { 0xc000fffd, 0xd000dffd, 0xd000dffd, 0xd000dffd, 0xc000fffd,          0,          0,          0 },
 
     /* e000-ffff */
-    { 0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd }
+    { 0xc000fffd, 0xe000fffd, 0xe000fffd, 0xe000fffd, 0xc000fffd, 0xe000fffd, 0xe000fffd, 0xe000fffd }
 };
 
 /* IO is enabled at memory configs 5, 6, 7 */
-const unsigned int c64dtvmeminit_io_config[8] = 
-    { 0, 0, 0, 0, 0, 1, 1, 1 };
+const unsigned int c64dtvmeminit_io_config[8] = { 0, 0, 0, 0, 0, 1, 1, 1 };
+
+static void sid_store_d700(WORD addr, BYTE val)
+{
+    sid_store(addr, val);
+    debugcart_store(addr, val);
+}
 
 void c64dtvmeminit(unsigned int base)
 {
@@ -96,10 +103,11 @@ void c64dtvmeminit(unsigned int base)
                 mem_read_tab_set(base + j, i, vicii_read);
                 mem_set_write_hook(base + j, i, vicii_store);
             }
-            for (i = 0xd4; i <= 0xd7; i++) {
+            for (i = 0xd4; i <= 0xd6; i++) {
                 mem_read_tab_set(base + j, i, sid_read);
                 mem_set_write_hook(base + j, i, sid_store);
             }
+            mem_set_write_hook(base + j, i, sid_store_d700);
             for (i = 0xd8; i <= 0xdb; i++) {
                 mem_read_tab_set(base + j, i, colorram_read);
                 mem_set_write_hook(base + j, i, colorram_store);
@@ -115,8 +123,9 @@ void c64dtvmeminit(unsigned int base)
             mem_read_tab_set(base + j, 0xdf, c64io2_read);
             mem_set_write_hook(base + j, 0xdf, c64io2_store);
 
-            for (i = 0xd0; i <= 0xdf; i++)
+            for (i = 0xd0; i <= 0xdf; i++) {
                 mem_read_base_set(base + j, i, NULL);
+            }
         }
     }
 
@@ -131,10 +140,9 @@ void c64dtvmeminit(unsigned int base)
         mem_read_base_set(base + 6, i, NULL);
         mem_read_base_set(base + 7, i, NULL);
     }
-
 }
 
-void c64dtvmem_limit_init(int mem_read_limit_tab[NUM_CONFIGS][0x101])
+void c64dtvmem_limit_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101])
 {
     int i, j, k;
 

@@ -34,9 +34,12 @@
 #include "uiprinter.h"
 
 UI_MENU_DEFINE_TOGGLE(PrinterUserport)
+#if defined(HAVE_OPENCBM) && 0 /* OpenCBM not implemented for IEEE bus */
+UI_MENU_DEFINE_TOGGLE(Printer7)
+#endif
 
-ui_menu_entry_t printerieee_settings_menu[] = {
-    { N_("Printer #4 emulation"), UI_MENU_TYPE_TICK,
+ui_menu_entry_t printerieee_cbm2_settings_menu[] = {
+    { N_("Printer #4 emulation"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiprinter_set_printer4_type_submenu },
     { N_("Printer #4 driver"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiprinter_pr4_driver_submenu },
@@ -48,7 +51,7 @@ ui_menu_entry_t printerieee_settings_menu[] = {
       (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)0, NULL,
       KEYSYM_4, UI_HOTMOD_META },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Printer #5 emulation"), UI_MENU_TYPE_TICK,
+    { N_("Printer #5 emulation"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiprinter_set_printer5_type_submenu },
     { N_("Printer #5 driver"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiprinter_pr5_driver_submenu },
@@ -60,6 +63,23 @@ ui_menu_entry_t printerieee_settings_menu[] = {
       (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)1, NULL,
       KEYSYM_5, UI_HOTMOD_META },
     { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Printer #6 emulation"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_set_printer6_type_submenu },
+    { N_("Printer #6 driver"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr6_driver_submenu },
+    { N_("Printer #6 output"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr6_output_submenu },
+    { N_("Printer #6 text output device"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr6_device_submenu },
+    { N_("Printer #6 formfeed"), UI_MENU_TYPE_NORMAL,
+      (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)2, NULL,
+      KEYSYM_6, UI_HOTMOD_META },
+#if defined(HAVE_OPENCBM) && 0 /* OpenCBM not implemented for IEEE bus */
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Device #7 Real device access"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_Printer7,
+      (ui_callback_data_t)PRINTER_DEVICE_REAL, NULL },
+#endif
+    { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Userport printer emulation"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_PrinterUserport, NULL, NULL },
     { N_("Userport printer driver"), UI_MENU_TYPE_NORMAL,
@@ -69,7 +89,58 @@ ui_menu_entry_t printerieee_settings_menu[] = {
     { N_("Userport printer text output device"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiprinter_pruser_device_submenu },
     { N_("Userport printer formfeed"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)2, NULL },
+      (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)3, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Printer text device 1"), UI_MENU_TYPE_DOTS, (ui_callback_t)uiprinter_set_printer_exec_file,
+      (ui_callback_data_t)"PrinterTextDevice1", NULL },
+    { N_("Printer text device 2"), UI_MENU_TYPE_DOTS, (ui_callback_t)uiprinter_set_printer_exec_file,
+      (ui_callback_data_t)"PrinterTextDevice2", NULL },
+    { N_("Printer text device 3"), UI_MENU_TYPE_DOTS, (ui_callback_t)uiprinter_set_printer_exec_file,
+      (ui_callback_data_t)"PrinterTextDevice3", NULL },
+    { NULL }
+};
+
+ui_menu_entry_t printerieee_cbm5x0_settings_menu[] = {
+    { N_("Printer #4 emulation"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_set_printer4_type_submenu },
+    { N_("Printer #4 driver"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr4_driver_submenu },
+    { N_("Printer #4 output"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr4_output_submenu },
+    { N_("Printer #4 text output device"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr4_device_submenu },
+    { N_("Printer #4 formfeed"), UI_MENU_TYPE_NORMAL,
+      (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)0, NULL,
+      KEYSYM_4, UI_HOTMOD_META },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Printer #5 emulation"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_set_printer5_type_submenu },
+    { N_("Printer #5 driver"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr5_driver_submenu },
+    { N_("Printer #5 output"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr5_output_submenu },
+    { N_("Printer #5 text output device"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr5_device_submenu },
+    { N_("Printer #5 formfeed"), UI_MENU_TYPE_NORMAL,
+      (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)1, NULL,
+      KEYSYM_5, UI_HOTMOD_META },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Printer #6 emulation"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_set_printer6_type_submenu },
+    { N_("Printer #6 driver"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr6_driver_submenu },
+    { N_("Printer #6 output"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr6_output_submenu },
+    { N_("Printer #6 text output device"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uiprinter_pr6_device_submenu },
+    { N_("Printer #6 formfeed"), UI_MENU_TYPE_NORMAL,
+      (ui_callback_t)uiprinter_formfeed, (ui_callback_data_t)2, NULL,
+      KEYSYM_6, UI_HOTMOD_META },
+#if defined(HAVE_OPENCBM) && 0 /* OpenCBM not implemented for IEEE bus */
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Device #7 Real device access"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_Printer7,
+      (ui_callback_data_t)PRINTER_DEVICE_REAL, NULL },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Printer text device 1"), UI_MENU_TYPE_DOTS, (ui_callback_t)uiprinter_set_printer_exec_file,
       (ui_callback_data_t)"PrinterTextDevice1", NULL },

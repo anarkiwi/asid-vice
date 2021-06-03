@@ -30,7 +30,7 @@
 #include "c64.h"
 #include "cia.h"
 #include "via.h"
-#include "drivecpu.h"
+#include "drive.h"
 #include "drivetypes.h"
 #include "iecdrive.h"
 #include "maincpu.h"
@@ -44,6 +44,15 @@ int burst_mod;
 
 int set_burst_mod(int mode, void *param)
 {
+    switch (mode) {
+        case BURST_MOD_NONE:
+        case BURST_MOD_CIA1:
+        case BURST_MOD_CIA2:
+            break;
+        default:
+            return -1;
+    }
+
     burst_mod = mode;
     return 0;
 }
@@ -63,24 +72,24 @@ void c64fastiec_fast_cpu_write(BYTE data)
     unsigned int dnr;
 
     for (dnr = 0; dnr < DRIVE_NUM; dnr++) {
-	drive = drive_context[dnr]->drive;
-	if (drive->enable) {
-	    drivecpu_execute(drive_context[dnr], maincpu_clk);
-	    switch (drive->type) {
-		case DRIVE_TYPE_1570:
-		case DRIVE_TYPE_1571:
-		case DRIVE_TYPE_1571CR:
-		    ciacore_set_sdr(drive_context[dnr]->cia1571, data);
-		    break;
-		case DRIVE_TYPE_1581:
-		    ciacore_set_sdr(drive_context[dnr]->cia1581, data);
-		    break;
-		case DRIVE_TYPE_2000:
-		case DRIVE_TYPE_4000:
-		    viacore_set_sr(drive_context[dnr]->via4000, data);
-		    break;
-	    }
-	}
+        drive = drive_context[dnr]->drive;
+        if (drive->enable) {
+            drive_cpu_execute_one(drive_context[dnr], maincpu_clk);
+            switch (drive->type) {
+                case DRIVE_TYPE_1570:
+                case DRIVE_TYPE_1571:
+                case DRIVE_TYPE_1571CR:
+                    ciacore_set_sdr(drive_context[dnr]->cia1571, data);
+                    break;
+                case DRIVE_TYPE_1581:
+                    ciacore_set_sdr(drive_context[dnr]->cia1581, data);
+                    break;
+                case DRIVE_TYPE_2000:
+                case DRIVE_TYPE_4000:
+                    viacore_set_sr(drive_context[dnr]->via4000, data);
+                    break;
+            }
+        }
     }
 }
 

@@ -26,6 +26,8 @@
  *
  */
 
+/* #define DEBUG_GNOMEUI */
+
 #include "vice.h"
 
 #include <stdlib.h>
@@ -43,13 +45,19 @@
 #include "video.h"
 #include "videoarch.h"
 
+#ifdef DEBUG_GNOMEUI
+#define DBG(_x_) log_debug _x_
+#else
+#define DBG(_x_)
+#endif
 
-extern int screen;
-extern GdkColor drive_led_on_red_pixel, drive_led_on_green_pixel, drive_led_off_pixel, motor_running_pixel, tape_control_pixel;
-extern GdkColor drive_led_on_red_pixels[16];
-extern GdkColor drive_led_on_green_pixels[16];
+/* UI color constants shared by GUI elements */
+GdkColor drive_led_on_red_pixel, drive_led_on_green_pixel;
+GdkColor drive_led_off_pixel, motor_running_pixel, tape_control_pixel;
+GdkColor drive_led_on_red_pixels[16];
+GdkColor drive_led_on_green_pixels[16];
 
-void uicolor_init_video_colors();
+void uicolor_init_video_colors(void);
 
 /*-----------------------------------------------------------------------*/
 
@@ -111,14 +119,15 @@ unsigned int endian_swap(unsigned int color, unsigned int bpp, unsigned int swap
     if (bpp == 32) {
         return ((color >> 24) & 0x000000ff) | ((color >>  8) & 0x0000ff00) | ((color <<  8) & 0x00ff0000) | ((color << 24) & 0xff000000);
     }
-    
+
     /* err? */
     return color;
 }
 
 int uicolor_set_palette(struct video_canvas_s *c, const palette_t *palette)
 {
-    unsigned int i, rs, gs, bs, rb, gb, bb, bpp, swap;
+    unsigned int i, bpp, swap;
+    gint rs, gs, bs, rb, gb, bb;
 
     /* Hwscaled colours are expected in GL_RGB order. 24 bpp renderers are
      * special, they always seem to expect color order to be logically ABGR,
@@ -133,27 +142,47 @@ int uicolor_set_palette(struct video_canvas_s *c, const palette_t *palette)
         bs = 16;
         swap = 0;
     } else {
-        GdkVisual *vis = c->gdk_image->visual;
-
-        bpp = vis->depth;
-        rb = vis->red_prec;
-        gb = vis->green_prec;
-        bb = vis->blue_prec;
-        rs = vis->red_shift;
-        gs = vis->green_shift;
-        bs = vis->blue_shift;
+#if !defined(HAVE_CAIRO)
+        /* GdkImage is deprecated since 2.22 and removed in 3.0 */
+        GdkVisual *vis = gdk_image_get_visual(c->gdk_image);
+        bpp = gdk_visual_get_depth(vis);
+        gdk_visual_get_red_pixel_details(vis, NULL, &rs, &rb);
+        gdk_visual_get_green_pixel_details(vis, NULL, &gs, &gb);
+        gdk_visual_get_blue_pixel_details(vis, NULL, &bs, &bb);
 
 #ifdef WORDS_BIGENDIAN
-        swap = vis->byte_order == GDK_LSB_FIRST;
+        swap = (gdk_visual_get_byte_order(vis) == GDK_LSB_FIRST);
 #else
-        swap = vis->byte_order == GDK_MSB_FIRST;
+        swap = (gdk_visual_get_byte_order(vis) == GDK_MSB_FIRST);
 #endif
 
+#else
+        if (gdk_pixbuf_get_colorspace(c->gdk_pixbuf) == GDK_COLORSPACE_RGB) {
+            bpp = gdk_pixbuf_get_n_channels(c->gdk_pixbuf) * gdk_pixbuf_get_bits_per_sample(c->gdk_pixbuf);
+            rb = gb = bb = gdk_pixbuf_get_bits_per_sample(c->gdk_pixbuf);
+            rs = 0;
+            gs = 8;
+            bs = 16;
+            swap = 0;
+        } else {
+            log_error(ui_log, "uicolor_set_palette: unsupported color space");
+            bpp = 24;
+            rb = 8;
+            gb = 8;
+            bb = 8;
+            rs = 0;
+            gs = 8;
+            bs = 16;
+            swap = 0;
+        }
+#endif
         /* 24 bpp modes do not really work with the existing
          * arrangement as they have been written to assume the A component is
          * in the 32-bit longword bits 24-31. If any arch needs 24 bpp, that
          * code must be specially written for it. */
     }
+    
+    DBG(("bpp:%d rb:%d gb:%d bb:%d rs:%d gs:%d bs:%d swap:%d", bpp, rb, gb, bb, rs, gs, bs, swap));
 
     for (i = 0; i < palette->num_entries; i++) {
         palette_entry_t color = palette->entries[i];

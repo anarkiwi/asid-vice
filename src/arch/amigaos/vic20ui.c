@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -33,22 +34,33 @@
 #include "translate.h"
 #include "uicart.h"
 #include "uilib.h"
+#include "vic20model.h"
 #include "vic20ui.h"
 #include "vic20uires.h"
 
 #include "mui/uiacia.h"
+#include "mui/uicpclockf83.h"
+#include "mui/uidatasette.h"
 #include "mui/uidigimax.h"
-#include "mui/uidrivec64vic20.h"
+#include "mui/uidrivevic20.h"
 #include "mui/uids12c887rtc.h"
 #include "mui/uigeoram.h"
+#include "mui/uiiocollisions.h"
+#include "mui/uijoyport.h"
 #include "mui/uijoystick.h"
 #include "mui/uijoystickll.h"
+#include "mui/uikeymap.h"
+#include "mui/uimouse.h"
 #include "mui/uiprinter.h"
-#include "mui/uiromc64vic20settings.h"
+#include "mui/uiromvic20settings.h"
 #include "mui/uirs232user.h"
+#include "mui/uisampler.h"
 #include "mui/uisidcart.h"
 #include "mui/uisoundexpander.h"
 #include "mui/uisoundsampler.h"
+#include "mui/uitapelog.h"
+#include "mui/uiuserportds1307rtc.h"
+#include "mui/uiuserportrtc58321a.h"
 #include "mui/uivic.h"
 #include "mui/uivic20mem.h"
 #include "mui/uivideo.h"
@@ -63,6 +75,14 @@ static const ui_menu_toggle_t vic20_ui_menu_toggles[] = {
     { "FinalExpansionWriteBack", IDM_FINAL_EXPANSION_WRITEBACK },
     { "MegaCartNvRAMWriteBack", IDM_MEGACART_WRITEBACK },
     { "VicFlashPluginWriteBack", IDM_FP_WRITEBACK },
+    { "UltiMemWriteBack", IDM_UM_WRITEBACK },
+    { "Mouse", IDM_MOUSE },
+    { "IO2RAM", IDM_IO2_RAM_ENABLE },
+    { "IO3RAM", IDM_IO3_RAM_ENABLE },
+    { "VFLImod", IDM_VFLI_MOD_ENABLE },
+    { "UserportDAC", IDM_TOGGLE_USERPORT_DAC },
+    { "TapeSenseDongle", IDM_TOGGLE_TAPE_SENSE_DONGLE },
+    { "DTLBasicDongle", IDM_TOGGLE_DTL_BASIC_DONGLE },
     { NULL, 0 }
 };
 
@@ -83,6 +103,15 @@ static int vic20_ui_specific(video_canvas_t *canvas, int idm)
     switch (idm) {
         case IDM_VIC_SETTINGS:
             ui_vic_settings_dialog();
+            break;
+        case IDM_VIC20_MODEL_VIC20_PAL:
+            vic20model_set(VIC20MODEL_VIC20_PAL);
+            break;
+        case IDM_VIC20_MODEL_VIC20_NTSC:
+            vic20model_set(VIC20MODEL_VIC20_NTSC);
+            break;
+        case IDM_VIC20_MODEL_VIC21:
+            vic20model_set(VIC20MODEL_VIC21);
             break;
         case IDM_PALETTE_SETTINGS:
             ui_video_palette_settings_dialog(canvas, "VICExternalPalette", "VICPaletteFile", translate_text(IDS_VIC_PALETTE_FILENAME));
@@ -106,8 +135,14 @@ static int vic20_ui_specific(video_canvas_t *canvas, int idm)
         case IDM_CART_VIC20_GENERIC:
             uicart_attach_special(canvas, translate_text(IDS_SELECT_GENERIC), UILIB_FILTER_ALL, CARTRIDGE_VIC20_GENERIC);
             break;
+        case IDM_CART_VIC20_UM:
+            uicart_attach_special(canvas, translate_text(IDS_SELECT_UM), UILIB_FILTER_ALL, CARTRIDGE_VIC20_UM);
+            break;
         case IDM_CART_VIC20_FP:
             uicart_attach_special(canvas, translate_text(IDS_SELECT_FP), UILIB_FILTER_ALL, CARTRIDGE_VIC20_FP);
+            break;
+        case IDM_CART_VIC20_BEHR_BONZ:
+            uicart_attach_special(canvas, translate_text(IDS_SELECT_BEHR_BONZ), UILIB_FILTER_ALL, CARTRIDGE_VIC20_BEHRBONZ);
             break;
         case IDM_CART_VIC20_MEGACART:
             uicart_attach_special(canvas, translate_text(IDS_SELECT_MEGACART), UILIB_FILTER_ALL, CARTRIDGE_VIC20_MEGACART);
@@ -128,22 +163,31 @@ static int vic20_ui_specific(video_canvas_t *canvas, int idm)
             ui_vic20_settings_dialog();
             break;
         case IDM_COMPUTER_ROM_SETTINGS:
-            ui_c64vic20_computer_rom_settings_dialog(canvas);
+            ui_vic20_computer_rom_settings_dialog(canvas);
             break;
         case IDM_DRIVE_ROM_SETTINGS:
-            ui_c64vic20_drive_rom_settings_dialog(canvas);
+            ui_vic20_drive_rom_settings_dialog(canvas);
             break;
         case IDM_DRIVE_SETTINGS:
-            uidrivec64vic20_settings_dialog();
+            uidrivevic20_settings_dialog();
             break;
         case IDM_PRINTER_SETTINGS:
             ui_printer_settings_dialog(canvas, 0, 1);
+            break;
+        case IDM_USERPORT_RTC58321A_SETTINGS:
+            ui_userport_rtc58321a_settings_dialog();
+            break;
+        case IDM_USERPORT_DS1307_RTC_SETTINGS:
+            ui_userport_ds1307_rtc_settings_dialog();
             break;
         case IDM_RS232USER_SETTINGS:
             ui_rs232user_settings_dialog();
             break;
         case IDM_SIDCART_SETTINGS:
-            ui_sidcart_settings_dialog("$9800", "$9C00", "VIC20");
+            ui_sidcart_settings_dialog("$9800", "$9C00", "VIC20", 0x9800, 0x9c00);
+            break;
+        case IDM_JOYPORT_SETTINGS:
+            ui_joyport_settings_dialog(1, 0, 1, 1, 0);
             break;
 #ifdef AMIGA_OS4
         case IDM_JOY_SETTINGS:
@@ -167,7 +211,7 @@ static int vic20_ui_specific(video_canvas_t *canvas, int idm)
             ui_acia20_settings_dialog();
             break;
         case IDM_DIGIMAX_SETTINGS:
-            ui_digimax_vic20_settings_dialog(canvas);
+            ui_digimax_vic20_settings_dialog();
             break;
         case IDM_DS12C887RTC_SETTINGS:
             ui_ds12c887rtc_vic20_settings_dialog(canvas);
@@ -181,8 +225,26 @@ static int vic20_ui_specific(video_canvas_t *canvas, int idm)
         case IDM_SFX_SS_SETTINGS:
             ui_soundsampler_settings_dialog(canvas);
             break;
+        case IDM_MOUSE_SETTINGS:
+            ui_mouse_settings_dialog();
+            break;
+        case IDM_SAMPLER_SETTINGS:
+            ui_sampler_settings_dialog(canvas);
+            break;
+        case IDM_IO_COLLISION_SETTINGS:
+            ui_iocollisions_settings_dialog();
+            break;
         case IDM_KEYBOARD_SETTINGS:
-//          uikeyboard_settings_dialog(hwnd, &uikeyboard_config);
+            ui_keymap_settings_dialog(canvas);
+            break;
+        case IDM_DATASETTE_SETTINGS:
+            ui_datasette_settings_dialog();
+            break;
+        case IDM_TAPELOG_SETTINGS:
+            ui_tapelog_settings_dialog(canvas);
+            break;
+        case IDM_CPCLOCKF83_SETTINGS:
+            ui_cpclockf83_settings_dialog();
             break;
     }
 

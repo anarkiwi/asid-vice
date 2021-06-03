@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * 16/24bpp support added by
  *  Steven Tieu <stieu@physics.ubc.ca>
@@ -32,7 +32,10 @@
 #ifndef VICE_CRTC_DRAW_H
 #define VICE_CRTC_DRAW_H
 
+#include "types.h"
+
 extern void crtc_draw_init(void);
 
-#endif
+extern DWORD dwg_table[16];
 
+#endif

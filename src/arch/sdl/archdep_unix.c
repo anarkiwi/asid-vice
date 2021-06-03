@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,6 +35,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <pwd.h>
 #include "vice_sdl.h"
 #include <sys/stat.h>
@@ -58,6 +60,7 @@
 #include "archdep.h"
 #include "findpath.h"
 #include "ioutil.h"
+#include "keyboard.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
@@ -76,10 +79,6 @@ static char *boot_path = NULL;
 /* alternate storage of preferences */
 const char *archdep_pref_path = NULL; /* NULL -> use home_path + ".vice" */
 
-#if defined(DINGUX) || defined(DINGUX_SDL) || defined(GP2X) || defined(GP2X_SDL)
-#define USE_PROC_SELF_EXE
-#define USE_EXE_RELATIVE_TMP
-#endif
 
 #if defined(__QNX__) && !defined(__QNXNTO__)
 int archdep_rtc_get_centisecond(void)
@@ -103,25 +102,28 @@ void archdep_network_shutdown(void)
 {
 }
 
-static int archdep_init_extra(int *argc, char **argv)
+int archdep_init_extra(int *argc, char **argv)
 {
-#ifdef USE_PROC_SELF_EXE
     ssize_t read;
-
+#if !defined(USE_PROC_SELF_EXE)
+    /* first try to get exe name from argv[0] */
+    if (argv[0]) {
+        argv0 = lib_stralloc(argv[0]);
+        return 0;
+    }
+#endif
     argv0 = lib_malloc(ioutil_maxpathlen());
     read = readlink("/proc/self/exe", argv0, ioutil_maxpathlen() - 1);
 
     if (read == -1) {
         return 1;
-    }
-    else {
+    } else {
         argv0[read] = '\0';
     }
+    /* FIXME: bad name of define, this probably should not be here either */
+#ifdef USE_PROC_SELF_EXE
     /* set this up now to remove extra .vice directory */
     archdep_pref_path = archdep_boot_path();
-
-#else
-    argv0 = lib_stralloc(argv[0]);
 #endif
     return 0;
 }
@@ -147,6 +149,7 @@ char *archdep_program_name(void)
 const char *archdep_boot_path(void)
 {
     if (boot_path == NULL) {
+        /* FIXME: bad name of define */
 #ifdef USE_PROC_SELF_EXE
         /* known from setup in archdep_init_extra() so just reuse it */
         boot_path = lib_stralloc(argv0);
@@ -163,8 +166,9 @@ const char *archdep_boot_path(void)
 
 const char *archdep_home_path(void)
 {
+    /* FIXME: bad name of define */
 #ifdef USE_PROC_SELF_EXE
-    /* everything is relative to the location of the exe which is already known 
+    /* everything is relative to the location of the exe which is already known
        from archdep_init_bootpath() so just reuse it */
     return (archdep_boot_path());
 #else
@@ -205,7 +209,7 @@ char *archdep_default_sysfile_pathlist(const char *emu_id)
 
 #if defined(MINIXVMD) || defined(MINIX_SUPPORT)
         default_path_temp = util_concat(LIBDIR, "/", emu_id, ARCHDEP_FINDPATH_SEPARATOR_STRING,
-                                   home_path, "/", VICEUSERDIR, "/", emu_id,NULL);
+                                        home_path, "/", VICEUSERDIR, "/", emu_id, NULL);
 
         default_path = util_concat(default_path_temp, ARCHDEP_FINDPATH_SEPARATOR_STRING,
                                    boot_path, "/", emu_id, ARCHDEP_FINDPATH_SEPARATOR_STRING,
@@ -217,10 +221,10 @@ char *archdep_default_sysfile_pathlist(const char *emu_id)
                                    boot_path, "/PRINTER", NULL);
         lib_free(default_path_temp);
 
-#else 
+#else
 #if defined(MACOSX_BUNDLE)
         /* Mac OS X Bundles keep their ROMS in Resources/bin/../ROM */
-#if defined(MACOSX_COCOA) || defined(USE_SDLUI)
+#if defined(MACOSX_COCOA) || defined(USE_SDLUI) || defined(USE_SDLUI2)
         #define MACOSX_ROMDIR "/../Resources/ROM/"
 #else
         #define MACOSX_ROMDIR "/../ROM/"
@@ -263,7 +267,7 @@ char *archdep_default_resource_file_name(void)
 {
     if (archdep_pref_path == NULL) {
         const char *home;
-      
+
         home = archdep_home_path();
         return util_concat(home, "/.vice/sdl-vicerc", NULL);
     } else {
@@ -273,7 +277,7 @@ char *archdep_default_resource_file_name(void)
 
 char *archdep_default_fliplist_file_name(void)
 {
-    if (archdep_pref_path==NULL) {
+    if (archdep_pref_path == NULL) {
         const char *home;
 
         home = archdep_home_path();
@@ -283,9 +287,21 @@ char *archdep_default_fliplist_file_name(void)
     }
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    if (archdep_pref_path == NULL) {
+        const char *home;
+
+        home = archdep_home_path();
+        return util_concat(home, "/.vice/sdl-vice.rtc", NULL);
+    } else {
+        return util_concat(archdep_pref_path, "/sdl-vice.rtc", NULL);
+    }
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
-    if (archdep_pref_path==NULL) {
+    if (archdep_pref_path == NULL) {
         const char *home;
 
         home = archdep_home_path();
@@ -297,7 +313,7 @@ char *archdep_default_autostart_disk_image_file_name(void)
 
 char *archdep_default_hotkey_file_name(void)
 {
-    if (archdep_pref_path==NULL) {
+    if (archdep_pref_path == NULL) {
         const char *home;
 
         home = archdep_home_path();
@@ -320,7 +336,7 @@ char *archdep_default_joymap_file_name(void)
 }
 
 char *archdep_default_save_resource_file_name(void)
-{ 
+{
     char *fname;
     const char *home;
     const char *viceuserdir;
@@ -337,7 +353,7 @@ char *archdep_default_save_resource_file_name(void)
     }
 
     fname = util_concat(viceuserdir, "/sdl-vicerc", NULL);
-    
+
     if (archdep_pref_path == NULL) {
         lib_free(viceuserdir);
     }
@@ -358,29 +374,6 @@ FILE *archdep_open_default_log_file(void)
     return stdout;
 }
 #endif
-
-int archdep_num_text_lines(void)
-{
-    char *s;
-
-    s = getenv("LINES");
-    if (s == NULL) {
-        printf("No LINES!\n");
-        return -1;
-    }
-    return atoi(s);
-}
-
-int archdep_num_text_columns(void)
-{
-    char *s;
-
-    s = getenv("COLUMNS");
-    if (s == NULL) {
-        return -1;
-    }
-    return atoi(s);
-}
 
 int archdep_default_logger(const char *level_string, const char *txt)
 {
@@ -403,16 +396,19 @@ int archdep_spawn(const char *name, char **argv, char **pstdout_redir, const cha
 {
     pid_t child_pid;
     int child_status;
-    char *stdout_redir = NULL;
+    char *stdout_redir;
+
+    child_pid = vfork();
 
     if (pstdout_redir != NULL) {
         if (*pstdout_redir == NULL) {
             *pstdout_redir = archdep_tmpnam();
         }
         stdout_redir = *pstdout_redir;
+    } else {
+        stdout_redir = NULL;
     }
 
-    child_pid = vfork();
     if (child_pid < 0) {
         log_error(LOG_DEFAULT, "vfork() failed: %s.", strerror(errno));
         return -1;
@@ -440,7 +436,7 @@ int archdep_spawn(const char *name, char **argv, char **pstdout_redir, const cha
         return WEXITSTATUS(child_status);
     } else {
         return -1;
-   }
+    }
 }
 
 /* return malloc'd version of full pathname of orig_name */
@@ -517,7 +513,7 @@ char *archdep_tmpnam(void)
 }
 
 FILE *archdep_mkstemp_fd(char **filename, const char *mode)
- {
+{
 #if defined(HAVE_MKSTEMP)
     char *tmp;
     const char template[] = "/vice.XXXXXX";
@@ -530,15 +526,16 @@ FILE *archdep_mkstemp_fd(char **filename, const char *mode)
 #else
     tmpdir = getenv("TMPDIR");
 
-    if (tmpdir != NULL ) 
+    if (tmpdir != NULL) {
         tmp = util_concat(tmpdir, template, NULL);
-    else
+    } else {
         tmp = util_concat("/tmp", template, NULL);
+    }
 #endif
 
     fildes = mkstemp(tmp);
 
-    if (fildes < 0 ) {
+    if (fildes < 0) {
         lib_free(tmp);
         return NULL;
     }
@@ -579,7 +576,7 @@ int archdep_file_is_gzip(const char *name)
 {
     size_t l = strlen(name);
 
-    if ((l < 4 || strcasecmp(name + l - 3, ".gz")) && (l < 3 || strcasecmp(name + l - 2, ".z")) && (l < 4 || toupper(name[l - 1]) != 'Z' || name[l - 4] != '.')) {
+    if ((l < 4 || strcasecmp(name + l - 3, ".gz")) && (l < 3 || strcasecmp(name + l - 2, ".z")) && (l < 4 || toupper((int)(name[l - 1])) != 'Z' || name[l - 4] != '.')) {
         return 0;
     }
     return 1;
@@ -655,9 +652,6 @@ int archdep_file_is_chardev(const char *name)
 
 int archdep_require_vkbd(void)
 {
-#if defined(DINGUX) || defined(DINGUX_SDL)
-    return 1;
-#endif
     return 0;
 }
 
@@ -670,7 +664,7 @@ static void archdep_shutdown_extra(void)
 
 /* Fetch Platform Stuff for Mac OS X */
 #ifdef MACOSX_BUNDLE
-#include "../unix/macosx/platform_macosx.c"
+#include "../platform/platform_macosx.c"
 #endif
 
 /******************************************************************************/
@@ -695,19 +689,13 @@ typedef void (*signal_handler_t)(int);
 
 static signal_handler_t old_pipe_handler;
 
-static void handle_pipe(int signo)
-{
-    log_message(LOG_DEFAULT, "Received signal %d, aborting remote monitor.", signo);
-    /* monitor_abort(); */
-}
-
 /*
-    these two are used if the monitor is in remote mode. in this case we might
+    these two are used for socket send/recv. in this case we might
     get SIGPIPE if the connection is unexpectedly closed.
 */
 void archdep_signals_pipe_set(void)
 {
-    old_pipe_handler = signal(SIGPIPE, (signal_handler_t)handle_pipe);
+    old_pipe_handler = signal(SIGPIPE, SIG_IGN);
 }
 
 void archdep_signals_pipe_unset(void)
@@ -715,60 +703,64 @@ void archdep_signals_pipe_unset(void)
     signal(SIGPIPE, old_pipe_handler);
 }
 
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
+}
+
 char *archdep_get_runtime_os(void)
 {
-
-/* Windows on cygwin */
-#ifdef __CYGWIN32__
-#define RUNTIME_OS_HANDLED
-    return platform_get_windows_runtime_os();
-#endif
-
-/* MacOSX */
-#if defined(MACOSX_COCOA)
-#define RUNTIME_OS_HANDLED
-    return platform_get_macosx_runtime_os();
-#endif
-
-/* Solaris */
-#if (defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__))
-#define RUNTIME_OS_HANDLED
-    return platform_get_solaris_runtime_os();
-#endif
-
-/* Syllable */
-#ifdef __SYLLABLE__
-#define RUNTIME_OS_HANDLED
-    return platform_get_syllable_runtime_os();
-#endif
-
 /* TODO: add runtime os detection code for other *nix os'es */
-#ifndef RUNTIME_OS_HANDLED
+#ifndef RUNTIME_OS_CALL
     return "*nix";
+#else
+    return RUNTIME_OS_CALL();
 #endif
 }
 
 char *archdep_get_runtime_cpu(void)
 {
-/* MacOSX */
-#if defined(MACOSX_COCOA)
-#define RUNTIME_CPU_HANDLED
-    return platform_get_macosx_runtime_cpu();
-#endif
-
-#ifdef __SYLLABLE__
-#define RUNTIME_CPU_HANDLED
-    return platform_get_syllable_runtime_cpu();
-#endif
-
-/* x86/amd64/x86_64 */
-#if !defined(RUNTIME_CPU_HANDLED) && (defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__amd64__) || defined(__x86_64__))
-#define RUNTIME_CPU_HANDLED
-    return platform_get_x86_runtime_cpu();
-#endif
-
 /* TODO: add runtime cpu detection code for other cpu's */
-#ifndef RUNTIME_CPU_HANDLED
+#ifndef RUNTIME_CPU_CALL
     return "Unknown CPU";
+#else
+    return RUNTIME_CPU_CALL();
 #endif
 }
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages
+*/
+int kbd_arch_get_host_mapping(void)
+{
+    int n;
+    char *l;
+    int maps[KBD_MAPPING_NUM] = {
+        KBD_MAPPING_US, KBD_MAPPING_UK, KBD_MAPPING_DE, KBD_MAPPING_DA,
+        KBD_MAPPING_NO, KBD_MAPPING_FI, KBD_MAPPING_IT };
+    char str[KBD_MAPPING_NUM][3] = {
+        "us", "uk", "de", "da", "no", "fi", "it"};
+    /* setup the locale */
+    setlocale(LC_ALL, "");
+    l = setlocale(LC_ALL, NULL);
+    if (l && (strlen(l) > 1)) {
+        for (n = 1; n < KBD_MAPPING_NUM; n++) {
+            if (memcmp(l, str[n], 2) == 0) {
+                return maps[n];
+            }
+        }
+    }
+    return KBD_MAPPING_US;
+}
+
+#ifdef USE_SDLUI2
+char *archdep_sdl2_default_renderers[] = {
+    "opengles2",
+    "opengles",
+    "opengl",
+    NULL
+};
+#endif

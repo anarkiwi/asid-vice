@@ -4,6 +4,7 @@
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * Based on the original work in VICE 0.11.0 by
  *  Jouko Valta <jopi@stekt.oulu.fi>
@@ -33,7 +34,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "attach.h"
 #include "autostart.h"
+#include "bbrtc.h"
 #include "c128-cmdline-options.h"
 #include "c128-resources.h"
 #include "c128-snapshot.h"
@@ -48,23 +51,31 @@
 #include "c64cartsystem.h"
 #undef CARTRIDGE_INCLUDE_SLOTMAIN_API
 #include "c64cia.h"
-#include "c64export.h"
 #include "c64iec.h"
 #include "c64keyboard.h"
 #include "c64memrom.h"
 #include "c64rsuser.h"
+#include "cardkey.h"
 #include "cartridge.h"
 #include "cia.h"
 #include "clkguard.h"
+#include "clockport-mp3at64.h"
 #include "datasette.h"
 #include "debug.h"
+#include "diskimage.h"
 #include "drive-cmdline-options.h"
 #include "drive-resources.h"
 #include "drive-sound.h"
 #include "drive.h"
-#include "drivecpu.h"
+#include "export.h"
+#include "fliplist.h"
+#include "fsdevice.h"
 #include "functionrom.h"
+#include "gfxoutput.h"
 #include "imagecontents.h"
+#include "init.h"
+#include "joyport.h"
+#include "joystick.h"
 #include "kbdbuf.h"
 #include "keyboard.h"
 #include "log.h"
@@ -76,11 +87,16 @@
 #include "maincpu.h"
 #include "mem.h"
 #include "monitor.h"
+#include "network.h"
+#include "paperclip64.h"
 #include "parallel.h"
 #include "patchrom.h"
 #include "printer.h"
 #include "rs232drv.h"
 #include "rsuser.h"
+#include "sampler.h"
+#include "sampler2bit.h"
+#include "sampler4bit.h"
 #include "screenshot.h"
 #include "serial.h"
 #include "sid-cmdline-options.h"
@@ -88,10 +104,22 @@
 #include "sid.h"
 #include "sound.h"
 #include "tape.h"
+#include "tape_diag_586220_harness.h"
+#include "tapeport.h"
 #include "tpi.h"
+#include "translate.h"
 #include "traps.h"
 #include "types.h"
-#include "userport_rtc.h"
+#include "userport.h"
+#include "userport_4bit_sampler.h"
+#include "userport_8bss.h"
+#include "userport_dac.h"
+#include "userport_diag_586220_harness.h"
+#include "userport_digimax.h"
+#include "userport_joystick.h"
+#include "userport_rtc_58321a.h"
+#include "userport_rtc_ds1307.h"
+#include "vice-event.h"
 #include "vicii.h"
 #include "vicii-mem.h"
 #include "video.h"
@@ -136,7 +164,7 @@ void c64_256k_cia_set_vbank(int ciabank)
 {
 }
 
-/* dummy functions until the C128 version of the 
+/* dummy functions until the C128 version of the
    +60K expansion can be made */
 
 int plus60k_enabled = 0;
@@ -166,28 +194,51 @@ void plus256k_ram_high_store(WORD addr, BYTE byte)
     mem_ram[addr] = byte;
 }
 
+#if defined(HAVE_MOUSE) && defined(HAVE_LIGHTPEN)
 /* Lightpen trigger function; needs to trigger both VICII and VDC */
 void c128_trigger_light_pen(CLOCK mclk)
 {
     vicii_trigger_light_pen(mclk);
     vdc_trigger_light_pen(mclk);
 }
+#endif
 
 machine_context_t machine_context;
-
-#define NUM_KEYBOARD_MAPPINGS 2
-
-const char *machine_keymap_res_name_list[NUM_KEYBOARD_MAPPINGS] = {
-    "KeymapSymFile",
-    "KeymapPosFile"
-};
-
-char *machine_keymap_file_list[NUM_KEYBOARD_MAPPINGS] = { NULL, NULL };
 
 const char machine_name[] = "C128";
 int machine_class = VICE_MACHINE_C128;
 
 static void machine_vsync_hook(void);
+
+/* FIXME: add different keyboard types */
+int machine_get_keyboard_type(void)
+{
+#if 0
+    int type;
+    if (resources_get_int("KeyboardType", &type) < 0) {
+        return 0;
+    }
+    return type;
+#endif
+    return 0;
+}
+
+char *machine_get_keyboard_type_name(int type)
+{
+    return NULL; /* return 0 if no different types exist */
+}
+
+/* return number of available keyboard types for this machine */
+int machine_get_num_keyboard_types(void)
+{
+    return 1;
+}
+
+kbdtype_info_t *machine_get_keyboard_info_list(void)
+{
+    return NULL; /* return 0 if no different types exist */
+}
+
 
 /* ------------------------------------------------------------------------- */
 
@@ -356,7 +407,7 @@ static io_source_t sid_d400_device = {
     sid_store,
     sid_read,
     sid_peek,
-    NULL, /* TODO: dump */
+    sid_dump,
     0, /* dummy (not a cartridge) */
     IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
     0
@@ -371,7 +422,7 @@ static io_source_t sid_d420_device = {
     sid_store,
     sid_read,
     sid_peek,
-    NULL, /* TODO: dump */
+    sid_dump,
     0, /* dummy (not a cartridge) */
     IO_PRIO_LOW, /* low priority, device and mirrors never involved in collisions */
     0
@@ -424,94 +475,478 @@ static void c128io_init(void)
 
 /* ------------------------------------------------------------------------ */
 
+static joyport_port_props_t control_port_1 = 
+{
+    "Control port 1",
+    IDGS_CONTROL_PORT_1,
+    1,				/* has a potentiometer connected to this port */
+    1,				/* has lightpen support on this port */
+    1					/* port is always active */
+};
+
+static joyport_port_props_t control_port_2 = 
+{
+    "Control port 2",
+    IDGS_CONTROL_PORT_2,
+    1,				/* has a potentiometer connected to this port */
+    0,				/* has NO lightpen support on this port */
+    1					/* port is always active */
+};
+
+static joyport_port_props_t userport_joy_control_port_1 = 
+{
+    "Userport joystick adapter port 1",
+    IDGS_USERPORT_JOY_ADAPTER_PORT_1,
+    0,				/* has NO potentiometer connected to this port */
+    0,				/* has NO lightpen support on this port */
+    0					/* port can be switched on/off */
+};
+
+static joyport_port_props_t userport_joy_control_port_2 = 
+{
+    "Userport joystick adapter port 2",
+    IDGS_USERPORT_JOY_ADAPTER_PORT_2,
+    0,				/* has NO potentiometer connected to this port */
+    0,				/* has NO lightpen support on this port */
+    0					/* port can be switched on/off */
+};
+
+static int init_joyport_ports(void)
+{
+    if (joyport_port_register(JOYPORT_1, &control_port_1) < 0) {
+        return -1;
+    }
+    if (joyport_port_register(JOYPORT_2, &control_port_2) < 0) {
+        return -1;
+    }
+    if (joyport_port_register(JOYPORT_3, &userport_joy_control_port_1) < 0) {
+        return -1;
+    }
+    return joyport_port_register(JOYPORT_4, &userport_joy_control_port_2);
+}
+
 /* C128-specific resource initialization.  This is called before initializing
    the machine itself with `machine_init()'.  */
 int machine_resources_init(void)
 {
-    if (traps_resources_init() < 0
-        || rombanks_resources_init() < 0
-        || vsync_resources_init() < 0
-        || machine_video_resources_init() < 0
-        || c128_resources_init() < 0
-        || c64export_resources_init() < 0
-        || vicii_resources_init() < 0
-        || vdc_init_resources() < 0
-        || sound_resources_init() < 0
-        || sid_resources_init() < 0
-        || rs232drv_resources_init() < 0
-        || rsuser_resources_init() < 0
-        || serial_resources_init() < 0
-        || printer_resources_init() < 0
-#ifdef HAVE_MOUSE
-        || lightpen_resources_init() < 0
-        || mouse_resources_init() < 0
-#endif
-#ifndef COMMON_KBD
-        || kbd_resources_init() < 0
-#endif
-        || drive_resources_init() < 0
-        || datasette_resources_init() < 0
-        || cartridge_resources_init() < 0
-        || mmu_resources_init() < 0
-        || z80mem_resources_init() < 0
-        || userport_rtc_resources_init() < 0
-        || cartio_resources_init() < 0
-        || functionrom_resources_init() < 0) {
+    if (traps_resources_init() < 0) {
+        init_resource_fail("traps");
         return -1;
     }
-
+    if (rombanks_resources_init() < 0) {
+        init_resource_fail("rombanks");
+        return -1;
+    }
+    if (c128_resources_init() < 0) {
+        init_resource_fail("c128");
+        return -1;
+    }
+    if (export_resources_init() < 0) {
+        init_resource_fail("c128export");
+        return -1;
+    }
+    if (vicii_resources_init() < 0) {
+        init_resource_fail("vicii");
+        return -1;
+    }
+    if (vdc_resources_init() < 0) {
+        init_resource_fail("vdc");
+        return -1;
+    }
+    if (sid_resources_init() < 0) {
+        init_resource_fail("sid");
+        return -1;
+    }
+    if (rs232drv_resources_init() < 0) {
+        init_resource_fail("rs232drv");
+        return -1;
+    }
+    if (rsuser_resources_init() < 0) {
+        init_resource_fail("rsuser");
+        return -1;
+    }
+    if (serial_resources_init() < 0) {
+        init_resource_fail("serial");
+        return -1;
+    }
+    if (printer_resources_init() < 0) {
+        init_resource_fail("printer");
+        return -1;
+    }
+    if (printer_userport_resources_init() < 0) {
+        init_resource_fail("userport printer");
+        return -1;
+    }
+    if (init_joyport_ports() < 0) {
+        init_resource_fail("joyport ports");
+        return -1;
+    }
+    if (joyport_resources_init() < 0) {
+        init_resource_fail("joyport devices");
+        return -1;
+    }
+    if (joyport_sampler2bit_resources_init() < 0) {
+        init_resource_fail("joyport 2bit sampler");
+        return -1;
+    }
+    if (joyport_sampler4bit_resources_init() < 0) {
+        init_resource_fail("joyport 4bit sampler");
+        return -1;
+    }
+    if (joyport_bbrtc_resources_init() < 0) {
+        init_resource_fail("joyport bbrtc");
+        return -1;
+    }
+    if (joyport_paperclip64_resources_init() < 0) {
+        init_resource_fail("joyport paperclip64 dongle");
+        return -1;
+    }
+    if (joystick_resources_init() < 0) {
+        init_resource_fail("joystick");
+        return -1;
+    }
+    if (userport_resources_init() < 0) {
+        init_resource_fail("userport devices");
+        return -1;
+    }
+    if (gfxoutput_resources_init() < 0) {
+        init_resource_fail("gfxoutput");
+        return -1;
+    }
+    if (sampler_resources_init() < 0) {
+        init_resource_fail("samplerdrv");
+        return -1;
+    }
+    if (fliplist_resources_init() < 0) {
+        init_resource_fail("flip list");
+        return -1;
+    }
+    if (file_system_resources_init() < 0) {
+        init_resource_fail("file system");
+        return -1;
+    }
+    /* Initialize file system device-specific resources.  */
+    if (fsdevice_resources_init() < 0) {
+        init_resource_fail("file system device");
+        return -1;
+    }
+    if (disk_image_resources_init() < 0) {
+        init_resource_fail("disk image");
+        return -1;
+    }
+    if (event_resources_init() < 0) {
+        init_resource_fail("event");
+        return -1;
+    }
+    if (kbdbuf_resources_init() < 0) {
+        init_resource_fail("Keyboard");
+        return -1;
+    }
+    if (autostart_resources_init() < 0) {
+        init_resource_fail("autostart");
+        return -1;
+    }
+#ifdef HAVE_NETWORK
+    if (network_resources_init() < 0) {
+        init_resource_fail("network");
+        return -1;
+    }
+#endif
+#ifdef DEBUG
+    if (debug_resources_init() < 0) {
+        init_resource_fail("debug");
+        return -1;
+    }
+#endif
+#ifdef HAVE_MOUSE
+#ifdef HAVE_LIGHTPEN
+    if (lightpen_resources_init() < 0) {
+        init_resource_fail("lightpen");
+        return -1;
+    }
+#endif
+    if (mouse_resources_init() < 0) {
+        init_resource_fail("mouse");
+        return -1;
+    }
+#endif
+#ifndef COMMON_KBD
+    if (kbd_resources_init() < 0) {
+        init_resource_fail("kbd");
+        return -1;
+    }
+#endif
+    if (drive_resources_init() < 0) {
+        init_resource_fail("drive");
+        return -1;
+    }
+    if (tapeport_resources_init() < 0) {
+        init_resource_fail("tapeport");
+        return -1;
+    }
+    if (tape_diag_586220_harness_resources_init() < 0) {
+        init_resource_fail("tape diag 586220 harness");
+        return -1;
+    }
+    if (datasette_resources_init() < 0) {
+        init_resource_fail("datasette");
+        return -1;
+    }
+    if (cartridge_resources_init() < 0) {
+        init_resource_fail("cartridge");
+        return -1;
+    }
+    if (mmu_resources_init() < 0) {
+        init_resource_fail("mmu");
+        return -1;
+    }
+    if (userport_joystick_resources_init() < 0) {
+        init_resource_fail("userport joystick");
+        return -1;
+    }
+    if (userport_dac_resources_init() < 0) {
+        init_resource_fail("userport dac");
+        return -1;
+    }
+    if (userport_digimax_resources_init() < 0) {
+        init_resource_fail("userport digimax");
+        return -1;
+    }
+    if (userport_rtc_58321a_resources_init() < 0) {
+        init_resource_fail("userport rtc (58321a)");
+        return -1;
+    }
+    if (userport_rtc_ds1307_resources_init() < 0) {
+        init_resource_fail("userport rtc (ds1307)");
+        return -1;
+    }
+    if (userport_4bit_sampler_resources_init() < 0) {
+        init_resource_fail("userport 4bit sampler");
+        return -1;
+    }
+    if (userport_8bss_resources_init() < 0) {
+        init_resource_fail("userport 8bit stereo sampler");
+        return -1;
+    }
+    if (userport_diag_586220_harness_resources_init() < 0) {
+        init_resource_fail("userport diag 586220 harness");
+        return -1;
+    }
+    if (cartio_resources_init() < 0) {
+        init_resource_fail("cartio");
+        return -1;
+    }
+    if (functionrom_resources_init() < 0) {
+        init_resource_fail("functionrom");
+        return -1;
+    }
     return 0;
 }
 
 void machine_resources_shutdown(void)
 {
     serial_shutdown();
-    video_resources_shutdown();
     c128_resources_shutdown();
-    sound_resources_shutdown();
     rs232drv_resources_shutdown();
     printer_resources_shutdown();
     drive_resources_shutdown();
     cartridge_resources_shutdown();
     functionrom_resources_shutdown();
     rombanks_resources_shutdown();
-    userport_rtc_resources_shutdown();
+    userport_rtc_58321a_resources_shutdown();
+    userport_rtc_ds1307_resources_shutdown();
     cartio_shutdown();
+    fsdevice_resources_shutdown();
+    disk_image_resources_shutdown();
+    sampler_resources_shutdown();
+    userport_resources_shutdown();
+    joyport_bbrtc_resources_shutdown();
+    tapeport_resources_shutdown();
 }
 
 /* C128-specific command-line option initialization.  */
 int machine_cmdline_options_init(void)
 {
-    if (traps_cmdline_options_init() < 0
-        || vsync_cmdline_options_init() < 0
-        || video_init_cmdline_options() < 0
-        || c128_cmdline_options_init() < 0
-        || vicii_cmdline_options_init() < 0
-        || vdc_init_cmdline_options() < 0
-        || sound_cmdline_options_init() < 0
-        || sid_cmdline_options_init() < 0
-        || rs232drv_cmdline_options_init() < 0
-        || rsuser_cmdline_options_init() < 0
-        || serial_cmdline_options_init() < 0
-        || printer_cmdline_options_init() < 0
-#ifdef HAVE_MOUSE
-        || lightpen_cmdline_options_init() < 0
-        || mouse_cmdline_options_init() < 0
-#endif
-#ifndef COMMON_KBD
-        || kbd_cmdline_options_init() < 0
-#endif
-        || drive_cmdline_options_init() < 0
-        || datasette_cmdline_options_init() < 0
-        || cartridge_cmdline_options_init() < 0
-        || mmu_cmdline_options_init() < 0
-        || functionrom_cmdline_options_init() < 0
-        || userport_rtc_cmdline_options_init() < 0
-        || cartio_cmdline_options_init() < 0
-        || z80mem_cmdline_options_init() < 0) {
+    if (traps_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("traps");
         return -1;
     }
-
+    if (c128_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("c128");
+        return -1;
+    }
+    if (vicii_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("vicii");
+        return -1;
+    }
+    if (vdc_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("vdc");
+        return -1;
+    }
+    if (sid_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("sid");
+        return -1;
+    }
+    if (rs232drv_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("rs232drv");
+        return -1;
+    }
+    if (rsuser_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("rsuser");
+        return -1;
+    }
+    if (serial_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("serial");
+        return -1;
+    }
+    if (printer_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("printer");
+        return -1;
+    }
+    if (printer_userport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport printer");
+        return -1;
+    }
+    if (joyport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("joyport");
+        return -1;
+    }
+    if (joyport_bbrtc_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("bbrtc");
+        return -1;
+    }
+    if (joystick_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("joystick");
+        return -1;
+    }
+    if (userport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport");
+        return -1;
+    }
+    if (gfxoutput_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("gfxoutput");
+        return -1;
+    }
+    if (sampler_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("samplerdrv");
+        return -1;
+    }
+    if (fliplist_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("flip list");
+        return -1;
+    }
+    if (file_system_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("attach");
+        return -1;
+    }
+    if (fsdevice_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("file system");
+        return -1;
+    }
+    if (disk_image_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("disk image");
+        return -1;
+    }
+    if (event_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("event");
+        return -1;
+    }
+    if (kbdbuf_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("keyboard");
+        return -1;
+    }
+    if (autostart_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("autostart");
+        return -1;
+    }
+#ifdef HAVE_NETWORK
+    if (network_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("network");
+        return -1;
+    }
+#endif
+#ifdef DEBUG
+    if (debug_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("debug");
+        return -1;
+    }
+#endif
+#ifdef HAVE_MOUSE
+    if (mouse_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("mouse");
+        return -1;
+    }
+#endif
+#ifndef COMMON_KBD
+    if (kbd_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("kbd");
+        return -1;
+    }
+#endif
+    if (drive_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("drive");
+        return -1;
+    }
+    if (tapeport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("tapeport");
+        return -1;
+    }
+    if (tape_diag_586220_harness_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("tape diag 586220 harness");
+        return -1;
+    }
+    if (datasette_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("datasette");
+        return -1;
+    }
+    if (cartridge_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("cartridge");
+        return -1;
+    }
+    if (mmu_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("mmu");
+        return -1;
+    }
+    if (functionrom_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("functionrom");
+        return -1;
+    }
+    if (userport_joystick_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport joystick");
+        return -1;
+    }
+    if (userport_dac_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport dac");
+        return -1;
+    }
+    if (userport_digimax_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport digimax");
+        return -1;
+    }
+    if (userport_rtc_58321a_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport rtc (58321a)");
+        return -1;
+    }
+    if (userport_rtc_ds1307_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport rtc (ds1307)");
+        return -1;
+    }
+    if (userport_4bit_sampler_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport 4bit sampler");
+        return -1;
+    }
+    if (userport_8bss_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport 8bit stereo sampler");
+        return -1;
+    }
+    if (userport_diag_586220_harness_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport diag 586220 harness");
+        return -1;
+    }
+    if (cartio_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("cartio");
+        return -1;
+    }
     return 0;
 }
 
@@ -524,7 +959,7 @@ static void c128_monitor_init(void)
 
     asmarray[0] = &asm6502;
     asmarray[1] = &asmz80;
-    asmarray[2]=&asmR65C02;
+    asmarray[2] = &asmR65C02;
     asmarray[3] = NULL;
 
     asm6502_init(&asm6502);
@@ -532,7 +967,7 @@ static void c128_monitor_init(void)
     asmR65C02_init(&asmR65C02);
 
     for (dnr = 0; dnr < DRIVE_NUM; dnr++) {
-        drive_interface_init[dnr] = drivecpu_monitor_interface_get(dnr);
+        drive_interface_init[dnr] = drive_cpu_monitor_interface_get(dnr);
     }
 
     /* Initialize the monitor.  */
@@ -558,6 +993,8 @@ int machine_specific_init(void)
         return -1;
     }
 
+    event_init();
+
     if (z80mem_load() < 0) {
         return -1;
     }
@@ -572,6 +1009,12 @@ int machine_specific_init(void)
 
     serial_trap_init(0xa4);
     serial_iec_bus_init();
+
+    if (!video_disabled_mode) {
+        joystick_init();
+    }
+
+    gfxoutput_init();
 
     /* initialize RS232 handler */
     rs232drv_init();
@@ -589,12 +1032,21 @@ int machine_specific_init(void)
     /* Fire up the hardware-level drive emulation.  */
     drive_init();
 
+    disk_image_init();
+
     /* Initialize autostart. FIXME: at least 0xa26 is only for 40 cols */
     resources_get_int("AutostartDelay", &delay);
     if (delay == 0) {
         delay = 3; /* default */
     }
     autostart_init((CLOCK)(delay * C128_PAL_RFSH_PER_SEC * C128_PAL_CYCLES_PER_RFSH), 1, 0xa27, 0xe0, 0xec, 0xee);
+
+#ifdef USE_BEOS_UI
+    /* Pre-init C128-specific parts of the menus before vdc_init() and
+       vicii_init() create canvas windows with menubars at the top. This
+       could also be used by other ports, e.g. GTK+...  */
+    c128ui_init_early();
+#endif
 
     if (vdc_init() == NULL) {
         return -1;
@@ -628,6 +1080,15 @@ int machine_specific_init(void)
     /* Initialize cartridge based sound chips */
     cartridge_sound_chip_init();
 
+    /* Initialize userport based sound chips */
+    userport_dac_sound_chip_init();
+    userport_digimax_sound_chip_init();
+
+    /* Initialize mp3@64 */
+#ifdef USE_MPG123
+    clockport_mp3at64_sound_chip_init();
+#endif
+
     drive_sound_init();
     video_sound_init();
 
@@ -642,17 +1103,21 @@ int machine_specific_init(void)
     c128io_init();
 
     /* Initialize the C128-specific part of the UI.  */
-    c128ui_init();
+    if (!console_mode) {
+        c128ui_init();
+    }
 
 #ifdef HAVE_MOUSE
     /* Initialize mouse support (if present).  */
     mouse_init();
 
+#ifdef HAVE_LIGHTPEN
     /* Initialize lightpen support and register VICII/VDC callbacks */
     lightpen_init();
     lightpen_register_timing_callback(vicii_lightpen_timing, 1);
     lightpen_register_timing_callback(vdc_lightpen_timing, 0);
     lightpen_register_trigger_callback(c128_trigger_light_pen);
+#endif
 #endif
 
     c64iec_init();
@@ -666,7 +1131,7 @@ int machine_specific_init(void)
 
 #if defined (USE_XF86_EXTENSIONS) && (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
     {
-        /* set fullscreen if user used `-fullscreen' on cmdline 
+        /* set fullscreen if user used `-fullscreen' on cmdline
            use VICII as default */
         int fs;
 
@@ -710,6 +1175,8 @@ void machine_specific_reset(void)
 
     z80mem_initialize();
     z80_reset();
+
+    sampler_reset();
 }
 
 void machine_specific_powerup(void)
@@ -737,7 +1204,11 @@ void machine_specific_shutdown(void)
     vicii_shutdown();
     vdc_shutdown();
 
-    c128ui_shutdown();
+    sid_cmdline_options_shutdown();
+
+    if (!console_mode) {
+        c128ui_shutdown();
+    }
 }
 
 void machine_handle_pending_alarms(int num_write_cycles)
@@ -785,7 +1256,7 @@ static void machine_vsync_hook(void)
 
     /* The drive has to deal both with our overflowing and its own one, so
        it is called even when there is no overflowing in the main CPU.  */
-    drivecpu_prevent_clk_overflow_all(sub);
+    drive_cpu_prevent_clk_overflow_all(sub);
 }
 
 void machine_set_restore_key(int v)
@@ -817,34 +1288,8 @@ void machine_get_line_cycle(unsigned int *line, unsigned int *cycle, int *half_c
     *half_cycle = (int)vicii_get_half_cycle();
 }
 
-void machine_change_timing(int timeval)
+void machine_change_timing(int timeval, int border_mode)
 {
-    int border_mode;
-
-    switch (timeval) {
-        default:
-        case MACHINE_SYNC_PAL ^ VICII_BORDER_MODE(VICII_NORMAL_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VICII_BORDER_MODE(VICII_NORMAL_BORDERS):
-            timeval ^= VICII_BORDER_MODE(VICII_NORMAL_BORDERS);
-            border_mode = VICII_NORMAL_BORDERS;
-            break;
-        case MACHINE_SYNC_PAL ^ VICII_BORDER_MODE(VICII_FULL_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VICII_BORDER_MODE(VICII_FULL_BORDERS):
-            timeval ^= VICII_BORDER_MODE(VICII_FULL_BORDERS);
-            border_mode = VICII_FULL_BORDERS;
-            break;
-        case MACHINE_SYNC_PAL ^ VICII_BORDER_MODE(VICII_DEBUG_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VICII_BORDER_MODE(VICII_DEBUG_BORDERS):
-            timeval ^= VICII_BORDER_MODE(VICII_DEBUG_BORDERS);
-            border_mode = VICII_DEBUG_BORDERS;
-            break;
-        case MACHINE_SYNC_PAL ^ VICII_BORDER_MODE(VICII_NO_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VICII_BORDER_MODE(VICII_NO_BORDERS):
-            timeval ^= VICII_BORDER_MODE(VICII_NO_BORDERS);
-            border_mode = VICII_NO_BORDERS;
-            break;
-    }
-
     switch (timeval) {
         case MACHINE_SYNC_PAL:
             machine_timing.cycles_per_sec = C128_PAL_CYCLES_PER_SEC;
@@ -852,6 +1297,7 @@ void machine_change_timing(int timeval)
             machine_timing.rfsh_per_sec = C128_PAL_RFSH_PER_SEC;
             machine_timing.cycles_per_line = C128_PAL_CYCLES_PER_LINE;
             machine_timing.screen_lines = C128_PAL_SCREEN_LINES;
+            machine_timing.power_freq = 50;
             break;
         case MACHINE_SYNC_NTSC:
             machine_timing.cycles_per_sec = C128_NTSC_CYCLES_PER_SEC;
@@ -859,6 +1305,7 @@ void machine_change_timing(int timeval)
             machine_timing.rfsh_per_sec = C128_NTSC_RFSH_PER_SEC;
             machine_timing.cycles_per_line = C128_NTSC_CYCLES_PER_LINE;
             machine_timing.screen_lines = C128_NTSC_SCREEN_LINES;
+            machine_timing.power_freq = 60;
             break;
         default:
             log_error(c128_log, "Unknown machine timing.");
@@ -870,12 +1317,15 @@ void machine_change_timing(int timeval)
     drive_set_machine_parameter(machine_timing.cycles_per_sec);
     serial_iec_device_set_machine_parameter(machine_timing.cycles_per_sec);
     sid_set_machine_parameter(machine_timing.cycles_per_sec);
+#ifdef HAVE_MOUSE
+    neos_mouse_set_machine_parameter(machine_timing.cycles_per_sec);
+#endif
     clk_guard_set_clk_base(maincpu_clk_guard, machine_timing.cycles_per_rfsh);
 
     vicii_change_timing(&machine_timing, border_mode);
 
-    cia1_set_timing(machine_context.cia1, machine_timing.cycles_per_rfsh);
-    cia2_set_timing(machine_context.cia2, machine_timing.cycles_per_rfsh);
+    cia1_set_timing(machine_context.cia1, machine_timing.cycles_per_sec, machine_timing.power_freq);
+    cia2_set_timing(machine_context.cia2, machine_timing.cycles_per_sec, machine_timing.power_freq);
 
     machine_trigger_reset(MACHINE_RESET_MODE_HARD);
 }
@@ -897,10 +1347,6 @@ int machine_read_snapshot(const char *name, int event_mode)
 int machine_autodetect_psid(const char *name)
 {
     return -1;
-}
-
-void machine_play_psid(int tune)
-{
 }
 
 int machine_screenshot(screenshot_t *screenshot, struct video_canvas_s *canvas)
@@ -936,11 +1382,6 @@ void machine_update_memory_ptrs(void)
     vicii_update_memory_ptrs_external();
 }
 
-int machine_num_keyboard_mappings(void)
-{
-    return NUM_KEYBOARD_MAPPINGS;
-}
-
 struct image_contents_s *machine_diskcontents_bus_read(unsigned int unit)
 {
     return diskcontents_iec_read(unit);
@@ -949,6 +1390,11 @@ struct image_contents_s *machine_diskcontents_bus_read(unsigned int unit)
 BYTE machine_tape_type_default(void)
 {
     return TAPE_CAS_TYPE_BAS;
+}
+
+BYTE machine_tape_behaviour(void)
+{
+    return TAPE_BEHAVIOUR_NORMAL;
 }
 
 int machine_addr_in_ram(unsigned int addr)
@@ -962,8 +1408,26 @@ const char *machine_get_name(void)
     return machine_name;
 }
 
-#ifdef USE_SDLUI
-/* Kludges for vsid & linking issues */
-const char **csidmodel = NULL;
-void psid_init_driver(void) {}
-#endif
+/* ------------------------------------------------------------------------- */
+
+static void c128_userport_set_flag(BYTE b)
+{
+    if (b != 0) {
+        ciacore_set_flag(machine_context.cia2);
+    }
+}
+
+static userport_port_props_t userport_props = {
+    1, /* has pa2 pin */
+    1, /* has pa3 pin */
+    c128_userport_set_flag, /* has flag pin */
+    1, /* has pc pin */
+    1  /* has cnt1, cnt2 and sp pins */
+};
+
+int machine_register_userport(void)
+{
+    userport_port_register(&userport_props);
+
+    return 0;
+}

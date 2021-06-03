@@ -43,9 +43,11 @@
 #include "uisidcart.h"
 #include "winmain.h"
 
-static char *native_primary_sid_address;
-static char *native_secondary_sid_address;
-static char *native_sid_clock;
+static TCHAR *native_primary_sid_text_address;
+static TCHAR *native_secondary_sid_text_address;
+static TCHAR *native_sid_clock;
+static int native_primary_sid_int_address;
+static int native_secondary_sid_int_address;
 
 static sid_engine_model_t **ui_sid_engine_model_list;
 
@@ -259,19 +261,25 @@ static void init_sidcart_dialog(HWND hwnd)
 
     switch (machine_class) {
         case VICE_MACHINE_PET:
-            native_primary_sid_address = "$8F00";
-            native_secondary_sid_address = "$E900";
-            native_sid_clock = "PET";
+            native_primary_sid_text_address = TEXT("$8F00");
+            native_secondary_sid_text_address = TEXT("$E900");
+            native_sid_clock = TEXT("PET");
+            native_primary_sid_int_address = 0x8f00;
+            native_secondary_sid_int_address = 0xe900;
             break;
         case VICE_MACHINE_PLUS4:
-            native_primary_sid_address = "$FD40";
-            native_secondary_sid_address = "$FE80";
-            native_sid_clock = "PLUS4";
+            native_primary_sid_text_address = TEXT("$FD40");
+            native_secondary_sid_text_address = TEXT("$FE80");
+            native_sid_clock = TEXT("PLUS4");
+            native_primary_sid_int_address = 0xfd40;
+            native_secondary_sid_int_address = 0xfe80;
             break;
         case VICE_MACHINE_VIC20:
-            native_primary_sid_address = "$9800";
-            native_secondary_sid_address = "$9C00";
-            native_sid_clock = "VIC20";
+            native_primary_sid_text_address = TEXT("$9800");
+            native_secondary_sid_text_address = TEXT("$9C00");
+            native_sid_clock = TEXT("VIC20");
+            native_primary_sid_int_address = 0x9800;
+            native_secondary_sid_int_address = 0x9c00;
             break;
     }
 
@@ -289,9 +297,7 @@ static void init_sidcart_dialog(HWND hwnd)
     for (i = 0; ui_sid_engine_model_list[i]; i++) {
         TCHAR st[40];
 
-        /* Use "%hs" because the strings are in common code,
-           and hence are char rather than TCHAR */
-        _stprintf(st, TEXT("%hs"), ui_sid_engine_model_list[i]->name);
+        system_mbstowcs(st, ui_sid_engine_model_list[i]->name, 40);
         SendMessage(sid_hwnd, CB_ADDSTRING, 0, (LPARAM)st);
         if (ui_sid_engine_model_list[i]->value == res_value) {
             active_value = i;
@@ -304,10 +310,10 @@ static void init_sidcart_dialog(HWND hwnd)
 
     sid_hwnd = GetDlgItem(hwnd, IDC_SIDCART_ADDRESS);
 
-    SendMessage(sid_hwnd, CB_ADDSTRING, 0, (LPARAM)native_primary_sid_address);
-    SendMessage(sid_hwnd, CB_ADDSTRING, 0, (LPARAM)native_secondary_sid_address);
+    SendMessage(sid_hwnd, CB_ADDSTRING, 0, (LPARAM)native_primary_sid_text_address);
+    SendMessage(sid_hwnd, CB_ADDSTRING, 0, (LPARAM)native_secondary_sid_text_address);
     resources_get_int("SidAddress", &res_value);
-    SendMessage(sid_hwnd, CB_SETCURSEL, (WPARAM)res_value, 0);
+    SendMessage(sid_hwnd, CB_SETCURSEL, (WPARAM)(res_value == native_secondary_sid_int_address), 0);
 
     sid_hwnd = GetDlgItem(hwnd, IDC_SIDCART_CLOCK);
     SendMessage(sid_hwnd, CB_ADDSTRING, 0, (LPARAM)TEXT("C64"));
@@ -351,7 +357,7 @@ static void end_sidcart_dialog(HWND hwnd)
     sid_set_engine_model(engine, model);
     resources_set_int("SidCart", (IsDlgButtonChecked(hwnd, IDC_SIDCART_ENABLE) == BST_CHECKED ? 1 : 0 ));
     resources_set_int("SidFilters", (IsDlgButtonChecked(hwnd, IDC_SIDCART_FILTERS) == BST_CHECKED ? 1 : 0 ));
-    resources_set_int("SidAddress",(int)SendMessage(GetDlgItem(hwnd, IDC_SIDCART_ADDRESS), CB_GETCURSEL, 0, 0));
+    resources_set_int("SidAddress", (SendMessage(GetDlgItem(hwnd, IDC_SIDCART_ADDRESS), CB_GETCURSEL, 0, 0) ? native_secondary_sid_int_address : native_primary_sid_int_address));
     resources_set_int("SidClock", (int)SendMessage(GetDlgItem(hwnd, IDC_SIDCART_CLOCK), CB_GETCURSEL, 0, 0));
     if (hardsid_available()) {
         resources_set_int("SidHardSIDMain", (int)SendMessage(GetDlgItem(hwnd, IDC_SIDCART_HARDSID_MAIN_DEVICE), CB_GETCURSEL, 0, 0));

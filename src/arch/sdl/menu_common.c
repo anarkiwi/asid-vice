@@ -119,22 +119,6 @@ UI_MENU_CALLBACK(pause_callback)
     return NULL;
 }
 
-UI_MENU_CALLBACK(monitor_callback)
-{
-    if (activated) {
-        if (sdl_menu_state) {
-            monitor_startup(e_default_space);
-        } else {
-            /* The monitor was activated with a hotkey.
-               In this case, the trap is needed for the machine state to be
-               properly imported. */
-            monitor_startup_trap();
-        }
-        return sdl_menu_text_exit_ui;
-    }
-    return NULL;
-}
-
 UI_MENU_CALLBACK(vkbd_callback)
 {
     if (activated) {
@@ -252,7 +236,7 @@ const char *sdl_ui_menu_int_helper(int activated, ui_callback_data_t param, cons
     return NULL;
 }
 
-#if (FSDEV_DIR_SEP_CHR=='\\')
+#if (FSDEV_DIR_SEP_CHR == '\\')
 char win32_path_buf[80];
 
 static char *sdl_ui_menu_file_translate_seperator(const char *text)
@@ -290,7 +274,7 @@ const char *sdl_ui_menu_file_string_helper(int activated, ui_callback_data_t par
             lib_free(value);
         }
     } else {
-#if (FSDEV_DIR_SEP_CHR=='\\')
+#if (FSDEV_DIR_SEP_CHR == '\\')
         if (previous != NULL && previous[0] != 0) {
             return (const char *)sdl_ui_menu_file_translate_seperator(previous);
         }

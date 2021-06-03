@@ -3,9 +3,10 @@
  * ($DD00).
  *
  * Written by
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -47,13 +48,12 @@
 #include "lib.h"
 #include "log.h"
 #include "maincpu.h"
-#include "printer.h"
 #include "ps2mouse.h"
 #include "types.h"
-#include "userport_joystick.h"
+#include "userport.h"
 #include "vicii.h"
 
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "rsuser.h"
 #endif
 
@@ -61,9 +61,9 @@
 void cia2_store(WORD addr, BYTE data)
 {
     if ((addr & 0x1f) == 1) {
-        /* FIXME: in the upcoming userport system this call needs to be conditional */
-        userport_joystick_store_pbx(data);
+        store_userport_pbx(data);
 
+        /* The functions below will gradually be removed as the functionality is added to the new userport system. */
         if (c64dtv_hummer_adc_enabled) {
             hummeradc_store(data);
         }
@@ -80,9 +80,9 @@ BYTE cia2_read(WORD addr)
     BYTE retval = 0xff;
 
     if ((addr & 0x1f) == 1) {
-        /* FIXME: in the upcoming userport system this call needs to be conditional */
-        retval = userport_joystick_read_pbx(retval);
+        retval = read_userport_pbx(0x1f, retval);
 
+        /* The functions below will gradually be removed as the functionality is added to the new userport system. */
         if (ps2mouse_enabled) {
             retval &= (ps2mouse_read() | 0x3f);
         }
@@ -127,9 +127,10 @@ static int vbank;
 
 static void do_reset_cia(cia_context_t *cia_context)
 {
-    printer_userport_write_strobe(1);
-    printer_userport_write_data((BYTE)0xff);
-#ifdef HAVE_RS232
+    store_userport_pbx(0xff);
+
+    /* The functions below will gradually be removed as the functionality is added to the new userport system. */
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     rsuser_write_ctrl((BYTE)0xff);
     rsuser_set_tx_bit(1);
 #endif
@@ -159,7 +160,7 @@ static void store_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
         BYTE tmp;
         int new_vbank;
 
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
         if (rsuser_enabled && ((cia_context->old_pa ^ byte) & 0x04)) {
             rsuser_set_tx_bit(byte & 4);
         }
@@ -171,13 +172,12 @@ static void store_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
             mem_set_vbank(new_vbank);
         }
         (*iecbus_callback_write)((BYTE)tmp, maincpu_clk);
-        printer_userport_write_strobe(tmp & 0x04);
     }
 }
 
 static void undump_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
 {
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     if (rsuser_enabled) {
         rsuser_set_tx_bit((int)(byte & 4));
     }
@@ -190,8 +190,11 @@ static void undump_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
 
 static void store_ciapb(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
 {
+    store_userport_pbx(byte);
+
+    /* The functions below will gradually be removed as the functionality is added to the new userport system. */
     parallel_cable_cpu_write(DRIVE_PC_STANDARD, (BYTE)byte);
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     rsuser_write_ctrl((BYTE)byte);
 #endif
 }
@@ -199,39 +202,42 @@ static void store_ciapb(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
 static void pulse_ciapc(cia_context_t *cia_context, CLOCK rclk)
 {
     parallel_cable_cpu_pulse(DRIVE_PC_STANDARD);
-    printer_userport_write_data((BYTE)(cia_context->old_pb));
 }
 
 /* FIXME! */
 static inline void undump_ciapb(cia_context_t *cia_context, CLOCK rclk,
                                 BYTE byte)
 {
+    store_userport_pbx(byte);
+
+    /* The functions below will gradually be removed as the functionality is added to the new userport system. */
     parallel_cable_cpu_undump(DRIVE_PC_STANDARD, (BYTE)byte);
-    printer_userport_write_data((BYTE)byte);
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     rsuser_write_ctrl((BYTE)byte);
 #endif
-    /* in the upcoming userport system this call needs to be conditional */
-    userport_joystick_store_pbx(byte);
 }
 
 /* read_* functions must return 0xff if nothing to read!!! */
 static BYTE read_ciapa(cia_context_t *cia_context)
 {
     return ((cia_context->c_cia[CIA_PRA] | ~(cia_context->c_cia[CIA_DDRA]))
-           & 0x3f) | (*iecbus_callback_read)(maincpu_clk);
+            & 0x3f) | (*iecbus_callback_read)(maincpu_clk);
 }
 
 /* read_* functions must return 0xff if nothing to read!!! */
 static BYTE read_ciapb(cia_context_t *cia_context)
 {
-    BYTE byte;
-#ifdef HAVE_RS232
+    BYTE byte = 0xff;
+
+    byte = read_userport_pbx(0x1f, byte);
+
+    /* The functions below will gradually be removed as the functionality is added to the new userport system. */
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     if (rsuser_enabled) {
-        byte = rsuser_read_ctrl();
-    } else 
+        byte = rsuser_read_ctrl(byte);
+    } else
 #endif
-    byte = parallel_cable_cpu_read(DRIVE_PC_STANDARD);
+    byte = parallel_cable_cpu_read(DRIVE_PC_STANDARD, byte);
 
     byte = (byte & ~(cia_context->c_cia[CIA_DDRB]))
            | (cia_context->c_cia[CIA_PRB] & cia_context->c_cia[CIA_DDRB]);
@@ -268,11 +274,20 @@ void cia2_init(cia_context_t *cia_context)
                  maincpu_int_status, maincpu_clk_guard);
 }
 
+void cia2_set_timing(cia_context_t *cia_context, int tickspersec, int powerfreq)
+{
+    cia_context->power_freq = powerfreq;
+    cia_context->ticks_per_sec = tickspersec;
+    cia_context->todticks = 0;
+    cia_context->power_tickcounter = 0;
+    cia_context->power_ticks = 0;
+}
+
 void cia2_setup_context(machine_context_t *machine_context)
 {
     cia_context_t *cia;
 
-    machine_context->cia2 = lib_calloc(1,sizeof(cia_context_t));
+    machine_context->cia2 = lib_calloc(1, sizeof(cia_context_t));
     cia = machine_context->cia2;
 
     cia->prv = NULL;
@@ -281,7 +296,7 @@ void cia2_setup_context(machine_context_t *machine_context)
     cia->rmw_flag = &maincpu_rmw_flag;
     cia->clk_ptr = &maincpu_clk;
 
-    cia->todticks = 100000;
+    cia2_set_timing(cia, C64_PAL_CYCLES_PER_SEC, 0);
 
     ciacore_setup_context(cia);
 

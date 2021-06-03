@@ -60,8 +60,14 @@ static int set_drive_parallel_cable(int val, void *param)
 {
     drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    if (val >= DRIVE_PC_NUM) {
-        return -1;
+    switch (val) {
+        case DRIVE_PC_NONE:
+        case DRIVE_PC_STANDARD:
+        case DRIVE_PC_DD3:
+        case DRIVE_PC_FORMEL64:
+            break;
+        default:
+            return -1;
     }
 
     drive->parallel_cable = val;
@@ -72,9 +78,9 @@ static int set_drive_parallel_cable(int val, void *param)
 
 static int set_drive_profdos(int val, void *param)
 {
-    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;;
+    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    drive->profdos = val;
+    drive->profdos = val ? 1 : 0;
     set_drive_ram(vice_ptr_to_uint(param));
 
     return 0;
@@ -91,9 +97,9 @@ static int set_profdos_1571_name(const char *val, void *param)
 
 static int set_drive_supercard(int val, void *param)
 {
-    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;;
+    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    drive->supercard = val;
+    drive->supercard = val ? 1 : 0;
     set_drive_ram(vice_ptr_to_uint(param));
 
     return 0;
@@ -109,7 +115,7 @@ static int set_supercard_name(const char *val, void *param)
 }
 
 static resource_int_t res_drive[] = {
-    { NULL, 0, RES_EVENT_SAME, NULL,
+    { NULL, DRIVE_PC_NONE, RES_EVENT_SAME, NULL,
       NULL, set_drive_parallel_cable, NULL },
     { NULL, 0, RES_EVENT_SAME, NULL,
       NULL, set_drive_profdos, NULL },
@@ -162,4 +168,3 @@ void c64exp_resources_shutdown(void)
     lib_free(profdos_1571_name);
     lib_free(supercard_name);
 }
-

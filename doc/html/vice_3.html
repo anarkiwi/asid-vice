@@ -1,16 +1,21 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 2 November 2012 -->
+     from ../../doc/vice.texi on 15 December 2016 -->
 
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
 <TITLE>VICE Manual - 3  Invoking the emulators</TITLE>
+<style type="text/css">
+    @import 'vice.css';
+</style>
 </HEAD>
 <BODY>
-Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_2.html">previous</A>, <A HREF="vice_4.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_2.html">previous</A>, <A HREF="vice_4.html">next</A>, <A HREF="vice_22.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
 <P><HR><P>
 
 
-<H1><A NAME="SEC21" HREF="vice_toc.html#TOC21">3  Invoking the emulators</A></H1>
+<H1><A NAME="SEC22" HREF="vice_toc.html#TOC22">3  Invoking the emulators</A></H1>
 
 <P>
 The names of the available emulators are:
@@ -59,6 +64,10 @@ The names of the available emulators are:
 
 <CODE>xcbm5x0</CODE>, the CBM-II emulator (VIC-II models)
 
+<LI>
+
+<CODE>xscpu64</CODE>, the SCPU64 emulator
+
 </UL>
 
 <P>
@@ -80,12 +89,12 @@ xterm -e x64
 
 
 
-<H2><A NAME="SEC22" HREF="vice_toc.html#TOC22">3.1  Command-line options used during initialization</A></H2>
+<H2><A NAME="SEC23" HREF="vice_toc.html#TOC23">3.1  Command-line options used during initialization</A></H2>
 
 <P>
 There are several options you can specify on the command line.  Some of
 them are used to specify emulation settings and will be described in
-detail later (see section <A HREF="vice_6.html#SEC40">6  Settings and resources</A> for a complete list).  The
+detail later (see section <A HREF="vice_6.html#SEC41">6  Settings and resources</A> for a complete list).  The
 remaining options are used only to give usage information or to
 initialize the emulator in some way:
 
@@ -103,17 +112,20 @@ List all the available command-line options and their meaning.
 <A NAME="IDX8"></A>
 <DT><CODE>-default</CODE>
 <DD>
-Set default resources (see section <A HREF="vice_6.html#SEC40">6  Settings and resources</A>).  This will
+Set default resources (see section <A HREF="vice_6.html#SEC41">6  Settings and resources</A>).  This will
 override all the settings specified before, but not the settings
 specified afterwards on the command line.
 <A NAME="IDX9"></A>
 <DT><CODE>-config &#60;filename&#62;</CODE>
 <DD>
 Specify config file
+
 <A NAME="IDX10"></A>
 <DT><CODE>-logfile &#60;name&#62;</CODE>
 <DD>
 Specify log file name
+(<CODE>LogFileName</CODE>).
+
 <A NAME="IDX11"></A>
 <DT><CODE>-verbose</CODE>
 <DD>
@@ -131,79 +143,36 @@ Console mode (for music playback)
 <DD>
 Change the working directory.
 <A NAME="IDX15"></A>
-<DT><CODE>-autostart IMAGE</CODE>
+<DT><CODE>-autostart &#60;name&#62;</CODE>
 <DD>
-Autostart <TT>`IMAGE'</TT> (see section <A HREF="vice_3.html#SEC23">3.2  Autostarting programs from the command-line</A>).
+Autostart &#60;name&#62; (see section <A HREF="vice_3.html#SEC24">3.2  Autostarting programs from the command-line</A>).
 <A NAME="IDX16"></A>
 <DT><CODE>-autoload &#60;name&#62;</CODE>
 <DD>
 Attach and autoload tape/disk image &#60;name&#62;
+
 <A NAME="IDX17"></A>
-<DT><CODE>-basicload</CODE>
+<DT><CODE>-1 &#60;Name&#62;</CODE>
 <DD>
-On autostart, load to BASIC start (without ',1')
-<DT><CODE>+basicload</CODE>
-<DD>
-On autostart, load with ',1'
+Attach &#60;Name&#62; as a tape image file.
 <A NAME="IDX18"></A>
-<DT><CODE>-autostartwithcolon</CODE>
+<DT><CODE>-8 &#60;Name&#62;</CODE>
 <DD>
-On autostart, use the 'RUN' command with a colon, i.e., 'RUN:'
-<DT><CODE>+autostartwithcolon</CODE>
-<DD>
-On autostart, do not use the 'RUN' command with a colon; i.e., 'RUN'
 <A NAME="IDX19"></A>
-<DT><CODE>-autostart-handle-tde</CODE>
+<DT><CODE>-9 &#60;Name&#62;</CODE>
 <DD>
-<DT><CODE>+autostart-handle-tde</CODE>
-<DD>
-Handle/Do not handle True Drive Emulation on autostart
 <A NAME="IDX20"></A>
-<DT><CODE>+autostart-warp</CODE>
+<DT><CODE>-10 &#60;Name&#62;</CODE>
 <DD>
-Enable/Disable warp mode during autostart
 <A NAME="IDX21"></A>
-<DT><CODE>-autostartprgmode</CODE>
+<DT><CODE>-11 &#60;Name&#62;</CODE>
 <DD>
-Set autostart mode for PRG files
+Attach &#60;Name&#62; as a disk image to device 8, 9, 10 or 11.
+
 <A NAME="IDX22"></A>
-<DT><CODE>-autostartprgdiskimage</CODE>
-<DD>
-Set disk image for autostart of PRG files
-
 <A NAME="IDX23"></A>
-<DT><CODE>-autostart-delay-random</CODE>
-<DD>
-<DT><CODE>+autostart-delay-random</CODE>
-<DD>
-Enable/Disable random delay on autostart
 <A NAME="IDX24"></A>
-<DT><CODE>-autostart-delay &#60;value&#62;</CODE>
-<DD>
-Set initial autostart delay (0: use default)
-
 <A NAME="IDX25"></A>
-<DT><CODE>-1 NAME</CODE>
-<DD>
-Attach <TT>`NAME'</TT> as a tape image file.
-<A NAME="IDX26"></A>
-<DT><CODE>-8 NAME</CODE>
-<DD>
-<A NAME="IDX27"></A>
-<DT><CODE>-9 NAME</CODE>
-<DD>
-<A NAME="IDX28"></A>
-<DT><CODE>-10 NAME</CODE>
-<DD>
-<A NAME="IDX29"></A>
-<DT><CODE>-11 NAME</CODE>
-<DD>
-Attach <TT>`NAME'</TT> as a disk image to device 8, 9, 10 or 11.
-
-<A NAME="IDX30"></A>
-<A NAME="IDX31"></A>
-<A NAME="IDX32"></A>
-<A NAME="IDX33"></A>
 <DT><CODE>-attach8ro</CODE>
 <DD>
 <DT><CODE>-attach9ro</CODE>
@@ -213,10 +182,13 @@ Attach <TT>`NAME'</TT> as a disk image to device 8, 9, 10 or 11.
 <DT><CODE>-attach11ro</CODE>
 <DD>
 Attach disk image for drive #8-11 read only
-<A NAME="IDX34"></A>
-<A NAME="IDX35"></A>
-<A NAME="IDX36"></A>
-<A NAME="IDX37"></A>
+(<CODE>AttachDevice8Readonly=1</CODE>, <CODE>AttachDevice9Readonly=1</CODE>, <CODE>AttachDevice10Readonly=1</CODE>, <CODE>AttachDevice11Readonly=1</CODE>)
+(all emulators except vsid).
+
+<A NAME="IDX26"></A>
+<A NAME="IDX27"></A>
+<A NAME="IDX28"></A>
+<A NAME="IDX29"></A>
 <DT><CODE>-attach8rw</CODE>
 <DD>
 <DT><CODE>-attach9rw</CODE>
@@ -226,12 +198,14 @@ Attach disk image for drive #8-11 read only
 <DT><CODE>-attach11rw</CODE>
 <DD>
 Attach disk image for drive #8-11 read write (if possible)
+(<CODE>AttachDevice8Readonly=0</CODE>, <CODE>AttachDevice9Readonly=0</CODE>, <CODE>AttachDevice10Readonly=0</CODE>, <CODE>AttachDevice11Readonly=0</CODE>)
+(all emulators except vsid).
 
 </DL>
 
 
 
-<H2><A NAME="SEC23" HREF="vice_toc.html#TOC23">3.2  Autostarting programs from the command-line</A></H2>
+<H2><A NAME="SEC24" HREF="vice_toc.html#TOC24">3.2  Autostarting programs from the command-line</A></H2>
 
 <P>
 It is possible to let the emulator <EM>autostart</EM> a disk or tape image
@@ -262,7 +236,7 @@ instead of the first one.
 
 </P>
 <P>
-<A NAME="IDX38"></A>
+<A NAME="IDX30"></A>
 Using the command-line option <CODE>-autostart</CODE> is equivalent; so the same
 result can be obtained with
 
@@ -281,12 +255,12 @@ requiring "true" drive emulation.
 
 </P>
 <P>
-See section <A HREF="vice_5.html#SEC34">5.5  Using disk and tape images</A>. for more information about images and
+See section <A HREF="vice_5.html#SEC35">5.5  Using disk and tape images</A>. for more information about images and
 autostart.
 
 </P>
 
 <P><HR><P>
-Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_2.html">previous</A>, <A HREF="vice_4.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_2.html">previous</A>, <A HREF="vice_4.html">next</A>, <A HREF="vice_22.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
 </BODY>
 </HTML>

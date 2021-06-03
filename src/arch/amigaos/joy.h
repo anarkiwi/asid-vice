@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -32,9 +33,6 @@
 #define JOYDEV_KEYSET1 2
 #define JOYDEV_KEYSET2 3
 
-extern int joy_arch_init(void);
-extern int joystick_arch_init_resources(void);
-extern int joystick_init_cmdline_options(void);
 extern int joystick_handle_key(unsigned long kcode, int pressed);
 extern int joystick_update(void);
 extern void joystick_close(void);

@@ -46,17 +46,15 @@ typedef struct {
 extern struct ui_menu_entry_s ui_menu_separator[];
 
 extern int ui_menu_init();
+extern void ui_menu_shutdown(void);
+
 extern void ui_menu_set_sensitive(GtkWidget *w, int flag);
 extern void ui_menu_set_tick(GtkWidget *w, int flag);
 extern int ui_menu_any_open(void);
 extern void ui_menu_update_all(void);
 extern void ui_menu_update_all_GTK(void);
 
-#ifndef GNOME_MENUS
 extern void ui_menu_create(GtkWidget *w, GtkAccelGroup *accel, const char *menu_name, ui_menu_entry_t *list);
-#else
-extern GnomeUIInfo* ui_menu_create(const char *menu_name, ...);
-#endif
 
 /* ------------------------------------------------------------------------- */
 

@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -31,25 +31,16 @@
 #include <stdio.h>
 
 #include "cmdline.h"
+#include "machine.h"
 #include "translate.h"
 #include "ui.h"
 
-static const cmdline_option_t cmdline_options[] = {
+static const cmdline_option_t common_cmdline_options[] = {
     { "-htmlbrowser", SET_RESOURCE, -1,
       NULL, NULL, "HTMLBrowserCommand", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Command"), N_("Specify an HTML browser for the on-line help") },
-    { "-install", SET_RESOURCE, 0,
-      NULL, NULL, "PrivateColormap", (void *)1,
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      IDCLS_UNUSED, IDCLS_UNUSED,
-      NULL, N_("Install a private colormap") },
-    { "+install", SET_RESOURCE, 0,
-      NULL, NULL, "PrivateColormap", (void *)0,
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      IDCLS_UNUSED, IDCLS_UNUSED,
-      NULL, N_("Use the default colormap") },
+      N_("<Command>"), N_("Specify an HTML browser for the on-line help") },
     { "-saveres", SET_RESOURCE, 0,
       NULL, NULL, "SaveResourcesOnExit", (void *)1,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
@@ -59,17 +50,36 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "ConfirmOnExit", (void *)0,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      NULL, N_("Never confirm quiting VICE") },
+      NULL, N_("Never confirm quitting VICE") },
     { "-confirmexit", SET_RESOURCE, 0,
       NULL, NULL, "ConfirmOnExit", (void *)1,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      NULL, N_("Confirm quiting VICE") },
+      NULL, N_("Confirm quitting VICE") },
     { "+saveres", SET_RESOURCE, 0,
       NULL, NULL, "SaveResourcesOnExit", (void *)0,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
       NULL, N_("Never save settings on exit") },
+    { NULL }
+};
+
+static const cmdline_option_t cmdline_options[] = {
+    { "-colormap", SET_RESOURCE, 0,
+      NULL, NULL, "PrivateColormap", (void *)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      NULL, N_("Install a private colormap") },
+    { "+colormap", SET_RESOURCE, 0,
+      NULL, NULL, "PrivateColormap", (void *)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      NULL, N_("Use the default colormap") },
+    { "-displaydepth", SET_RESOURCE, -1,
+      NULL, NULL, "DisplayDepth", NULL,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      N_("<value>"), N_("Specify X display depth (1..32)") },
 #if defined (USE_XF86_EXTENSIONS) && \
     (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
     { "-fullscreen", SET_RESOURCE, 0,
@@ -83,15 +93,15 @@ static const cmdline_option_t cmdline_options[] = {
       IDCLS_UNUSED, IDCLS_UNUSED,
       NULL, N_("Disable fullscreen") },
 #endif
-    { "-displaydepth", SET_RESOURCE, -1,
-      NULL, NULL, "DisplayDepth", NULL,
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("value"), N_("Specify X display depth (1..32)") },
     { NULL }
 };
 
 int ui_cmdline_options_init(void)
 {
-    return cmdline_register_options(cmdline_options);
+    if (machine_class != VICE_MACHINE_VSID) {
+        if (cmdline_register_options(cmdline_options) < 0) {
+            return -1;
+        }
+    }
+    return cmdline_register_options(common_cmdline_options);
 }

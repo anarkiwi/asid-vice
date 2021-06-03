@@ -32,6 +32,7 @@
 #include <stdio.h>
 
 #include "joy.h"
+#include "kbd.h"
 #include "keyboard.h"
 #include "menu_common.h"
 #include "types.h"
@@ -124,7 +125,7 @@ static void sdl_vkbd_key_press(int value, int shift)
     int mr, mc, neg;
     BYTE b, sb;
 
-    b = vkbd->keytable[vkbd_x + vkbd_y*vkbd_w];
+    b = vkbd->keytable[vkbd_x + vkbd_y * vkbd_w];
 
     if ((b == VKBD_COMMAND_CLOSE) && (value)) {
         sdl_vkbd_close();
@@ -181,7 +182,8 @@ static void sdl_vkbd_key_map(void)
         unmap = 1;
     } else {
         /* get the key name for displaying */
-        for (j = vkbd_x; (j > -1) && (vkbd->keytable[j + vkbd_y * vkbd_w] == b); --j);
+        for (j = vkbd_x; (j > -1) && (vkbd->keytable[j + vkbd_y * vkbd_w] == b); --j) {
+        }
         ++j;
 
         for (i = 0; ((i + j) < vkbd_w) && (vkbd->keytable[i + j + vkbd_y * vkbd_w] == b); ++i) {
@@ -207,9 +209,9 @@ static void sdl_vkbd_key_map(void)
             if (!unmap) {
                 vkbd_shiftflags = (1 << 3);
                 sdl_ui_external_menu_activate((ui_menu_entry_t *)shift_menu);
-                keyboard_set_map_any((signed long)e.key.keysym.sym, mr, mc, vkbd_shiftflags);
+                keyboard_set_map_any((signed long)SDL2x_to_SDL1x_Keys(e.key.keysym.sym), mr, mc, vkbd_shiftflags);
             } else {
-                keyboard_set_unmap_any((signed long)e.key.keysym.sym);
+                keyboard_set_unmap_any((signed long)SDL2x_to_SDL1x_Keys(e.key.keysym.sym));
             }
             break;
 #ifdef HAVE_SDL_NUMJOYSTICKS
@@ -255,10 +257,12 @@ void sdl_vkbd_set_vkbd(const vkbd_t *machine_vkbd)
         return;
     }
 
-    for (vkbd_h = 0; vkbd->keyb[vkbd_h] != NULL; ++vkbd_h);
+    for (vkbd_h = 0; vkbd->keyb[vkbd_h] != NULL; ++vkbd_h) {
+    }
 
     if (vkbd_h > 0) {
-        for (vkbd_w = 0; vkbd->keyb[0][vkbd_w] != 0; ++vkbd_w);
+        for (vkbd_w = 0; vkbd->keyb[0][vkbd_w] != 0; ++vkbd_w) {
+        }
     }
 }
 
@@ -309,7 +313,7 @@ int sdl_vkbd_process(ui_menu_action_t input)
 {
     int retval = 1;
 
-    switch(input) {
+    switch (input) {
         case MENU_ACTION_UP:
             if (vkbd_move) {
                 sdl_vkbd_move(&vkbd_pos_y, -1, 0, vkbd_pos_max_y);
@@ -497,6 +501,8 @@ vkbd_t vkbd_cbm2 = {
     keytable_cbm2,
     '\x84'
 };
+
+/* FIXME: support all PET keyboards (see pet-resources.h) */
 
 static const char *keyb_pet_uk[] = {
     "X \x1f 1234567890:-\x1e> r/s  789",

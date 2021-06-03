@@ -34,13 +34,13 @@
 #define CARTRIDGE_INCLUDE_SLOTMAIN_API
 #include "c64cartsystem.h"
 #undef CARTRIDGE_INCLUDE_SLOTMAIN_API
-#include "c64export.h"
 #include "c64mem.h"
 #include "cartio.h"
 #include "cartridge.h"
 #include "cmdline.h"
 #include "crt.h"
 #include "easyflash.h"
+#include "export.h"
 #include "flash040.h"
 #include "lib.h"
 #include "log.h"
@@ -54,7 +54,7 @@
 
 #define EASYFLASH_N_BANK_BITS 6
 #define EASYFLASH_N_BANKS     (1 << (EASYFLASH_N_BANK_BITS))
-#define EASYFLASH_BANK_MASK   ((EASYFLASH_N_BANKS) - 1)
+#define EASYFLASH_BANK_MASK   ((EASYFLASH_N_BANKS) -1)
 
 /* the 29F040B statemachine */
 static flash040_context_t *easyflash_state_low = NULL;
@@ -66,29 +66,32 @@ static int easyflash_jumper;
 /* writing back to crt enabled */
 static int easyflash_crt_write;
 
+/* optimizing crt enabled */
+static int easyflash_crt_optimize;
+
 /* backup of the registers */
 static BYTE easyflash_register_00, easyflash_register_02;
 
 /* decoding table of the modes */
 static const BYTE easyflash_memconfig[] = {
-       /* bit3 = jumper, bit2 = mode, bit1 = !exrom, bit0 = game */
+    /* bit3 = jumper, bit2 = mode, bit1 = !exrom, bit0 = game */
 
-       /* jumper off, mode 0, trough 00,01,10,11 in game/exrom bits */
+    /* jumper off, mode 0, trough 00,01,10,11 in game/exrom bits */
     3, /* exrom high, game low, jumper off */
     3, /* Reserved, don't use this */
     1, /* exrom low, game low, jumper off */
     1, /* Reserved, don't use this */
 
-       /* jumper off, mode 1, trough 00,01,10,11 in game/exrom bits */
+    /* jumper off, mode 1, trough 00,01,10,11 in game/exrom bits */
     2, 3, 0, 1,
 
-       /* jumper on, mode 0, trough 00,01,10,11 in game/exrom bits */
+    /* jumper on, mode 0, trough 00,01,10,11 in game/exrom bits */
     2, /* exrom high, game low, jumper on */
     3, /* Reserved, don't use this */
     0, /* exrom low, game low, jumper on */
     1, /* Reserved, don't use this */
 
-       /* jumper on, mode 1, trough 00,01,10,11 in game/exrom bits */
+    /* jumper on, mode 1, trough 00,01,10,11 in game/exrom bits */
     2, 3, 0, 1,
 };
 
@@ -145,9 +148,9 @@ static BYTE easyflash_io1_peek(WORD addr)
 static int easyflash_io1_dump(void)
 {
     mon_out("Mode %i, LED %s, jumper %s\n",
-        easyflash_memconfig[(easyflash_jumper << 3) | (easyflash_register_02 & 0x07)],
-        (easyflash_register_02 & 0x80) ? "on" : "off",
-        easyflash_jumper ? "on" : "off");
+            easyflash_memconfig[(easyflash_jumper << 3) | (easyflash_register_02 & 0x07)],
+            (easyflash_register_02 & 0x80) ? "on" : "off",
+            easyflash_jumper ? "on" : "off");
     return 0;
 }
 
@@ -186,7 +189,7 @@ static io_source_t easyflash_io2_device = {
 static io_source_list_t *easyflash_io1_list_item = NULL;
 static io_source_list_t *easyflash_io2_list_item = NULL;
 
-static const c64export_resource_t export_res = {
+static const export_resource_t export_res = {
     CARTRIDGE_NAME_EASYFLASH, 1, 1, &easyflash_io1_device, &easyflash_io2_device, CARTRIDGE_EASYFLASH
 };
 
@@ -194,13 +197,19 @@ static const c64export_resource_t export_res = {
 
 static int set_easyflash_jumper(int val, void *param)
 {
-    easyflash_jumper = val;
+    easyflash_jumper = val ? 1 : 0;
     return 0;
 }
 
 static int set_easyflash_crt_write(int val, void *param)
 {
-    easyflash_crt_write = val;
+    easyflash_crt_write = val ? 1 : 0;
+    return 0;
+}
+
+static int set_easyflash_crt_optimize(int val, void *param)
+{
+    easyflash_crt_optimize = val ? 1 : 0;
     return 0;
 }
 
@@ -209,7 +218,7 @@ static int easyflash_write_chip_if_not_empty(FILE* fd, crt_chip_header_t *chip, 
     int i;
 
     for (i = 0; i < chip->size; i++) {
-        if (data[i] != 0xff) {
+        if ((data[i] != 0xff) || (easyflash_crt_optimize == 0)) {
             if (crt_write_chip(data, chip, fd)) {
                 return -1;
             }
@@ -224,8 +233,10 @@ static int easyflash_write_chip_if_not_empty(FILE* fd, crt_chip_header_t *chip, 
 static const resource_int_t resources_int[] = {
     { "EasyFlashJumper", 0, RES_EVENT_STRICT, (resource_value_t)0,
       &easyflash_jumper, set_easyflash_jumper, NULL },
-    { "EasyFlashWriteCRT", 0, RES_EVENT_STRICT, (resource_value_t)0,
+    { "EasyFlashWriteCRT", 1, RES_EVENT_STRICT, (resource_value_t)0,
       &easyflash_crt_write, set_easyflash_crt_write, NULL },
+    { "EasyFlashOptimizeCRT", 1, RES_EVENT_STRICT, (resource_value_t)1,
+      &easyflash_crt_optimize, set_easyflash_crt_optimize, NULL },
     { NULL }
 };
 
@@ -262,6 +273,16 @@ static const cmdline_option_t cmdline_options[] =
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDCLS_DISABLE_EASYFLASH_CRT_WRITING,
       NULL, NULL },
+    { "-easyflashcrtoptimize", SET_RESOURCE, 0,
+      NULL, NULL, "EasyFlashOptimizeCRT", (resource_value_t)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_ENABLE_EASYFLASH_CRT_OPTIMIZE,
+      NULL, NULL },
+    { "+easyflashcrtoptimize", SET_RESOURCE, 0,
+      NULL, NULL, "EasyFlashOptimizeCRT", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_DISABLE_EASYFLASH_CRT_OPTIMIZE,
+      NULL, NULL },
     { NULL }
 };
 
@@ -292,6 +313,44 @@ void easyflash_romh_store(WORD addr, BYTE value)
     flash040core_store(easyflash_state_high, (easyflash_register_00 * 0x2000) + (addr & 0x1fff), value);
 }
 
+void easyflash_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
+{
+    if (easyflash_state_high && easyflash_state_high->flash_data &&
+        easyflash_state_low && easyflash_state_low->flash_data) {
+        switch (addr & 0xe000) {
+            case 0xe000:
+                if (easyflash_state_high->flash_state == FLASH040_STATE_READ) {
+                    *base = easyflash_state_high->flash_data + (easyflash_register_00 * 0x2000) - 0xe000;
+                    *start = 0xe000;
+                    *limit = 0xfffd;
+                    return;
+                }
+                break;
+            case 0xa000:
+                if (easyflash_state_high->flash_state == FLASH040_STATE_READ) {
+                    *base = easyflash_state_high->flash_data + (easyflash_register_00 * 0x2000) - 0xa000;
+                    *start = 0xa000;
+                    *limit = 0xbffd;
+                    return;
+                }
+                break;
+            case 0x8000:
+                if (easyflash_state_low->flash_state == FLASH040_STATE_READ) {
+                    *base = easyflash_state_low->flash_data + (easyflash_register_00 * 0x2000) - 0x8000;
+                    *start = 0x8000;
+                    *limit = 0x9ffd;
+                    return;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    *base = NULL;
+    *start = 0;
+    *limit = 0;
+}
+
 /* ---------------------------------------------------------------------*/
 
 void easyflash_config_init(void)
@@ -314,13 +373,32 @@ void easyflash_config_setup(BYTE *rawcart)
         memcpy(easyflash_state_low->flash_data + i * 0x2000, rawcart + i * 0x4000, 0x2000);
         memcpy(easyflash_state_high->flash_data + i * 0x2000, rawcart + i * 0x4000 + 0x2000, 0x2000);
     }
+    /* fill easyflash ram with startup value(s). this shall not be zeros, see
+     * http://sourceforge.net/p/vice-emu/bugs/469/
+     * 
+     * FIXME: the real hardware likely behaves somewhat differently
+     */
+    memset(easyflash_ram, 0xff, 256);
+    /*
+     * check for presence of EAPI
+     */
+    if (memcmp(&romh_banks[0x1800], "eapi", 4) == 0) {
+        char eapi[17]; int i;
+        for (i = 0; i < 16; i++) {
+            eapi[i] = romh_banks[0x1804 + i] & 0x7f;
+        }
+        eapi[i] = 0;
+        log_message(LOG_DEFAULT, "EF: EAPI found (%s)", eapi);
+    } else {
+        log_warning(LOG_DEFAULT, "EF: EAPI not found! Are you sure this is a proper EasyFlash image?");
+    }
 }
 
 /* ---------------------------------------------------------------------*/
 
 static int easyflash_common_attach(const char *filename)
 {
-    if (c64export_add(&export_res) < 0) {
+    if (export_add(&export_res) < 0) {
         return -1;
     }
 
@@ -394,7 +472,7 @@ void easyflash_detach(void)
     io_source_unregister(easyflash_io2_list_item);
     easyflash_io1_list_item = NULL;
     easyflash_io2_list_item = NULL;
-    c64export_remove(&export_res);
+    export_remove(&export_res);
 }
 
 int easyflash_flush_image(void)
@@ -480,17 +558,29 @@ int easyflash_crt_save(const char *filename)
 
 /* ---------------------------------------------------------------------*/
 
-#define CART_DUMP_VER_MAJOR   0
-#define CART_DUMP_VER_MINOR   0
-#define SNAP_MODULE_NAME  "CARTEF"
-#define FLASH_SNAP_MODULE_NAME  "FLASH040EF"
+/* CARTEF snapshot module format:
+
+   type  | name       | description
+   --------------------------------
+   BYTE  | jumper     | jumper
+   BYTE  | register 0 | register 0
+   BYTE  | register 2 | register 2
+   ARRAY | RAM        | 256 BYTES of RAM data
+   ARRAY | ROML       | 524288 BYTES of ROML data
+   ARRAY | ROMH       | 524288 BYTES of ROMH data
+ */
+
+static char snap_module_name[] = "CARTEF";
+static char flash_snap_module_name[] = "FLASH040EF";
+#define SNAP_MAJOR   0
+#define SNAP_MINOR   0
 
 int easyflash_snapshot_write_module(snapshot_t *s)
 {
     snapshot_module_t *m;
 
-    m = snapshot_module_create(s, SNAP_MODULE_NAME,
-                          CART_DUMP_VER_MAJOR, CART_DUMP_VER_MINOR);
+    m = snapshot_module_create(s, snap_module_name, SNAP_MAJOR, SNAP_MINOR);
+
     if (m == NULL) {
         return -1;
     }
@@ -509,8 +599,8 @@ int easyflash_snapshot_write_module(snapshot_t *s)
     snapshot_module_close(m);
 
     if (0
-        || (flash040core_snapshot_write_module(s, easyflash_state_low, FLASH_SNAP_MODULE_NAME) < 0)
-        || (flash040core_snapshot_write_module(s, easyflash_state_high, FLASH_SNAP_MODULE_NAME) < 0)) {
+        || (flash040core_snapshot_write_module(s, easyflash_state_low, flash_snap_module_name) < 0)
+        || (flash040core_snapshot_write_module(s, easyflash_state_high, flash_snap_module_name) < 0)) {
         return -1;
     }
 
@@ -522,14 +612,15 @@ int easyflash_snapshot_read_module(snapshot_t *s)
     BYTE vmajor, vminor;
     snapshot_module_t *m;
 
-    m = snapshot_module_open(s, SNAP_MODULE_NAME, &vmajor, &vminor);
+    m = snapshot_module_open(s, snap_module_name, &vmajor, &vminor);
     if (m == NULL) {
         return -1;
     }
 
-    if ((vmajor != CART_DUMP_VER_MAJOR) || (vminor != CART_DUMP_VER_MINOR)) {
-        snapshot_module_close(m);
-        return -1;
+    /* Do not accept versions higher than current */
+    if (vmajor > SNAP_MAJOR || vminor > SNAP_MINOR) {
+        snapshot_set_error(SNAPSHOT_MODULE_HIGHER_VERSION);
+        goto fail;
     }
 
     if (0
@@ -539,8 +630,7 @@ int easyflash_snapshot_read_module(snapshot_t *s)
         || (SMR_BA(m, easyflash_ram, 256) < 0)
         || (SMR_BA(m, roml_banks, 0x80000) < 0)
         || (SMR_BA(m, romh_banks, 0x80000) < 0)) {
-        snapshot_module_close(m);
-        return -1;
+        goto fail;
     }
 
     snapshot_module_close(m);
@@ -552,8 +642,8 @@ int easyflash_snapshot_read_module(snapshot_t *s)
     flash040core_init(easyflash_state_high, maincpu_alarm_context, FLASH040_TYPE_B, romh_banks);
 
     if (0
-        || (flash040core_snapshot_read_module(s, easyflash_state_low, FLASH_SNAP_MODULE_NAME) < 0)
-        || (flash040core_snapshot_read_module(s, easyflash_state_low, FLASH_SNAP_MODULE_NAME) < 0)) {
+        || (flash040core_snapshot_read_module(s, easyflash_state_low, flash_snap_module_name) < 0)
+        || (flash040core_snapshot_read_module(s, easyflash_state_low, flash_snap_module_name) < 0)) {
         flash040core_shutdown(easyflash_state_low);
         flash040core_shutdown(easyflash_state_high);
         lib_free(easyflash_state_low);
@@ -569,4 +659,8 @@ int easyflash_snapshot_read_module(snapshot_t *s)
     easyflash_filetype = 0;
 
     return 0;
+
+fail:
+    snapshot_module_close(m);
+    return -1;
 }

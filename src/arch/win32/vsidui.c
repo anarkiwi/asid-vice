@@ -11,7 +11,7 @@
  *
  * based on c64ui.c written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,8 +34,12 @@
  */
 #include "vice.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <tchar.h>
 #include <windows.h>
 
+#include "intl.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
@@ -52,7 +56,6 @@
 #include "uisid.h"
 #include "uisound.h"
 #include "uispeed.h"
-#include "uivideo.h"
 #include "vsync.h"
 #include "winmain.h"
 
@@ -62,10 +65,17 @@ enum {
     VSID_S_TITLE = 0,
     VSID_S_AUTHOR,
     VSID_S_RELEASED,
+    VSID_S_BLANK_1,
+    VSID_S_PLAYING,
     VSID_S_SYNC,
     VSID_S_MODEL,
     VSID_S_IRQ,
-    VSID_S_PLAYING,
+    VSID_S_BLANK_2,
+    VSID_S_DRIVER,
+    VSID_S_IMAGE,
+    VSID_S_INIT,
+    VSID_S_PLAY,
+    VSID_S_BLANK_3,
     VSID_S_TIMER,
     VSID_S_LASTLINE
 };
@@ -74,7 +84,7 @@ static const int c64_sid_baseaddress[] = { 0xd4, 0xd5, 0xd6, 0xd7, 0xde, 0xdf, -
 
 int psid_ui_set_tune(resource_value_t tune, void *param);
 
-char szAppName[] = "VSID - The VICE SID player";
+TCHAR st_AppName[] = TEXT("VSID - The VICE SID player");
 char vsidstrings[VSID_S_LASTLINE + 1][80] = { { 0 } };
 
 static int current_song;
@@ -95,17 +105,20 @@ void vsid_disp(int txout_x, int txout_y, const char *str1, const char* str2)
     HDC hDC;
     RECT r;
     SIZE size;
-    char dummy[100];
+    char tmp[100];
+    TCHAR st_tmp[100];
+    int st_len;
 
     if (NULL != hwnd) {
         hDC = GetDC(hwnd);
 
         if (NULL != str2) {
             SelectObject(hDC, GetStockObject (SYSTEM_FIXED_FONT));
-            GetTextExtentPoint32(hDC, " ", 1, &size);
-            sprintf(dummy, str1, str2);
+            GetTextExtentPoint32(hDC, TEXT(" "), 1, &size);
+            sprintf(tmp, str1, str2);
+            st_len = system_mbstowcs(st_tmp, tmp, 100);
             SetBkColor(hDC, GetSysColor(COLOR_BTNFACE));
-            TextOut(hDC, 3 + (txout_x * size.cx), 3 + (txout_y * (size.cy + 3)), dummy, (int)strlen(dummy));
+            TextOut(hDC, 8 + (txout_x * size.cx), 8 + (txout_y * (size.cy + 3)), st_tmp, st_len);
         } else {
             GetClientRect(hwnd, &r);
             FillRect(hDC, &r, GetSysColorBrush(COLOR_BTNFACE));
@@ -117,39 +130,35 @@ void vsid_disp(int txout_x, int txout_y, const char *str1, const char* str2)
 /*****************************************************************************/
 
 static generic_trans_table_t generic_trans_table[] = {
-    { IDM_REFRESH_RATE_1, "1/&1" },
-    { IDM_REFRESH_RATE_2, "1/&2" },
-    { IDM_REFRESH_RATE_3, "1/&3" },
-    { IDM_REFRESH_RATE_4, "1/&4" },
-    { IDM_REFRESH_RATE_5, "1/&5" },
-    { IDM_REFRESH_RATE_6, "1/&6" },
-    { IDM_REFRESH_RATE_7, "1/&7" },
-    { IDM_REFRESH_RATE_8, "1/&8" },
-    { IDM_REFRESH_RATE_9, "1/&9" },
-    { IDM_REFRESH_RATE_10, "1/1&0" },
-    { IDM_MAXIMUM_SPEED_200, "&200%" },
-    { IDM_MAXIMUM_SPEED_100, "&100%" },
-    { IDM_MAXIMUM_SPEED_50, "&50%" },
-    { IDM_MAXIMUM_SPEED_20, "&20%" },
-    { IDM_MAXIMUM_SPEED_10, "1&0%" },
-    { 0, NULL}
+    { IDM_SOUND_VOLUME_0,    TEXT("0%") },
+    { IDM_SOUND_VOLUME_5,    TEXT("5%") },
+    { IDM_SOUND_VOLUME_10,   TEXT("10%") },
+    { IDM_SOUND_VOLUME_25,   TEXT("25%") },
+    { IDM_SOUND_VOLUME_50,   TEXT("50%") },
+    { IDM_SOUND_VOLUME_75,   TEXT("75%") },
+    { IDM_SOUND_VOLUME_100,  TEXT("100%") },
+    { IDM_SYNC_FACTOR_PAL,   TEXT("&PAL") },
+    { IDM_SYNC_FACTOR_NTSC,  TEXT("&NTSC") },
+    { IDM_MAXIMUM_SPEED_200, TEXT("200%") },
+    { IDM_MAXIMUM_SPEED_100, TEXT("100%") },
+    { IDM_MAXIMUM_SPEED_50,  TEXT("50%") },
+    { IDM_MAXIMUM_SPEED_20,  TEXT("20%") },
+    { IDM_MAXIMUM_SPEED_10,  TEXT("10%") },
+    { 0, NULL }
 };
 
 static ui_menu_translation_table_t vsidui_menu_translation_table[] = {
     { IDM_EXIT, IDS_MI_EXIT },
     { IDM_ABOUT, IDS_MI_ABOUT },
     { IDM_HELP, IDS_MP_HELP },
+    { IDM_PAUSE, IDS_MI_PAUSE },
     { IDM_RESET_HARD, IDS_MI_RESET_HARD },
     { IDM_RESET_SOFT, IDS_MI_RESET_SOFT },
     { IDM_TOGGLE_SOUND, IDS_MI_TOGGLE_SOUND },
     { IDM_SOUND_RECORD_START, IDS_MI_SOUND_RECORD_START },
     { IDM_SOUND_RECORD_STOP, IDS_MI_SOUND_RECORD_STOP },
-    { IDM_REFRESH_RATE_AUTO, IDS_MI_REFRESH_RATE_AUTO },
-    { IDM_MAXIMUM_SPEED_NO_LIMIT, IDS_MI_MAXIMUM_SPEED_NO_LIMIT },
-    { IDM_MAXIMUM_SPEED_CUSTOM, IDS_MI_MAXIMUM_SPEED_CUSTOM },
-    { IDM_TOGGLE_WARP_MODE, IDS_MI_TOGGLE_WARP_MODE },
     { IDM_TOGGLE_ALWAYSONTOP, IDS_MI_TOGGLE_ALWAYSONTOP },
-    { IDM_VIDEO_SETTINGS, IDS_MI_VIDEO_SETTINGS },
+    { IDM_TOGGLE_CPU_AFFINITY, IDS_MI_TOGGLE_CPU_AFFINITY },
     { IDM_SOUND_SETTINGS, IDS_MI_SOUND_SETTINGS },
     { IDM_SID_SETTINGS, IDS_MI_SID_SETTINGS },
     { IDM_SETTINGS_SAVE_FILE, IDS_MI_SETTINGS_SAVE_FILE },
@@ -173,6 +182,8 @@ static ui_menu_translation_table_t vsidui_menu_translation_table[] = {
     { IDM_LANG_SV, IDS_MI_LANG_SV },
     { IDM_LANG_TR, IDS_MI_LANG_TR },
     { IDM_CMDLINE, IDS_MI_CMDLINE },
+    { IDM_KEYS, IDS_MI_KEYS },
+    { IDM_FEATURES, IDS_MI_FEATURES },
     { IDM_CONTRIBUTORS, IDS_MI_CONTRIBUTORS },
     { IDM_LICENSE, IDS_MI_LICENSE },
     { IDM_WARRANTY, IDS_MI_WARRANTY },
@@ -182,20 +193,24 @@ static ui_menu_translation_table_t vsidui_menu_translation_table[] = {
     { IDM_PREVIOUS_TUNE, IDS_MI_PREVIOUS_TUNE },
     { IDM_PSID_OVERRIDE, IDS_MI_PSID_OVERRIDE },
     { IDM_MONITOR, IDS_MI_MONITOR },
+    { IDM_MAXIMUM_SPEED_NO_LIMIT, IDS_MI_MAXIMUM_SPEED_NO_LIMIT },
+    { IDM_MAXIMUM_SPEED_CUSTOM, IDS_MI_MAXIMUM_SPEED_CUSTOM },
+    { IDM_TOGGLE_WARP_MODE, IDS_MI_TOGGLE_WARP_MODE },
     { 0, 0 }
 };
 
 static ui_popup_translation_table_t vsidui_popup_translation_table[] = {
-    { 1, IDS_MP_FILE },
-    { 2, IDS_MP_RESET },
-    { 1, IDS_MP_MEDIA },
-    { 1, IDS_MP_OPTIONS },
-    { 2, IDS_MP_REFRESH_RATE },
-    { 2, IDS_MP_MAXIMUM_SPEED },
-    { 1, IDS_MP_SETTINGS },
-    { 1, IDS_MP_LANGUAGE },
-    { 1, IDS_MP_HELP },
-    { 0, 0 }
+    { 1, IDS_MP_FILE, NULL },
+    { 2, IDS_MP_SOUND_RECORDING, NULL },
+    { 2, IDS_MP_RESET, NULL },
+    { 1, IDS_MP_TUNES, NULL },
+    { 1, IDS_MP_SETTINGS, NULL },
+    { 2, IDS_MP_MAXIMUM_SPEED, NULL },
+    { 2, IDS_MP_SOUND_VOLUME, NULL },
+    { 2, IDS_MP_VIDEO_STANDARD, NULL },
+    { 1, IDS_MP_LANGUAGE, NULL },
+    { 1, IDS_MP_HELP, NULL },
+    { 0, 0, NULL }
 };
 
 /* List of resources that can be switched on and off from the menus.  */
@@ -209,33 +224,51 @@ static const ui_menu_toggle_t toggle_list[] = {
     { NULL, 0 }
 };
 
-static const ui_res_possible_values_t RefreshRateValues[] = {
-    { 0, IDM_REFRESH_RATE_AUTO },
-    { 1, IDM_REFRESH_RATE_1 },
-    { 2, IDM_REFRESH_RATE_2 },
-    { 3, IDM_REFRESH_RATE_3 },
-    { 4, IDM_REFRESH_RATE_4 },
-    { 5, IDM_REFRESH_RATE_5 },
-    { 6, IDM_REFRESH_RATE_6 },
-    { 7, IDM_REFRESH_RATE_7 },
-    { 8, IDM_REFRESH_RATE_8 },
-    { 9, IDM_REFRESH_RATE_9 },
-    { 10, IDM_REFRESH_RATE_10 },
+static const ui_res_possible_values_t SyncFactor[] = {
+    { MACHINE_SYNC_PAL, IDM_SYNC_FACTOR_PAL },
+    { MACHINE_SYNC_NTSC, IDM_SYNC_FACTOR_NTSC },
+    { MACHINE_SYNC_NTSCOLD, IDM_SYNC_FACTOR_NTSCOLD },
+    { MACHINE_SYNC_PALN, IDM_SYNC_FACTOR_PALN },
     { -1, 0 }
 };
 
-static ui_res_possible_values_t SpeedValues[] = {
-    { 0, IDM_MAXIMUM_SPEED_NO_LIMIT },
-    { 10, IDM_MAXIMUM_SPEED_10 },
-    { 20, IDM_MAXIMUM_SPEED_20 },
-    { 50, IDM_MAXIMUM_SPEED_50 },
-    { 100, IDM_MAXIMUM_SPEED_100 },
-    { 200, IDM_MAXIMUM_SPEED_200 },
+static const ui_res_possible_values_t SoundVolume[] = {
+    { 0, IDM_SOUND_VOLUME_0 },
+    { 5, IDM_SOUND_VOLUME_5 },
+    { 10, IDM_SOUND_VOLUME_10 },
+    { 25, IDM_SOUND_VOLUME_25 },
+    { 50, IDM_SOUND_VOLUME_50 },
+    { 75, IDM_SOUND_VOLUME_75 },
+    { 100, IDM_SOUND_VOLUME_100 },
     { -1, 0 }
 };
+
+static const ui_res_possible_values_t SpeedValues[] = {
+    { 200, IDM_MAXIMUM_SPEED_200 },
+    { 100, IDM_MAXIMUM_SPEED_100 },
+    { 50, IDM_MAXIMUM_SPEED_50, },
+    { 20, IDM_MAXIMUM_SPEED_20 },
+    { 10, IDM_MAXIMUM_SPEED_10 },
+    { 0, IDM_MAXIMUM_SPEED_NO_LIMIT },
+    { -1, 0 }
+};
+
+#ifdef DEBUG
+static const ui_res_possible_values_t TraceMode[] = {
+    { DEBUG_NORMAL, IDM_DEBUG_MODE_NORMAL },
+    { DEBUG_SMALL, IDM_DEBUG_MODE_SMALL },
+    { DEBUG_HISTORY, IDM_DEBUG_MODE_HISTORY },
+    { DEBUG_AUTOPLAY, IDM_DEBUG_MODE_AUTOPLAY },
+    { -1, 0 }
+};
+#endif
 
 static const ui_res_value_list_t value_list[] = {
-    { "RefreshRate", RefreshRateValues, 0 },
+    { "MachineVideoStandard", SyncFactor, 0 },
+    { "SoundVolume", SoundVolume, IDM_SOUND_VOLUME_CUSTOM },
+#ifdef DEBUG
+    { "TraceMode", TraceMode, 0},
+#endif
     { "Speed", SpeedValues, IDM_MAXIMUM_SPEED_CUSTOM },
     { NULL, NULL, 0 }
 };
@@ -269,11 +302,11 @@ static void ui_translate_menu_items(HMENU menu, ui_menu_translation_table_t *tra
     }
 
     for (i = 0; trans_table[i].idm != 0; i++) {
-        ModifyMenu(menu, trans_table[i].idm, MF_BYCOMMAND | MF_STRING, trans_table[i].idm, translate_text(trans_table[i].ids));
+        uilib_localize_menu_item(menu, trans_table[i].idm, trans_table[i].ids);
     }
 
     for (i = 0; generic_trans_table[i].idm != 0; i++) {
-        ModifyMenu(menu, generic_trans_table[i].idm, MF_BYCOMMAND | MF_STRING, generic_trans_table[i].idm, generic_trans_table[i].text);
+        uilib_set_menu_item_text(menu, generic_trans_table[i].idm, MF_BYCOMMAND, generic_trans_table[i].idm, generic_trans_table[i].text);
     }
 }
 
@@ -302,7 +335,7 @@ static void ui_translate_menu_popups(HMENU menu, ui_popup_translation_table_t *t
                     menu1 = GetSubMenu(menu, pos1);
                 }
                 if (trans_table[i].ids != 0) {
-                    ModifyMenu(menu, (UINT)pos1, MF_BYPOSITION | MF_STRING | MF_POPUP, vice_ptr_to_uint(menu1), translate_text(trans_table[i].ids));
+                    uilib_localize_menu_popup(menu, pos1, menu1, trans_table[i].ids);
                 }
                 pos2 = -1;
                 pos3 = -1;
@@ -313,7 +346,7 @@ static void ui_translate_menu_popups(HMENU menu, ui_popup_translation_table_t *t
                     pos2++;
                     menu2 = GetSubMenu(menu1, pos2);
                 }
-                ModifyMenu(menu1, (UINT)pos2, MF_BYPOSITION | MF_STRING | MF_POPUP, vice_ptr_to_uint(menu2), translate_text(trans_table[i].ids));
+                uilib_localize_menu_popup(menu1, pos2, menu2, trans_table[i].ids);
                 pos3 = -1;
                 break;
             case 3:
@@ -322,13 +355,27 @@ static void ui_translate_menu_popups(HMENU menu, ui_popup_translation_table_t *t
                     pos3++;
                     menu3 = GetSubMenu(menu2, pos3);
                 }
-                ModifyMenu(menu2, (UINT)pos3, MF_BYPOSITION | MF_STRING | MF_POPUP, vice_ptr_to_uint(menu3), translate_text(trans_table[i].ids));
+                uilib_localize_menu_popup(menu2, pos3, menu3, trans_table[i].ids);
                 break;
         }
         i++;
     }
 }
 
+/*****************************************************************************/
+static char *shortcut_keys_txt =
+    "The following shortcut keys are available:\n\n"
+    "0\t- Restart the current tune\n"
+    "<SPACE>\t- Pause/unpause the tune\n"
+    "W\t- Fast forward the tune (while holding W)\n"
+    "+\t- Sound volume up\n"
+    "-\t- Sound volume down\n"
+    "<LEFT>\t- Next tune\n"
+    "<DOWN>\t- Next tune\n"
+    "<RIGHT>\t- Previous tune\n"
+    "<UP>\t- Previous tune\n";
+
+/*****************************************************************************/
 static void update_menus(HWND hwnd)
 {
     unsigned int i, j;
@@ -341,7 +388,7 @@ static void update_menus(HWND hwnd)
         resources_get_int(toggle_list[i].name, &value);
         CheckMenuItem(menu, toggle_list[i].item_id, value ? MF_CHECKED : MF_UNCHECKED);
     }
-    
+
     for (i = 0; value_list[i].name != NULL; i++) {
         result = resources_get_int(value_list[i].name, &value);
         if (result == 0) {
@@ -361,6 +408,7 @@ static void update_menus(HWND hwnd)
             }
         }
     }
+    CheckMenuItem(menu, IDM_PAUSE, ui_emulation_is_paused() ? MF_CHECKED : MF_UNCHECKED);
 
     resources_get_string("Language", &lang);
     for (i = 0; (ui_lang_menu_entries[i].lang_code != NULL) && (i < countof(ui_lang_menu_entries)); i++) {
@@ -403,11 +451,11 @@ int vsid_ui_init(void)
     wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
     wndclass.hbrBackground = GetSysColorBrush(COLOR_BTNFACE);
     wndclass.lpszMenuName = MAKEINTRESOURCE(IDR_MENUVSID);
-    wndclass.lpszClassName = szAppName ;
+    wndclass.lpszClassName = st_AppName;
 
     RegisterClass(&wndclass);
     if (!hwnd) {   /* do not recreate on drag&drop */
-        hwnd = CreateWindow(szAppName, szAppName, WS_SYSMENU, 0, 0, 480, 220, NULL, NULL, winmain_instance, NULL) ;
+        hwnd = CreateWindow(st_AppName, st_AppName, WS_SYSMENU, 0, 0, 380, 340, NULL, NULL, winmain_instance, NULL);
         SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
         window_handles[0] = hwnd;
         number_of_windows++;
@@ -424,13 +472,13 @@ int vsid_ui_init(void)
 
 void vsid_ui_display_name(const char *name)
 {
-    sprintf(vsidstrings[VSID_S_TITLE],  "   Title: %s", name);
+    sprintf(vsidstrings[VSID_S_TITLE],  "Title:    %s", name);
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_TITLE]);
 }
 
 void vsid_ui_display_author(const char *author)
 {
-    sprintf(vsidstrings[VSID_S_AUTHOR], "  Author: %s", author);
+    sprintf(vsidstrings[VSID_S_AUTHOR], "Author:   %s", author);
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_AUTHOR]);
 }
 
@@ -442,20 +490,20 @@ void vsid_ui_display_copyright(const char *copyright)
 
 void vsid_ui_display_sync(int sync)
 {
-    sprintf(vsidstrings[VSID_S_SYNC], "Using %s sync", sync == MACHINE_SYNC_PAL ? "PAL" : "NTSC");
+    sprintf(vsidstrings[VSID_S_SYNC], "Using %s sync ", sync == MACHINE_SYNC_PAL ? "PAL" : "NTSC");
     log_message(LOG_DEFAULT, "%s",vsidstrings[VSID_S_SYNC]);
 }
 
 void vsid_ui_display_sid_model(int model)
 {
-    sprintf(vsidstrings[VSID_S_MODEL], "Using %s emulation", csidmodel[model > 19 ? 7 : model]);
+    sprintf(vsidstrings[VSID_S_MODEL], "Model: %s", model == 0 ? "MOS6581" : "MOS8580");
 
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_MODEL]);
 }
 
 void vsid_ui_display_tune_nr(int nr)
 {
-    sprintf(vsidstrings[VSID_S_PLAYING], "Playing Tune: %2d /  0  -  Default Tune: 00", nr);
+    sprintf(vsidstrings[VSID_S_PLAYING], "Tune: %2d /  0  (Default: 00)", nr);
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_PLAYING]);
 }
 
@@ -465,8 +513,8 @@ void vsid_ui_set_default_tune(int nr)
     sprintf(dummy,"%2d", nr);
 
     log_message(LOG_DEFAULT, "Default Tune: %i", nr);
-    vsidstrings[VSID_S_PLAYING][40] = dummy[0];
-    vsidstrings[VSID_S_PLAYING][41] = dummy[1];
+    vsidstrings[VSID_S_PLAYING][25] = dummy[0];
+    vsidstrings[VSID_S_PLAYING][26] = dummy[1];
 }
 
 void vsid_ui_display_nr_of_tunes(int count)
@@ -475,13 +523,13 @@ void vsid_ui_display_nr_of_tunes(int count)
     sprintf(dummy,"%2d", count);
 
     log_message(LOG_DEFAULT, "Number of Tunes: %i", count);
-    vsidstrings[VSID_S_PLAYING][19] = dummy[0];
-    vsidstrings[VSID_S_PLAYING][20] = dummy[1];
+    vsidstrings[VSID_S_PLAYING][12] = dummy[0];
+    vsidstrings[VSID_S_PLAYING][13] = dummy[1];
 }
 
 void vsid_ui_display_time(unsigned int sec)
 {
-    char dummy[] = "%02d:%02d:%02d";
+    char dummy[] = "Time: %02d:%02d:%02d";
     unsigned int h,m,s;
 
     s = sec;
@@ -499,7 +547,30 @@ void vsid_ui_display_time(unsigned int sec)
 
 void vsid_ui_display_irqtype(const char *irq)
 {
-    sprintf(vsidstrings[VSID_S_IRQ], "Using %s interrupt", irq);
+    sprintf(vsidstrings[VSID_S_IRQ], "IRQ: %s", irq);
+}
+
+void vsid_ui_setdrv(char* driver_info_text)
+{
+    unsigned long val1, val2;
+    char *s;
+
+    /* Driver info: Driver=$xxxx, Image=$xxxx-$xxxx, Init=$xxxx, Play=$xxxx */
+    s = driver_info_text;
+    while ((*s != 0) && (*s != '$')) { s++; } s++; /* forward behind next $ */
+    val1 = strtoul(s, NULL, 16);
+    sprintf(vsidstrings[VSID_S_DRIVER], "Driver: $%04lx", val1);
+    log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_DRIVER]);
+    val1 = strtoul(s + 13, NULL, 16);
+    val2 = strtoul(s + 19, NULL, 16);
+    sprintf(vsidstrings[VSID_S_IMAGE], "Image:  $%04lx-$%04lx", val1, val2);
+    log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_IMAGE]);
+    val1 = strtoul(s + 31, NULL, 16);
+    sprintf(vsidstrings[VSID_S_INIT], "Init:   $%04lx", val1);
+    log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_INIT]);
+    val1 = strtoul(s + 43, NULL, 16);
+    sprintf(vsidstrings[VSID_S_PLAY], "Play:   $%04lx", val1);
+    log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_PLAY]);
 }
 
 static int quitting = 0;
@@ -513,7 +584,7 @@ void vsid_ui_close(void)
     resources_get_int("SaveResourcesOnExit", &save_on_exit);
 
     if (!quitting && confirm_on_exit) {
-        if (MessageBox(hwnd, translate_text(IDS_REALLY_EXIT), TEXT("VICE"), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | MB_TASKMODAL) == IDYES) {
+        if (MessageBox(hwnd, intl_translate_tcs(IDS_REALLY_EXIT), TEXT("VICE"), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | MB_TASKMODAL) == IDYES) {
             quit = 1;
         } else {
             quit = 0;
@@ -530,11 +601,6 @@ void vsid_ui_close(void)
         hwnd = NULL;
         quitting = 1;
     }
-}
-
-void vsid_ui_setdrv(char* driver_info_text)
-{
-    strcpy(vsidstrings[VSID_S_LASTLINE], driver_info_text);
 }
 
 /*****************************************************************************/
@@ -594,7 +660,7 @@ static void init_vsid_dialog(HWND hwnd)
 
     temp_hwnd = GetDlgItem(hwnd, IDC_VSID_TUNE);
     for (i = 0; i < songs; i++) {
-        _stprintf(st, TEXT("%d"), i + 1);
+        _itot(i + 1, st, 10);
         SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)st);
     }
     SendMessage(temp_hwnd, CB_SETCURSEL, (WPARAM)current_song - 1, 0);
@@ -645,6 +711,29 @@ void ui_select_vsid_tune(HWND hwnd)
 
 /*****************************************************************************/
 
+static void load_psid_file(HWND window, char *name)
+{
+    int i;
+
+    if (machine_autodetect_psid(name) >= 0) {
+        vsid_disp(0, 0,  NULL, NULL);
+        psid_init_driver();
+        vsid_ui_init();
+        machine_play_psid(0);
+        for (i = 0; i < VSID_S_LASTLINE; i++) {
+            *vsidstrings[i] = 0;
+        }
+        machine_trigger_reset(MACHINE_RESET_MODE_SOFT);
+        songs = psid_tunes(&default_song);
+        current_song = default_song;
+        psid_ui_set_tune(uint_to_void_ptr(current_song), NULL);
+        vsid_ui_display_tune_nr(current_song);
+        vsid_ui_set_default_tune(default_song);
+        vsid_ui_display_nr_of_tunes(songs);
+        InvalidateRect(window, NULL, TRUE);
+    }
+}
+
 static void handle_default_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
 {
     int i, j, command_found = 0;
@@ -668,33 +757,14 @@ static void handle_default_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
 
 static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
 {
-    TCHAR *st_name = NULL;
     char *name = NULL;
-    int i;
 
     switch (wparam) {
         case IDM_LOAD_PSID_FILE:
-            st_name = uilib_select_file(hwnd, translate_text(IDS_PSID_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DEFAULT);
-            if (st_name != NULL) {
-                name = system_wcstombs_alloc(st_name);
-                if (machine_autodetect_psid(st_name) >= 0) {
-                    vsid_disp(0, 0,  NULL, NULL);
-                    psid_init_driver();
-                    vsid_ui_init();
-                    machine_play_psid(0);
-                    for (i = 0; i < VSID_S_LASTLINE; i++) {
-                        *vsidstrings[i] = 0;
-                    }
-                    machine_trigger_reset(MACHINE_RESET_MODE_SOFT);
-                    songs = psid_tunes(&default_song);
-                    current_song = default_song;
-                    psid_ui_set_tune(uint_to_void_ptr(current_song), NULL);
-                    vsid_ui_display_tune_nr(current_song);
-                    vsid_ui_set_default_tune(default_song);
-                    vsid_ui_display_nr_of_tunes(songs);
-                }
-                system_wcstombs_free(name);
-                lib_free(st_name);
+            name = uilib_select_file(hwnd, intl_translate_tcs(IDS_PSID_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DEFAULT);
+            if (name != NULL) {
+                load_psid_file(hwnd, name);
+                lib_free(name);
             }
             break;
         case IDM_SELECT_TUNE:
@@ -718,6 +788,9 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
                 vsid_ui_display_nr_of_tunes(songs);
             }
             break;
+        case IDM_PAUSE:
+            ui_pause_emulation(!ui_emulation_is_paused());
+            break;
         case IDM_RESET_HARD:
             machine_trigger_reset(MACHINE_RESET_MODE_HARD);
             break;
@@ -726,6 +799,9 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
             break;
         case IDM_MONITOR:
             monitor_startup_trap();
+            break;
+        case IDM_MAXIMUM_SPEED_CUSTOM:
+            ui_speed_settings_dialog(hwnd);
             break;
         case IDM_EXIT:
             PostMessage(hwnd, WM_CLOSE, wparam, lparam);
@@ -736,12 +812,6 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
         case IDM_SOUND_RECORD_STOP:
             resources_set_string("SoundRecordDeviceName", "");
             break;
-        case IDM_MAXIMUM_SPEED_CUSTOM:
-            ui_speed_settings_dialog(hwnd);
-            break;
-        case IDM_VIDEO_SETTINGS:
-            ui_video_settings_dialog(hwnd, UI_VIDEO_CHIP_VICII, UI_VIDEO_CHIP_NONE);
-            break;
         case IDM_SOUND_SETTINGS:
             ui_sound_settings_dialog(hwnd);
             break;
@@ -749,33 +819,23 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
             ui_sid_settings_dialog(hwnd, c64_sid_baseaddress);
             break;
         case IDM_SETTINGS_SAVE_FILE:
-            if ((st_name = uilib_select_file(hwnd, translate_text(IDS_SAVE_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_SAVE, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
-                char *name;
-
-                name = system_wcstombs_alloc(st_name);
-
-                if (resources_save(st_name) < 0) {
+            if ((name = uilib_select_file(hwnd, intl_translate_tcs(IDS_SAVE_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_SAVE, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
+                if (resources_save(name) < 0) {
                     ui_error(translate_text(IDS_CANNOT_SAVE_SETTINGS));
                 } else {
                     ui_message(translate_text(IDS_SETTINGS_SAVED_SUCCESS));
                 }
-                system_wcstombs_free(name);
-                lib_free(st_name);
+                lib_free(name);
             }
             break;
         case IDM_SETTINGS_LOAD_FILE:
-            if ((st_name = uilib_select_file(hwnd, translate_text(IDS_LOAD_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
-                char *name;
-
-                name = system_wcstombs_alloc(st_name);
-
-                if (resources_load(st_name) < 0) {
+            if ((name = uilib_select_file(hwnd, intl_translate_tcs(IDS_LOAD_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
+                if (resources_load(name) < 0) {
                     ui_error(translate_text(IDS_CANNOT_LOAD_SETTINGS));
                 } else {
                     ui_message(translate_text(IDS_SETTINGS_LOADED_SUCCESS));
                 }
-                system_wcstombs_free(name);
-                lib_free(st_name);
+                lib_free(name);
             }
             break;
         case IDM_SETTINGS_SAVE:
@@ -818,19 +878,35 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
         case IDM_LICENSE:
         case IDM_WARRANTY:
         case IDM_CMDLINE:
+        case IDM_FEATURES:
             uihelp_dialog(hwnd, wparam);
+            break;
+        case IDM_KEYS:
+            ui_show_text(hwnd, IDS_VSID_KEYS, intl_translate_tcs(IDS_VSID_KEYS_AVAILABLE), shortcut_keys_txt);
             break;
         default:
             handle_default_command(wparam, lparam, hwnd);
     }
 }
 
+static void handle_wm_dropfiles(HWND window, HDROP hDrop)
+{
+    TCHAR st_name[MAX_PATH];
+    char *name;
+
+    DragQueryFile(hDrop, 0, st_name, MAX_PATH);
+    name = system_wcstombs_alloc(st_name);
+    load_psid_file(window, name);
+    system_wcstombs_free(name);
+    DragFinish(hDrop);
+}
+
 /* Window procedure.  All messages are handled here.  */
 static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-    HDC hdc;
     PAINTSTRUCT ps;
     int i;
+    int vol;
 
     switch (msg) {
         case WM_CREATE:
@@ -846,8 +922,30 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
             return 0;
         case WM_KEYDOWN:
             switch(wparam) {
-                case 'I': /* infoline on request, just press I */
-                    vsid_disp( 0, VSID_S_LASTLINE, "%s", vsidstrings[VSID_S_LASTLINE]);
+                case '0':
+                    psid_ui_set_tune(uint_to_void_ptr(current_song), NULL);
+                    break;
+                case ' ':
+                    ui_pause_emulation(!ui_emulation_is_paused());
+                    break;
+                case 'W':
+                    resources_set_int("WarpMode", 1);
+                    break;
+                case VK_ADD:
+                    resources_get_int("SoundVolume", &vol);
+                    ++vol;
+                    if (vol > 100) {
+                        vol = 100;
+                    }
+                    resources_set_int("SoundVolume", vol);
+                    break;
+                case VK_SUBTRACT:
+                    resources_get_int("SoundVolume", &vol);
+                    --vol;
+                    if (vol < 0) {
+                        vol = 0;
+                    }
+                    resources_set_int("SoundVolume", vol);
                     break;
                 case VK_LEFT:
                 case VK_DOWN:
@@ -874,11 +972,11 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
             }
             return 0;
         case WM_KEYUP:
-            switch(wparam) {
-                case 'I': /* infoline on request, just press I */
-                    vsid_disp( 0, VSID_S_LASTLINE, "%79s", " ");
+             switch(wparam) {
+                case 'W':
+                    resources_set_int("WarpMode", 0);
                     break;
-            }
+             }
             return 0;
         case WM_SIZE:
             return 0;
@@ -900,33 +998,11 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
             PostQuitMessage(0);
             return 0;
         case WM_DROPFILES:
-            {
-                char dummy[MAX_PATH];
-
-                DragQueryFile((HDROP)wparam, 0, dummy, sizeof(dummy) );
-                if (machine_autodetect_psid(dummy) >= 0) {
-                    vsid_disp(0, 0,  NULL, NULL);
-                    psid_init_driver();
-                    vsid_ui_init();
-                    machine_play_psid(0);
-                    for (i = 0; i < VSID_S_LASTLINE; i++) {
-                        *vsidstrings[i] = 0;
-                    }
-                    machine_trigger_reset(MACHINE_RESET_MODE_SOFT);
-                    songs = psid_tunes(&default_song);
-                    current_song = default_song;
-                    psid_ui_set_tune(uint_to_void_ptr(current_song), NULL);
-                    vsid_ui_display_tune_nr(current_song);
-                    vsid_ui_set_default_tune(default_song);
-                    vsid_ui_display_nr_of_tunes(songs);
-                    InvalidateRect(window, NULL, TRUE);
-                }
-            }
+            handle_wm_dropfiles(window, (HDROP)wparam);
             return 0;
-
         case WM_PAINT:
             {
-                hdc = BeginPaint(window, &ps);
+                BeginPaint(window, &ps);
                 if (*vsidstrings[VSID_S_TIMER]) {    /* start only when timer string has been filled */
                     for (i = 0; i < VSID_S_LASTLINE; i++) {
                         vsid_disp(0, i, "%s", vsidstrings[i]);

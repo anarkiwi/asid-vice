@@ -2,8 +2,9 @@
  * plus4acia.h - Definitions for a 6551 ACIA interface
  *
  * Written by
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -48,4 +49,3 @@ extern int acia_enabled(void);
 extern int acia_dump(void *ctx);
 
 #endif
-

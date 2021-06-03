@@ -26,6 +26,7 @@
 
 #include "vice.h"
 
+#include "cartio.h"
 #include "cmdline.h"
 #include "resources.h"
 #include "sid.h"
@@ -43,7 +44,7 @@ int sidcart_clock;
 static int sidcart_sound_machine_init(sound_t *psid, int speed, int cycles_per_sec)
 {
     if (!sidcart_clock) {
-        return sid_sound_machine_init(psid, (int)(speed * 1.015), cycles_per_sec);
+        return sid_sound_machine_init_vbr(psid, speed, cycles_per_sec, 1015);
     } else {
         return sid_sound_machine_init(psid, speed, cycles_per_sec);
     }
@@ -71,30 +72,109 @@ void sidcart_sound_chip_init(void)
 
 /* ------------------------------------------------------------------------- */
 
+static io_source_t sidcart_8f00_device = {
+    "SIDCART",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0x8f00, 0x8fff, 0x1f,
+    1, /* read is always valid */
+    sid_store,
+    sid_read,
+    NULL, /* no peek */
+    sid_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_NORMAL,
+    0
+};
+
+static io_source_t sidcart_e900_device = {
+    "SIDCART",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xe900, 0xe9ff, 0x1f,
+    1, /* read is always valid */
+    sid_store,
+    sid_read,
+    NULL, /* no peek */
+    sid_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_NORMAL,
+    0
+};
+
+static io_source_list_t *sidcart_list_item = NULL;
+
 int sidcart_enabled(void)
 {
     return sidcart_sound_chip.chip_enabled;
 }
 
-static int set_sidcart_enabled(int val, void *param)
+static int set_sidcart_enabled(int value, void *param)
 {
-    if (val != sidcart_sound_chip.chip_enabled) {
-        sidcart_sound_chip.chip_enabled = val;
-        sound_state_changed = 1;
+    int val = value ? 1 : 0;
+
+    if (val == sidcart_sound_chip.chip_enabled) {
+        return 0;
     }
+
+    if (val) {
+        if (sidcart_address == 0x8f00) {
+            sidcart_list_item = io_source_register(&sidcart_8f00_device);
+        } else {
+            sidcart_list_item = io_source_register(&sidcart_e900_device);
+        }
+    } else {
+        io_source_unregister(sidcart_list_item);
+        sidcart_list_item = NULL;
+    }
+
+    sidcart_sound_chip.chip_enabled = val;
+#ifdef HAVE_RESID
+    sid_set_enable(val);
+#endif
+    sound_state_changed = 1;
+
     return 0;
 }
 
 static int set_sid_address(int val, void *param)
 {
-    if (val != sidcart_address) {
-        sidcart_address = val;
+    switch (val) {
+        case 0x8f00:
+        case 0xe900:
+            break;
+        default:
+            return -1;
     }
+
+    if (sidcart_address == val) {
+        return 0;
+    }
+
+    if (sidcart_sound_chip.chip_enabled) {
+        io_source_unregister(sidcart_list_item);
+        if (val == 0x8f00) {
+            sidcart_list_item = io_source_register(&sidcart_8f00_device);
+        } else {
+            sidcart_list_item = io_source_register(&sidcart_e900_device);
+        }
+    }
+
+    sidcart_address = val;
+
     return 0;
 }
 
 static int set_sid_clock(int val, void *param)
 {
+    switch (val) {
+        case SIDCART_CLOCK_C64:
+        case SIDCART_CLOCK_NATIVE:
+            break;
+        default:
+            return -1;
+    }
+
     if (val != sidcart_clock) {
         sidcart_clock = val;
         sid_state_changed = 1;
@@ -107,15 +187,18 @@ static int set_sid_clock(int val, void *param)
 static const resource_int_t sidcart_resources_int[] = {
     { "SidCart", 0, RES_EVENT_SAME, NULL,
       &sidcart_sound_chip.chip_enabled, set_sidcart_enabled, NULL },
-    { "SidAddress", 0, RES_EVENT_SAME, NULL,
+    { "SidAddress", 0xe900, RES_EVENT_SAME, NULL,
       &sidcart_address, set_sid_address, NULL },
-    { "SidClock", 1, RES_EVENT_SAME, NULL,
+    { "SidClock", SIDCART_CLOCK_NATIVE, RES_EVENT_SAME, NULL,
       &sidcart_clock, set_sid_clock, NULL },
     { NULL }
 };
 
 int sidcart_resources_init(void)
 {
+#ifdef HAVE_RESID
+    sid_set_enable(0);
+#endif
     if (sid_resources_init() < 0) {
         return -1;
     }
@@ -125,15 +208,25 @@ int sidcart_resources_init(void)
 /* ------------------------------------------------------------------------- */
 
 static const cmdline_option_t sidcart_cmdline_options[] = {
-    { "-sidcart", SET_RESOURCE, 1,
-      NULL, NULL, "SidCart", NULL,
+    { "-sidcart", SET_RESOURCE, 0,
+      NULL, NULL, "SidCart", (resource_value_t)1,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDCLS_ENABLE_SIDCART,
       NULL, NULL },
     { "+sidcart", SET_RESOURCE, 0,
-      NULL, NULL, "SidCart", NULL,
+      NULL, NULL, "SidCart", (resource_value_t)0,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDCLS_DISABLE_SIDCART,
+      NULL, NULL },
+    { "-sidcartaddress", SET_RESOURCE, 1,
+      NULL, NULL, "SidAddress", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_ADDRESS, IDCLS_PET_SIDCART_ADDRESS,
+      NULL, NULL },
+    { "-sidcartclock", SET_RESOURCE, 1,
+      NULL, NULL, "SidClock", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_CLOCK, IDCLS_PET_SIDCART_CLOCK,
       NULL, NULL },
     { NULL }
 };

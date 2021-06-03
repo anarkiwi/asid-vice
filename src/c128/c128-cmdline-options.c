@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -131,6 +132,11 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_SPECIFY_SV_KERNEL_NAME,
       NULL, NULL },
+    { "-kernalch", SET_RESOURCE, 1,
+      NULL, NULL, "KernalCHName", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDCLS_SPECIFY_CH_KERNEL_NAME,
+      NULL, NULL },
     { "-basiclo", SET_RESOURCE, 1,
       NULL, NULL, "BasicLoName", NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
@@ -161,6 +167,11 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_SPECIFY_SV_CHARGEN_ROM_NAME,
       NULL, NULL },
+    { "-chargch", SET_RESOURCE, 1,
+      NULL, NULL, "ChargenCHName", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDCLS_SPECIFY_CH_CHARGEN_ROM_NAME,
+      NULL, NULL },
     { "-kernal64", SET_RESOURCE, 1,
       NULL, NULL, "Kernal64Name", NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
@@ -171,12 +182,7 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_SPECIFY_C64_MODE_BASIC_NAME,
       NULL, NULL },
-    { "-kernalrev", SET_RESOURCE, 1,
-      NULL, NULL, "KernalRev", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_REVISION, IDCLS_PATCH_KERNAL_TO_REVISION,
-      NULL, NULL },
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     { "-acia1", SET_RESOURCE, 0,
       NULL, NULL, "Acia1Enable", (void *)1,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
@@ -186,23 +192,6 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "Acia1Enable", (void *)0,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDCLS_DISABLE_DEXX_ACIA_RS232_EMU,
-      NULL, NULL },
-#endif
-#ifdef COMMON_KBD
-    { "-keymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapIndex", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NUMBER, IDCLS_SPECIFY_KEYMAP_FILE_INDEX,
-      NULL, NULL },
-    { "-symkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapSymFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_SYM_KEYMAP_FILE_NAME,
-      NULL, NULL },
-    { "-poskeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapPosFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_POS_KEYMAP_FILE_NAME,
       NULL, NULL },
 #endif
     { "-ciamodel", CALL_FUNCTION, 1,
@@ -220,10 +209,25 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_MODEL, IDCLS_SET_CIA2_MODEL,
       NULL, NULL },
-   { "-model", CALL_FUNCTION, 1,
+    { "-model", CALL_FUNCTION, 1,
       set_c128_model, NULL, NULL, NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_MODEL, IDCLS_SET_C128_MODEL,
+      NULL, NULL },
+    { "-machinetype", SET_RESOURCE, 1,
+      NULL, NULL, "MachineType", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_TYPE, IDCLS_SET_C128_MACHINE_TYPE,
+      NULL, NULL },
+    { "-c128fullbanks", SET_RESOURCE, 0,
+      NULL, NULL, "C128FullBanks", (void *)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_ENABLE_C128_FULL_BANKS,
+      NULL, NULL },
+    { "+c128fullbanks", SET_RESOURCE, 0,
+      NULL, NULL, "C128FullBanks", (void *)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_DISABLE_C128_FULL_BANKS,
       NULL, NULL },
     { NULL }
 };

@@ -34,6 +34,8 @@
 #include "video.h"
 #include "videoarch.h"
 #include "viewport.h"
+#include "vsync.h"
+#include "vsyncapi.h"
 
 #ifdef HAVE_D3D9_H
 
@@ -54,7 +56,7 @@ LPDIRECT3D9 d3d;
 
 int video_setup_dx9(void)
 {
-    d3d9dll = LoadLibrary("d3d9.dll");
+    d3d9dll = LoadLibrary(TEXT("d3d9.dll"));
     if (d3d9dll == NULL) {
         return -1;
     }
@@ -175,25 +177,28 @@ HRESULT video_canvas_reset_dx9(video_canvas_t *canvas)
 {
     LPDIRECT3DSWAPCHAIN9 d3dsc;
     HRESULT ddresult;
+   int device = D3DADAPTER_DEFAULT;
 
-    if ((canvas->d3dsurface != NULL) 
-            && (S_OK != IDirect3DSurface9_Release(canvas->d3dsurface))
-        || (canvas->d3ddev != NULL &&
-		 ((S_OK != IDirect3DDevice9_GetSwapChain(canvas->d3ddev, 0, &d3dsc))
+    if (((canvas->d3dsurface != NULL) &&
+        (S_OK != IDirect3DSurface9_Release(canvas->d3dsurface)))
+        || ((canvas->d3ddev != NULL) &&
+        ((S_OK != IDirect3DDevice9_GetSwapChain(canvas->d3ddev, 0, &d3dsc))
         || (S_OK != IDirect3DSwapChain9_Release(d3dsc)))
-		))
-    {
+        )) {
         log_debug("video_dx9: Failed to release the DirectX9 device resources!");
     }
-    
+
     canvas->d3dsurface = NULL;
 
     if (canvas->d3dpp.Windowed == 0) {
-        int device, width, height, bitdepth, refreshrate;
+        int width, height, bitdepth, refreshrate;
 
         GetCurrentModeParameters(&device, &width, &height, &bitdepth, &refreshrate);
         canvas->d3dpp.BackBufferWidth = width;
         canvas->d3dpp.BackBufferHeight = height;
+        if (refreshrate) {
+            canvas->d3dpp.FullScreen_RefreshRateInHz = refreshrate;
+        }
     } else {
         RECT wrect;
 
@@ -209,7 +214,7 @@ HRESULT video_canvas_reset_dx9(video_canvas_t *canvas)
     }
 
     if (canvas->d3ddev == NULL) {
-        if (S_OK != IDirect3D9_CreateDevice(d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, canvas->render_hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &canvas->d3dpp, &canvas->d3ddev)) {
+        if (S_OK != IDirect3D9_CreateDevice(d3d, device, D3DDEVTYPE_HAL, canvas->render_hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &canvas->d3dpp, &canvas->d3ddev)) {
             log_debug("video_dx9: Failed to create the DirectX9 device!");
             return -1;
         }
@@ -255,17 +260,18 @@ int video_canvas_refresh_dx9(video_canvas_t *canvas, unsigned int xs, unsigned i
     HRESULT stretchresult;
     LPDIRECT3DSURFACE9 d3dbackbuffer = NULL;
     D3DLOCKED_RECT lockedrect;
+#ifdef VSYNC_DEBUG
+    unsigned long t1, t2, t3, t4;
 
-    if (canvas->videoconfig->doublesizex) {
-        xi *= (canvas->videoconfig->doublesizex + 1);
-        w *= (canvas->videoconfig->doublesizex + 1);
-    }
+    t1 = vsyncarch_gettime();
+#endif
 
-    if (canvas->videoconfig->doublesizey) {
-        yi *= (canvas->videoconfig->doublesizey + 1);
-        h *= (canvas->videoconfig->doublesizey + 1);
-    }
-    
+    xi *= canvas->videoconfig->scalex;
+    w *= canvas->videoconfig->scalex;
+
+    yi *= canvas->videoconfig->scaley;
+    h *= canvas->videoconfig->scaley;
+
     if (S_OK != video_canvas_prepare_for_update(canvas)) {
         return -1;
     }
@@ -284,6 +290,10 @@ int video_canvas_refresh_dx9(video_canvas_t *canvas, unsigned int xs, unsigned i
         log_debug("video_dx9: Failed to unlock surface!");
         return -1;
     }
+
+#ifdef VSYNC_DEBUG
+    t2 = vsyncarch_gettime();
+#endif
 
     do {
         stretchresult = IDirect3DDevice9_StretchRect(canvas->d3ddev, canvas->d3dsurface, NULL, d3dbackbuffer, canvas->dest_rect_ptr, d3dpreffilter);
@@ -310,10 +320,21 @@ int video_canvas_refresh_dx9(video_canvas_t *canvas, unsigned int xs, unsigned i
         return -1;
     }
 
+#ifdef VSYNC_DEBUG
+    t3 = vsyncarch_gettime();
+#endif
+
     if (S_OK != IDirect3DDevice9_Present(canvas->d3ddev, NULL, NULL, NULL, NULL)) {
         log_debug("video_dx9: Refresh failed to present the scene!");
         return -1;
     }
+
+#ifdef VSYNC_DEBUG
+    t4 = vsyncarch_gettime();
+    log_debug("canvas-refresh: render:%lu  stretch:%lu  present:%lu  total:%lu",
+                t2-t1, t3-t2, t4-t3, t4-t1);
+#endif
+
     return 0;
 }
 

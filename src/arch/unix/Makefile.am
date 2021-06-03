@@ -10,23 +10,15 @@ else
 SUBDIRS = gui x11 macosx
 endif
 else
-if UNIX_GP2X_COMPILE
-SUBDIRS = gp2x
-else
-if UNIX_WIZ_COMPILE
-SUBDIRS = gp2x
-else
 if NEED_READLINE
-SUBDIRS = gui x11 readline
+SUBDIRS = gui minix next_open_rhap qnx4 qnx6 readline sco_sol skyos x11
 else
-SUBDIRS = gui x11
-endif
-endif
+SUBDIRS = gui minix next_open_rhap qnx4 qnx6 sco_sol skyos x11
 endif
 endif
 endif
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src/drive \
@@ -39,23 +31,36 @@ INCLUDES = \
 	-I$(top_srcdir)/src/pet \
 	-I$(top_srcdir)/src/cbm2 \
 	-I$(top_srcdir)/src/sid \
+	-I$(top_srcdir)/src/joyport \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
 	-I$(top_srcdir)/src
 
 noinst_LIBRARIES = libarch.a
 
+libarch_a_DEPENDENCIES = @VICE_UI_THREADS@
+libarch_a_LIBADD = @VICE_UI_THREADS@
+
 libarch_a_SOURCES = \
 	archdep.c \
 	archdep.h \
 	blockdev.c \
-	catweaselmkiii.c \
+	catweaselmkiii-drv.c \
 	coproc.h \
 	coproc.c \
+	cw.h \
+	cw-device.c \
+	cw-pci.c \
 	dynlib.c \
 	fullscreenarch.h \
-	hardsid.c \
+	hardsid-drv.c \
+	hs.h \
+	hs-linux.c \
+	hs-isa.c \
+	hs-pci.c \
 	icon.h \
+	io-access.c \
+	io-access.h \
 	joy.c \
 	joy.h \
 	joy_usb.c \
@@ -64,11 +69,18 @@ libarch_a_SOURCES = \
 	mousedrv.c \
 	mousedrv.h \
 	openGL_sync.h \
-	parsid.c \
-	rs232.c \
+	parsid-drv.c \
+	pci-drv.c \
+	pci-drv.h \
+	ps.h \
+	ps-file.c \
+	ps-ieee1284.c \
+	ps-io.c \
+	rs232dev.c \
 	signals.c \
 	socketimpl.h \
 	rawnetarch.c \
+	ssi2001-drv.c \
 	types.h \
 	ui.h \
 	uimenu.h \
@@ -78,40 +90,13 @@ libarch_a_SOURCES = \
 	vsyncarch.c \
 	vsiduiunix.h
 
-EXTRA_DIST = \
-	hpux/getdate.pl \
-	hpux/getnow.pl \
-	hpux/make-bindist.sh \
-	minix/minix-ar.sh \
-	next_open_rhap/make-bindist.sh \
-	next_open_rhap/vice.info.in \
-	qnx4/install_msg \
-	qnx4/make-bindist.sh \
-	qnx6/getlibs.c \
-	qnx6/getsize.c \
-	qnx6/make-bindist.sh \
-	sco_sol/checkinstall \
-	sco_sol/make-bindist.sh \
-        skyos/icons/vsid.ico \
-	skyos/icons/x64.ico \
-	skyos/icons/x64dtv.ico \
-	skyos/icons/x64sc.ico \
-	skyos/icons/x128.ico \
-	skyos/icons/xcbm2.ico \
-	skyos/icons/xcbm5x0.ico \
-	skyos/icons/xpet.ico \
-	skyos/icons/xplus4.ico \
-	skyos/icons/xvic.ico \
-	skyos/make-bindist.sh \
-	vms/config.h
+EXTRA_libarch_a_SOURCES = \
+	ui-threads.h \
+	ui-threads.c 
 
 .PHONY: x11
 x11:
 	(cd x11; $(MAKE))
-
-.PHONY: gp2x
-gp2x:
-	(cd gp2x; $(MAKE))
 
 .PHONY: gui
 gui:

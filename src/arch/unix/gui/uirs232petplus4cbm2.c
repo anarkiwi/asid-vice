@@ -3,7 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
- *  André Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -26,6 +26,8 @@
  */
 
 #include "vice.h"
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 
 #include <stdio.h>
 
@@ -55,3 +57,5 @@ ui_menu_entry_t uirs232petplus4cbm2_submenu[] = {
       (ui_callback_data_t)"RsDevice4", NULL },
     { NULL }
 };
+
+#endif

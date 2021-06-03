@@ -33,10 +33,12 @@
 #include <time.h>
 #include <io.h>
 
-#ifndef __MINGW32__
+#if !defined(__MINGW32__) && !defined(WATCOM_COMPILE)
 #include "IP6_misc.h"
 #endif
 
 #define caddr_t char*
 
+#if defined _MSC_VER && _MSC_VER < 1900 
 #define snprintf _snprintf
+#endif

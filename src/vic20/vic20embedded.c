@@ -41,18 +41,22 @@
 
 #include "vic20chargen.h"
 
-#include "vic20_default_vpl.h"
+#include "vic_mike_ntsc_vpl.h"
+#include "vic_mike_pal_vpl.h"
+#include "vic_vice_vpl.h"
 
 static embedded_t vic20files[] = {
-  { "basic", VIC20_BASIC_ROM_SIZE, VIC20_BASIC_ROM_SIZE, VIC20_BASIC_ROM_SIZE, NULL },
-  { "kernal", VIC20_KERNAL_ROM_SIZE, VIC20_KERNAL_ROM_SIZE, VIC20_KERNAL_ROM_SIZE, NULL },
-  { "chargen", VIC20_CHARGEN_ROM_SIZE, VIC20_CHARGEN_ROM_SIZE, VIC20_CHARGEN_ROM_SIZE, vic20chargen_embedded },
-  { NULL }
+    { "basic", VIC20_BASIC_ROM_SIZE, VIC20_BASIC_ROM_SIZE, VIC20_BASIC_ROM_SIZE, NULL },
+    { "kernal", VIC20_KERNAL_ROM_SIZE, VIC20_KERNAL_ROM_SIZE, VIC20_KERNAL_ROM_SIZE, NULL },
+    { "chargen", VIC20_CHARGEN_ROM_SIZE, VIC20_CHARGEN_ROM_SIZE, VIC20_CHARGEN_ROM_SIZE, vic20chargen_embedded },
+    { NULL }
 };
 
 static embedded_palette_t palette_files[] = {
-  { "default", "default.vpl", 16, vic20_default_vpl },
-  { NULL }
+    { "mike-ntsc", "mike-ntsc.vpl", 16, vic_mike_ntsc_vpl },
+    { "mike-pal", "mike-pal.vpl", 16, vic_mike_pal_vpl },
+    { "vice", "vice.vpl", 16, vic_vice_vpl },
+    { NULL }
 };
 
 static size_t embedded_match_file(const char *name, BYTE *dest, int minsize, int maxsize, embedded_t *emb)
@@ -78,13 +82,12 @@ static size_t embedded_match_file(const char *name, BYTE *dest, int minsize, int
 size_t embedded_check_file(const char *name, BYTE *dest, int minsize, int maxsize)
 {
     size_t retval;
-    int i = 0;
 
     if ((retval = embedded_check_extra(name, dest, minsize, maxsize)) != 0) {
         return retval;
     }
 
-    if ((retval = embedded_match_file(name, dest, minsize,maxsize, vic20files)) != 0) {
+    if ((retval = embedded_match_file(name, dest, minsize, maxsize, vic20files)) != 0) {
         return retval;
     }
     return 0;
@@ -99,10 +102,10 @@ int embedded_palette_load(const char *fname, palette_t *p)
     while (palette_files[i].name1 != NULL) {
         if (!strcmp(palette_files[i].name1, fname) || !strcmp(palette_files[i].name2, fname)) {
             entries = palette_files[i].palette;
-            for (j == 0; j < palette_files[i].num_entries; j++) {
-                p->entries[j].red    = entries[(j * 4) + 0];
-                p->entries[j].green  = entries[(j * 4) + 1];
-                p->entries[j].blue   = entries[(j * 4) + 2];
+            for (j = 0; j < palette_files[i].num_entries; j++) {
+                p->entries[j].red = entries[(j * 4) + 0];
+                p->entries[j].green = entries[(j * 4) + 1];
+                p->entries[j].blue = entries[(j * 4) + 2];
                 p->entries[j].dither = entries[(j * 4) + 3];
             }
         }

@@ -1,10 +1,32 @@
 #!/bin/sh
-# make-bindist.sh for the AmigaOS SDL ports
+
 #
-# written by Marco van den Heuvel <blackystardust68@yahoo.com>
+# make-bindist.sh - make binary distribution for the AmigaOS SDL port
 #
-# make-bindist.sh <strip> <vice-version> <host-cpu> <host-system> <--enable-arch> <zip|nozip> <x64sc-included> <top-srcdir> <exe-ext>
-#                 $1      $2             $3         $4            $5              $6          $7               $8           $9
+# Written by
+#  Marco van den Heuvel <blackystardust68@yahoo.com>
+#
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
+# Usage: make-bindist.sh <strip> <vice-version> <host-cpu> <host-system> <--enable-arch> <zip|nozip> <x64sc-included> <top-srcdir> <exe-ext>
+#                         $1      $2             $3         $4            $5              $6          $7               $8           $9
+#
 
 STRIP=$1
 VICEVERSION=$2
@@ -22,7 +44,7 @@ else
   SCFILE=""
 fi
 
-EMULATORS="x64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic vsid"
+EMULATORS="x64 x64dtv xscpu64 $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic vsid"
 CONSOLE_TOOLS="c1541 cartconv petcat"
 EXECUTABLES="$EMULATORS $CONSOLE_TOOLS"
 
@@ -91,10 +113,12 @@ cp -a $TOPSCRDIR/data/C128 $TOPSCRDIR/data/C64 SDLVICE-$AMIGAFLAVOR
 cp -a $TOPSCRDIR/data/C64DTV $TOPSCRDIR/data/CBM-II SDLVICE-$AMIGAFLAVOR
 cp -a $TOPSCRDIR/data/DRIVES $TOPSCRDIR/data/PET SDLVICE-$AMIGAFLAVOR
 cp -a $TOPSCRDIR/data/PLUS4 $TOPSCRDIR/data/PRINTER SDLVICE-$AMIGAFLAVOR
-cp -a $TOPSCRDIR/data/VIC20 $TOPSCRDIR/data/fonts SDLVICE-$AMIGAFLAVOR
+cp -a $TOPSCRDIR/data/SCPU64 SDLVICE-$AMIGAFLAVOR
 cp -a $TOPSCRDIR/doc/html SDLVICE-$AMIGAFLAVOR
+rm SDLVICE-$AMIGAFLAVOR/html/checklinks.sh
 cp $TOPSCRDIR/FEEDBACK $TOPSCRDIR/README SDLVICE-$AMIGAFLAVOR
 cp $TOPSCRDIR/doc/readmes/Readme-SDL.txt SDLVICE-$AMIGAFLAVOR
+cp $TOPSRCDIR/COPYING $TOPSRCDIR/NEWS SDLVICE-$AMIGAFLAVOR
 if test x"$HOSTSYSTEM" = "xwarpos"; then
   for i in $EXECUTABLES
   do
@@ -105,16 +129,14 @@ fi
 if test x"$HOSTSYSTEM" = "xmorphos"; then
   cp $TOPSCRDIR/src/arch/amigaos/info-files/morphos/VICE.info SDLVICE-$AMIGAFLAVOR.info
   cp $TOPSCRDIR/src/arch/amigaos/info-files/morphos/x*.info SDLVICE-$AMIGAFLAVOR
-  cp SDLVICE-$AMIGAFLAVOR/x64.info SDLVICE-$AMIGAFLAVOR/x64dtv.info
-  if test x"$X64SC" = "xyes"; then
-    cp SDLVICE-$AMIGAFLAVOR/x64.info SDLVICE-$AMIGAFLAVOR/x64sc.info
+  if test x"$X64SC" != "xyes"; then
+    rm -f SDLVICE-$AMIGAFLAVOR/x64sc.info
   fi
 else
   cp $TOPSCRDIR/src/arch/amigaos/info-files/VICE.info SDLVICE-$AMIGAFLAVOR.info
   cp $TOPSCRDIR/src/arch/amigaos/info-files/*.exe.info SDLVICE-$AMIGAFLAVOR
-  cp SDLVICE-$AMIGAFLAVOR/x64.exe.info SDLVICE-$AMIGAFLAVOR/x64dtv.exe.info
-  if test x"$X64SC" = "xyes"; then
-    cp SDLVICE-$AMIGAFLAVOR/x64.exe.info SDLVICE-$AMIGAFLAVOR/x64sc.exe.info
+  if test x"$X64SC" != "xyes"; then
+    rm -f SDLVICE-$AMIGAFLAVOR/x64sc.exe.info
   fi
 fi
 rm `find SDLVICE-$AMIGAFLAVOR -name "Makefile*"`
@@ -127,6 +149,9 @@ rm `find SDLVICE-$AMIGAFLAVOR -name "x11_*.vkm"`
 rm `find SDLVICE-$AMIGAFLAVOR -name "amiga*.vkm"`
 rm `find SDLVICE-$AMIGAFLAVOR -name "*.vsc"`
 rm SDLVICE-$AMIGAFLAVOR/html/texi2html
+mkdir SDLVICE-$AMIGAFLAVOR/doc
+cp $TOPSRCDIR/doc/vice.guide SDLVICE-$AMIGAFLAVOR/doc
+cp $TOPSRCDIR/doc/vice.pdf SDLVICE-$AMIGAFLAVOR/doc
 if test x"$ZIPKIND" = "xzip"; then
   tar cf SDLVICE-$AMIGAFLAVOR.tar SDLVICE-$AMIGAFLAVOR SDLVICE-$AMIGAFLAVOR.info
   gzip SDLVICE-$AMIGAFLAVOR.tar

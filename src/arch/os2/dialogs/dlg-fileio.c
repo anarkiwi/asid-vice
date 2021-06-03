@@ -3,6 +3,7 @@
  *
  * Written by
  *  Thomas Bretz <tbretz@gsi.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -77,7 +78,7 @@ static const char *VIDEO_PALETTE = "TedPaletteFile";
 static const char *VIDEO_PALETTE = "CrtcPaletteFile";
 #endif
 
-#if defined HAVE_VIC_II && !defined HAVE_CRTC
+#if (defined HAVE_VIC_II && !defined HAVE_CRTC) || defined(__XSCPU64__)
 static const char *VIDEO_PALETTE = "ViciiPaletteFile";
 #endif
 
@@ -104,16 +105,20 @@ struct _action {
 typedef struct _action action_t;
 
 static filter_t FilterDisk[] = {
-    { "*.d64*; *.d71*; *.d80*; *.d81.*; *.d82*; *.g64*; *.p64*; *.x64*", "All Disk Images" },
+    { "*.d64*; *.d67*; *.d71*; *.d80*; *.d81.*; *.d82*; *.g64*; *.p64*; *.x64*; *.d1m*; *.d2m*; *.d4m*", "All Disk Images" },
     { "*.d64*; *.g64*; *.p64*; *.x64*", "All 1541 Images" },
     { "*.d64*", "1541" },
     { "*.g64*", "1541" },
     { "*.p64*", "1541" },
     { "*.x64*", "1541" },
+    { "*.d67*", "2040" },
     { "*.d71*", "1571" },
     { "*.d80*", "8050" },
     { "*.d81*", "1581" },
     { "*.d82*", "8250" },
+    { "*.d1m*", "2000" },
+    { "*.d2m*", "2000" },
+    { "*.d4m*", "4000" },
     { NULL }
 };
 
@@ -124,7 +129,7 @@ static filter_t FilterTape[] = {
     { NULL }
 };
 
-#if defined(__X64__) || defined(__X128__) || defined(__XPET__) || defined(__XCBM__)
+#if defined(__X64__) || defined(__X128__) || defined(__XPET__) || defined(__XCBM__) || defined(__XSCPU64__)
 static filter_t FilterCart[] = {
     { "*.crt; *.bin", "All Cartridge Images" },
     { "*.crt", "CRT" },
@@ -149,10 +154,13 @@ static filter_t FilterChargen[] = { { "charg*", "Character ROM" }, { NULL } };
 static filter_t FilterZ80[] = { { "z80bios*", "Z80 BIOS" }, { NULL } };
 #endif
 
+static filter_t Filter1540[] = { { "dos1540*", "1540 ROM" }, { NULL } };
 static filter_t Filter1541[] = { { "dos1541*", "1541 ROM" }, { NULL } };
 static filter_t Filter15412[] = { { "d1541II*", "1541-II ROM" }, { NULL } };
 static filter_t Filter1571[] = { { "dos1571*", "1571 ROM" }, { NULL } };
 static filter_t Filter1581[] = { { "dos1581*", "1581 ROM" }, { NULL } };
+static filter_t Filter2000[] = { { "dos2000*", "2000 ROM" }, { NULL } };
+static filter_t Filter4000[] = { { "dos4000*", "4000 ROM" }, { NULL } };
 static filter_t Filter2031[] = { { "dos2031*", "2031 ROM" }, { NULL } };
 static filter_t Filter1001[] = { { "dos1001*", "1001 ROM" }, { NULL } };
 static filter_t Filter2040[] = { { "dos2040*", "2040 ROM" }, { NULL } };
@@ -177,7 +185,7 @@ static subaction_t SubTape[] = { { "as Tape to Datasette", FilterTape }, { NULL 
 static subaction_t SubKbd[] = { { "as new keyboard mapping", FilterKbd }, { NULL } };
 static subaction_t SubCfg[] = { { "as new configuration", FilterCfg }, { NULL } };
 
-#if defined __X64__ || defined __X128__
+#if defined(__X64__) || defined(__X128__) || defined(__XSCPU64__)
 static subaction_t SubCart2[]  = { { "as cartridge image", FilterCart }, { NULL } };
 #endif
 
@@ -203,19 +211,76 @@ static subaction_t SubPal[] = {
     { NULL }
 };
 
-#if defined __X64__ || defined __X128__
+#if defined(__X64__) || defined(__X128__) || defined(__XSCPU64__)
 static subaction_t SubCart[] = {
-    { "as Generic Cartridge", FilterCart },
-    { "as Generic 8kB Cartridge", FilterCart },
-    { "as Generic 16kB Cartridge", FilterCart },
-    { "as 32kB Action Replay Cartridge", FilterCart },
-    { "as 32kB Atomic Power Cartridge", FilterCart },
-    { "as 8kB Epyx Fastloader Cartridge", FilterCart },
-    { "as 32kB Super Snapshot Cartridge", FilterCart },
-    { "as 64kB Super Snapshot Cartridge", FilterCart },
-    { "as 16kB Westermann learning Cartridge", FilterCart },
-    { "as CBM IEEE488 Cartridge", FilterCart },
-    { "as IDE64 Cartridge", FilterCart },
+    { "as CRT ", FilterCart },						/* 0x00 */
+    { "as " CARTRIDGE_NAME_GENERIC_8KB, FilterCart },		/* 0x01 */
+    { "as " CARTRIDGE_NAME_GENERIC_16KB, FilterCart },	/* 0x02 */
+    { "as " CARTRIDGE_NAME_ULTIMAX, FilterCart },		/* 0x03 */
+    { "as " CARTRIDGE_NAME_ACTION_REPLAY, FilterCart },	/* 0x04 */
+    { "as " CARTRIDGE_NAME_ACTION_REPLAY2, FilterCart },	/* 0x05 */
+    { "as " CARTRIDGE_NAME_ACTION_REPLAY3, FilterCart },	/* 0x06 */
+    { "as " CARTRIDGE_NAME_ACTION_REPLAY4, FilterCart },	/* 0x07 */
+    { "as " CARTRIDGE_NAME_ATOMIC_POWER, FilterCart },	/* 0x08 */
+    { "as " CARTRIDGE_NAME_CAPTURE, FilterCart },		/* 0x09 */
+    { "as " CARTRIDGE_NAME_DIASHOW_MAKER, FilterCart },	/* 0x0a */
+    { "as " CARTRIDGE_NAME_EXPERT, FilterCart },		/* 0x0b */
+    { "as " CARTRIDGE_NAME_FINAL_I, FilterCart },		/* 0x0c */
+    { "as " CARTRIDGE_NAME_FINAL_III, FilterCart },		/* 0x0d */
+    { "as " CARTRIDGE_NAME_FINAL_PLUS, FilterCart },		/* 0x0e */
+    { "as " CARTRIDGE_NAME_FORMEL64, FilterCart },		/* 0x0f */
+    { "as " CARTRIDGE_NAME_FREEZE_FRAME, FilterCart },	/* 0x10 */
+    { "as " CARTRIDGE_NAME_FREEZE_MACHINE, FilterCart },	/* 0x11 */
+    { "as " CARTRIDGE_NAME_GAME_KILLER, FilterCart },		/* 0x12 */
+    { "as " CARTRIDGE_NAME_KCS_POWER, FilterCart },		/* 0x13 */
+    { "as " CARTRIDGE_NAME_MAGIC_FORMEL, FilterCart },	/* 0x14 */
+    { "as " CARTRIDGE_NAME_MMC_REPLAY, FilterCart },		/* 0x15 */
+    { "as " CARTRIDGE_NAME_RETRO_REPLAY, FilterCart },	/* 0x16 */
+    { "as " CARTRIDGE_NAME_SNAPSHOT64, FilterCart },		/* 0x17 */
+    { "as " CARTRIDGE_NAME_SUPER_SNAPSHOT, FilterCart },	/* 0x18 */
+    { "as " CARTRIDGE_NAME_SUPER_SNAPSHOT_V5, FilterCart },/* 0x19 */
+    { "as " CARTRIDGE_NAME_COMAL80, FilterCart },		/* 0x1a */
+    { "as " CARTRIDGE_NAME_DELA_EP256, FilterCart },		/* 0x1b */
+    { "as " CARTRIDGE_NAME_DELA_EP64, FilterCart },		/* 0x1c */
+    { "as " CARTRIDGE_NAME_DELA_EP7x8, FilterCart },		/* 0x1d */
+    { "as " CARTRIDGE_NAME_EASYCALC, FilterCart },		/* 0x1e */
+    { "as " CARTRIDGE_NAME_EASYFLASH, FilterCart },		/* 0x1f */
+    { "as " CARTRIDGE_NAME_EPYX_FASTLOAD, FilterCart },	/* 0x20 */
+    { "as " CARTRIDGE_NAME_EXOS, FilterCart },			/* 0x21 */
+    { "as " CARTRIDGE_NAME_IDE64, FilterCart },			/* 0x22 */
+    { "as " CARTRIDGE_NAME_IEEE488, FilterCart },		/* 0x23 */
+    { "as " CARTRIDGE_NAME_KINGSOFT, FilterCart },		/* 0x24 */
+    { "as " CARTRIDGE_NAME_MACH5, FilterCart },			/* 0x25 */
+    { "as " CARTRIDGE_NAME_MAGIC_DESK, FilterCart },		/* 0x26 */
+    { "as " CARTRIDGE_NAME_MAGIC_VOICE, FilterCart },		/* 0x27 */
+    { "as " CARTRIDGE_NAME_MIKRO_ASSEMBLER, FilterCart },	/* 0x28 */
+    { "as " CARTRIDGE_NAME_MMC64, FilterCart },			/* 0x29 */
+    { "as " CARTRIDGE_NAME_P64, FilterCart },			/* 0x2a */
+    { "as " CARTRIDGE_NAME_PAGEFOX, FilterCart },		/* 0x2b */
+    { "as " CARTRIDGE_NAME_REX, FilterCart },			/* 0x2c */
+    { "as " CARTRIDGE_NAME_REX_EP256, FilterCart },		/* 0x2d */
+    { "as " CARTRIDGE_NAME_RRNETMK3, FilterCart },		/* 0x2e */
+    { "as " CARTRIDGE_NAME_ROSS, FilterCart },			/* 0x2f */
+    { "as " CARTRIDGE_NAME_SIMONS_BASIC, FilterCart },	/* 0x30 */
+    { "as " CARTRIDGE_NAME_STARDOS, FilterCart },		/* 0x31 */
+    { "as " CARTRIDGE_NAME_STRUCTURED_BASIC, FilterCart },	/* 0x32 */
+    { "as " CARTRIDGE_NAME_SUPER_EXPLODE_V5, FilterCart },	/* 0x33 */
+    { "as " CARTRIDGE_NAME_WARPSPEED, FilterCart },		/* 0x34 */
+    { "as " CARTRIDGE_NAME_WESTERMANN, FilterCart },		/* 0x35 */
+    { "as " CARTRIDGE_NAME_DINAMIC, FilterCart },		/* 0x36 */
+    { "as " CARTRIDGE_NAME_FUNPLAY, FilterCart },		/* 0x37 */
+    { "as " CARTRIDGE_NAME_GMOD2, FilterCart },			/* 0x38 */
+    { "as " CARTRIDGE_NAME_GS, FilterCart },			/* 0x39 */
+    { "as " CARTRIDGE_NAME_OCEAN, FilterCart },			/* 0x3a */
+    { "as " CARTRIDGE_NAME_RGCD, FilterCart },			/* 0x3b */
+    { "as " CARTRIDGE_NAME_SILVERROCK_128, FilterCart },	/* 0x3c */
+    { "as " CARTRIDGE_NAME_SUPER_GAMES, FilterCart },		/* 0x3d */
+    { "as " CARTRIDGE_NAME_ZAXXON, FilterCart },		/* 0x3e */
+    { "as " CARTRIDGE_NAME_DQBB, FilterCart },			/* 0x3f */
+    { "as " CARTRIDGE_NAME_GEORAM, FilterCart },		/* 0x40 */
+    { "as " CARTRIDGE_NAME_ISEPIC, FilterCart },		/* 0x41 */
+    { "as " CARTRIDGE_NAME_RAMCART, FilterCart },		/* 0x42 */
+    { "as " CARTRIDGE_NAME_REU, FilterCart },			/* 0x43 */
     { NULL }
 };
 #endif
@@ -250,10 +315,13 @@ static subaction_t SubFuncRom[] = {
 static subaction_t SubRom[] = {
     { "as Kernal ROM", FilterKernal },
     { "as Character ROM", FilterChargen },
+    { "as 1540 ROM", Filter1540 },
     { "as 1541 ROM", Filter1541 },
     { "as 1541-II ROM", Filter15412 },
     { "as 1571 ROM", Filter1571 },
     { "as 1581 ROM", Filter1581 },
+    { "as 2000 ROM", Filter2000 },
+    { "as 4000 ROM", Filter4000 },
     { "as 2031 ROM", Filter2031 },
     { "as 1001 ROM", Filter1001 },
     { "as 2040 ROM", Filter2040 },
@@ -270,11 +338,10 @@ static subaction_t SubRom[] = {
     { "as German Character ROM", FilterChargen },
     { "as French Character ROM", FilterChargen },
     { "as Swedish Character ROM", FilterChargen },
-    { "as Swedish Character ROM", FilterChargen },
     { "as International Kernal ROM", FilterKernal },
     { "as German Kernal  ROM", FilterKernal },
     { "as Finnish Kernal ROM", FilterKernal },
-    { "as Frensh Kernal ROM", FilterKernal },
+    { "as French Kernal ROM", FilterKernal },
     { "as Italian Kernal ROM", FilterKernal },
     { "as Norwegian Kernal ROM", FilterKernal },
     { "as Swedish Kernal ROM", FilterKernal },
@@ -288,11 +355,7 @@ struct _trapaction {
     int pending;
     int rc;
     const char *path;
-#ifdef WATCOM_COMPILE
     HWND hwnd;
-#else
-    const HWND hwnd;
-#endif
     int (*execute)(struct _trapaction*);
 };
 
@@ -352,7 +415,6 @@ static int trap(const HWND hwnd, int (*func)(trapaction_t*), const char *path)
 {
     const int paused = isEmulatorPaused();
 
-#ifdef WATCOM_COMPILE
     trapaction_t handle;
 
     handle.pending = TRUE;
@@ -360,9 +422,6 @@ static int trap(const HWND hwnd, int (*func)(trapaction_t*), const char *path)
     handle.path = path;
     handle.hwnd = hwnd;
     handle.execute = func;
-#else
-    trapaction_t handle = { TRUE, 0, path, hwnd, func };
-#endif
 
     interrupt_maincpu_trigger_trap(exec_func, &handle);
 
@@ -384,7 +443,7 @@ static action_t LoadAction[] = {
     { "Load Fliplist", SubFlip, TRUE },
     { "Load and Attach Fliplist", SubFlip, TRUE },
     { "Load Snapshot", SubVsf, FALSE },
-#if defined __X128__ || defined __CBM2__
+#if defined(__X128__) || defined(__CBM2__)
     { "Load Color Palette", SubPal, TRUE },
 #else
     { "Load Color Palette", SubPal, FALSE },
@@ -393,7 +452,7 @@ static action_t LoadAction[] = {
     { "Load ROM Image", SubRom, TRUE },
     { "Load ROM Set", SubRomSet, FALSE },
     { "Load Configuration File", SubCfg, FALSE },
-#if defined __X64__ || defined __X128__
+#if defined(__X64__) || defined(__X128__) || defined(__XSCPU64__)
     { "Attach Cartridge Image", SubCart, TRUE },
 #endif
 #ifdef __XPET__
@@ -444,90 +503,216 @@ static BOOL FdmDoLoadAction(HWND hwnd, const char *szpath, int act, int sact)
                 case 1:
                     return resources_set_string("ChargenName", szpath);
                 case 2:
-                    return resources_set_string("DosName1541", szpath);
+                    return resources_set_string("DosName1540", szpath);
                 case 3:
-                    return resources_set_string("DosName154ii", szpath);
+                    return resources_set_string("DosName1541", szpath);
                 case 4:
-                    return resources_set_string("DosName1571", szpath);
+                    return resources_set_string("DosName154ii", szpath);
                 case 5:
-                    return resources_set_string("DosName1581", szpath);
+                    return resources_set_string("DosName1571", szpath);
                 case 6:
-                    return resources_set_string("DosName2031", szpath);
+                    return resources_set_string("DosName1581", szpath);
                 case 7:
-                    return resources_set_string("DosName1001", szpath);
+                    return resources_set_string("DosName2000", szpath);
                 case 8:
-                    return resources_set_string("DosName2040", szpath);
+                    return resources_set_string("DosName4000", szpath);
                 case 9:
-                    return resources_set_string("DosName3040", szpath);
+                    return resources_set_string("DosName2031", szpath);
                 case 10:
-                    return resources_set_string("DosName4040", szpath);
+                    return resources_set_string("DosName1001", szpath);
                 case 11:
-                    return resources_set_string("BasicName", szpath);
+                    return resources_set_string("DosName2040", szpath);
                 case 12:
-                    return resources_set_string("Z80BiosName", szpath);
+                    return resources_set_string("DosName3040", szpath);
                 case 13:
-                    return resources_set_string("Kernal64Name", szpath);
+                    return resources_set_string("DosName4040", szpath);
                 case 14:
-                    return resources_set_string("Basic64Name", szpath);
+#ifndef __X128__
+                    return resources_set_string("BasicName", szpath);
+#else
+                    return resources_set_string("Z80BiosName", szpath);
                 case 15:
-                    return resources_set_string("Chargen64Name", szpath);
+                    return resources_set_string("Kernal64Name", szpath);
                 case 16:
-                    return resources_set_string("ChargenIntName", szpath);
+                    return resources_set_string("Basic64Name", szpath);
                 case 17:
-                    return resources_set_string("ChargenDEName", szpath);
+                    return resources_set_string("Chargen64Name", szpath);
                 case 18:
-                    return resources_set_string("ChargenFRName", szpath);
+                    return resources_set_string("ChargenIntName", szpath);
                 case 19:
-                    return resources_set_string("ChargenSEName", szpath);
+                    return resources_set_string("ChargenDEName", szpath);
                 case 20:
-                    return resources_set_string("KernalIntName", szpath);
+                    return resources_set_string("ChargenFRName", szpath);
                 case 21:
-                    return resources_set_string("KernalDEName", szpath);
+                    return resources_set_string("ChargenSEName", szpath);
                 case 22:
-                    return resources_set_string("KernalFIName", szpath);
+                    return resources_set_string("KernalIntName", szpath);
                 case 23:
-                    return resources_set_string("KernalFRName", szpath);
+                    return resources_set_string("KernalDEName", szpath);
                 case 24:
-                    return resources_set_string("KernalITName", szpath);
+                    return resources_set_string("KernalFIName", szpath);
                 case 25:
-                    return resources_set_string("KernalNOName", szpath);
+                    return resources_set_string("KernalFRName", szpath);
                 case 26:
-                    return resources_set_string("KernalSEName", szpath);
+                    return resources_set_string("KernalITName", szpath);
                 case 27:
-                    return resources_set_string("BasicHiName", szpath);
+                    return resources_set_string("KernalNOName", szpath);
                 case 28:
+                    return resources_set_string("KernalSEName", szpath);
+                case 29:
+                    return resources_set_string("BasicHiName", szpath);
+                case 30:
                     return resources_set_string("BasicLoName", szpath);
+#endif
             }
             return -1;
         case 8:
             return machine_romset_file_load(szpath);
         case 9:
             return resources_load(szpath);
-#if defined __X64__ || defined __X128__
+#if defined(__X64__) || defined(__X128__) || defined(__XSCPU64__)
         case 10:
             switch (sact) {
-                case 0:
+                case 0x00:
                     return cartridge_attach_image(CARTRIDGE_CRT, szpath);
-                case 1:
+                case 0x01:
                     return cartridge_attach_image(CARTRIDGE_GENERIC_8KB, szpath);
-                case 2:
+                case 0x02:
                     return cartridge_attach_image(CARTRIDGE_GENERIC_16KB, szpath);
-                case 3:
+                case 0x03:
+                    return cartridge_attach_image(CARTRIDGE_ULTIMAX, szpath);
+#ifndef __XSCPU64__
+                case 0x04:
                     return cartridge_attach_image(CARTRIDGE_ACTION_REPLAY, szpath);
-                case 4:
+                case 0x05:
+                    return cartridge_attach_image(CARTRIDGE_ACTION_REPLAY2, szpath);
+                case 0x06:
+                    return cartridge_attach_image(CARTRIDGE_ACTION_REPLAY3, szpath);
+                case 0x07:
+                    return cartridge_attach_image(CARTRIDGE_ACTION_REPLAY4, szpath);
+                case 0x08:
                     return cartridge_attach_image(CARTRIDGE_ATOMIC_POWER, szpath);
-                case 5:
-                    return cartridge_attach_image(CARTRIDGE_EPYX_FASTLOAD, szpath);
-                case 6:
+                case 0x09:
+                    return cartridge_attach_image(CARTRIDGE_CAPTURE, szpath);
+                case 0x0a:
+                    return cartridge_attach_image(CARTRIDGE_DIASHOW_MAKER, szpath);
+                case 0x0b:
+                    return cartridge_attach_image(CARTRIDGE_EXPERT, szpath);
+                case 0x0c:
+                    return cartridge_attach_image(CARTRIDGE_FINAL_I, szpath);
+                case 0x0d:
+                    return cartridge_attach_image(CARTRIDGE_FINAL_III, szpath);
+                case 0x0e:
+                    return cartridge_attach_image(CARTRIDGE_FINAL_PLUS, szpath);
+                case 0x0f:
+                    return cartridge_attach_image(CARTRIDGE_FORMEL64, szpath);
+                case 0x10:
+                    return cartridge_attach_image(CARTRIDGE_FREEZE_FRAME, szpath);
+                case 0x11:
+                    return cartridge_attach_image(CARTRIDGE_FREEZE_MACHINE, szpath);
+                case 0x12:
+                    return cartridge_attach_image(CARTRIDGE_GAME_KILLER, szpath);
+                case 0x13:
+                    return cartridge_attach_image(CARTRIDGE_KCS_POWER, szpath);
+                case 0x14:
+                    return cartridge_attach_image(CARTRIDGE_MAGIC_FORMEL, szpath);
+                case 0x15:
+                    return cartridge_attach_image(CARTRIDGE_MMC_REPLAY, szpath);
+                case 0x16:
+                    return cartridge_attach_image(CARTRIDGE_RETRO_REPLAY, szpath);
+                case 0x17:
+                    return cartridge_attach_image(CARTRIDGE_SNAPSHOT64, szpath);
+                case 0x18:
                     return cartridge_attach_image(CARTRIDGE_SUPER_SNAPSHOT, szpath);
-                case 7:
+                case 0x19:
                     return cartridge_attach_image(CARTRIDGE_SUPER_SNAPSHOT_V5, szpath);
-                case 8:
-                    return cartridge_attach_image(CARTRIDGE_WESTERMANN, szpath);
-                case 9:
-                    return cartridge_attach_image(CARTRIDGE_IEEE488, szpath);
-                case 10:
+#endif
+                case 0x1a:
+                    return cartridge_attach_image(CARTRIDGE_COMAL80, szpath);
+                case 0x1b:
+                    return cartridge_attach_image(CARTRIDGE_DELA_EP256, szpath);
+                case 0x1c:
+                    return cartridge_attach_image(CARTRIDGE_DELA_EP64, szpath);
+                case 0x1d:
+                    return cartridge_attach_image(CARTRIDGE_DELA_EP7x8, szpath);
+                case 0x1e:
+                    return cartridge_attach_image(CARTRIDGE_EASYCALC, szpath);
+                case 0x1f:
+                    return cartridge_attach_image(CARTRIDGE_EASYFLASH, szpath);
+                case 0x20:
+                    return cartridge_attach_image(CARTRIDGE_EPYX_FASTLOAD, szpath);
+                case 0x21:
+                    return cartridge_attach_image(CARTRIDGE_EXOS, szpath);
+                case 0x22:
                     return cartridge_attach_image(CARTRIDGE_IDE64, szpath);
+                case 0x23:
+                    return cartridge_attach_image(CARTRIDGE_IEEE488, szpath);
+                case 0x24:
+                    return cartridge_attach_image(CARTRIDGE_KINGSOFT, szpath);
+                case 0x25:
+                    return cartridge_attach_image(CARTRIDGE_MACH5, szpath);
+                case 0x26:
+                    return cartridge_attach_image(CARTRIDGE_MAGIC_DESK, szpath);
+                case 0x27:
+                    return cartridge_attach_image(CARTRIDGE_MAGIC_VOICE, szpath);
+                case 0x28:
+                    return cartridge_attach_image(CARTRIDGE_MIKRO_ASSEMBLER, szpath);
+                case 0x29:
+                    return cartridge_attach_image(CARTRIDGE_MMC64, szpath);
+                case 0x2a:
+                    return cartridge_attach_image(CARTRIDGE_P64, szpath);
+                case 0x2b:
+                    return cartridge_attach_image(CARTRIDGE_PAGEFOX, szpath);
+                case 0x2c:
+                    return cartridge_attach_image(CARTRIDGE_REX, szpath);
+                case 0x2d:
+                    return cartridge_attach_image(CARTRIDGE_REX_EP256, szpath);
+#ifdef HAVE_PCAP
+                case 0x2e:
+                    return cartridge_attach_image(CARTRIDGE_RRNETMK3, szpath);
+#endif
+                case 0x2f:
+                    return cartridge_attach_image(CARTRIDGE_ROSS, szpath);
+                case 0x30:
+                    return cartridge_attach_image(CARTRIDGE_SIMONS_BASIC, szpath);
+                case 0x31:
+                    return cartridge_attach_image(CARTRIDGE_STARDOS, szpath);
+                case 0x32:
+                    return cartridge_attach_image(CARTRIDGE_STRUCTURED_BASIC, szpath);
+                case 0x33:
+                    return cartridge_attach_image(CARTRIDGE_SUPER_EXPLODE_V5, szpath);
+                case 0x34:
+                    return cartridge_attach_image(CARTRIDGE_WARPSPEED, szpath);
+                case 0x35:
+                    return cartridge_attach_image(CARTRIDGE_WESTERMANN, szpath);
+                case 0x36:
+                    return cartridge_attach_image(CARTRIDGE_DINAMIC, szpath);
+                case 0x37:
+                    return cartridge_attach_image(CARTRIDGE_FUNPLAY, szpath);
+                case 0x38:
+                    return cartridge_attach_image(CARTRIDGE_GMOD2, szpath);
+                case 0x39:
+                    return cartridge_attach_image(CARTRIDGE_GS, szpath);
+                case 0x3a:
+                    return cartridge_attach_image(CARTRIDGE_OCEAN, szpath);
+                case 0x3b:
+                    return cartridge_attach_image(CARTRIDGE_RGCD, szpath);
+                case 0x3c:
+                    return cartridge_attach_image(CARTRIDGE_SILVERROCK_128, szpath);
+                case 0x3d:
+                    return cartridge_attach_image(CARTRIDGE_SUPER_GAMES, szpath);
+                case 0x3e:
+                    return cartridge_attach_image(CARTRIDGE_ZAXXON, szpath);
+                case 0x3f:
+                    return cartridge_attach_image(CARTRIDGE_DQBB, szpath);
+                case 0x40:
+                    return cartridge_attach_image(CARTRIDGE_GEORAM, szpath);
+                case 0x41:
+                    return cartridge_attach_image(CARTRIDGE_ISEPIC, szpath);
+                case 0x42:
+                    return cartridge_attach_image(CARTRIDGE_RAMCART, szpath);
+                case 0x43:
+                    return cartridge_attach_image(CARTRIDGE_REU, szpath);
             }
             return -1;
 #endif
@@ -1091,7 +1276,6 @@ MRESULT EXPENTRY ViceFileDlgProc(HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
                     const action_t *action = fdlg->fl & FDS_OPEN_DIALOG ? LoadAction : SaveAction;
                     char *txt = util_concat("The following action couldn't be performed:\n", action[act].type, " ", action[act].subact[sact].action, NULL);
                     HPOINTER hpt = WinLoadPointer(HWND_DESKTOP, NULLHANDLE, 0x101);
-#ifdef WATCOM_COMPILE
                     struct _MB2D mbtemp;
                     struct _MB2INFO mb;
 
@@ -1104,17 +1288,6 @@ MRESULT EXPENTRY ViceFileDlgProc(HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
                     mbtemp.idButton = 0;
                     mbtemp.flStyle = BS_DEFAULT;
                     mb.mb2d[0] = mbtemp;
-#else
-                    MB2INFO mb = {
-                        sizeof(MB2INFO),
-                        hpt,
-                        1,
-                        MB_CUSTOMICON | WS_VISIBLE,
-                        NULLHANDLE,
-                        "      OK      ",
-                        0,
-                        BS_DEFAULT};
-#endif
                     WinMessageBox2(HWND_DESKTOP, hwnd, txt, "VICE/2 Error", 0, &mb);
                     lib_free(txt);
                     return FALSE;

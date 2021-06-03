@@ -35,15 +35,21 @@
 #include "cia.h"
 #include "menu_cbm2hw.h"
 #include "menu_common.h"
+#include "menu_joyport.h"
 #include "menu_joystick.h"
 #include "menu_ram.h"
 #include "menu_rom.h"
 
-#ifdef HAVE_RS232
+#ifdef HAVE_MOUSE
+#include "menu_mouse.h"
+#endif
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "menu_rs232.h"
 #endif
 
 #include "menu_sid.h"
+#include "menu_tape.h"
 #include "uimenu.h"
 
 UI_MENU_DEFINE_RADIO(RamSize)
@@ -54,19 +60,19 @@ UI_MENU_DEFINE_TOGGLE(Ram4)
 UI_MENU_DEFINE_TOGGLE(Ram6)
 UI_MENU_DEFINE_TOGGLE(RamC)
 
-#define CIA_MODEL_MENU(xyz)           \
-UI_MENU_DEFINE_RADIO(CIA##xyz##Model) \
-static const ui_menu_entry_t cia##xyz##_model_submenu[] = { \
-    { "6526  (old)",                                        \
-      MENU_ENTRY_RESOURCE_TOGGLE,                           \
-      radio_CIA##xyz##Model_callback,                       \
-      (ui_callback_data_t)CIA_MODEL_6526 },                 \
-    { "6526A (new)",                                        \
-      MENU_ENTRY_RESOURCE_TOGGLE,                           \
-      radio_CIA##xyz##Model_callback,                       \
-      (ui_callback_data_t)CIA_MODEL_6526A },                \
-    SDL_MENU_LIST_END                                       \
-};
+#define CIA_MODEL_MENU(xyz)                                     \
+    UI_MENU_DEFINE_RADIO(CIA##xyz##Model)                       \
+    static const ui_menu_entry_t cia##xyz##_model_submenu[] = { \
+        { "6526  (old)",                                        \
+          MENU_ENTRY_RESOURCE_TOGGLE,                           \
+          radio_CIA##xyz##Model_callback,                       \
+          (ui_callback_data_t)CIA_MODEL_6526 },                 \
+        { "6526 (new)",                                        \
+          MENU_ENTRY_RESOURCE_TOGGLE,                           \
+          radio_CIA##xyz##Model_callback,                       \
+          (ui_callback_data_t)CIA_MODEL_6526A },                \
+        SDL_MENU_LIST_END                                       \
+    };
 
 CIA_MODEL_MENU(1)
 
@@ -206,10 +212,24 @@ const ui_menu_entry_t cbm5x0_hardware_menu[] = {
       submenu_callback,
       (ui_callback_data_t)cbm5x0_model_menu },
     SDL_MENU_ITEM_SEPARATOR,
+    { "Tape port devices",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)tapeport_devices_menu },
+    { "Joyport settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)joyport_menu },
     { "Joystick settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)joystick_menu },
+#ifdef HAVE_MOUSE
+    { "Mouse emulation",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mouse_menu },
+#endif
     { "SID settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -230,12 +250,58 @@ const ui_menu_entry_t cbm5x0_hardware_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)cbm5x0_memory_menu },
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     { "RS232 settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)rs232_nouser_menu },
 #endif
+    SDL_MENU_LIST_END
+};
+
+UI_MENU_DEFINE_TOGGLE(UserportDAC)
+UI_MENU_DEFINE_TOGGLE(UserportDIGIMAX)
+UI_MENU_DEFINE_TOGGLE(UserportRTCDS1307)
+UI_MENU_DEFINE_TOGGLE(UserportRTCDS1307Save)
+UI_MENU_DEFINE_TOGGLE(UserportRTC58321a)
+UI_MENU_DEFINE_TOGGLE(UserportRTC58321aSave)
+UI_MENU_DEFINE_TOGGLE(Userport4bitSampler)
+UI_MENU_DEFINE_TOGGLE(Userport8BSS)
+
+static const ui_menu_entry_t userport_menu[] = {
+    SDL_MENU_ITEM_TITLE("Userport devices"),
+    { "8 bit DAC enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportDAC_callback,
+      NULL },
+    { "DigiMAX enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportDIGIMAX_callback,
+      NULL },
+    { "RTC (58321a) enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTC58321a_callback,
+      NULL },
+    { "Save RTC (58321a) data when changed",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTC58321aSave_callback,
+      NULL },
+    { "RTC (DS1307) enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTCDS1307_callback,
+      NULL },
+    { "Save RTC (DS1307) data when changed",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTCDS1307Save_callback,
+      NULL },
+    { "4 bit sampler enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_Userport4bitSampler_callback,
+      NULL },
+    { "8 bit stereo sampler enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_Userport8BSS_callback,
+      NULL },
     SDL_MENU_LIST_END
 };
 
@@ -245,10 +311,20 @@ const ui_menu_entry_t cbm6x0_7x0_hardware_menu[] = {
       submenu_callback,
       (ui_callback_data_t)cbm2_model_menu },
     SDL_MENU_ITEM_SEPARATOR,
+    { "Joyport settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)joyport_menu },
     { "Joystick settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)joystick_userport_only_menu },
+#ifdef HAVE_MOUSE
+    { "Mouse emulation",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mouse_grab_menu },
+#endif
     { "SID settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -269,11 +345,19 @@ const ui_menu_entry_t cbm6x0_7x0_hardware_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)cbm2_memory_menu },
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     { "RS232 settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)rs232_nouser_menu },
 #endif
+    { "Userport devices",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)userport_menu },
+    { "Tape port devices",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)tapeport_devices_menu },
     SDL_MENU_LIST_END
 };

@@ -1,10 +1,32 @@
 #!/bin/sh
-# make-bindist.sh for the OPENSTEP port
+
 #
-# written by Marco van den Heuvel <blackystardust68@yahoo.com>
+# make-bindist.sh - make binary distribution for the NextStep, OpenStep and Rhapsody ports
 #
-# make-bindist.sh <strip> <vice-version> <prefix> <--enable-arch> <zip|nozip> <x64sc-included> <platform> <topsrcdir> <make-command>
-#                 $1      $2             $3       $4              $5          $6               $7         $8          $9
+# Written by
+#  Marco van den Heuvel <blackystardust68@yahoo.com>
+#
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
+# Usage: make-bindist.sh <strip> <vice-version> <prefix> <--enable-arch> <zip|nozip> <x64sc-included> <platform> <topsrcdir> <make-command>
+#                         $1      $2             $3       $4              $5          $6               $7         $8          $9
+#
 
 STRIP=$1
 VICEVERSION=$2
@@ -27,7 +49,7 @@ else
   SCFILE=""
 fi
 
-EMULATORS="x64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic vsid"
+EMULATORS="x64 xscpu64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic vsid"
 CONSOLE_TOOLS="c1541 cartconv petcat"
 EXECUTABLES="$EMULATORS $CONSOLE_TOOLS"
 
@@ -40,7 +62,7 @@ do
   fi
 done
 
-curdir=`pwd
+curdir=`pwd`
 if [ ! -e VICE-$VICEVERSION ]
 then
   echo "Error: no install directory is present, do the following:"
@@ -66,7 +88,10 @@ fi
 echo Generating $OSNAME port binary distribution.
 for i in $EXECUTABLES
 do
-  $STRIP VICE-$VICEVERSION/usr/local/bin/$i
+  i586=`file VICE-$VICEVERSION/usr/local/bin/$i | grep i586`
+  if test x"$i586" != "x"; then
+    $TOPSRCDIR/src/arch/unix/next_open_rhap/nextfix.sh VICE-$VICEVERSION/usr/local/bin/$1
+  fi
 done
 if test x"$ZIPKIND" = "xzip"; then
   if test x"$OSID" = "xRH"; then

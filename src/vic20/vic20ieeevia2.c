@@ -2,7 +2,7 @@
  * vic20ieeevia2.c - IEEE488 interface VIA2 emulation in the VIC-1112.
  *
  * Written by
- *  André Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -29,7 +29,7 @@
 
 #include <stdio.h>
 
-#include "drivecpu.h"
+#include "drive.h"
 #include "interrupt.h"
 #include "lib.h"
 #include "maincpu.h"
@@ -39,6 +39,10 @@
 #include "vic20.h"
 #include "vic20ieeevia.h"
 
+int ieeevia2_dump(void)
+{
+    return viacore_dump(machine_context.ieeevia2);
+}
 
 void ieeevia2_store(WORD addr, BYTE data)
 {
@@ -65,14 +69,12 @@ static void set_cb2(via_context_t *via_context, int state)
     parallel_cpu_set_eoi((BYTE)(state ? 0 : 1));
 }
 
-static void set_int(via_context_t *via_context, unsigned int int_num,
-                    int value, CLOCK rclk)
+static void set_int(via_context_t *via_context, unsigned int int_num, int value, CLOCK rclk)
 {
     interrupt_set_irq(maincpu_int_status, int_num, value, rclk);
 }
 
-static void restore_int(via_context_t *via_context, unsigned int int_num,
-                    int value)
+static void restore_int(via_context_t *via_context, unsigned int int_num, int value)
 {
     interrupt_restore_irq(maincpu_int_status, int_num, value);
 }
@@ -128,8 +130,12 @@ static BYTE store_pcr(via_context_t *via_context, BYTE byte, WORD addr)
     if (byte != via_context->via[VIA_PCR]) {
         register BYTE tmp = byte;
         /* first set bit 1 and 5 to the real output values */
-        if ((tmp & 0x0c) != 0x0c) tmp |= 0x02;
-        if ((tmp & 0xc0) != 0xc0) tmp |= 0x20;
+        if ((tmp & 0x0c) != 0x0c) {
+            tmp |= 0x02;
+        }
+        if ((tmp & 0xc0) != 0xc0) {
+            tmp |= 0x20;
+        }
         parallel_cpu_set_atn((byte & 2) ? 0 : 1);
         parallel_cpu_set_eoi((byte & 0x20) ? 0 : 1);
     }
@@ -141,7 +147,7 @@ static BYTE read_prb(via_context_t *via_context)
 {
     BYTE byte;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     byte = (parallel_bus & ~(via_context->via[VIA_DDRB]))
            | (via_context->via[VIA_PRB] & via_context->via[VIA_DDRB]);
@@ -199,4 +205,3 @@ void vic20ieeevia2_setup_context(machine_context_t *machine_context)
     via->set_cb2 = set_cb2;
     via->reset = reset;
 }
-

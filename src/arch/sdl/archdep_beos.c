@@ -2,7 +2,7 @@
  * archdep_beos.c - Miscellaneous system-specific stuff.
  *
  * Written by
- *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -58,7 +58,12 @@
 #include <unistd.h>
 #endif
 
+#ifdef __HAIKU__
+#include <sys/wait.h>
+#endif
+
 #include "archdep.h"
+#include "keyboard.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
@@ -85,7 +90,7 @@ int archdep_init_extra(int *argc, char **argv)
     return 0;
 }
 
-static char *program_name=NULL;
+static char *program_name = NULL;
 
 char *archdep_program_name(void)
 {
@@ -154,7 +159,7 @@ char *archdep_make_backup_filename(const char *fname)
 }
 
 char *archdep_default_save_resource_file_name(void)
-{ 
+{
     return archdep_default_resource_file_name();
 }
 
@@ -169,6 +174,15 @@ char *archdep_default_fliplist_file_name(void)
 
     lib_free(fname);
     fname = util_concat(archdep_boot_path(), "/fliplist-", machine_get_name(), ".vfl", NULL);
+    return fname;
+}
+
+char *archdep_default_rtc_file_name(void)
+{
+    static char *fname;
+
+    lib_free(fname);
+    fname = util_concat(archdep_boot_path(), "/vice-sdl.rtc", NULL);
     return fname;
 }
 
@@ -208,16 +222,6 @@ FILE *archdep_open_default_log_file(void)
     lib_free(fname);
 
     return f;
-}
-
-int archdep_num_text_lines(void)
-{
-    return 25;
-}
-
-int archdep_num_text_columns(void)
-{
-    return 80;
 }
 
 int archdep_default_logger(const char *level_string, const char *txt)
@@ -401,6 +405,11 @@ int archdep_require_vkbd(void)
     return 0;
 }
 
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
+}
+
 void archdep_shutdown_extra(void)
 {
     lib_free(argv0);
@@ -424,4 +433,15 @@ char *archdep_get_runtime_cpu(void)
 #else
     return platform_get_x86_runtime_cpu();
 #endif
+}
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages/actual detection
+*/
+int kbd_arch_get_host_mapping(void)
+{
+    return KBD_MAPPING_US;
 }

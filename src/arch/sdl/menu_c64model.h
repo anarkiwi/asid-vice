@@ -33,5 +33,6 @@
 
 extern const ui_menu_entry_t c64_model_menu[];
 extern const ui_menu_entry_t c64sc_model_menu[];
+extern const ui_menu_entry_t scpu64_model_menu[];
 
 #endif

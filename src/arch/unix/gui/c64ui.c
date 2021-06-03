@@ -3,8 +3,9 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -32,6 +33,8 @@
 #include <string.h>
 
 #include "c64model.h"
+#include "c64-resources.h"
+#include "cartio.h"
 #include "cartridge.h"
 #include "cia.h"
 #include "debug.h"
@@ -42,9 +45,14 @@
 #include "sid.h"
 #include "uiapi.h"
 #include "uiattach.h"
-#include "uic64_256k.h"
 #include "uic64cart.h"
+#include "uic64memoryhacks.h"
 #include "uicommands.h"
+
+#ifdef HAVE_PCAP
+#include "uics8900.h"
+#endif
+
 #include "uidatasette.h"
 #include "uidigimax.h"
 #include "uidqbb.h"
@@ -57,8 +65,10 @@
 #include "uiedit.h"
 #include "uiexpert.h"
 #include "uigeoram.h"
+#include "uigmod2.h"
 #include "uiide64.h"
 #include "uiisepic.h"
+#include "uijoyport.h"
 #include "uijoystick2.h"
 #include "uikeyboard.h"
 #include "uimagicvoice.h"
@@ -67,25 +77,40 @@
 #include "uimmc64.h"
 #include "uimmcreplay.h"
 #include "uimouse.h"
-#include "uilightpen.h"
+#include "uinetplay.h"
 #include "uiperipheraliec.h"
-#include "uiplus256k.h"
-#include "uiplus60k.h"
+#include "uiprinteriec.h"
 #include "uiram.h"
 #include "uiramcart.h"
 #include "uiretroreplay.h"
 #include "uireu.h"
+
+#ifdef HAVE_PCAP
+#include "uirrnetmk3.h"
+#endif
+
 #include "uiromset.h"
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "uirs232c64c128.h"
+#endif
+
+#include "uisampler.h"
 #include "uiscreenshot.h"
 #include "uisettings.h"
 #include "uisid.h"
 #include "uisound.h"
 #include "uisoundexpander.h"
-#include "uitfe.h"
+#include "uisupersnapshot.h"
+#include "uitapeport.h"
+
+#include "uiethernetcart.h"
+
 #include "uitpi.h"
+#include "uiuserport.h"
 #include "uivicii.h"
 #include "vsync.h"
+#include "vicii.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -98,20 +123,19 @@ struct vicmodel_s {
 };
 
 static struct vicmodel_s vicmodels[] = {
-    { MACHINE_SYNC_PAL,     1 },
-    { MACHINE_SYNC_PAL,     0 },
-    { MACHINE_SYNC_NTSC,    1 },
-    { MACHINE_SYNC_NTSCOLD, 0 },
-    { MACHINE_SYNC_PALN,    1 }
+    { MACHINE_SYNC_PAL,     1 }, /* VICII_MODEL_PALG */
+    { MACHINE_SYNC_PAL,     0 }, /* VICII_MODEL_PALG_OLD */
+    { MACHINE_SYNC_NTSC,    1 }, /* VICII_MODEL_NTSCM */
+    { MACHINE_SYNC_NTSCOLD, 0 }, /* VICII_MODEL_NTSCM_OLD */
+    { MACHINE_SYNC_PALN,    1 }  /* VICII_MODEL_PALN */
 };
 
-static int vicmodel_get_temp(int video,int new_luma)
+static int vicmodel_get_temp(int video)
 {
     int i;
 
     for (i = 0; i < VICMODEL_NUM; ++i) {
-        if ((vicmodels[i].video == video)
-         && (vicmodels[i].luma == new_luma)) {
+        if (vicmodels[i].video == video) {
             return i;
         }
     }
@@ -121,14 +145,13 @@ static int vicmodel_get_temp(int video,int new_luma)
 
 static int vicmodel_get(void)
 {
-    int video, new_luma;
+    int video;
 
-    if ((resources_get_int("MachineVideoStandard", &video) < 0)
-     || (resources_get_int("VICIINewLuminances", &new_luma) < 0)) {
+    if (resources_get_int("MachineVideoStandard", &video) < 0) {
         return -1;
     }
 
-    return vicmodel_get_temp(video, new_luma);
+    return vicmodel_get_temp(video);
 }
 
 static void vicmodel_set(int model)
@@ -142,7 +165,6 @@ static void vicmodel_set(int model)
     }
 
     resources_set_int("MachineVideoStandard", vicmodels[model].video);
-    resources_set_int("VICIINewLuminances", vicmodels[model].luma);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -182,6 +204,20 @@ static ui_menu_entry_t set_c64_model_submenu[] = {
       (ui_callback_data_t)C64MODEL_C64_OLD_NTSC, NULL },
     { "Drean", UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
       (ui_callback_data_t)C64MODEL_C64_PAL_N, NULL },
+    { "C64 SX PAL", UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
+      (ui_callback_data_t)C64MODEL_C64SX_PAL, NULL },
+    { "C64 SX NTSC", UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
+      (ui_callback_data_t)C64MODEL_C64SX_NTSC, NULL },
+    { N_("Japanese"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
+      (ui_callback_data_t)C64MODEL_C64_JAP, NULL },
+    { "C64 GS", UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
+      (ui_callback_data_t)C64MODEL_C64_GS, NULL },
+    { "PET64 PAL", UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
+      (ui_callback_data_t)C64MODEL_PET64_PAL, NULL },
+    { "PET64 NTSC", UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
+      (ui_callback_data_t)C64MODEL_PET64_NTSC, NULL },
+    { N_("MAX Machine"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_c64model,
+      (ui_callback_data_t)C64MODEL_ULTIMAX, NULL },
     { NULL }
 };
 
@@ -207,15 +243,15 @@ static UI_CALLBACK(radio_VICIIModel)
 
 static ui_menu_entry_t set_vicii_model_submenu[] = {
     { "PAL-G", UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICIIModel,
-      (ui_callback_data_t)0, NULL },
+      (ui_callback_data_t)VICII_MODEL_PALG, NULL },
     { N_("Old PAL-G"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICIIModel,
-      (ui_callback_data_t)1, NULL },
+      (ui_callback_data_t)VICII_MODEL_PALG_OLD, NULL },
     { "NTSC-M", UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICIIModel,
-      (ui_callback_data_t)2, NULL },
+      (ui_callback_data_t)VICII_MODEL_NTSCM, NULL },
     { N_("Old NTSC-M"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICIIModel,
-      (ui_callback_data_t)3, NULL },
+      (ui_callback_data_t)VICII_MODEL_NTSCM_OLD, NULL },
     { "PAL-N", UI_MENU_TYPE_TICK, (ui_callback_t)radio_VICIIModel,
-      (ui_callback_data_t)4, NULL },
+      (ui_callback_data_t)VICII_MODEL_PALN, NULL },
     { NULL }
 };
 
@@ -239,18 +275,38 @@ static ui_menu_entry_t set_cia2model_submenu[] = {
     { NULL }
 };
 
-static ui_menu_entry_t c64_model_submenu[] = {
-    { N_("C64 model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, set_c64_model_submenu },
+UI_MENU_DEFINE_RADIO(IECReset)
+
+static ui_menu_entry_t set_iecreset_submenu[] = {
+    { N_("yes"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_IECReset,
+      (ui_callback_data_t)1, NULL },
+    { N_("no"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_IECReset,
+      (ui_callback_data_t)0, NULL },
+    { NULL }
+};
+
+UI_MENU_DEFINE_RADIO(KernalRev)
+
+static ui_menu_entry_t set_kernalrev_submenu[] = {
+    { N_("Rev 1"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_KernalRev, (ui_callback_data_t)C64_KERNAL_REV1, NULL },
+    { N_("Rev 2"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_KernalRev, (ui_callback_data_t)C64_KERNAL_REV2, NULL },
+    { N_("Rev 3"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_KernalRev, (ui_callback_data_t)C64_KERNAL_REV3, NULL },
+    { N_("SX-64"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_KernalRev, (ui_callback_data_t)C64_KERNAL_SX64, NULL },
+    { N_("4064"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_KernalRev, (ui_callback_data_t)C64_KERNAL_4064, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("VIC-II model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, set_vicii_model_submenu },
-    { N_("SID model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, sid_model_submenu },
-    { N_("CIA 1 model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, set_cia1model_submenu },
-    { N_("CIA 2 model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, set_cia2model_submenu },
+    { N_("other"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_KernalRev, (ui_callback_data_t)C64_KERNAL_UNKNOWN, NULL },
+    { NULL }
+};
+
+static ui_menu_entry_t c64_model_submenu[] = {
+    { N_("C64 model"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_c64_model_submenu },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("VIC-II model"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_vicii_model_submenu },
+    { N_("SID model"), UI_MENU_TYPE_NORMAL, NULL, NULL, sid_model_submenu },
+    { N_("CIA 1 model"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_cia1model_submenu },
+    { N_("CIA 2 model"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_cia2model_submenu },
+    { N_("Reset goes to IEC"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_iecreset_submenu },
+    { N_("Kernal Revision"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_kernalrev_submenu },
     { NULL }
 };
 
@@ -259,76 +315,12 @@ static ui_menu_entry_t c64_model_submenu[] = {
 UI_MENU_DEFINE_RADIO(SidStereoAddressStart)
 UI_MENU_DEFINE_RADIO(SidTripleAddressStart)
 
-static ui_menu_entry_t set_sid_stereo_address_d4xx_submenu[] = {
-    { "$D420", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd420, NULL },
-    { "$D440", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd440, NULL },
-    { "$D460", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd460, NULL },
-    { "$D480", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd480, NULL },
-    { "$D4A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd4a0, NULL },
-    { "$D4C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd4c0, NULL },
-    { "$D4E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd4e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_stereo_address_d5xx_submenu[] = {
-    { "$D500", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd500, NULL },
-    { "$D520", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd520, NULL },
-    { "$D540", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd540, NULL },
-    { "$D560", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd560, NULL },
-    { "$D580", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd580, NULL },
-    { "$D5A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd5a0, NULL },
-    { "$D5C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd5c0, NULL },
-    { "$D5E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd5e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_stereo_address_d6xx_submenu[] = {
-    { "$D600", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd600, NULL },
-    { "$D620", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd620, NULL },
-    { "$D640", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd640, NULL },
-    { "$D660", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd660, NULL },
-    { "$D680", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd680, NULL },
-    { "$D6A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd6a0, NULL },
-    { "$D6C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd6c0, NULL },
-    { "$D6E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd6e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_stereo_address_d7xx_submenu[] = {
-    { "$D700", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd700, NULL },
-    { "$D720", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd720, NULL },
-    { "$D740", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd740, NULL },
-    { "$D760", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd760, NULL },
-    { "$D780", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd780, NULL },
-    { "$D7A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd7a0, NULL },
-    { "$D7C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd7c0, NULL },
-    { "$D7E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xd7e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_stereo_address_dexx_submenu[] = {
-    { "$DE00", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xde00, NULL },
-    { "$DE20", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xde20, NULL },
-    { "$DE40", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xde40, NULL },
-    { "$DE60", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xde60, NULL },
-    { "$DE80", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xde80, NULL },
-    { "$DEA0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdea0, NULL },
-    { "$DEC0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdec0, NULL },
-    { "$DEE0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdee0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_stereo_address_dfxx_submenu[] = {
-    { "$DF00", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdf00, NULL },
-    { "$DF20", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdf20, NULL },
-    { "$DF40", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdf40, NULL },
-    { "$DF60", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdf60, NULL },
-    { "$DF80", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdf80, NULL },
-    { "$DFA0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdfa0, NULL },
-    { "$DFC0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdfc0, NULL },
-    { "$DFE0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidStereoAddressStart, (ui_callback_data_t)0xdfe0, NULL },
-    { NULL }
-};
+SID_D4XX_MENU(set_sid_stereo_address_d4xx_submenu, radio_SidStereoAddressStart)
+SID_D5XX_MENU(set_sid_stereo_address_d5xx_submenu, radio_SidStereoAddressStart)
+SID_D6XX_MENU(set_sid_stereo_address_d6xx_submenu, radio_SidStereoAddressStart)
+SID_D7XX_MENU(set_sid_stereo_address_d7xx_submenu, radio_SidStereoAddressStart)
+SID_DEXX_MENU(set_sid_stereo_address_dexx_submenu, radio_SidStereoAddressStart)
+SID_DFXX_MENU(set_sid_stereo_address_dfxx_submenu, radio_SidStereoAddressStart)
 
 static ui_menu_entry_t set_sid_stereo_address_submenu[] = {
     { "$D4xx", UI_MENU_TYPE_NORMAL, NULL, NULL, set_sid_stereo_address_d4xx_submenu },
@@ -340,76 +332,12 @@ static ui_menu_entry_t set_sid_stereo_address_submenu[] = {
     { NULL }
 };
 
-static ui_menu_entry_t set_sid_triple_address_d4xx_submenu[] = {
-    { "$D420", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd420, NULL },
-    { "$D440", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd440, NULL },
-    { "$D460", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd460, NULL },
-    { "$D480", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd480, NULL },
-    { "$D4A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd4a0, NULL },
-    { "$D4C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd4c0, NULL },
-    { "$D4E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd4e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_triple_address_d5xx_submenu[] = {
-    { "$D500", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd500, NULL },
-    { "$D520", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd520, NULL },
-    { "$D540", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd540, NULL },
-    { "$D560", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd560, NULL },
-    { "$D580", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd580, NULL },
-    { "$D5A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd5a0, NULL },
-    { "$D5C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd5c0, NULL },
-    { "$D5E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd5e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_triple_address_d6xx_submenu[] = {
-    { "$D600", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd600, NULL },
-    { "$D620", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd620, NULL },
-    { "$D640", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd640, NULL },
-    { "$D660", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd660, NULL },
-    { "$D680", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd680, NULL },
-    { "$D6A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd6a0, NULL },
-    { "$D6C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd6c0, NULL },
-    { "$D6E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd6e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_triple_address_d7xx_submenu[] = {
-    { "$D700", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd700, NULL },
-    { "$D720", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd720, NULL },
-    { "$D740", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd740, NULL },
-    { "$D760", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd760, NULL },
-    { "$D780", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd780, NULL },
-    { "$D7A0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd7a0, NULL },
-    { "$D7C0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd7c0, NULL },
-    { "$D7E0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xd7e0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_triple_address_dexx_submenu[] = {
-    { "$DE00", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xde00, NULL },
-    { "$DE20", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xde20, NULL },
-    { "$DE40", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xde40, NULL },
-    { "$DE60", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xde60, NULL },
-    { "$DE80", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xde80, NULL },
-    { "$DEA0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdea0, NULL },
-    { "$DEC0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdec0, NULL },
-    { "$DEE0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdee0, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t set_sid_triple_address_dfxx_submenu[] = {
-    { "$DF00", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdf00, NULL },
-    { "$DF20", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdf20, NULL },
-    { "$DF40", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdf40, NULL },
-    { "$DF60", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdf60, NULL },
-    { "$DF80", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdf80, NULL },
-    { "$DFA0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdfa0, NULL },
-    { "$DFC0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdfc0, NULL },
-    { "$DFE0", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SidTripleAddressStart, (ui_callback_data_t)0xdfe0, NULL },
-    { NULL }
-};
+SID_D4XX_MENU(set_sid_triple_address_d4xx_submenu, radio_SidTripleAddressStart)
+SID_D5XX_MENU(set_sid_triple_address_d5xx_submenu, radio_SidTripleAddressStart)
+SID_D6XX_MENU(set_sid_triple_address_d6xx_submenu, radio_SidTripleAddressStart)
+SID_D7XX_MENU(set_sid_triple_address_d7xx_submenu, radio_SidTripleAddressStart)
+SID_DEXX_MENU(set_sid_triple_address_dexx_submenu, radio_SidTripleAddressStart)
+SID_DFXX_MENU(set_sid_triple_address_dfxx_submenu, radio_SidTripleAddressStart)
 
 static ui_menu_entry_t set_sid_triple_address_submenu[] = {
     { "$D4xx", UI_MENU_TYPE_NORMAL, NULL, NULL, set_sid_triple_address_d4xx_submenu },
@@ -424,6 +352,7 @@ static ui_menu_entry_t set_sid_triple_address_submenu[] = {
 UI_MENU_DEFINE_TOGGLE(SidFilters)
 
 static ui_menu_entry_t sid_submenu[] = {
+    { N_("SID model"), UI_MENU_TYPE_NORMAL, NULL, NULL, sid_model_submenu },
     { N_("Extra SIDs"), UI_MENU_TYPE_NORMAL, NULL, NULL, sid_extra_sids_submenu },
     { N_("Second SID base address"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_sid_stereo_address_submenu },
     { N_("Third SID base address"), UI_MENU_TYPE_NORMAL, NULL, NULL, set_sid_triple_address_submenu },
@@ -432,15 +361,11 @@ static ui_menu_entry_t sid_submenu[] = {
 #ifdef HAVE_RESID
     { "--", UI_MENU_TYPE_SEPARATOR }, 
     { N_("reSID sampling method"), UI_MENU_TYPE_NORMAL, NULL, NULL, sid_resid_sampling_submenu }, 
+#if !defined(USE_GNOMEUI)
     { N_("reSID resampling passband"), UI_MENU_TYPE_DOTS, (ui_callback_t)set_sid_resid_passband, NULL, NULL },
 #endif
+#endif
     { NULL },
-};
-
-static ui_menu_entry_t model_options_submenu[] = {
-    { N_("C64 model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, set_c64_model_submenu },
-    { NULL }
 };
 
 /* ------------------------------------------------------------------------- */
@@ -461,25 +386,21 @@ UI_MENU_DEFINE_RADIO(IOCollisionHandling)
 
 static ui_menu_entry_t iocollision_submenu[] = {
     { N_("detach all"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)0, NULL },
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_ALL, NULL },
     { N_("detach last"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)1, NULL },
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_LAST, NULL },
     { N_("AND values"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)2, NULL },
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_AND_WIRES, NULL },
     { NULL }
 };
 
 UI_MENU_DEFINE_TOGGLE(SFXSoundSampler)
-UI_MENU_DEFINE_TOGGLE(UserportRTC)
+UI_MENU_DEFINE_TOGGLE(CPMCart)
 UI_MENU_DEFINE_TOGGLE(CartridgeReset)
 
 static ui_menu_entry_t io_extensions_submenu[] = {
-    { N_("256K RAM Expansion"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, c64_256k_submenu },
-    { N_("PLUS60K RAM Expansion"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, plus60k_submenu },
-    { N_("PLUS256K RAM Expansion"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, plus256k_submenu },
+    { N_("Memory Expansions Hack"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, c64_memory_hacks_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { CARTRIDGE_NAME_GEORAM, UI_MENU_TYPE_NORMAL,
       NULL, NULL, georam_c64_submenu },
@@ -497,6 +418,8 @@ static ui_menu_entry_t io_extensions_submenu[] = {
     { "--", UI_MENU_TYPE_SEPARATOR },
     { CARTRIDGE_NAME_EASYFLASH, UI_MENU_TYPE_NORMAL,
       NULL, NULL, easyflash_submenu },
+    { CARTRIDGE_NAME_GMOD2, UI_MENU_TYPE_NORMAL,
+      NULL, NULL, gmod2_submenu },
     { CARTRIDGE_NAME_IDE64, UI_MENU_TYPE_NORMAL,
       NULL, NULL, ide64_submenu },
     { CARTRIDGE_NAME_MMC64, UI_MENU_TYPE_NORMAL,
@@ -505,27 +428,25 @@ static ui_menu_entry_t io_extensions_submenu[] = {
       NULL, NULL, mmcreplay_submenu },
     { CARTRIDGE_NAME_RETRO_REPLAY, UI_MENU_TYPE_NORMAL,
       NULL, NULL, retroreplay_submenu },
+    { CARTRIDGE_NAME_SUPER_SNAPSHOT_V5, UI_MENU_TYPE_NORMAL,
+      NULL, NULL, supersnapshot_v5_submenu },
+#ifdef HAVE_PCAP
     { "--", UI_MENU_TYPE_SEPARATOR },
-#ifdef HAVE_TFE
-    { N_("Ethernet emulation"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, tfe_c64_submenu },
+
+    { N_("Ethernet cartridge"), UI_MENU_TYPE_NORMAL,
+        NULL, NULL, ethernetcart_c64_submenu },
+    { CARTRIDGE_NAME_RRNETMK3, UI_MENU_TYPE_NORMAL,
+      NULL, NULL, rrnetmk3_submenu },
 #endif
+    { "--", UI_MENU_TYPE_SEPARATOR },
+
     { CARTRIDGE_NAME_IEEE488, UI_MENU_TYPE_NORMAL,
       NULL, NULL, tpi_submenu },
     { N_("Burst Mode Modification"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, burstmod_submenu },
-#ifdef HAVE_MOUSE
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Mouse emulation"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, mouse_submenu },
-    { N_("Lightpen emulation"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, lightpen_submenu },
-#endif
     { "--", UI_MENU_TYPE_SEPARATOR },
     { CARTRIDGE_NAME_DIGIMAX, UI_MENU_TYPE_NORMAL,
       NULL, NULL, digimax_c64_submenu },
-    { CARTRIDGE_NAME_DS12C887RTC, UI_MENU_TYPE_NORMAL,
-      NULL, NULL, ds12c887rtc_c64_submenu },
     { CARTRIDGE_NAME_MAGIC_VOICE, UI_MENU_TYPE_NORMAL,
       NULL, NULL, magicvoice_submenu },
 #ifdef HAVE_MIDI
@@ -536,10 +457,17 @@ static ui_menu_entry_t io_extensions_submenu[] = {
       NULL, NULL, soundexpander_c64_submenu },
     { CARTRIDGE_NAME_SFX_SOUND_SAMPLER, UI_MENU_TYPE_NORMAL,
       (ui_callback_t)toggle_SFXSoundSampler, NULL, NULL },
-    { "Userport RTC", UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)toggle_UserportRTC, NULL, NULL },
+    { "CP/M Cartridge", UI_MENU_TYPE_NORMAL,
+      (ui_callback_t)toggle_CPMCart, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("I/O collision handling"), UI_MENU_TYPE_NORMAL,
+    { CARTRIDGE_NAME_DS12C887RTC, UI_MENU_TYPE_NORMAL,
+      NULL, NULL, ds12c887rtc_c64_submenu },
+    { "Userport devices", UI_MENU_TYPE_NORMAL,
+      NULL, NULL, userport_c64_cbm2_submenu },
+    { "Tape port devices", UI_MENU_TYPE_NORMAL,
+      NULL, NULL, tapeport_submenu },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("I/O collision handling ($D000-$DFFF)"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, iocollision_submenu },
     { N_("Reset on cart change"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_CartridgeReset, NULL, NULL },
@@ -572,9 +500,6 @@ static ui_menu_entry_t c64_romset_submenu[] = {
       NULL, NULL, ui_drivec64vic20_romset_submenu },
     { N_("Load new drive expansion ROM"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uidrivec64c128_expansion_romset_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("ROM set type"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, uiromset_type_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("ROM set archive"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiromset_archive_submenu },
@@ -609,20 +534,6 @@ static ui_menu_entry_t ui_screenshot_commands_menu[] = {
 
 /* ------------------------------------------------------------------------- */
 
-static ui_menu_entry_t keymap_sym_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap, (ui_callback_data_t)"x11_sym.vkm", NULL },
-    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap, (ui_callback_data_t)"x11_symger.vkm", NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t keymap_pos_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap, (ui_callback_data_t)"x11_pos.vkm", NULL },
-    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap, (ui_callback_data_t)"x11_posger.vkm", NULL },
-    { NULL }
-};
-
-/* ------------------------------------------------------------------------- */
-
 static ui_menu_entry_t c64_menu[] = {
     { N_("Model settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, c64_model_submenu },
@@ -636,23 +547,29 @@ static ui_menu_entry_t c64_menu[] = {
       NULL, NULL, sid_submenu },
     { N_("I/O extensions"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, io_extensions_submenu },
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     { N_("RS232 settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uirs232_c64_submenu },
+#endif
+#ifdef HAVE_PCAP
+    { N_("Ethernet settings"), UI_MENU_TYPE_NORMAL,
+        NULL, NULL, uics8900_submenu },
+#endif
     { NULL }
 };
 
 static ui_menu_entry_t x64_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, uiattach_smart_attach_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uiattach_disk_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uiattach_tape_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_datasette_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uiattach_smart_attach_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_c64cart_commands_menu },
-    { "", UI_MENU_TYPE_NONE,
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_directory_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_snapshot_commands_menu },
@@ -661,41 +578,21 @@ static ui_menu_entry_t x64_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_record_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_tool_commands_menu },
+      NULL, NULL, ui_edit_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_help_commands_menu },
+      NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
 #if defined(USE_XAWUI)
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_edit_commands_submenu },
+      NULL, NULL, ui_help_commands_menu },
 #endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_exit_commands_menu },
-    { NULL }
-};
-
-static ui_menu_entry_t x64_right_menu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uikeyboard_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_drivec64_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheraliec_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, joystick_settings_c64_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, c64_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_settings_settings_menu },
-#ifdef DEBUG
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_debug_settings_menu },
-#endif
     { NULL }
 };
 
@@ -714,6 +611,10 @@ static ui_menu_entry_t x64_file_submenu[] = {
       NULL, NULL, ui_directory_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -739,33 +640,41 @@ static ui_menu_entry_t x64_snapshot_submenu[] = {
     { NULL }
 };
 
-static ui_menu_entry_t x64_options_submenu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, joystick_options_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, model_options_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, io_extensions_submenu },
-    { NULL }
-};
+UI_MENU_DEFINE_TOGGLE(VirtualDevices)
 
 static ui_menu_entry_t x64_settings_submenu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_performance_settings_menu },
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_runmode_commands_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uikeyboard_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_settings_menu },
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_sampler_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_drivec64_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheraliec_settings_menu },
+    { N_("Printer settings"), UI_MENU_TYPE_NORMAL, 
+      NULL, NULL, printeriec_settings_menu },
+    { N_("Enable Virtual Devices"), UI_MENU_TYPE_TICK, 
+      (ui_callback_t)toggle_VirtualDevices, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_joyport_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, joystick_settings_c64_menu },
+#ifdef HAVE_MOUSE
+    { N_("Mouse emulation"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, mouse_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, c64_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_settings_settings_menu },
+#ifdef DEBUG
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_debug_settings_menu },
+#endif
     { NULL }
 };
 
@@ -778,8 +687,6 @@ static ui_menu_entry_t x64_main_menu[] = {
 #endif
     { N_("Snapshot"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, x64_snapshot_submenu },
-    { N_("Options"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, x64_options_submenu },
     { N_("Settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, x64_settings_submenu },
 #ifdef DEBUG
@@ -796,6 +703,8 @@ static ui_menu_entry_t x64_main_menu[] = {
 static ui_menu_entry_t x64_speed_menu[] = {
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_performance_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_runmode_commands_menu },
     { NULL }
 };
 
@@ -810,16 +719,38 @@ static ui_menu_entry_t x64_tape_menu[] = {
 static void c64ui_dynamic_menu_create(void)
 {
     uisound_menu_create();
+    uisampler_menu_create();
     uivicii_menu_create();
+    uicart_menu_create();
+    uikeyboard_menu_create();
+    uijoyport_menu_create(1, 1, 1, 1, 0);
+    uisid_model_menu_create();
+    uiide64_menu_create();
+    uimmc64_menu_create();
+    uimmcr_menu_create();
+    uiretroreplay_menu_create();
 
-    memcpy(uikeymap_sym_submenu, keymap_sym_submenu, sizeof(keymap_sym_submenu));
-    memcpy(uikeymap_pos_submenu, keymap_pos_submenu, sizeof(keymap_pos_submenu));
+#ifdef HAVE_PCAP
+    uiethernetcart_menu_create();
+#endif
 }
 
 static void c64ui_dynamic_menu_shutdown(void)
 {
     uivicii_menu_shutdown();
+    uicart_menu_shutdown();
     uisound_menu_shutdown();
+    uisampler_menu_shutdown();
+    uikeyboard_menu_shutdown();
+    uijoyport_menu_shutdown();
+    uisid_model_menu_shutdown();
+    uiide64_menu_shutdown();
+    uimmc64_menu_shutdown();
+    uimmcr_menu_shutdown();
+    uiretroreplay_menu_shutdown();
+#ifdef HAVE_PCAP
+    uiethernetcart_menu_shutdown();
+#endif
 }
 
 int c64ui_init(void)
@@ -828,7 +759,7 @@ int c64ui_init(void)
     c64ui_dynamic_menu_create();
 
     ui_set_left_menu(x64_left_menu);
-    ui_set_right_menu(x64_right_menu);
+    ui_set_right_menu(x64_settings_submenu);
     ui_set_topmenu(x64_main_menu);
     ui_set_speedmenu(x64_speed_menu);
     ui_set_tape_menu(x64_tape_menu);

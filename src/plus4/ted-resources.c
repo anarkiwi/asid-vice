@@ -46,15 +46,25 @@ static int set_border_mode(int val, void *param)
 {
     int sync;
 
+    switch (val) {
+        case TED_NORMAL_BORDERS:
+        case TED_FULL_BORDERS:
+        case TED_DEBUG_BORDERS:
+        case TED_NO_BORDERS:
+            break;
+        default:
+            return -1;
+    }
+
     if (resources_get_int("MachineVideoStandard", &sync) < 0) {
         sync = MACHINE_SYNC_PAL;
     }
 
     if (ted_resources.border_mode != val) {
         ted_resources.border_mode = val;
-        machine_change_timing(sync ^ TED_BORDER_MODE(ted_resources.border_mode));
+        machine_change_timing(sync, ted_resources.border_mode);
     }
-   return 0;
+    return 0;
 }
 
 static const resource_int_t resources_int[] =
@@ -74,9 +84,7 @@ int ted_resources_init(void)
     video_chip_cap.dscan_allowed = ARCHDEP_TED_DSCAN;
     video_chip_cap.hwscale_allowed = ARCHDEP_TED_HWSCALE;
     video_chip_cap.scale2x_allowed = ARCHDEP_TED_DSIZE;
-    video_chip_cap.internal_palette_allowed = 1;
-    video_chip_cap.external_palette_name = "default";
-    video_chip_cap.palemulation_allowed = 1;
+    video_chip_cap.external_palette_name = "yape-pal";
     video_chip_cap.double_buffering_allowed = ARCHDEP_TED_DBUF;
     video_chip_cap.single_mode.sizex = 1;
     video_chip_cap.single_mode.sizey = 1;
@@ -95,4 +103,3 @@ int ted_resources_init(void)
 
     return resources_register_int(resources_int);
 }
-

@@ -1,4 +1,4 @@
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -9,14 +9,18 @@ INCLUDES = \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/video \
 	-I$(top_srcdir)/src/tape \
-	-I$(top_srcdir)/src/lib/p64
+	-I$(top_srcdir)/src/lib/p64 \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv \
+	-I$(top_srcdir)/src/tapeport
 
 noinst_LIBRARIES = libpet.a
 
 libpet_a_SOURCES = \
 	6809.c \
 	6809.h \
-	petcpu.c \
+	debugcart.c \
+	debugcart.h \
 	pet-cmdline-options.c \
 	pet-cmdline-options.h \
 	pet-resources.c \
@@ -29,13 +33,19 @@ libpet_a_SOURCES = \
 	petacia.h \
 	petacia1.c \
 	petbus.c \
+	petcolour.c \
+	petcolour.h \
+	petcpu.c \
 	petdatasette.c \
 	petdrive.c \
 	petdww.c \
 	petdww.h \
 	petembedded.c \
+	pethre.c \
+	pethre.h \
 	petiec.c \
 	petiec.h \
+	petio.c \
 	petmem.c \
 	petmem.h \
 	petmemsnapshot.c \

@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -55,10 +55,9 @@ static const cmdline_option_t cmdline_options[] =
 
 int crtc_cmdline_options_init(void)
 {
-    if (raster_cmdline_options_chip_init("Crtc", crtc.video_chip_cap) < 0) {
+    if (raster_cmdline_options_chip_init("CRTC", crtc.video_chip_cap) < 0) {
         return -1;
     }
 
     return cmdline_register_options(cmdline_options);
 }
-

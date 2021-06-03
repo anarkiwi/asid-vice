@@ -31,6 +31,7 @@
 
 extern BYTE supersnapshot_v5_roml_read(WORD addr);
 extern void supersnapshot_v5_roml_store(WORD addr, BYTE value);
+extern void supersnapshot_v5_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit);
 
 extern void supersnapshot_v5_freeze(void);
 
@@ -39,6 +40,10 @@ extern void supersnapshot_v5_config_setup(BYTE *rawcart);
 extern int supersnapshot_v5_bin_attach(const char *filename, BYTE *rawcart);
 extern int supersnapshot_v5_crt_attach(FILE *fd, BYTE *rawcart);
 extern void supersnapshot_v5_detach(void);
+
+extern int supersnapshot_v5_resources_init(void);
+extern void supersnapshot_v5_resources_shutdown(void);
+extern int supersnapshot_v5_cmdline_options_init(void);
 
 struct snapshot_s;
 

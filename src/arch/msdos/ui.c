@@ -79,13 +79,24 @@ static unsigned int statusbar_is_enabled;
 
 static int set_use_leds(int v, void *param)
 {
-    use_leds = v;
+    use_leds = v ? 1 : 0;
+
     return 0;
 }
 
 static int set_statusbar_enabled(int v, void *param) 
 {
+    switch (v) {
+        case STATUSBAR_MODE_OFF:
+        case STATUSBAR_MODE_ON:
+        case STATUSBAR_MODE_AUTO:
+            break;
+        default:
+            return -1;
+    }
+
     statusbar_is_enabled = v;
+
     if (statusbar_enabled()) {
         statusbar_prepare();
         statusbar_update();
@@ -123,16 +134,11 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
       NULL, "Disable usage of PC keyboard LEDs" },
-    { "-statusbar", SET_RESOURCE, 0,
-      NULL, NULL, "ShowStatusbar", (resource_value_t)0,
+    { "-statusbar", SET_RESOURCE, 1,
+      NULL, NULL, "ShowStatusbar", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      NULL, "Disable the Statusbar" },
-    { "+statusbar", SET_RESOURCE, 0,
-      NULL, NULL, "ShowStatusbar", (resource_value_t)1,
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      IDCLS_UNUSED, IDCLS_UNUSED,
-      NULL, "Enable the Statusbar" },
+      "<Mode>", "Set the Statusbar mode (0: Off, 1: On, 2: Auto)" },
     { NULL },
 };
 
@@ -558,7 +564,7 @@ int ui_extend_image_dialog(void)
     enable_text();
     tui_clear_screen();
 
-    ret = tui_ask_confirmation("Extend disk image in drive 8 to 40 tracks?  (Y/N)");
+    ret = tui_ask_confirmation("Do you want to extend the disk image in drive 8?  (Y/N)");
 
     disable_text();
 

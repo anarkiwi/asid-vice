@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * Multiple memory configuration support originally by
@@ -89,10 +89,10 @@ static int mem_write_ram_snapshot_module(snapshot_t *p)
     BYTE config;
 
     config = (ram_block_0_enabled ? 1 : 0)
-                | (ram_block_1_enabled ? 2 : 0)
-                | (ram_block_2_enabled ? 4 : 0)
-                | (ram_block_3_enabled ? 8 : 0)
-                | (ram_block_5_enabled ? 32 : 0) ;
+             | (ram_block_1_enabled ? 2 : 0)
+             | (ram_block_2_enabled ? 4 : 0)
+             | (ram_block_3_enabled ? 8 : 0)
+             | (ram_block_5_enabled ? 32 : 0);
 
     m = snapshot_module_create(p, SNAP_MEM_MODULE_NAME,
                                VIC20MEM_DUMP_VER_MAJOR,
@@ -219,21 +219,15 @@ static int mem_read_ram_snapshot_module(snapshot_t *p)
 static int mem_write_rom_snapshot_module(snapshot_t *p, int save_roms)
 {
     snapshot_module_t *m;
-    int trapfl;
 
     if (!save_roms) {
         return 0;
     }
 
-    m = snapshot_module_create(p, SNAP_ROM_MODULE_NAME,
-                          VIC20MEM_DUMP_VER_MAJOR, VIC20MEM_DUMP_VER_MINOR);
+    m = snapshot_module_create(p, SNAP_ROM_MODULE_NAME, VIC20MEM_DUMP_VER_MAJOR, VIC20MEM_DUMP_VER_MINOR);
     if (m == NULL) {
         return -1;
     }
-
-    /* disable traps before saving the ROM */
-    resources_get_int("VirtualDevices", &trapfl);
-    resources_set_int("VirtualDevices", 0);
 
     /* old cart system config bits.  all zero = no roms */
     SMW_B(m, 0x00);
@@ -244,9 +238,6 @@ static int mem_write_rom_snapshot_module(snapshot_t *p, int save_roms)
     SMW_BA(m, vic20memrom_basic_rom, 0x2000);
 
     SMW_BA(m, vic20memrom_chargen_rom, 0x1000);
-
-    /* enable traps again when necessary */
-    resources_set_int("VirtualDevices", trapfl);
 
     snapshot_module_close(m);
 
@@ -320,4 +311,3 @@ int vic20_snapshot_read_module(snapshot_t *m)
     }
     return 0;
 }
-

@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -29,6 +30,8 @@
 #define VICE_ARCHDEP_H
 
 #include "archapi.h"
+
+#include "sound.h"
 
 /* Filesystem dependant operators.  */
 #define FSDEVICE_DEFAULT_DIR "."
@@ -123,12 +126,7 @@ extern const char *archdep_home_path(void);
 /* set this path to customize the preference storage */ 
 extern const char *archdep_pref_path;
 
-/* Define the default system directory (where the ROMs are).  */
-#ifdef __NetBSD__
-#define LIBDIR PREFIX "/share/vice"
-#else
-#define LIBDIR PREFIX "/lib/vice"
-#endif
+#define LIBDIR VICEDIR
 
 #if defined(__FreeBSD__) || defined(__NetBSD__)
 #define DOCDIR PREFIX "/share/doc/vice"
@@ -137,5 +135,34 @@ extern const char *archdep_pref_path;
 #endif
 
 #define VICEUSERDIR ".vice"
+
+#ifdef MACOSX_SUPPORT
+#define MAKE_SO_NAME_VERSION_PROTO(name, version)  "/opt/local/lib/lib" #name "." #version ".dylib"
+#else
+#define MAKE_SO_NAME_VERSION_PROTO(name, version)  "lib" #name ".so." #version
+#endif
+
+/* add second level macro to allow expansion and stringification */
+#define ARCHDEP_MAKE_SO_NAME_VERSION(n, v) MAKE_SO_NAME_VERSION_PROTO(n, v)
+
+#ifdef MACOSX_SUPPORT
+#define ARCHDEP_OPENCBM_SO_NAME  "/opt/opencbm/lib/libopencbm.dylib"
+#define ARCHDEP_LAME_SO_NAME     "/opt/local/lib/libmp3lame.dylib"
+#else
+#define ARCHDEP_OPENCBM_SO_NAME  "libopencbm.so"
+#define ARCHDEP_LAME_SO_NAME     "libmp3lame.so"
+#endif
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR errno
+
+/* Default sound output mode */
+#define ARCHDEP_SOUND_OUTPUT_MODE SOUND_OUTPUT_SYSTEM
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
+
+/* define if the platform supports the monitor in a seperate window */
+#define ARCHDEP_SEPERATE_MONITOR_WINDOW
 
 #endif

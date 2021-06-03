@@ -2,7 +2,7 @@
  * archdep_xbox.h - Architecture dependant defines.
  *
  * Written by
- *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -76,7 +76,7 @@
 #define ARCHDEP_ETHERNET_DEFAULT_DEVICE ""
 
 /* Default sound fragment size */
-#define ARCHDEP_SOUND_FRAGMENT_SIZE 2
+#define ARCHDEP_SOUND_FRAGMENT_SIZE SOUND_FRAGMENT_MEDIUM
 
 extern void archdep_workaround_nop(const char *otto);
 
@@ -90,5 +90,11 @@ extern void archdep_workaround_nop(const char *otto);
 #define archdep_signals_init(x)
 #define archdep_signals_pipe_set()
 #define archdep_signals_pipe_unset()
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR errno
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
 
 #endif

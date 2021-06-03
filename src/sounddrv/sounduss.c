@@ -30,9 +30,9 @@
    sound driver. For BSDI this uss sound driver should
    not be used either. */
 
-#if !defined(__FreeBSD__) && !defined(__bsdi__)
-
 #include "vice.h"
+
+#if defined(USE_OSS) && !defined(__FreeBSD__) && !defined(__bsdi__)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,19 +53,6 @@
 #include "log.h"
 #include "sound.h"
 
-#if defined(HAVE_LINUX_SOUNDCARD_H)
-#include <linux/soundcard.h>
-#endif
-#if defined(HAVE_MACHINE_SOUNDCARD_H)
-#include <machine/soundcard.h>
-#endif
-#if defined(HAVE_SYS_SOUNDCARD_H)
-#include <sys/soundcard.h>
-#endif
-#if defined(HAVE_SOUNDCARD_H)
-#include <soundcard.h>
-#endif
-
 static int uss_fd = -1;
 static int uss_8bit = 0;
 static int uss_bufsize = 0;
@@ -75,7 +62,7 @@ static int uss_channels;
 /* For conversion from mono to stereo. */
 #define BUFSIZE 32768
 static int uss_duplicate = 0;
-static SWORD buffer[2*BUFSIZE];
+static SWORD buffer[2 * BUFSIZE];
 
 static int uss_bufferspace(void);
 
@@ -86,10 +73,11 @@ static int uss_init(const char *param, int *speed,
 
     if (!param) {
         struct stat buf;
-        if (!stat("/dev/dsp", &buf))
+        if (!stat("/dev/dsp", &buf)) {
             param = "/dev/dsp";
-        else if (!stat("/dev/sound/dsp", &buf))
-            param="/dev/sound/dsp";
+        } else if (!stat("/dev/sound/dsp", &buf)) {
+            param = "/dev/sound/dsp";
+        }
     }
 
     if (!param) {
@@ -130,8 +118,7 @@ static int uss_init(const char *param, int *speed,
         /* Intel ICH and ICH0 only support 2 channels */
         if (*channels == 1 && tmp == 2) {
             uss_duplicate = 1;
-        }
-        else {
+        } else {
             log_message(LOG_DEFAULT, "SNDCTL_DSP_CHANNELS failed");
             /* no stereo */
             tmp = *channels = 1;
@@ -152,7 +139,8 @@ static int uss_init(const char *param, int *speed,
     *speed = tmp;
 
     /* fragments */
-    for (tmp = 1; 1 << tmp < *fragsize; tmp++);
+    for (tmp = 1; 1 << tmp < *fragsize; tmp++) {
+    }
     orig = tmp = tmp + (*fragnr << 16) + !uss_8bit;
     st = ioctl(uss_fd, SNDCTL_DSP_SETFRAGMENT, &tmp);
 
@@ -206,18 +194,21 @@ static int uss_write(SWORD *pbuf, size_t nr)
     }
 
     if (uss_8bit) {
-        for (i = 0; (size_t)i < nr; i++)
+        for (i = 0; (size_t)i < nr; i++) {
             ((char *)buffer)[i] = pbuf[i] / 256 + 128;
+        }
         pbuf = buffer;
         total = nr;
-    } else
-        total = nr*sizeof(SWORD);
+    } else {
+        total = nr * sizeof(SWORD);
+    }
 
     for (i = 0; (size_t)i < total; i += now) {
         now = write(uss_fd, (char *)pbuf + i, total - i);
         if (now <= 0) {
-            if (now < 0)
+            if (now < 0) {
                 perror("uss_write");
+            }
             return 1;
         }
     }
@@ -278,12 +269,11 @@ static sound_device_t uss_device =
     uss_suspend,
     NULL,
     1,
-    2		/* FIXME */
+    2           /* FIXME */
 };
 
 int sound_init_uss_device(void)
 {
     return sound_register_device(&uss_device);
 }
-
 #endif

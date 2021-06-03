@@ -5,6 +5,7 @@ roms = \
 	3plus1lo \
 	basic \
 	kernal \
+	kernal.005 \
 	kernal.232 \
 	kernal.364 \
 	c2lo.364
@@ -13,8 +14,8 @@ romsets = \
 	default.vrs
 
 palettes = \
-	default.vpl \
-	vice.vpl
+	yape-pal.vpl \
+	yape-ntsc.vpl
 
 x11_keymaps = \
 	x11_pos.vkm \
@@ -22,7 +23,7 @@ x11_keymaps = \
 	x11_sym_de.vkm
 
 sdl_keymaps = \
-	sdl_sym.vkm
+	sdl_pos.vkm
 
 extra_keymaps = \
 	amiga_sym.vkm \

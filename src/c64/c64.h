@@ -1,10 +1,11 @@
 
-/*! \file c64/c64.h 
+/*! \file c64/c64.h
  *
  *  \brief Definitions for C64 Machine context and -timing.
  *
  *  \author Andreas Boose <viceteam@t-online.de>
  *  \author Ettore Perazzoli <ettore@comm2000.it>
+ *  \author Marco van den Heuvel <blackystardust68@yahoo.com>
  */
 
 /*
@@ -54,12 +55,36 @@
 #define C64_PALN_CYCLES_PER_LINE 65
 #define C64_PALN_SCREEN_LINES    312
 #define C64_PALN_CYCLES_PER_RFSH (C64_PALN_SCREEN_LINES \
-                                    * C64_PALN_CYCLES_PER_LINE)
+                                  * C64_PALN_CYCLES_PER_LINE)
 #define C64_PALN_RFSH_PER_SEC  (1.0 / ((double)C64_PALN_CYCLES_PER_RFSH \
-                                        / (double)C64_PALN_CYCLES_PER_SEC))
+                                       / (double)C64_PALN_CYCLES_PER_SEC))
 
-/* $01 bits 6 and 7 fall-off cycles (1->0), average is about 350 msec */
-#define C64_CPU_DATA_PORT_FALL_OFF_CYCLES 350000
+/*
+    NOTE: fall-off cycles are heavily chip- and temperature dependant. as a
+          consequence it is very hard to find suitable realistic values that
+          always work and we can only tweak them based on testcases. (unless we
+          want to make it configureable or emulate temperature over time =))
+
+          it probably makes sense to tweak the values for a warmed up CPU, since
+          this is likely how (old) programs were coded and tested :)
+
+          see testprogs/CPU/cpuport for details and tests
+*/
+
+/* $01 bits 6 and 7 fall-off cycles (1->0), average is about 350 msec for a 6510 */
+/* NOTE: the unused bits of the 6510 seem to be much more temperature dependant
+         and the fall-off time decreases quicker and more drastically than on a
+         8500
+*/
+#define C64_CPU6510_DATA_PORT_FALL_OFF_CYCLES 350000
+/*
+   cpuports.prg from the lorenz testsuite will fail when the falloff takes less
+   than 5984 cycles. he explicitly delays by ~1280 cycles and mentions capacitance, 
+   so he probably even was aware of what happens.
+ */
+
+/* $01 bits 6 and 7 fall-off cycles (1->0), average is about 1500 msec for a 8500 */
+#define C64_CPU8500_DATA_PORT_FALL_OFF_CYCLES 1500000
 
 struct cia_context_s;
 struct printer_context_s;

@@ -41,7 +41,7 @@
 #include "viciitypes.h"
 #include "video.h"
 
-vicii_resources_t vicii_resources = { 0, 0, 0, 0 };
+vicii_resources_t vicii_resources = { 0, 0, 0, 0, 0 };
 static video_chip_cap_t video_chip_cap;
 
 
@@ -49,33 +49,39 @@ static int set_border_mode(int val, void *param)
 {
     int sync;
 
+    switch (val) {
+        case VICII_NORMAL_BORDERS:
+        case VICII_FULL_BORDERS:
+        case VICII_DEBUG_BORDERS:
+        case VICII_NO_BORDERS:
+            break;
+        default:
+            return -1;
+    }
+
     if (resources_get_int("MachineVideoStandard", &sync) < 0) {
         sync = MACHINE_SYNC_PAL;
     }
 
     if (vicii_resources.border_mode != val) {
         vicii_resources.border_mode = val;
-        machine_change_timing(sync ^ VICII_BORDER_MODE(vicii_resources.border_mode));
+        machine_change_timing(sync, vicii_resources.border_mode);
     }
-   return 0;
+    return 0;
 }
 
 static int set_sprite_sprite_collisions_enabled(int val, void *param)
 {
-    vicii_resources.sprite_sprite_collisions_enabled = val;
+    vicii_resources.sprite_sprite_collisions_enabled = val ? 1 : 0;
+
     return 0;
 }
 
 static int set_sprite_background_collisions_enabled(int val, void *param)
 {
-    vicii_resources.sprite_background_collisions_enabled = val;
-    return 0;
-}
+    vicii_resources.sprite_background_collisions_enabled = val ? 1 : 0;
 
-static int set_new_luminances(int val, void *param)
-{
-    vicii_resources.new_luminances = val;
-    return vicii_color_update_palette(vicii.raster.canvas);
+    return 0;
 }
 
 static const resource_int_t resources_int[] =
@@ -89,12 +95,23 @@ static const resource_int_t resources_int[] =
     { "VICIICheckSbColl", 1, RES_EVENT_SAME, NULL,
       &vicii_resources.sprite_background_collisions_enabled,
       set_sprite_background_collisions_enabled, NULL },
+    { NULL }
+};
+
+static int set_new_luminances(int val, void *param)
+{
+    vicii_resources.new_luminances = val ? 1 : 0;
+
+    return vicii_color_update_palette(vicii.raster.canvas);
+}
+
+static const resource_int_t resources_int_dtv[] =
+{
     { "VICIINewLuminances", 1, RES_EVENT_NO, NULL,
       &vicii_resources.new_luminances,
       set_new_luminances, NULL },
     { NULL }
 };
-
 
 int vicii_resources_init(void)
 {
@@ -105,9 +122,11 @@ int vicii_resources_init(void)
     video_chip_cap.dscan_allowed = ARCHDEP_VICII_DSCAN;
     video_chip_cap.hwscale_allowed = ARCHDEP_VICII_HWSCALE;
     video_chip_cap.scale2x_allowed = ARCHDEP_VICII_DSIZE;
-    video_chip_cap.internal_palette_allowed = 1;
-    video_chip_cap.external_palette_name = "default";
-    video_chip_cap.palemulation_allowed = 1;
+    if (machine_class == VICE_MACHINE_C64DTV) {
+        video_chip_cap.external_palette_name = "spiff";
+    } else {
+        video_chip_cap.external_palette_name = "vice";
+    }
     video_chip_cap.double_buffering_allowed = ARCHDEP_VICII_DBUF;
     video_chip_cap.single_mode.sizex = 1;
     video_chip_cap.single_mode.sizey = 1;
@@ -120,10 +139,14 @@ int vicii_resources_init(void)
 
     vicii.video_chip_cap = &video_chip_cap;
 
-    if (raster_resources_chip_init("VICII", &vicii.raster,
-        &video_chip_cap) < 0)
+    if (raster_resources_chip_init("VICII", &vicii.raster, &video_chip_cap) < 0) {
         return -1;
+    }
+    if (machine_class == VICE_MACHINE_C64DTV) {
+        if (resources_register_int(resources_int_dtv) < 0) {
+            return -1;
+        }
+    }
 
     return resources_register_int(resources_int);
 }
-

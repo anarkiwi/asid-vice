@@ -3,9 +3,10 @@
  * ($DC00).
  *
  * Written by
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -36,8 +37,9 @@
 #include "c64cia.h"
 #include "cia.h"
 #include "clkguard.h"
-#include "drivecpu.h"
+#include "drive.h"
 #include "interrupt.h"
+#include "joyport.h"
 #include "joystick.h"
 #include "keyboard.h"
 #include "lib.h"
@@ -45,10 +47,10 @@
 #include "machine.h"
 #include "maincpu.h"
 #include "types.h"
-#include "userport_joystick.h"
+#include "userport.h"
 #include "vicii.h"
 
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "rsuser.h"
 #endif
 
@@ -126,7 +128,7 @@ static void do_reset_cia(cia_context_t *cia_context)
 static void cia1_internal_lightpen_check(BYTE pa, BYTE pb)
 {
     BYTE val = 0xff;
-    BYTE msk = pa & ~joystick_value[2];
+    BYTE msk = pa & read_joyport_dig(JOYPORT_2);
     BYTE m;
     int i;
 
@@ -136,7 +138,7 @@ static void cia1_internal_lightpen_check(BYTE pa, BYTE pb)
         }
     }
 
-    m = val & pb & ~joystick_value[1];
+    m = val & pb & read_joyport_dig(JOYPORT_1);
 
     vicii_set_light_pen(maincpu_clk, !(m & 0x10));
 }
@@ -148,19 +150,11 @@ void cia1_check_lightpen(void)
 
 static void store_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE b)
 {
-    cia1_internal_lightpen_check(b,  machine_context.cia1->old_pb);
+    cia1_internal_lightpen_check(b, machine_context.cia1->old_pb);
 
-#ifdef HAVE_MOUSE
-    mouse_set_input((b >> 6) & 0x03);
+    set_joyport_pot_mask((b >> 6) & 3);
 
-    if (_mouse_enabled && (mouse_port == 2)) {
-        if (mouse_type == MOUSE_TYPE_NEOS) {
-            neos_mouse_store(b);
-        } else if (mouse_type == MOUSE_TYPE_SMART) {
-            smart_mouse_store(b);
-        }
-    }
-#endif
+    store_joyport_dig(JOYPORT_2, b, 0xff);
 }
 
 static void undump_ciapa(cia_context_t *cia_context, CLOCK rclk, BYTE b)
@@ -171,15 +165,7 @@ static void store_ciapb(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
 {
     cia1_internal_lightpen_check(machine_context.cia1->old_pa, byte);
 
-#ifdef HAVE_MOUSE
-    if (_mouse_enabled && (mouse_port == 1)) {
-        if (mouse_type == MOUSE_TYPE_NEOS) {
-            neos_mouse_store(byte);
-        } else if (mouse_type == MOUSE_TYPE_SMART) {
-            smart_mouse_store(byte);
-        }
-    }
-#endif
+    store_joyport_dig(JOYPORT_1, byte, 0xff);
 }
 
 static void undump_ciapb(cia_context_t *cia_context, CLOCK rclk, BYTE byte)
@@ -190,7 +176,7 @@ static BYTE read_ciapa(cia_context_t *cia_context)
 {
     BYTE byte;
     BYTE val = 0xff;
-    BYTE msk = cia_context->old_pb & ~joystick_value[1];
+    BYTE msk = cia_context->old_pb & read_joyport_dig(JOYPORT_1);
     BYTE m;
     int i;
 
@@ -200,19 +186,7 @@ static BYTE read_ciapa(cia_context_t *cia_context)
         }
     }
 
-    byte = (val & (cia_context->c_cia[CIA_PRA] | ~(cia_context->c_cia[CIA_DDRA]))) & ~joystick_value[2];
-
-#ifdef HAVE_MOUSE
-    if (_mouse_enabled && (mouse_port == 2)) {
-        if (mouse_type == MOUSE_TYPE_NEOS) {
-            byte &= neos_mouse_read();
-        } else if (mouse_type == MOUSE_TYPE_SMART) {
-            byte &= smart_mouse_read();
-        } else if (mouse_kind == MOUSE_KIND_POLLED) {
-            byte &= mouse_poll();
-        }
-    }
-#endif
+    byte = (val & (cia_context->c_cia[CIA_PRA] | ~(cia_context->c_cia[CIA_DDRA]))) & read_joyport_dig(JOYPORT_2);
 
     return byte;
 }
@@ -243,7 +217,7 @@ static BYTE read_ciapb(cia_context_t *cia_context)
     BYTE byte;
     BYTE val = 0xff;
     BYTE val_outhi = ((cia_context->c_cia[CIA_DDRA]) & (cia_context->c_cia[CIA_DDRB])) & (cia_context->c_cia[CIA_PRB]);
-    BYTE msk = cia_context->old_pa & ~joystick_value[2];
+    BYTE msk = cia_context->old_pa & read_joyport_dig(JOYPORT_2);
     BYTE m;
     int i;
 
@@ -277,43 +251,34 @@ static BYTE read_ciapb(cia_context_t *cia_context)
 
     byte = val & (cia_context->c_cia[CIA_PRB] | ~(cia_context->c_cia[CIA_DDRB]));
     byte |= val_outhi;
-    byte &= ~joystick_value[1];
-
-#ifdef HAVE_MOUSE
-    if (_mouse_enabled && (mouse_port == 1)) {
-        if (mouse_type == MOUSE_TYPE_NEOS) {
-            byte &= neos_mouse_read();
-        } else if (mouse_type == MOUSE_TYPE_SMART) {
-            byte &= smart_mouse_read();
-        } else if (mouse_kind == MOUSE_KIND_POLLED) {
-            byte &= mouse_poll();
-        }
-    }
-#endif
+    byte &= read_joyport_dig(JOYPORT_1);
 
     return byte;
 }
 
 static void read_ciaicr(cia_context_t *cia_context)
 {
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 }
 
 static void read_sdr(cia_context_t *cia_context)
 {
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
+
+    cia_context->c_cia[CIA_SDR] = read_userport_sp1(cia_context->c_cia[CIA_SDR]);
 }
 
 static void store_sdr(cia_context_t *cia_context, BYTE byte)
 {
+    if ((cia_context->c_cia[CIA_CRA] & 0x49) == 0x41) {
+        store_userport_sp1(byte);
+    }
     c128fastiec_fast_cpu_write(byte);
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     if (rsuser_enabled) {
         rsuser_tx_byte(byte);
     }
 #endif
-    /* FIXME: in the upcoming userport system this call needs to be conditional */
-    userport_joystick_store_sdr(byte);
 }
 
 void cia1_init(cia_context_t *cia_context)
@@ -334,7 +299,7 @@ void cia1_setup_context(machine_context_t *machine_context)
     cia->rmw_flag = &maincpu_rmw_flag;
     cia->clk_ptr = &maincpu_clk;
 
-    cia->todticks = C64_PAL_CYCLES_PER_RFSH;
+    cia1_set_timing(cia, C64_PAL_CYCLES_PER_SEC, 50);
 
     ciacore_setup_context(cia);
 
@@ -362,7 +327,11 @@ void cia1_setup_context(machine_context_t *machine_context)
     cia->pre_peek = pre_peek;
 }
 
-void cia1_set_timing(cia_context_t *cia_context, int todticks)
+void cia1_set_timing(cia_context_t *cia_context, int tickspersec, int powerfreq)
 {
-    cia_context->todticks = todticks;
+    cia_context->power_freq = powerfreq;
+    cia_context->ticks_per_sec = tickspersec;
+    cia_context->todticks = tickspersec / powerfreq;
+    cia_context->power_tickcounter = 0;
+    cia_context->power_ticks = 0;
 }

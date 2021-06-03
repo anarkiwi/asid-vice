@@ -31,10 +31,39 @@
 
 #include "cmdline.h"
 #include "lib.h"
+#include "machine.h"
 #include "resources.h"
 #include "translate.h"
 #include "util.h"
 #include "video.h"
+
+#ifdef HAVE_HWSCALE
+static cmdline_option_t cmdline_options[] = {
+    { "-hwscalepossible", SET_RESOURCE, 0,
+      NULL, NULL, "HwScalePossible", (resource_value_t)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_ENABLE_HWSCALE_POSSIBLE,
+      NULL, NULL },
+    { "+hwscalepossible", SET_RESOURCE, 0,
+      NULL, NULL, "HwScalePossible", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_DISABLE_HWSCALE_POSSIBLE,
+      NULL, NULL },
+    { NULL }
+};
+#endif
+
+int video_cmdline_options_init(void)
+{
+#ifdef HAVE_HWSCALE
+    if (machine_class != VICE_MACHINE_VSID) {
+        if (cmdline_register_options(cmdline_options) < 0) {
+            return -1;
+        }
+    }
+#endif
+    return video_arch_cmdline_options_init();
+}
 
 static const char *cname_chip_size[] =
 {
@@ -124,13 +153,13 @@ static cmdline_option_t cmdline_options_chip_hwscale[] =
     CMDLINE_LIST_END
 };
 
-static const char *cname_chip_renderer_2x[] =
+static const char *cname_chip_render_filter[] =
 {
     "-", "filter", "Filter",
     NULL
 };
 
-static cmdline_option_t cmdline_options_chip_renderer_2x[] =
+static cmdline_option_t cmdline_options_chip_render_filter[] =
 {
     { NULL, SET_RESOURCE, 1,
       NULL, NULL, NULL, NULL,
@@ -180,17 +209,17 @@ static cmdline_option_t cmdline_options_chip_palette[] =
 
 static const char *cname_chip_fullscreen[] =
 {
-#ifdef USE_SDLUI
-   "-", "full", "Fullscreen",
-   "+", "full", "Fullscreen",
+#if defined(USE_SDLUI) || defined(USE_SDLUI2)
+    "-", "full", "Fullscreen",
+    "+", "full", "Fullscreen",
 #endif
-   "-", "fulldevice", "FullscreenDevice",
-   NULL
+    "-", "fulldevice", "FullscreenDevice",
+    NULL
 };
 
 static cmdline_option_t cmdline_options_chip_fullscreen[] =
 {
-#ifdef USE_SDLUI
+#if defined(USE_SDLUI) || defined(USE_SDLUI2)
     { NULL, SET_RESOURCE, 0,
       NULL, NULL, NULL, (void *)1,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
@@ -315,11 +344,15 @@ int video_cmdline_options_chip_init(const char *chipname,
 {
     unsigned int i, j;
 
+    if (machine_class == VICE_MACHINE_VSID) {
+        return 0;
+    }
+
     if (video_chip_cap->dsize_allowed) {
         for (i = 0; cname_chip_size[i * 3] != NULL; i++) {
             cmdline_options_chip_size[i].name
                 = util_concat(cname_chip_size[i * 3], chipname,
-                cname_chip_size[i * 3 + 1], NULL);
+                              cname_chip_size[i * 3 + 1], NULL);
             cmdline_options_chip_size[i].resource_name
                 = util_concat(chipname, cname_chip_size[i * 3 + 2], NULL);
         }
@@ -338,7 +371,7 @@ int video_cmdline_options_chip_init(const char *chipname,
         for (i = 0; cname_chip_scan[i * 3] != NULL; i++) {
             cmdline_options_chip_scan[i].name
                 = util_concat(cname_chip_scan[i * 3], chipname,
-                cname_chip_scan[i * 3 + 1], NULL);
+                              cname_chip_scan[i * 3 + 1], NULL);
             cmdline_options_chip_scan[i].resource_name
                 = util_concat(chipname, cname_chip_scan[i * 3 + 2], NULL);
         }
@@ -356,7 +389,7 @@ int video_cmdline_options_chip_init(const char *chipname,
     for (i = 0; cname_chip_audioleak[i * 3] != NULL; i++) {
         cmdline_options_chip_audioleak[i].name
             = util_concat(cname_chip_audioleak[i * 3], chipname,
-            cname_chip_audioleak[i * 3 + 1], NULL);
+                          cname_chip_audioleak[i * 3 + 1], NULL);
         cmdline_options_chip_audioleak[i].resource_name
             = util_concat(chipname, cname_chip_audioleak[i * 3 + 2], NULL);
     }
@@ -374,7 +407,7 @@ int video_cmdline_options_chip_init(const char *chipname,
         for (i = 0; cname_chip_hwscale[i * 3] != NULL; i++) {
             cmdline_options_chip_hwscale[i].name
                 = util_concat(cname_chip_hwscale[i * 3], chipname,
-                cname_chip_hwscale[i * 3 + 1], NULL);
+                              cname_chip_hwscale[i * 3 + 1], NULL);
             cmdline_options_chip_hwscale[i].resource_name
                 = util_concat(chipname, cname_chip_hwscale[i * 3 + 2], NULL);
         }
@@ -389,53 +422,53 @@ int video_cmdline_options_chip_init(const char *chipname,
         }
     }
 
-    if (video_chip_cap->scale2x_allowed) {
-        for (i = 0; cname_chip_renderer_2x[i * 3] != NULL; i++) {
-            cmdline_options_chip_renderer_2x[i].name
-                = util_concat(cname_chip_renderer_2x[i * 3], chipname,
-                cname_chip_renderer_2x[i * 3 + 1], NULL);
-            cmdline_options_chip_renderer_2x[i].resource_name
-                = util_concat(chipname, cname_chip_renderer_2x[i * 3 + 2], NULL);
-        }
+    /* video render filters */
+    /* FIXME: scale2x is not available for all videochips
+              (video_chip_cap->scale2x_allowed) */
 
-        if (cmdline_register_options(cmdline_options_chip_renderer_2x) < 0) {
-            return -1;
-        }
-
-        for (i = 0; cname_chip_renderer_2x[i * 3] != NULL; i++) {
-            lib_free((char *)cmdline_options_chip_renderer_2x[i].name);
-            lib_free((char *)cmdline_options_chip_renderer_2x[i].resource_name);
-        }
+    for (i = 0; cname_chip_render_filter[i * 3] != NULL; i++) {
+        cmdline_options_chip_render_filter[i].name
+            = util_concat(cname_chip_render_filter[i * 3], chipname,
+                            cname_chip_render_filter[i * 3 + 1], NULL);
+        cmdline_options_chip_render_filter[i].resource_name
+            = util_concat(chipname, cname_chip_render_filter[i * 3 + 2], NULL);
     }
 
-    if (video_chip_cap->internal_palette_allowed) {
-        for (i = 0; cname_chip_internal_palette[i * 3] != NULL; i++) {
-            cmdline_options_chip_internal_palette[i].name
-                = util_concat(cname_chip_internal_palette[i * 3], chipname,
-                cname_chip_internal_palette[i * 3 + 1], NULL);
-            cmdline_options_chip_internal_palette[i].resource_name
-                = util_concat(chipname, cname_chip_internal_palette[i * 3 + 2],
-                NULL);
-        }
+    if (cmdline_register_options(cmdline_options_chip_render_filter) < 0) {
+        return -1;
+    }
 
-        if (cmdline_register_options(cmdline_options_chip_internal_palette)
-            < 0) {
-            return -1;
-        }
+    for (i = 0; cname_chip_render_filter[i * 3] != NULL; i++) {
+        lib_free((char *)cmdline_options_chip_render_filter[i].name);
+        lib_free((char *)cmdline_options_chip_render_filter[i].resource_name);
+    }
 
-        for (i = 0; cname_chip_internal_palette[i * 3] != NULL; i++) {
-            lib_free((char *)cmdline_options_chip_internal_palette[i].name);
-            lib_free((char *)cmdline_options_chip_internal_palette[i].resource_name);
-        }
+    for (i = 0; cname_chip_internal_palette[i * 3] != NULL; i++) {
+        cmdline_options_chip_internal_palette[i].name
+            = util_concat(cname_chip_internal_palette[i * 3], chipname,
+                            cname_chip_internal_palette[i * 3 + 1], NULL);
+        cmdline_options_chip_internal_palette[i].resource_name
+            = util_concat(chipname, cname_chip_internal_palette[i * 3 + 2],
+                            NULL);
+    }
+
+    if (cmdline_register_options(cmdline_options_chip_internal_palette)
+        < 0) {
+        return -1;
+    }
+
+    for (i = 0; cname_chip_internal_palette[i * 3] != NULL; i++) {
+        lib_free((char *)cmdline_options_chip_internal_palette[i].name);
+        lib_free((char *)cmdline_options_chip_internal_palette[i].resource_name);
     }
 
     for (i = 0; cname_chip_palette[i * 3] != NULL; i++) {
         cmdline_options_chip_palette[i].name
             = util_concat(cname_chip_palette[i * 3], chipname,
-            cname_chip_palette[i * 3 + 1], NULL);
+                          cname_chip_palette[i * 3 + 1], NULL);
         cmdline_options_chip_palette[i].resource_name
             = util_concat(chipname, cname_chip_palette[i * 3 + 2],
-            NULL);
+                          NULL);
     }
 
     if (cmdline_register_options(cmdline_options_chip_palette) < 0) {
@@ -452,7 +485,7 @@ int video_cmdline_options_chip_init(const char *chipname,
         for (i = 0; cname_chip_fullscreen[i * 3] != NULL; i++) {
             cmdline_options_chip_fullscreen[i].name
                 = util_concat(cname_chip_fullscreen[i * 3], chipname,
-                cname_chip_fullscreen[i * 3 + 1], NULL);
+                              cname_chip_fullscreen[i * 3 + 1], NULL);
             cmdline_options_chip_fullscreen[i].resource_name
                 = util_concat(chipname, cname_chip_fullscreen[i * 3 + 2], NULL);
         }
@@ -470,12 +503,12 @@ int video_cmdline_options_chip_init(const char *chipname,
             for (i = 0; cname_chip_fullscreen_mode[i * 3] != NULL; i++) {
                 cmdline_options_chip_fullscreen_mode[i].name
                     = util_concat(cname_chip_fullscreen_mode[i * 3], chipname,
-                    video_chip_cap->fullscreen.device_name[j],
-                    cname_chip_fullscreen_mode[i * 3 + 1], NULL);
+                                  video_chip_cap->fullscreen.device_name[j],
+                                  cname_chip_fullscreen_mode[i * 3 + 1], NULL);
                 cmdline_options_chip_fullscreen_mode[i].resource_name
                     = util_concat(chipname,
-                    video_chip_cap->fullscreen.device_name[j],
-                    cname_chip_fullscreen_mode[i * 3 + 2], NULL);
+                                  video_chip_cap->fullscreen.device_name[j],
+                                  cname_chip_fullscreen_mode[i * 3 + 2], NULL);
             }
 
             if (cmdline_register_options(cmdline_options_chip_fullscreen_mode)
@@ -494,7 +527,7 @@ int video_cmdline_options_chip_init(const char *chipname,
     for (i = 0; cname_chip_colors[i * 3] != NULL; i++) {
         cmdline_options_chip_colors[i].name
             = util_concat(cname_chip_colors[i * 3], chipname,
-            cname_chip_colors[i * 3 + 1], NULL);
+                          cname_chip_colors[i * 3 + 1], NULL);
         cmdline_options_chip_colors[i].resource_name
             = util_concat(chipname, cname_chip_colors[i * 3 + 2], NULL);
     }
@@ -513,7 +546,7 @@ int video_cmdline_options_chip_init(const char *chipname,
     for (i = 0; cname_chip_crtemu[i * 3] != NULL; i++) {
         cmdline_options_chip_crtemu[i].name
             = util_concat(cname_chip_crtemu[i * 3], chipname,
-            cname_chip_crtemu[i * 3 + 1], NULL);
+                          cname_chip_crtemu[i * 3 + 1], NULL);
         cmdline_options_chip_crtemu[i].resource_name
             = util_concat(chipname, cname_chip_crtemu[i * 3 + 2], NULL);
     }
@@ -530,7 +563,7 @@ int video_cmdline_options_chip_init(const char *chipname,
     for (i = 0; cname_chip_crtemu_palntsc[i * 3] != NULL; i++) {
         cmdline_options_chip_crtemu_palntsc[i].name
             = util_concat(cname_chip_crtemu_palntsc[i * 3], chipname,
-            cname_chip_crtemu_palntsc[i * 3 + 1], NULL);
+                          cname_chip_crtemu_palntsc[i * 3 + 1], NULL);
         cmdline_options_chip_crtemu_palntsc[i].resource_name
             = util_concat(chipname, cname_chip_crtemu_palntsc[i * 3 + 2], NULL);
     }

@@ -31,12 +31,14 @@
 #include "fullscrn.h"
 #include "lib.h"
 #include "log.h"
+#include "machine.h"
 #include "palette.h"
 #include "res.h"
 #include "resources.h"
 #include "translate.h"
 #include "ui.h"
 #include "uiapi.h"
+#include "util.h"
 #include "video.h"
 #include "videoarch.h"
 #include "viewport.h"
@@ -53,11 +55,13 @@ int fullscreen_enabled;
 int dx_primary_surface_rendering;
 int dx9_disable;
 
+static char *fullscreen_device_list = NULL;
+
 static int set_dx_primary_surface_rendering(int val, void *param)
 {
     int i;
 
-    dx_primary_surface_rendering = val;
+    dx_primary_surface_rendering = val ? 1 : 0;
 
     if (video_dx9_enabled()) {
         for (i = 0; i < video_number_of_canvases; i++) {
@@ -68,11 +72,12 @@ static int set_dx_primary_surface_rendering(int val, void *param)
     return 0;
 }
 
-static int set_dx9_disable(int val, void *param)
+static int set_dx9_disable(int value, void *param)
 {
     int i;
     int old_dx9_disable, old_num_of_canvases;
-    int old_width[2], old_height[2];
+    unsigned int old_width[2], old_height[2];
+    int val = value ? 1 : 0;
 
     if (!dx9_available) {
         return 0;
@@ -107,7 +112,7 @@ static int set_dx9_disable(int val, void *param)
             ui_canvas_child_window(video_canvases[i], old_dx9_disable);
             video_canvas_resize(video_canvases[i], 1);
         }
-        
+
         fullscreen_getmodes();
     }
 
@@ -115,9 +120,9 @@ static int set_dx9_disable(int val, void *param)
 }
 
 static const resource_int_t resources_int[] = {
+#ifdef HAVE_D3D9_H
     { "DXPrimarySurfaceRendering", 0, RES_EVENT_NO, NULL,
       &dx_primary_surface_rendering, set_dx_primary_surface_rendering, NULL },
-#ifdef HAVE_D3D9_H
     { "DX9Disable", 0, RES_EVENT_NO, NULL,
       &dx9_disable, set_dx9_disable, NULL },
 #endif
@@ -126,11 +131,18 @@ static const resource_int_t resources_int[] = {
 
 int video_arch_resources_init(void)
 {
-    return resources_register_int(resources_int);
+    if (machine_class != VICE_MACHINE_VSID) {
+        return resources_register_int(resources_int);
+    }
+    set_dx9_disable(1, NULL);
+    return 0;
 }
 
 void video_arch_resources_shutdown(void)
 {
+    if (fullscreen_device_list) {
+        lib_free(fullscreen_device_list);
+    }
 }
 
 /* ------------------------------------------------------------------------ */
@@ -138,24 +150,93 @@ void video_arch_resources_shutdown(void)
 /* Video-related command-line options.  */
 
 static const cmdline_option_t cmdline_options[] = {
+#ifdef HAVE_D3D9_H
     { "-fullscreen", SET_RESOURCE, 0,
-      NULL, NULL, "FullScreenEnabled", (resource_value_t) 1,
+      NULL, NULL, "FullScreenEnabled", (resource_value_t)1,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDS_START_VICE_FULLSCREEN_MODE,
       NULL, NULL },
-#ifdef HAVE_D3D9_H
+    { "+fullscreen", SET_RESOURCE, 0,
+      NULL, NULL, "FullScreenEnabled", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_DONT_START_VICE_FULLSCREEN_MODE,
+      NULL, NULL },
     { "-dx9disable", SET_RESOURCE, 0,
       NULL, NULL, "DX9Disable", (resource_value_t) 1,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDS_DISABLE_DX9,
       NULL, NULL },
+    { "-dx9enable", SET_RESOURCE, 0,
+      NULL, NULL, "DX9Disable", (resource_value_t) 0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_ENABLE_DX9,
+      NULL, NULL },
+    { "-dxpsrender", SET_RESOURCE, 0,
+      NULL, NULL, "DXPrimarySurfaceRendering", (resource_value_t)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_ENABLE_DXPS_RENDER,
+      NULL, NULL },
+    { "+dxpsrender", SET_RESOURCE, 0,
+      NULL, NULL, "DXPrimarySurfaceRendering", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_DISABLE_DXPS_RENDER,
+      NULL, NULL },
 #endif
     { NULL }
 };
 
-int video_init_cmdline_options(void)
+#ifdef HAVE_D3D9_H
+static cmdline_option_t generated_cmdline_options[] = {
+    { "-fullscreendevice", SET_RESOURCE, 1,
+      NULL, NULL, "FullscreenDevice", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_COMBO,
+      IDS_P_NUMBER, IDS_FULLSCREEN_DEVICE,
+      NULL, NULL },
+    { NULL }
+};
+#endif
+
+int video_arch_cmdline_options_init(void)
 {
-    return cmdline_register_options(cmdline_options);
+#ifdef HAVE_D3D9_H
+    char *temp1, *temp2, *num, *dev;
+    int amount, i;
+
+    if (machine_class != VICE_MACHINE_VSID) {
+        amount = fullscreen_get_devices_amount();
+        if (amount) {
+            dev = lib_stralloc(fullscreen_get_device(0));
+            util_remove_spaces(dev);
+            temp1 = util_concat(". (0: ", dev, NULL);
+            lib_free(dev);
+            for (i = 1; i < amount; i++) {
+                num = lib_msprintf("%d", i);
+                dev = lib_stralloc(fullscreen_get_device(i));
+                util_remove_spaces(dev);
+                temp2 = util_concat(temp1, ", ", num, ":", dev, NULL);
+                lib_free(num);
+                lib_free(dev);
+                lib_free(temp1);
+                temp1 = temp2;
+            }
+            fullscreen_device_list = util_concat(temp1, ")", NULL);
+        } else {
+            fullscreen_device_list = lib_stralloc(".");
+        }
+
+        generated_cmdline_options[0].description = fullscreen_device_list;
+
+        if (cmdline_register_options(generated_cmdline_options) < 0) {
+            return -1;
+        }
+        return cmdline_register_options(cmdline_options);
+    }
+#else
+    if (machine_class != VICE_MACHINE_VSID) {
+        return cmdline_register_options(cmdline_options);
+    }
+#endif
+    return 0;
 }
 
 
@@ -185,6 +266,9 @@ void video_arch_canvas_init(struct video_canvas_s *canvas)
 
 int video_dx9_enabled(void)
 {
+    if (machine_class == VICE_MACHINE_VSID) {
+        return 0;
+    }
     return (dx9_available && !dx9_disable);
 }
 

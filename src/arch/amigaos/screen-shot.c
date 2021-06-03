@@ -44,6 +44,9 @@
 enum {
     SS_BMP=1,
     SS_DOODLE,
+    SS_DOODLE_COMPRESSED,
+    SS_KOALA,
+    SS_KOALA_COMPRESSED,
 #ifdef HAVE_GIF
     SS_GIF,
 #endif
@@ -55,7 +58,8 @@ enum {
 #ifdef HAVE_PNG
     SS_PNG,
 #endif
-    SS_PPM
+    SS_PPM,
+    SS_4BT
 };
 
 #ifndef HAVE_GIF
@@ -116,6 +120,9 @@ void ui_screenshot_dialog(video_canvas_t *canvas)
 
     strcat(choices, "BMP|");
     strcat(choices, "DOODLE|");
+    strcat(choices, "DOODLE_COMPRESSED|");
+    strcat(choices, "KOALA|");
+    strcat(choices, "KOALA_COMPRESSED|");
 #ifdef HAVE_GIF
     strcat(choices, "GIF|");
 #endif
@@ -128,6 +135,7 @@ void ui_screenshot_dialog(video_canvas_t *canvas)
     strcat(choices, "PNG|");
 #endif
     strcat(choices, "PPM|");
+    strcat(choices, "4BT|");
     strcat(choices, translate_text(IDS_CANCEL));
 
     format = ui_requester(translate_text(IDS_SAVE_SCREENSHOT), translate_text(IDS_CHOOSE_SCREENSHOT_FORMAT), choices, 0);
@@ -139,23 +147,41 @@ void ui_screenshot_dialog(video_canvas_t *canvas)
         case SS_DOODLE:
             save_screenshot_file("#?.dd", "DOODLE", canvas);
             break;
+        case SS_DOODLE_COMPRESSED:
+            save_screenshot_file("#?.jj", "DOODLE_COMPRESSED", canvas);
+            break;
+        case SS_KOALA:
+            save_screenshot_file("#?.koa", "KOALA", canvas);
+            break;
+        case SS_KOALA_COMPRESSED:
+            save_screenshot_file("#?.gg", "KOALA_COMPRESSED", canvas);
+            break;
+#ifdef HAVE_GIF
         case SS_GIF:
             save_screenshot_file("#?.gif", "GIF", canvas);
             break;
+#endif
         case SS_IFF:
             save_screenshot_file("#?.iff", "IFF", canvas);
             break;
+#ifdef HAVE_JPEG
         case SS_JPG:
             save_screenshot_file("#?.jpg", "JPEG", canvas);
             break;
+#endif
         case SS_PCX:
             save_screenshot_file("#?.pcx", "PCX", canvas);
             break;
+#ifdef HAVE_PNG
         case SS_PNG:
             save_screenshot_file("#?.png", "PNG", canvas);
             break;
+#endif
         case SS_PPM:
             save_screenshot_file("#?.ppm", "PPM", canvas);
+            break;
+        case SS_4BT:
+            save_screenshot_file("#?.4bt", "4BT", canvas);
             break;
         default:
             break;

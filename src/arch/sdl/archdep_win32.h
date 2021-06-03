@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -79,7 +80,7 @@
 #define ARCHDEP_ETHERNET_DEFAULT_DEVICE ""
 
 /* Default sound fragment size */
-#define ARCHDEP_SOUND_FRAGMENT_SIZE 2
+#define ARCHDEP_SOUND_FRAGMENT_SIZE SOUND_FRAGMENT_MEDIUM
 
 extern void archdep_workaround_nop(const char *otto);
 
@@ -93,5 +94,30 @@ extern void archdep_workaround_nop(const char *otto);
 #define archdep_signals_init(x)
 #define archdep_signals_pipe_set()
 #define archdep_signals_pipe_unset()
+
+#define MAKE_SO_NAME_VERSION_PROTO(name, version)  #name "-" #version ".dll"
+
+/* add second level macro to allow expansion and stringification */
+#define ARCHDEP_MAKE_SO_NAME_VERSION(n, v) MAKE_SO_NAME_VERSION_PROTO(n, v)
+
+#define ARCHDEP_OPENCBM_SO_NAME  "opencbm.dll"
+#define ARCHDEP_LAME_SO_NAME     "lame.dll"
+
+/* ffmpeg headers for windows don't seem to have some of the av_ prefixes */
+#define ARCHDEP_AV_PREFIX_NEEDED
+
+/* Needs extra call to log_archdep() even when logfile is already opened */
+#ifndef WATCOM_COMPILE
+#define ARCHDEP_EXTRA_LOG_CALL
+#endif
+
+/* When using the ascii printer driver we need a return before the newline */
+#define ARCHDEP_PRINTER_RETURN_BEFORE_NEWLINE
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR WSAGetLastError()
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
 
 #endif

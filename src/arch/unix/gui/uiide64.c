@@ -29,9 +29,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ide64.h"
 #include "lib.h"
 #include "resources.h"
 #include "uiapi.h"
+#include "uiclockport-device.h"
 #include "uiide64.h"
 #include "uilib.h"
 #include "uimenu.h"
@@ -41,7 +43,9 @@ UI_MENU_DEFINE_TOGGLE(IDE64AutodetectSize1)
 UI_MENU_DEFINE_TOGGLE(IDE64AutodetectSize2)
 UI_MENU_DEFINE_TOGGLE(IDE64AutodetectSize3)
 UI_MENU_DEFINE_TOGGLE(IDE64AutodetectSize4)
-UI_MENU_DEFINE_RADIO(IDE64version4)
+UI_MENU_DEFINE_RADIO(IDE64version)
+UI_MENU_DEFINE_RADIO(IDE64ClockPort)
+
 
 static UI_CALLBACK(set_ide64_image_name)
 {
@@ -80,7 +84,7 @@ static UI_CALLBACK(set_cylinders)
         lib_free(msg_string);
         if (button == UI_BUTTON_OK) {
             i = atoi(input_string);
-            if (cylinders > 0 && cylinders <= 1024 && cylinders != i) {
+            if (cylinders > 0 && cylinders <= 65535 && cylinders != i) {
                 resources_set_int_sprintf("IDE64Cylinders%i", i, num);
                 ui_update_menus();
             }
@@ -168,11 +172,18 @@ static UI_CALLBACK(set_sectors)
     }
 }
 
+static UI_CALLBACK(usbserver_select_addr)
+{
+    uilib_select_string((char *)UI_MENU_CB_PARAM, _("IDE64 USB setting"), _("USB server address:"));
+}
+
 static ui_menu_entry_t ide64_revision_submenu[] = {
-    { N_("Version 3"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_IDE64version4,
-      (ui_callback_data_t)0, NULL },
-    { N_("Version 4"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_IDE64version4,
-      (ui_callback_data_t)1, NULL },
+    { N_("Version 3"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_IDE64version,
+      (ui_callback_data_t)IDE64_VERSION_3, NULL },
+    { N_("Version 4.1"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_IDE64version,
+      (ui_callback_data_t)IDE64_VERSION_4_1, NULL },
+    { N_("Version 4.2"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_IDE64version,
+      (ui_callback_data_t)IDE64_VERSION_4_2, NULL },
     { NULL }
 };
 
@@ -252,9 +263,69 @@ static ui_menu_entry_t ide64_hd4_submenu[] = {
     { NULL }
 };
 
+UI_MENU_DEFINE_RADIO(SBDIGIMAXbase)
+
+static ui_menu_entry_t ide64_shortbus_digimax_address_submenu[] = {
+    { "$DE40", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SBDIGIMAXbase,
+      (ui_callback_data_t)0xde40, NULL },
+    { "$DE48", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SBDIGIMAXbase,
+      (ui_callback_data_t)0xde48, NULL },
+    { NULL }
+};
+
+#ifdef HAVE_PCAP
+UI_MENU_DEFINE_RADIO(SBETFEbase)
+
+static ui_menu_entry_t ide64_shortbus_etfe_address_submenu[] = {
+    { "$DE00", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SBETFEbase,
+        (ui_callback_data_t)0xde00, NULL },
+    { "$DE10", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SBETFEbase,
+        (ui_callback_data_t)0xde10, NULL },
+    { "$DF00", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SBETFEbase,
+        (ui_callback_data_t)0xdf00, NULL },
+    { NULL }
+};
+
+UI_MENU_DEFINE_TOGGLE(SBETFE)
+#endif
+
+UI_MENU_DEFINE_TOGGLE(SBDIGIMAX)
+
+static ui_menu_entry_t ide64_shortbus_submenu[] = {
+    { "DigiMAX", UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_SBDIGIMAX, NULL, NULL },
+    { N_("DigiMAX address"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, ide64_shortbus_digimax_address_submenu },
+#ifdef HAVE_PCAP
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { "ETFE", UI_MENU_TYPE_TICK,
+        (ui_callback_t)toggle_SBETFE, NULL, NULL },
+    { N_("ETFE address"), UI_MENU_TYPE_NORMAL,
+        NULL, NULL, ide64_shortbus_etfe_address_submenu },
+#endif
+    { NULL }
+};
+
+
+
+
+UI_MENU_DEFINE_TOGGLE(IDE64USBServer)
+UI_MENU_DEFINE_TOGGLE(IDE64RTCSave)
+
 ui_menu_entry_t ide64_submenu[] = {
     { N_("Revision"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ide64_revision_submenu },
+    { N_("Enable USB server"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_IDE64USBServer, NULL, NULL },
+    { N_("Set USB server address"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)usbserver_select_addr,
+      (ui_callback_data_t)"IDE64USBServerAddress", NULL },
+    { N_("Enable RTC saving"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_IDE64RTCSave, NULL, NULL },
+
+    { N_("Clockport device"), UI_MENU_TYPE_NORMAL,
+        NULL, NULL, NULL },
+
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Device 1 settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ide64_hd1_submenu },
@@ -264,5 +335,26 @@ ui_menu_entry_t ide64_submenu[] = {
       NULL, NULL, ide64_hd3_submenu },
     { N_("Device 4 settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ide64_hd4_submenu },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Short bus device settings"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, ide64_shortbus_submenu },
     { NULL }
 };
+
+
+/** \brief  Handle dynamic menu creation for the IDE64 submenu
+ */
+void uiide64_menu_create(void)
+{
+    ui_menu_entry_t *cp_dev_submenu = uiclockport_device_menu_create(
+            (ui_callback_t)radio_IDE64ClockPort);
+    ide64_submenu[4].sub_menu = cp_dev_submenu;
+}
+
+
+/** \brief  Clean up memory used by dynamic submenus
+ */
+void uiide64_menu_shutdown(void)
+{
+    uiclockport_device_menu_shutdown(ide64_submenu[4].sub_menu);
+}

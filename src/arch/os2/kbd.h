@@ -30,11 +30,25 @@
 
 #include "types.h"
 
+extern int c64_kbd_init(void);
+extern int c128_kbd_init(void);
+extern int vic20_kbd_init(void);
+extern int pet_kbd_init(void);
+extern int plus4_kbd_init(void);
+extern int cbm2_kbd_init(void);
+
+extern int kbd_cmdline_options_init(void);
+extern int kbd_resources_init(void);
+extern int pet_kbd_cmdline_options_init(void);
+extern int pet_kbd_resources_init(void);
+
 extern void kbd_arch_init(void);
+extern int kbd_arch_get_host_mapping(void);
 
 extern signed long kbd_arch_keyname_to_keynum(char *keyname);
 extern const char *kbd_arch_keynum_to_keyname(signed long keynum);
 
+/* FIXME: remove */
 #define KBD_C64_SYM_US  "os2_sym.vkm"
 #define KBD_C64_SYM_DE  "os2_sym.vkm"
 #define KBD_C64_POS     "os2_pos.vkm"
@@ -63,6 +77,8 @@ extern const char *kbd_arch_keynum_to_keyname(signed long keynum);
 #define KBD_INDEX_PET_DEFAULT   KBD_INDEX_PET_BUKP
 #define KBD_INDEX_PLUS4_DEFAULT KBD_INDEX_PLUS4_POS
 #define KBD_INDEX_CBM2_DEFAULT  KBD_INDEX_CBM2_BUKP
+
+#define KBD_PORT_PREFIX "os2"
 
 /* Keymap definition structure.  */
 typedef struct {

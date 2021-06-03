@@ -57,33 +57,30 @@ struct model_s {
     int line; /* 0=7x0 (50 Hz), 1=6x0 60Hz, 2=6x0 50Hz */
 };
 
-/*
-*/
-
 static struct model_s cbm2models[] = {
-    { MACHINE_SYNC_PAL,  1,   64,  CBM2_BASIC500, CBM2_CHARGEN500, CBM2_KERNAL500, 2  }, /* 510 */
-    { MACHINE_SYNC_NTSC, 1,   64,  CBM2_BASIC500, CBM2_CHARGEN500, CBM2_KERNAL500, 1  }, /* 510 */
-    { MACHINE_SYNC_PAL,  0,  128,  CBM2_BASIC128, CBM2_CHARGEN600, CBM2_KERNAL,    2  }, /* 610 */
-    { MACHINE_SYNC_NTSC, 0,  128,  CBM2_BASIC128, CBM2_CHARGEN600, CBM2_KERNAL,    1  }, /* 610 */
-    { MACHINE_SYNC_PAL,  0,  256,  CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    2  }, /* 620 */
-    { MACHINE_SYNC_NTSC, 0,  256,  CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    1  }, /* 620 */
-    { MACHINE_SYNC_PAL,  0, 1024,  CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    2  }, /* 620+ */
-    { MACHINE_SYNC_NTSC, 0, 1024,  CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    1  }, /* 620+ */
-    { MACHINE_SYNC_NTSC, 0,  128,  CBM2_BASIC128, CBM2_CHARGEN700, CBM2_KERNAL,    0  }, /* 710 */
-    { MACHINE_SYNC_NTSC, 0,  256,  CBM2_BASIC256, CBM2_CHARGEN700, CBM2_KERNAL,    0  }, /* 720 */
-    { MACHINE_SYNC_NTSC, 0, 1024,  CBM2_BASIC256, CBM2_CHARGEN700, CBM2_KERNAL,    0  }, /* 720+ */
+    { MACHINE_SYNC_PAL,  HAS_VICII,  64, CBM2_BASIC500, CBM2_CHARGEN500, CBM2_KERNAL500, LINE_6x0_50HZ  }, /* 510 */
+    { MACHINE_SYNC_NTSC, HAS_VICII,  64, CBM2_BASIC500, CBM2_CHARGEN500, CBM2_KERNAL500, LINE_6x0_60HZ  }, /* 510 */
+    { MACHINE_SYNC_PAL,  HAS_CRTC,  128, CBM2_BASIC128, CBM2_CHARGEN600, CBM2_KERNAL,    LINE_6x0_50HZ  }, /* 610 */
+    { MACHINE_SYNC_NTSC, HAS_CRTC,  128, CBM2_BASIC128, CBM2_CHARGEN600, CBM2_KERNAL,    LINE_6x0_60HZ  }, /* 610 */
+    { MACHINE_SYNC_PAL,  HAS_CRTC,  256, CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    LINE_6x0_50HZ  }, /* 620 */
+    { MACHINE_SYNC_NTSC, HAS_CRTC,  256, CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    LINE_6x0_60HZ  }, /* 620 */
+    { MACHINE_SYNC_PAL,  HAS_CRTC, 1024, CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    LINE_6x0_50HZ  }, /* 620+ */
+    { MACHINE_SYNC_NTSC, HAS_CRTC, 1024, CBM2_BASIC256, CBM2_CHARGEN600, CBM2_KERNAL,    LINE_6x0_60HZ  }, /* 620+ */
+    { MACHINE_SYNC_NTSC, HAS_CRTC,  128, CBM2_BASIC128, CBM2_CHARGEN700, CBM2_KERNAL,    LINE_7x0_50HZ  }, /* 710 */
+    { MACHINE_SYNC_NTSC, HAS_CRTC,  256, CBM2_BASIC256, CBM2_CHARGEN700, CBM2_KERNAL,    LINE_7x0_50HZ  }, /* 720 */
+    { MACHINE_SYNC_NTSC, HAS_CRTC, 1024, CBM2_BASIC256, CBM2_CHARGEN700, CBM2_KERNAL,    LINE_7x0_50HZ  }, /* 720+ */
 };
 
 /* ------------------------------------------------------------------------- */
-int cbm2model_get_temp(int video, int ramsize, int hasvicii, int line)
+static int cbm2model_get_temp(int video, int ramsize, int hasvicii, int line)
 {
     int i;
 
     for (i = 0; i < CBM2MODEL_NUM; ++i) {
         if ((cbm2models[i].video == video)
-         && (cbm2models[i].ramsize == ramsize)
-         && (cbm2models[i].hasvicii == hasvicii)
-         && (cbm2models[i].line == line)) {
+            && (cbm2models[i].ramsize == ramsize)
+            && (cbm2models[i].hasvicii == hasvicii)
+            && (cbm2models[i].line == line)) {
             return i;
         }
     }
@@ -98,15 +95,16 @@ int cbm2model_get(void)
     hasvicii = (machine_class == VICE_MACHINE_CBM5x0);
 
     if ((resources_get_int("MachineVideoStandard", &video) < 0)
-     || (resources_get_int("RamSize", &ramsize) < 0)
-     || (resources_get_int("ModelLine", &line) < 0)) {
+        || (resources_get_int("RamSize", &ramsize) < 0)
+        || (resources_get_int("ModelLine", &line) < 0)) {
         return -1;
     }
 
     return cbm2model_get_temp(video, ramsize, hasvicii, line);
 }
 
-void cbm2model_set_temp(int model, int *video_sync, int *ramsize, int *hasvicii, int *line)
+#if 0
+static void cbm2model_set_temp(int model, int *video_sync, int *ramsize, int *hasvicii, int *line)
 {
     int old_model;
 
@@ -121,6 +119,7 @@ void cbm2model_set_temp(int model, int *video_sync, int *ramsize, int *hasvicii,
     *line = cbm2models[model].line;
     *hasvicii = cbm2models[model].hasvicii;
 }
+#endif
 
 void cbm2model_set(int model)
 {

@@ -3,7 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -46,7 +46,8 @@ extern BYTE via2_read(WORD addr);
 extern BYTE via2_peek(WORD addr);
 
 extern void via2_set_tape_sense(int v);
+extern void via2_set_tape_write_in(int v);
+extern void via2_set_tape_motor_in(int v);
 extern void via2_check_lightpen(void);
 
 #endif
-

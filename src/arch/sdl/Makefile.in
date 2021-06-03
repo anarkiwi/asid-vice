@@ -40,7 +40,7 @@ subdir = src/arch/sdl
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -52,39 +52,44 @@ ARFLAGS = cru
 libarch_a_AR = $(AR) $(ARFLAGS)
 libarch_a_LIBADD =
 am_libarch_a_OBJECTS = archdep.$(OBJEXT) blockdev.$(OBJEXT) \
-	catweaselmkiii.$(OBJEXT) console.$(OBJEXT) coproc.$(OBJEXT) \
-	dynlib.$(OBJEXT) fullscreen.$(OBJEXT) hardsid.$(OBJEXT) \
-	joy.$(OBJEXT) kbd.$(OBJEXT) lightpendrv.$(OBJEXT) \
-	menu_c128hw.$(OBJEXT) menu_c64cart.$(OBJEXT) \
-	menu_c64_common_expansions.$(OBJEXT) \
+	catweaselmkiii-drv.$(OBJEXT) console.$(OBJEXT) \
+	console_unix.$(OBJEXT) coproc.$(OBJEXT) cw-device.$(OBJEXT) \
+	cw-pci.$(OBJEXT) dynlib.$(OBJEXT) fullscreen.$(OBJEXT) \
+	hardsid-drv.$(OBJEXT) hs-device.$(OBJEXT) hs-isa.$(OBJEXT) \
+	hs-pci.$(OBJEXT) io-access.$(OBJEXT) joy.$(OBJEXT) \
+	kbd.$(OBJEXT) lightpendrv.$(OBJEXT) menu_c128hw.$(OBJEXT) \
+	menu_c64cart.$(OBJEXT) menu_c64_common_expansions.$(OBJEXT) \
 	menu_c64_expansions.$(OBJEXT) menu_c64dtvhw.$(OBJEXT) \
 	menu_c64hw.$(OBJEXT) menu_c64model.$(OBJEXT) \
 	menu_cbm2cart.$(OBJEXT) menu_cbm2hw.$(OBJEXT) \
 	menu_common.$(OBJEXT) menu_debug.$(OBJEXT) \
 	menu_drive.$(OBJEXT) menu_drive_rom.$(OBJEXT) \
-	menu_ffmpeg.$(OBJEXT) menu_help.$(OBJEXT) \
-	menu_joystick.$(OBJEXT) menu_lightpen.$(OBJEXT) \
-	menu_midi.$(OBJEXT) menu_mouse.$(OBJEXT) \
-	menu_network.$(OBJEXT) menu_petcart.$(OBJEXT) \
-	menu_pethw.$(OBJEXT) menu_plus4cart.$(OBJEXT) \
-	menu_plus4hw.$(OBJEXT) menu_printer.$(OBJEXT) \
-	menu_ram.$(OBJEXT) menu_reset.$(OBJEXT) menu_rom.$(OBJEXT) \
-	menu_rs232.$(OBJEXT) menu_screenshot.$(OBJEXT) \
+	menu_ethernet.$(OBJEXT) menu_ethernetcart.$(OBJEXT) \
+	menu_ffmpeg.$(OBJEXT) menu_help.$(OBJEXT) menu_jam.$(OBJEXT) \
+	menu_joyport.$(OBJEXT) menu_joystick.$(OBJEXT) \
+	menu_midi.$(OBJEXT) menu_monitor.$(OBJEXT) \
+	menu_mouse.$(OBJEXT) menu_network.$(OBJEXT) \
+	menu_petcart.$(OBJEXT) menu_pethw.$(OBJEXT) \
+	menu_plus4cart.$(OBJEXT) menu_plus4hw.$(OBJEXT) \
+	menu_printer.$(OBJEXT) menu_ram.$(OBJEXT) menu_reset.$(OBJEXT) \
+	menu_rom.$(OBJEXT) menu_rs232.$(OBJEXT) menu_sampler.$(OBJEXT) \
+	menu_scpu64hw.$(OBJEXT) menu_screenshot.$(OBJEXT) \
 	menu_settings.$(OBJEXT) menu_sid.$(OBJEXT) \
 	menu_snapshot.$(OBJEXT) menu_sound.$(OBJEXT) \
-	menu_speed.$(OBJEXT) menu_tape.$(OBJEXT) menu_tfe.$(OBJEXT) \
+	menu_speed.$(OBJEXT) menu_tape.$(OBJEXT) \
 	menu_vic20cart.$(OBJEXT) menu_vic20hw.$(OBJEXT) \
 	menu_video.$(OBJEXT) mididrv.$(OBJEXT) mousedrv.$(OBJEXT) \
-	parsid.$(OBJEXT) rs232.$(OBJEXT) rs232dev.$(OBJEXT) \
-	rs232net.$(OBJEXT) sdlmain.$(OBJEXT) signals.$(OBJEXT) \
-	rawnetarch.$(OBJEXT) ui.$(OBJEXT) uicmdline.$(OBJEXT) \
+	parsid-drv.$(OBJEXT) pci-drv.$(OBJEXT) ps-device.$(OBJEXT) \
+	ps-ieee1284.$(OBJEXT) ps-io.$(OBJEXT) rawnetarch.$(OBJEXT) \
+	rs232dev.$(OBJEXT) sdlmain.$(OBJEXT) signals.$(OBJEXT) \
+	ssi2001-drv.$(OBJEXT) ui.$(OBJEXT) uicmdline.$(OBJEXT) \
 	uifilereq.$(OBJEXT) uihotkey.$(OBJEXT) uimenu.$(OBJEXT) \
 	uimon.$(OBJEXT) uimsgbox.$(OBJEXT) uipause.$(OBJEXT) \
 	uipoll.$(OBJEXT) uistatusbar.$(OBJEXT) video.$(OBJEXT) \
 	vkbd.$(OBJEXT) vsidui.$(OBJEXT) vsyncarch.$(OBJEXT) \
 	x128_ui.$(OBJEXT) x64_ui.$(OBJEXT) x64dtv_ui.$(OBJEXT) \
 	x64sc_ui.$(OBJEXT) xcbm2_ui.$(OBJEXT) xpet_ui.$(OBJEXT) \
-	xplus4_ui.$(OBJEXT) xvic_ui.$(OBJEXT)
+	xplus4_ui.$(OBJEXT) xscpu64_ui.$(OBJEXT) xvic_ui.$(OBJEXT)
 libarch_a_OBJECTS = $(am_libarch_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -150,7 +155,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BINDIR = @BINDIR@
+CAIRO_CFLAGS = @CAIRO_CFLAGS@
+CAIRO_LIBS = @CAIRO_LIBS@
 CATALOGS = @CATALOGS@
 CATOBJEXT = @CATOBJEXT@
 CC = @CC@
@@ -182,10 +188,17 @@ EGREP = @EGREP@
 ENABLE_ARCH = @ENABLE_ARCH@
 EXEEXT = @EXEEXT@
 FCCACHE = @FCCACHE@
+FFMPEGSUB = @FFMPEGSUB@
+FFMPEG_AVRESAMPLE_CFLAGS = @FFMPEG_AVRESAMPLE_CFLAGS@
+FFMPEG_AVRESAMPLE_LIBS = @FFMPEG_AVRESAMPLE_LIBS@
 FFMPEG_AV_CFLAGS = @FFMPEG_AV_CFLAGS@
 FFMPEG_AV_LIBS = @FFMPEG_AV_LIBS@
+FFMPEG_DEP = @FFMPEG_DEP@
+FFMPEG_DIR = @FFMPEG_DIR@
 FFMPEG_INCLUDES = @FFMPEG_INCLUDES@
 FFMPEG_LIBS = @FFMPEG_LIBS@
+FFMPEG_SWRESAMPLE_CFLAGS = @FFMPEG_SWRESAMPLE_CFLAGS@
+FFMPEG_SWRESAMPLE_LIBS = @FFMPEG_SWRESAMPLE_LIBS@
 FFMPEG_SWSCALE_CFLAGS = @FFMPEG_SWSCALE_CFLAGS@
 FFMPEG_SWSCALE_LIBS = @FFMPEG_SWSCALE_LIBS@
 FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
@@ -214,12 +227,15 @@ INTLLIBS = @INTLLIBS@
 INTLOBJS = @INTLOBJS@
 IPFC = @IPFC@
 JOY_LIBS = @JOY_LIBS@
+LAMEMP3SUB = @LAMEMP3SUB@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+LIBFFMPEGSUB = @LIBFFMPEGSUB@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBX264SUB = @LIBX264SUB@
 LINKCC = @LINKCC@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -228,8 +244,10 @@ MAKEINFO = @MAKEINFO@
 MAKERTF = @MAKERTF@
 MAX_INLINE_INSN_SINGLE = @MAX_INLINE_INSN_SINGLE@
 MKDIR_P = @MKDIR_P@
+MKFONTDIR_BIN = @MKFONTDIR_BIN@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MSGFMT = @MSGFMT@
+NATIVE_TOOLS_COMPILER = @NATIVE_TOOLS_COMPILER@
 NETPLAY_LIBS = @NETPLAY_LIBS@
 NLS_LOCALEDIR = @NLS_LOCALEDIR@
 OBJC = @OBJC@
@@ -243,10 +261,13 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PANGO_CFLAGS = @PANGO_CFLAGS@
+PANGO_LIBS = @PANGO_LIBS@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
+PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -254,19 +275,18 @@ QUICKTIME_LIBS = @QUICKTIME_LIBS@
 RANLIB = @RANLIB@
 READLINE = @READLINE@
 READLINE_LIBS = @READLINE_LIBS@
+RESIDDTVSUB = @RESIDDTVSUB@
+RESIDSUB = @RESIDSUB@
 RESID_DEP = @RESID_DEP@
 RESID_DIR = @RESID_DIR@
 RESID_DTV_DEP = @RESID_DTV_DEP@
 RESID_DTV_DIR = @RESID_DTV_DIR@
 RESID_DTV_INCLUDES = @RESID_DTV_INCLUDES@
 RESID_DTV_LIBS = @RESID_DTV_LIBS@
-RESID_FP_DEP = @RESID_FP_DEP@
-RESID_FP_DIR = @RESID_FP_DIR@
-RESID_FP_INCLUDES = @RESID_FP_INCLUDES@
-RESID_FP_LIBS = @RESID_FP_LIBS@
 RESID_INCLUDES = @RESID_INCLUDES@
 RESID_LIBS = @RESID_LIBS@
 SDL_EXTRA_LIBS = @SDL_EXTRA_LIBS@
+SDL_VERSION = @SDL_VERSION@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOUND_AIX_OBJ = @SOUND_AIX_OBJ@
@@ -278,6 +298,9 @@ SOUND_SDL_OBJ = @SOUND_SDL_OBJ@
 SOUND_SGI_OBJ = @SOUND_SGI_OBJ@
 SOUND_USS_OBJ = @SOUND_USS_OBJ@
 STRIP = @STRIP@
+SVN = @SVN@
+SVNVERSION = @SVNVERSION@
+TAR = @TAR@
 TEXI2DVI = @TEXI2DVI@
 TEXI2IPF = @TEXI2IPF@
 TFE_LIBS = @TFE_LIBS@
@@ -286,9 +309,11 @@ UNIX_MACOSX_UITYPE = @UNIX_MACOSX_UITYPE@
 USE_INCLUDED_LIBINTL = @USE_INCLUDED_LIBINTL@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+VERSION_COMBINED = @VERSION_COMBINED@
 VERSION_RC = @VERSION_RC@
 VICEDIR = @VICEDIR@
 VICE_SYNC = @VICE_SYNC@
+VICE_UI_THREADS = @VICE_UI_THREADS@
 VICE_VERSION = @VICE_VERSION@
 VICE_VERSION_BUILD = @VICE_VERSION_BUILD@
 VICE_VERSION_MAJOR = @VICE_VERSION_MAJOR@
@@ -307,13 +332,14 @@ XGETTEXT = @XGETTEXT@
 XMKMF = @XMKMF@
 XPET_WINRES = @XPET_WINRES@
 XPLUS4_WINRES = @XPLUS4_WINRES@
+XSCPU64_WINRES = @XSCPU64_WINRES@
 XVIC_WINRES = @XVIC_WINRES@
 X_CFLAGS = @X_CFLAGS@
 X_EXTRA_LIBS = @X_EXTRA_LIBS@
 X_LIBS = @X_LIBS@
 X_PRE_LIBS = @X_PRE_LIBS@
 YACC = @YACC@
-YFLAGS = @YFLAGS@
+YASM = @YASM@
 ZLIB_LIBS = @ZLIB_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -321,7 +347,6 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_sdl_config = @ac_ct_sdl_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -340,6 +365,7 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+ffmpeg_have_bash = @ffmpeg_have_bash@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -361,6 +387,7 @@ prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
+sdl2_config = @sdl2_config@
 sdl_config = @sdl_config@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -376,16 +403,23 @@ x64_LDFLAGS = @x64_LDFLAGS@
 xcbm2_LDFLAGS = @xcbm2_LDFLAGS@
 xpet_LDFLAGS = @xpet_LDFLAGS@
 xplus4_LDFLAGS = @xplus4_LDFLAGS@
+xscpu64_LDFLAGS = @xscpu64_LDFLAGS@
 xvic_LDFLAGS = @xvic_LDFLAGS@
 @WIN32_COMPILE_FALSE@extra_includes = 
 @WIN32_COMPILE_TRUE@extra_includes = -I$(top_srcdir)/src/arch/win32/msvc/wpcap
-SUBDIRS = win32-msvc win64-msvc win32-watcom winmips-msvc dingoo-files syllable-files xbox
-INCLUDES = \
+SUBDIRS = \
+	msvc-files \
+	qnx4 \
+	syllable-files \
+	win32-watcom
+
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	$(extra_includes) \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src/drive \
 	-I$(top_srcdir)/src/c64 \
+	-I$(top_srcdir)/src/c64/cart \
 	-I$(top_srcdir)/src/c64dtv \
 	-I$(top_srcdir)/src/c128 \
 	-I$(top_srcdir)/src/vic20 \
@@ -394,12 +428,14 @@ INCLUDES = \
 	-I$(top_srcdir)/src/plus4 \
 	-I$(top_srcdir)/src/raster \
 	-I$(top_srcdir)/src/rs232drv \
+	-I$(top_srcdir)/src/samplerdrv \
 	-I$(top_srcdir)/src/sid \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/vdrive \
 	-I$(top_srcdir)/src/video \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
+	-I$(top_srcdir)/src/joyport \
 	-I$(top_srcdir)/src
 
 noinst_LIBRARIES = libarch.a
@@ -407,14 +443,21 @@ libarch_a_SOURCES = \
 	archdep.c \
 	archdep.h \
 	blockdev.c \
-	catweaselmkiii.c \
+	catweaselmkiii-drv.c \
 	console.c \
+	console_unix.c \
 	coproc.c \
 	coproc.h \
+	cw-device.c \
+	cw-pci.c \
 	dynlib.c \
 	fullscreen.c \
 	fullscreenarch.h \
-	hardsid.c \
+	hardsid-drv.c \
+	hs-device.c \
+	hs-isa.c \
+	hs-pci.c \
+	io-access.c \
 	joy.c \
 	joy.h \
 	kbd.c \
@@ -447,16 +490,24 @@ libarch_a_SOURCES = \
 	menu_drive.h \
 	menu_drive_rom.c \
 	menu_drive_rom.h \
+	menu_ethernet.c \
+	menu_ethernet.h \
+	menu_ethernetcart.c \
+	menu_ethernetcart.h \
 	menu_ffmpeg.c \
 	menu_ffmpeg.h \
 	menu_help.c \
 	menu_help.h \
+	menu_jam.c \
+	menu_jam.h \
+	menu_joyport.c \
+	menu_joyport.h \
 	menu_joystick.c \
 	menu_joystick.h \
-	menu_lightpen.c \
-	menu_lightpen.h \
 	menu_midi.c \
 	menu_midi.h \
+	menu_monitor.c \
+	menu_monitor.h \
 	menu_mouse.c \
 	menu_mouse.h \
 	menu_network.c \
@@ -479,6 +530,10 @@ libarch_a_SOURCES = \
 	menu_rom.h \
 	menu_rs232.c \
 	menu_rs232.h \
+	menu_sampler.c \
+	menu_sampler.h \
+	menu_scpu64hw.c \
+	menu_scpu64hw.h \
 	menu_screenshot.c \
 	menu_screenshot.h \
 	menu_settings.c \
@@ -493,8 +548,6 @@ libarch_a_SOURCES = \
 	menu_speed.h \
 	menu_tape.c \
 	menu_tape.h \
-	menu_tfe.c \
-	menu_tfe.h \
 	menu_vic20cart.c \
 	menu_vic20cart.h \
 	menu_vic20hw.c \
@@ -504,16 +557,17 @@ libarch_a_SOURCES = \
 	mididrv.c \
 	mousedrv.c \
 	mousedrv.h \
-	parsid.c \
-	rs232.c \
+	parsid-drv.c \
+	pci-drv.c \
+	ps-device.c \
+	ps-ieee1284.c \
+	ps-io.c \
+	rawnetarch.c \
 	rs232dev.c \
-	rs232dev.h \
-	rs232net.c \
-	rs232net.h \
 	sdlmain.c \
 	signals.c \
 	socketimpl.h \
-	rawnetarch.c \
+	ssi2001-drv.c \
 	types.h \
 	ui.c \
 	ui.h \
@@ -546,6 +600,7 @@ libarch_a_SOURCES = \
 	xcbm2_ui.c \
 	xpet_ui.c \
 	xplus4_ui.c \
+	xscpu64_ui.c \
 	xvic_ui.c
 
 EXTRA_DIST = \
@@ -555,26 +610,57 @@ EXTRA_DIST = \
 	archdep_beos.h \
 	archdep_cegcc.c \
 	archdep_cegcc.h \
-	archdep_dingoo.c \
-	archdep_dingoo.h \
 	archdep_unix.c \
 	archdep_unix.h \
 	archdep_win32.c \
 	archdep_win32.h \
 	archdep_xbox.c \
 	archdep_xbox.h \
+	console_amiga.c \
+	console_sdl.c \
+	console_unix.c \
+	generate_msvc6_sdl1x.bat \
+	generate_msvc6_sdl2x.bat \
+	generate_msvc70_ffmpeg_sdl1x.bat \
+	generate_msvc70_ffmpeg_sdl2x.bat \
+	generate_msvc70_sdl1x.bat \
+	generate_msvc70_sdl2x.bat \
+	generate_msvc71_ffmpeg_sdl1x.bat \
+	generate_msvc71_ffmpeg_sdl2x.bat \
+	generate_msvc71_sdl1x.bat \
+	generate_msvc71_sdl2x.bat \
+	generate_msvc8_ffmpeg_sdl1x.bat \
+	generate_msvc8_ffmpeg_sdl2x.bat \
+	generate_msvc8_sdl1x.bat \
+	generate_msvc8_sdl2x.bat \
+	generate_msvc9_ffmpeg_sdl1x.bat \
+	generate_msvc9_ffmpeg_sdl2x.bat \
+	generate_msvc9_sdl1x.bat \
+	generate_msvc9_sdl2x.bat \
+	generate_msvc10_ffmpeg_sdl1x.bat \
+	generate_msvc10_ffmpeg_sdl2x.bat \
+	generate_msvc10_sdl1x.bat \
+	generate_msvc10_sdl2x.bat \
+	generate_msvc11_ffmpeg_sdl1x.bat \
+	generate_msvc11_ffmpeg_sdl2x.bat \
+	generate_msvc11_sdl1x.bat \
+	generate_msvc11_sdl2x.bat \
+	generate_msvc12_ffmpeg_sdl1x.bat \
+	generate_msvc12_ffmpeg_sdl2x.bat \
+	generate_msvc12_sdl1x.bat \
+	generate_msvc12_sdl2x.bat \
+	generate_msvc14_ffmpeg_sdl1x.bat \
+	generate_msvc14_ffmpeg_sdl2x.bat \
+	generate_msvc14_sdl1x.bat \
+	generate_msvc14_sdl2x.bat \
+	generate_msvcmips_sdl1x.bat \
 	make-bindist_amiga.sh \
 	make-bindist_beos.sh \
-	make-bindist_dingoo.sh \
-	make-bindist_dingoo_native.sh \
-	make-bindist_gp2x.sh \
 	make-bindist_qnx6.sh \
 	make-bindist_scosol.sh \
 	make-bindist_skyos.sh \
 	make-bindist_syllable.sh \
-	make-bindist_win32.sh \
-	qnx4/install_msg \
-	qnx4/make-bindist.sh
+	make-bindist_win32.sh
 
 all: all-recursive
 
@@ -626,12 +712,19 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/archdep.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/blockdev.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/catweaselmkiii.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/catweaselmkiii-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/console.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/console_unix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coproc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cw-device.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cw-pci.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dynlib.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fullscreen.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hardsid.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hardsid-drv.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-device.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-isa.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hs-pci.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/io-access.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kbd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lightpendrv.Po@am__quote@
@@ -648,11 +741,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_debug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_drive.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_drive_rom.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_ethernet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_ethernetcart.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_ffmpeg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_help.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_jam.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_joyport.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_joystick.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_lightpen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_midi.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_monitor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_mouse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_network.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_petcart.Po@am__quote@
@@ -664,6 +761,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_reset.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_rom.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_rs232.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_sampler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_scpu64hw.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_screenshot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_settings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_sid.Po@am__quote@
@@ -671,19 +770,21 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_sound.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_speed.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_tape.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_tfe.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_vic20cart.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_vic20hw.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu_video.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mididrv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mousedrv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parsid.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parsid-drv.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pci-drv.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-device.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-ieee1284.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ps-io.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rawnetarch.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rs232.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rs232dev.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rs232net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sdlmain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/signals.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssi2001-drv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uicmdline.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uifilereq.Po@am__quote@
@@ -705,6 +806,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xcbm2_ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xpet_ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xplus4_ui.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xscpu64_ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xvic_ui.Po@am__quote@
 
 .c.o:

@@ -6,14 +6,19 @@ else
 extra_includes =
 endif
 
-SUBDIRS = win32-msvc win64-msvc win32-watcom winmips-msvc dingoo-files syllable-files xbox
+SUBDIRS = \
+	msvc-files \
+	qnx4 \
+	syllable-files \
+	win32-watcom
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	$(extra_includes) \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src/drive \
 	-I$(top_srcdir)/src/c64 \
+	-I$(top_srcdir)/src/c64/cart \
 	-I$(top_srcdir)/src/c64dtv \
 	-I$(top_srcdir)/src/c128 \
 	-I$(top_srcdir)/src/vic20 \
@@ -22,12 +27,14 @@ INCLUDES = \
 	-I$(top_srcdir)/src/plus4 \
 	-I$(top_srcdir)/src/raster \
 	-I$(top_srcdir)/src/rs232drv \
+	-I$(top_srcdir)/src/samplerdrv \
 	-I$(top_srcdir)/src/sid \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/vdrive \
 	-I$(top_srcdir)/src/video \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
+	-I$(top_srcdir)/src/joyport \
 	-I$(top_srcdir)/src
 
 noinst_LIBRARIES = libarch.a
@@ -36,14 +43,21 @@ libarch_a_SOURCES = \
 	archdep.c \
 	archdep.h \
 	blockdev.c \
-	catweaselmkiii.c \
+	catweaselmkiii-drv.c \
 	console.c \
+	console_unix.c \
 	coproc.c \
 	coproc.h \
+	cw-device.c \
+	cw-pci.c \
 	dynlib.c \
 	fullscreen.c \
 	fullscreenarch.h \
-	hardsid.c \
+	hardsid-drv.c \
+	hs-device.c \
+	hs-isa.c \
+	hs-pci.c \
+	io-access.c \
 	joy.c \
 	joy.h \
 	kbd.c \
@@ -76,16 +90,24 @@ libarch_a_SOURCES = \
 	menu_drive.h \
 	menu_drive_rom.c \
 	menu_drive_rom.h \
+	menu_ethernet.c \
+	menu_ethernet.h \
+	menu_ethernetcart.c \
+	menu_ethernetcart.h \
 	menu_ffmpeg.c \
 	menu_ffmpeg.h \
 	menu_help.c \
 	menu_help.h \
+	menu_jam.c \
+	menu_jam.h \
+	menu_joyport.c \
+	menu_joyport.h \
 	menu_joystick.c \
 	menu_joystick.h \
-	menu_lightpen.c \
-	menu_lightpen.h \
 	menu_midi.c \
 	menu_midi.h \
+	menu_monitor.c \
+	menu_monitor.h \
 	menu_mouse.c \
 	menu_mouse.h \
 	menu_network.c \
@@ -108,6 +130,10 @@ libarch_a_SOURCES = \
 	menu_rom.h \
 	menu_rs232.c \
 	menu_rs232.h \
+	menu_sampler.c \
+	menu_sampler.h \
+	menu_scpu64hw.c \
+	menu_scpu64hw.h \
 	menu_screenshot.c \
 	menu_screenshot.h \
 	menu_settings.c \
@@ -122,8 +148,6 @@ libarch_a_SOURCES = \
 	menu_speed.h \
 	menu_tape.c \
 	menu_tape.h \
-	menu_tfe.c \
-	menu_tfe.h \
 	menu_vic20cart.c \
 	menu_vic20cart.h \
 	menu_vic20hw.c \
@@ -133,16 +157,17 @@ libarch_a_SOURCES = \
 	mididrv.c \
 	mousedrv.c \
 	mousedrv.h \
-	parsid.c \
-	rs232.c \
+	parsid-drv.c \
+	pci-drv.c \
+	ps-device.c \
+	ps-ieee1284.c \
+	ps-io.c \
+	rawnetarch.c \
 	rs232dev.c \
-	rs232dev.h \
-	rs232net.c \
-	rs232net.h \
 	sdlmain.c \
 	signals.c \
 	socketimpl.h \
-	rawnetarch.c \
+	ssi2001-drv.c \
 	types.h \
 	ui.c \
 	ui.h \
@@ -175,6 +200,7 @@ libarch_a_SOURCES = \
 	xcbm2_ui.c \
 	xpet_ui.c \
 	xplus4_ui.c \
+	xscpu64_ui.c \
 	xvic_ui.c
 
 EXTRA_DIST = \
@@ -184,23 +210,54 @@ EXTRA_DIST = \
 	archdep_beos.h \
 	archdep_cegcc.c \
 	archdep_cegcc.h \
-	archdep_dingoo.c \
-	archdep_dingoo.h \
 	archdep_unix.c \
 	archdep_unix.h \
 	archdep_win32.c \
 	archdep_win32.h \
 	archdep_xbox.c \
 	archdep_xbox.h \
+	console_amiga.c \
+	console_sdl.c \
+	console_unix.c \
+	generate_msvc6_sdl1x.bat \
+	generate_msvc6_sdl2x.bat \
+	generate_msvc70_ffmpeg_sdl1x.bat \
+	generate_msvc70_ffmpeg_sdl2x.bat \
+	generate_msvc70_sdl1x.bat \
+	generate_msvc70_sdl2x.bat \
+	generate_msvc71_ffmpeg_sdl1x.bat \
+	generate_msvc71_ffmpeg_sdl2x.bat \
+	generate_msvc71_sdl1x.bat \
+	generate_msvc71_sdl2x.bat \
+	generate_msvc8_ffmpeg_sdl1x.bat \
+	generate_msvc8_ffmpeg_sdl2x.bat \
+	generate_msvc8_sdl1x.bat \
+	generate_msvc8_sdl2x.bat \
+	generate_msvc9_ffmpeg_sdl1x.bat \
+	generate_msvc9_ffmpeg_sdl2x.bat \
+	generate_msvc9_sdl1x.bat \
+	generate_msvc9_sdl2x.bat \
+	generate_msvc10_ffmpeg_sdl1x.bat \
+	generate_msvc10_ffmpeg_sdl2x.bat \
+	generate_msvc10_sdl1x.bat \
+	generate_msvc10_sdl2x.bat \
+	generate_msvc11_ffmpeg_sdl1x.bat \
+	generate_msvc11_ffmpeg_sdl2x.bat \
+	generate_msvc11_sdl1x.bat \
+	generate_msvc11_sdl2x.bat \
+	generate_msvc12_ffmpeg_sdl1x.bat \
+	generate_msvc12_ffmpeg_sdl2x.bat \
+	generate_msvc12_sdl1x.bat \
+	generate_msvc12_sdl2x.bat \
+	generate_msvc14_ffmpeg_sdl1x.bat \
+	generate_msvc14_ffmpeg_sdl2x.bat \
+	generate_msvc14_sdl1x.bat \
+	generate_msvc14_sdl2x.bat \
+	generate_msvcmips_sdl1x.bat \
 	make-bindist_amiga.sh \
 	make-bindist_beos.sh \
-	make-bindist_dingoo.sh \
-	make-bindist_dingoo_native.sh \
-	make-bindist_gp2x.sh \
 	make-bindist_qnx6.sh \
 	make-bindist_scosol.sh \
 	make-bindist_skyos.sh \
 	make-bindist_syllable.sh \
-	make-bindist_win32.sh \
-	qnx4/install_msg \
-	qnx4/make-bindist.sh
+	make-bindist_win32.sh

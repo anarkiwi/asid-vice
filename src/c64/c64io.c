@@ -2,7 +2,6 @@
  * c64io.c - C64 io handling ($D000-$DFFF).
  *
  * Written by
- *  Andreas Boose <viceteam@t-online.de>
  *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -118,9 +117,9 @@ static void io_source_msg_detach_all(WORD addr, int amount, io_source_list_t *st
     DBG(("IO: check %d sources for addr %04x\n", amount, addr));
     while (current) {
         /* DBG(("IO: check '%s'\n", current->device->name)); */
-        if (current->device->io_source_valid && 
-            addr >= current->device->start_address && 
-            addr <= current->device->end_address && 
+        if (current->device->io_source_valid &&
+            addr >= current->device->start_address &&
+            addr <= current->device->end_address &&
             current->device->io_source_prio == IO_PRIO_NORMAL) {
             /* found a conflict */
             detach_list[found].det_id = current->device->detach_id;
@@ -160,7 +159,7 @@ static void io_source_msg_detach_all(WORD addr, int amount, io_source_list_t *st
 
         DBG(("IO: found %d items to detach\n", found));
         for (i = 0; i < found; i++) {
-            DBG(("IO: detach #%d id:%d name: %s\n",i , detach_list[i].det_cartid, detach_list[i].det_devname));
+            DBG(("IO: detach #%d id:%d name: %s\n", i, detach_list[i].det_cartid, detach_list[i].det_devname));
             io_source_detach(&detach_list[i]);
         }
     }
@@ -185,9 +184,9 @@ static void io_source_msg_detach_last(WORD addr, int amount, io_source_list_t *s
     DBG(("IO: check %d sources for addr %04x\n", real_amount, addr));
     while (current) {
         /* DBG(("IO: check '%s'\n", current->device->name)); */
-        if (current->device->io_source_valid && 
-            addr >= current->device->start_address && 
-            addr <= current->device->end_address && 
+        if (current->device->io_source_valid &&
+            addr >= current->device->start_address &&
+            addr <= current->device->end_address &&
             current->device->io_source_prio == IO_PRIO_NORMAL) {
             /* found a conflict */
             detach_list[found].det_id = current->device->detach_id;
@@ -233,7 +232,7 @@ static void io_source_msg_detach_last(WORD addr, int amount, io_source_list_t *s
         DBG(("IO: found %d items to detach\n", found));
         for (i = 0; i < found; i++) {
             if (detach_list[i].order != lowest) {
-                DBG(("IO: detach #%d id:%d name: %s\n",i , detach_list[i].det_cartid, detach_list[i].det_devname));
+                DBG(("IO: detach #%d id:%d name: %s\n", i, detach_list[i].det_cartid, detach_list[i].det_devname));
                 io_source_detach(&detach_list[i]);
             }
         }
@@ -256,9 +255,9 @@ static void io_source_log_collisions(WORD addr, int amount, io_source_list_t *st
     DBG(("IO: check %d sources for addr %04x\n", amount, addr));
     while (current) {
         /* DBG(("IO: check '%s'\n", current->device->name)); */
-        if (current->device->io_source_valid && 
-            addr >= current->device->start_address && 
-            addr <= current->device->end_address && 
+        if (current->device->io_source_valid &&
+            addr >= current->device->start_address &&
+            addr <= current->device->end_address &&
             current->device->io_source_prio == IO_PRIO_NORMAL) {
             /* found a conflict */
             DBG(("IO: found #%d: '%s'\n", found, current->device->name));
@@ -290,7 +289,6 @@ static void io_source_log_collisions(WORD addr, int amount, io_source_list_t *st
     if (found) {
         log_message(LOG_DEFAULT, new_msg, addr);
         lib_free(new_msg);
-
     }
 }
 
@@ -298,8 +296,10 @@ static inline BYTE io_read(io_source_list_t *list, WORD addr)
 {
     io_source_list_t *current = list->next;
     int io_source_counter = 0;
+    int io_source_valid = 0;
     BYTE realval = 0;
     BYTE retval = 0;
+    BYTE firstval = 0;
     unsigned int lowest_order = 0xffffffff;
 
     vicii_handle_pending_alarms_external(0);
@@ -309,20 +309,39 @@ static inline BYTE io_read(io_source_list_t *list, WORD addr)
             if ((addr >= current->device->start_address) && (addr <= current->device->end_address)) {
                 retval = current->device->read((WORD)(addr & current->device->address_mask));
                 if (current->device->io_source_valid) {
+                    /* high prio always overrides others, return immediatly */
                     if (current->device->io_source_prio == IO_PRIO_HIGH) {
                         return retval;
                     }
-                    if (io_source_collision_handling == IO_COLLISION_METHOD_DETACH_LAST) {
-                        if (current->device->order < lowest_order) {
-                            lowest_order = current->device->order;
-                            realval = retval;
+                    if (io_source_valid == 0) {
+                        /* on first valid read, initialize intermediate values */
+                        firstval = realval = retval;
+                        lowest_order = current->device->order;
+                        /* do not count low prio, as it will always be overridden by others */
+                        if (current->device->io_source_prio != IO_PRIO_LOW) {
+                            io_source_counter++;
                         }
-                    }
-                    if (io_source_collision_handling == IO_COLLISION_METHOD_AND_WIRES) {
-                        realval &= retval;
-                    }
-                    if (current->device->io_source_prio != IO_PRIO_LOW) {
-                        io_source_counter++;
+                        io_source_valid = 1;
+                    } else {
+                        /* ignore low prio reads when a real value is present already */
+                        if (current->device->io_source_prio == IO_PRIO_LOW) {
+                            retval = realval;
+                        }
+                        if (io_source_collision_handling == IO_COLLISION_METHOD_DETACH_LAST) {
+                            if (current->device->order < lowest_order) {
+                                lowest_order = current->device->order;
+                                realval = retval;
+                            }
+                        } else if (io_source_collision_handling == IO_COLLISION_METHOD_AND_WIRES) {
+                            realval &= retval;
+                        }
+                        /* do not count low prio, as it will always be overridden by others */
+                        if (current->device->io_source_prio != IO_PRIO_LOW) {
+                            /* if the nth read returns the same as the first read don't see it as a conflict */
+                            if (retval != firstval) {
+                                io_source_counter++;
+                            }
+                        }
                     }
                 }
             }
@@ -330,32 +349,29 @@ static inline BYTE io_read(io_source_list_t *list, WORD addr)
         current = current->next;
     }
 
-    if (io_source_counter == 0) {
+    /* no valid I/O source was read, return phi1 */
+    if (io_source_valid == 0) {
         return vicii_read_phi1();
     }
-
-    if (io_source_counter == 1) {
+    /* only one valid I/O source was read, return value */
+    if (!(io_source_counter > 1)) {
         return retval;
     }
-
+    /* more than one I/O source was read, handle collision */
     if (io_source_collision_handling == IO_COLLISION_METHOD_DETACH_ALL) {
         io_source_msg_detach_all(addr, io_source_counter, list);
         return vicii_read_phi1();
-    }
-
-    if (io_source_collision_handling == IO_COLLISION_METHOD_DETACH_LAST) {
+    } else if (io_source_collision_handling == IO_COLLISION_METHOD_DETACH_LAST) {
         io_source_msg_detach_last(addr, io_source_counter, list, lowest_order);
         return realval;
-    }
-
-    if (io_source_collision_handling == IO_COLLISION_METHOD_AND_WIRES) {
+    } else if (io_source_collision_handling == IO_COLLISION_METHOD_AND_WIRES) {
         io_source_log_collisions(addr, io_source_counter, list);
         return realval;
     }
     return vicii_read_phi1();
 }
 
-/* peek from i/o area with no side-effects */
+/* peek from I/O area with no side-effects */
 static inline BYTE io_peek(io_source_list_t *list, WORD addr)
 {
     io_source_list_t *current = list->next;
@@ -746,12 +762,12 @@ static void io_source_ioreg_add_onelist(struct mem_ioreg_list_s **mem_ioreg_list
             end = current->device->start_address + current->device->address_mask;
         }
 
-        mon_ioreg_add_list(mem_ioreg_list, current->device->name, current->device->start_address, end, current->device->dump);
+        mon_ioreg_add_list(mem_ioreg_list, current->device->name, current->device->start_address, end, current->device->dump, NULL);
         current = current->next;
     }
 }
 
-/* add all registered i/o devices to the list for the monitor */
+/* add all registered I/O devices to the list for the monitor */
 void io_source_ioreg_add_list(struct mem_ioreg_list_s **mem_ioreg_list)
 {
     io_source_ioreg_add_onelist(mem_ioreg_list, c64io_d000_head.next);
@@ -768,45 +784,23 @@ void io_source_ioreg_add_list(struct mem_ioreg_list_s **mem_ioreg_list)
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
-static int cpu_lines;
-static char *cpu_lines_lock_name;
-
-int get_cpu_lines_lock(void)
-{
-    return cpu_lines;
-}
-
-void set_cpu_lines_lock(int device, char *name)
-{
-    cpu_lines = device;
-    cpu_lines_lock_name = name;
-}
-
-void remove_cpu_lines_lock(void)
-{
-    cpu_lines = 0;
-    cpu_lines_lock_name = NULL;
-}
-
-char *get_cpu_lines_lock_name(void)
-{
-    return cpu_lines_lock_name;
-}
-
-/* ---------------------------------------------------------------------------------------------------------- */
-
 static int set_io_source_collision_handling(int val, void *param)
 {
-    if (val < 0 || val > 2) {
-        return -1;
+    switch (val) {
+        case IO_COLLISION_METHOD_DETACH_ALL:
+        case IO_COLLISION_METHOD_DETACH_LAST:
+        case IO_COLLISION_METHOD_AND_WIRES:
+            break;
+        default:
+            return -1;
     }
-	io_source_collision_handling = val;
+    io_source_collision_handling = val;
 
     return 0;
 }
 
 static const resource_int_t resources_int[] = {
-    { "IOCollisionHandling", 0, RES_EVENT_STRICT, (resource_value_t)0,
+    { "IOCollisionHandling", IO_COLLISION_METHOD_DETACH_ALL, RES_EVENT_STRICT, (resource_value_t)0,
       &io_source_collision_handling, set_io_source_collision_handling, NULL },
     { NULL }
 };

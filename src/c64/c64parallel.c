@@ -35,7 +35,6 @@
 #include "cia.h"
 #include "dolphindos3.h"
 #include "drive.h"
-#include "drivecpu.h"
 #include "drivetypes.h"
 #include "iecdrive.h"
 #include "log.h"
@@ -133,13 +132,15 @@ void parallel_cable_cpu_execute(int type)
 {
     unsigned int dnr;
     int port;
+    drive_t *drive;
 
     port = portmap[type];
 
     for (dnr = 0; dnr < DRIVE_NUM; dnr++) {
-        if (drive_context[dnr]->drive->enable && drive_context[dnr]->drive->parallel_cable) {
-            if (portmap[drive_context[dnr]->drive->parallel_cable] == port) {
-                drivecpu_execute(drive_context[dnr], maincpu_clk);
+        drive = drive_context[dnr]->drive;
+        if (drive->enable && drive->parallel_cable) {
+            if (portmap[drive->parallel_cable] == port) {
+                drive_cpu_execute_one(drive_context[dnr], maincpu_clk);
             }
         }
     }
@@ -157,7 +158,7 @@ void parallel_cable_cpu_write(int type, BYTE data)
     DBG(("PARCABLE (%d:%d) CPU W DATA %02x", type, port, data));
 }
 
-BYTE parallel_cable_cpu_read(int type)
+BYTE parallel_cable_cpu_read(int type, BYTE data)
 {
     BYTE rc;
 
@@ -167,7 +168,7 @@ BYTE parallel_cable_cpu_read(int type)
 
     DBG(("PARCABLE (%d:%d) CPU R %02x", type, portmap[type], rc));
 
-    return rc;
+    return data & rc;
 }
 
 void parallel_cable_cpu_pulse(int type)
@@ -192,8 +193,8 @@ void parallel_cable_cpu_pulse(int type)
                     viacore_signal(drive_context[dnr]->via1d1541, VIA_SIG_CB1, VIA_SIG_FALL);
                     break;
                 default:
-                    if (drive->type == DRIVE_TYPE_1570 || 
-                        drive->type == DRIVE_TYPE_1571 || 
+                    if (drive->type == DRIVE_TYPE_1570 ||
+                        drive->type == DRIVE_TYPE_1571 ||
                         drive->type == DRIVE_TYPE_1571CR) {
                         ciacore_set_flag(drive_context[dnr]->cia1571);
                     } else {

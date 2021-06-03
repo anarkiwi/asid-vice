@@ -3,7 +3,7 @@
  *
  * Written by
  *  Marco van den Heuvel <blackystardust68@yahoo.com>
- * 
+ *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -78,9 +78,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "c64_256k.h"
 #include "c64cart.h"
-#include "c64export.h"
 #include "c64mem.h"
 #include "cartio.h"
 #include "cartridge.h"
@@ -91,7 +89,6 @@
 #include "mem.h"
 #include "monitor.h"
 #include "resources.h"
-#include "plus256k.h"
 #include "plus60k.h"
 #include "snapshot.h"
 #include "translate.h"
@@ -102,7 +99,7 @@
 #include "vicii-mem.h"
 
 /* PLUS60K registers */
-static BYTE plus60k_reg=0;
+static BYTE plus60k_reg = 0;
 
 static log_t plus60k_log = LOG_ERR;
 
@@ -204,8 +201,10 @@ static io_source_list_t *vicii_d000_full_list_item = NULL;
 static io_source_list_t *vicii_d040_list_item = NULL;
 static io_source_list_t *vicii_d100_list_item = NULL;
 
-static int set_plus60k_enabled(int val, void *param)
+int set_plus60k_enabled(int value, int disable_reset)
 {
+    int val = value ? 1 : 0;
+
     if (val == plus60k_enabled) {
         return 0;
     }
@@ -215,20 +214,19 @@ static int set_plus60k_enabled(int val, void *param)
             return -1;
         }
 
-        machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        if (!disable_reset) {
+            machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        }
         plus60k_enabled = 0;
         return 0;
     } else {
-        if (get_cpu_lines_lock() != 0) {
-            ui_error(translate_text(IDGS_RESOURCE_S_BLOCKED_BY_S), "CPU-LINES", get_cpu_lines_lock_name());
+        if (plus60k_activate() < 0) {
             return -1;
-        } else {
-            if (plus60k_activate() < 0) {
-                return -1;
-            }
         }
         plus60k_enabled = 1;
-        machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        if (!disable_reset) {
+            machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        }
         return 0;
     }
 }
@@ -289,8 +287,6 @@ static const resource_string_t resources_string[] = {
 };
 
 static const resource_int_t resources_int[] = {
-    { "PLUS60K", 0, RES_EVENT_STRICT, (resource_value_t)0,
-      &plus60k_enabled, set_plus60k_enabled, NULL },
     { "PLUS60Kbase", 0xd100, RES_EVENT_NO, NULL,
       &plus60k_base, set_plus60k_base, NULL },
     { NULL }
@@ -314,16 +310,6 @@ void plus60k_resources_shutdown(void)
 
 static const cmdline_option_t cmdline_options[] =
 {
-    { "-plus60k", SET_RESOURCE, 0,
-      NULL, NULL, "PLUS60K", (resource_value_t)1,
-      USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_ENABLE_PLUS60K_EXPANSION,
-      NULL, NULL },
-    { "+plus60k", SET_RESOURCE, 0,
-      NULL, NULL, "PLUS60K", (resource_value_t)0,
-      USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_DISABLE_PLUS60K_EXPANSION,
-      NULL, NULL },
     { "-plus60kimage", SET_RESOURCE, 1,
       NULL, NULL, "PLUS60Kfilename", NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
@@ -351,7 +337,7 @@ void plus60k_init(void)
 
 void plus60k_reset(void)
 {
-  plus60k_reg = 0;
+    plus60k_reg = 0;
 }
 
 static int plus60k_activate(void)
@@ -374,7 +360,6 @@ static int plus60k_activate(void)
     }
 
     plus60k_reset();
-    set_cpu_lines_lock(CPU_LINES_PLUS60K, "PLUS60K");
 
     c64io_vicii_deinit();
     if (plus60k_base == 0xd100) {
@@ -398,7 +383,6 @@ static int plus60k_deactivate(void)
     }
     lib_free(plus60k_ram);
     plus60k_ram = NULL;
-    remove_cpu_lines_lock();
 
     if (vicii_d000_list_item != NULL) {
         io_source_unregister(vicii_d000_list_item);
@@ -435,27 +419,27 @@ void plus60k_shutdown(void)
 
 static void plus60k_memory_store(WORD addr, BYTE value)
 {
-    plus60k_ram[addr-0x1000]=value;
+    plus60k_ram[addr - 0x1000] = value;
 }
 
 static void vicii_mem_vbank_store_wrapper(WORD addr, BYTE value)
 {
-    vicii_mem_vbank_store(addr,value);
+    vicii_mem_vbank_store(addr, value);
 }
 
 static void vicii_mem_vbank_39xx_store_wrapper(WORD addr, BYTE value)
 {
-    vicii_mem_vbank_39xx_store(addr,value);
+    vicii_mem_vbank_39xx_store(addr, value);
 }
 
 static void vicii_mem_vbank_3fxx_store_wrapper(WORD addr, BYTE value)
 {
-    vicii_mem_vbank_3fxx_store(addr,value);
+    vicii_mem_vbank_3fxx_store(addr, value);
 }
 
 static void ram_hi_store_wrapper(WORD addr, BYTE value)
 {
-    ram_hi_store(addr,value);
+    ram_hi_store(addr, value);
 }
 
 static store_func_ptr_t plus60k_mem_write_tab[] = {
@@ -505,4 +489,83 @@ void plus60k_ram_store(WORD addr, BYTE value)
     } else {
         mem_ram[addr] = value;
     }
+}
+
+/* ------------------------------------------------------------------------- */
+
+/* PLUS60K snapshot module format:
+
+   type  | name     | description
+   --------------------------------------
+   WORD  | base     | base address of register
+   BYTE  | register | register
+   ARRAY | RAM      | 61440 BYTES of RAM data
+
+   Note: for some reason this snapshot module started at 0.1, so there never was a 0.0
+ */
+
+static char snap_module_name[] = "PLUS60K";
+#define SNAP_MAJOR   0
+#define SNAP_MINOR   1
+
+int plus60k_snapshot_write(struct snapshot_s *s)
+{
+    snapshot_module_t *m;
+
+    m = snapshot_module_create(s, snap_module_name, SNAP_MAJOR, SNAP_MINOR);
+
+    if (m == NULL) {
+        return -1;
+    }
+
+    if (0
+        || SMW_W (m, (WORD)plus60k_base) < 0
+        || SMW_B (m, plus60k_reg) < 0
+        || SMW_BA(m, plus60k_ram, 0xf000) < 0) {
+        snapshot_module_close(m);
+        return -1;
+    }
+
+    return snapshot_module_close(m);
+}
+
+int plus60k_snapshot_read(struct snapshot_s *s)
+{
+    snapshot_module_t *m;
+    BYTE vmajor, vminor;
+
+    m = snapshot_module_open(s, snap_module_name, &vmajor, &vminor);
+
+    if (m == NULL) {
+        return -1;
+    }
+
+    /* Do not accept versions higher than current */
+    if ((vmajor != SNAP_MAJOR) || (vminor != SNAP_MINOR)) {
+        snapshot_set_error(SNAPSHOT_MODULE_HIGHER_VERSION);
+        goto fail;
+    }
+
+    if (SMR_W_INT(m, &plus60k_base) < 0) {
+        goto fail;
+    }
+
+    /* enable plus60k, without reset */
+    set_plus60k_enabled(1, 1);
+
+    if (0
+        || SMR_B(m, &plus60k_reg) < 0
+        || SMR_BA(m, plus60k_ram, 0xf000) < 0) {
+        goto fail;
+    }
+
+    return snapshot_module_close(m);
+
+fail:
+    snapshot_module_close(m);
+
+    /* disable plus60k, without reset */
+    set_plus60k_enabled(0, 1);
+
+    return -1;
 }

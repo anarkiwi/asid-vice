@@ -29,6 +29,9 @@
 #define VICE_ARCHDEP_H
 
 #include "archapi.h"
+
+#include "sound.h"
+
 #include "vicemaxpath.h"
 
 /* Filesystem dependant operators.  */
@@ -55,6 +58,12 @@
 #define ARCHDEP_PRINTER_DEFAULT_DEV1 "viceprnt.out"
 #define ARCHDEP_PRINTER_DEFAULT_DEV2 "LPT1:"
 #define ARCHDEP_PRINTER_DEFAULT_DEV3 "LPT2:"
+
+/* Default rs232 devices */
+#define ARCHDEP_RS232_DEV1 "10.0.0.1:25232"
+#define ARCHDEP_RS232_DEV2 "10.0.0.1:25232"
+#define ARCHDEP_RS232_DEV3 "10.0.0.1:25232"
+#define ARCHDEP_RS232_DEV4 "10.0.0.1:25232"
 
 /* Video chip scaling.  */
 #define ARCHDEP_VICII_DSIZE   1
@@ -100,5 +109,20 @@
 
 /* No key symcode.  */
 #define ARCHDEP_KEYBOARD_SYM_NONE 0
+
+/* When using the ascii printer driver we need a return before the newline */
+#define ARCHDEP_PRINTER_RETURN_BEFORE_NEWLINE
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR errno
+
+/* Default sound output mode */
+#define ARCHDEP_SOUND_OUTPUT_MODE SOUND_OUTPUT_MONO
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
+
+/* define if the platform supports the monitor in a seperate window */
+/* #define ARCHDEP_SEPERATE_MONITOR_WINDOW */
 
 #endif

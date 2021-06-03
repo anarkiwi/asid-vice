@@ -2,7 +2,7 @@
  * cbm2-snapshot.c - CBM-6x0/7x0 snapshot handling.
  *
  * Written by
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -37,7 +37,6 @@
 #include "crtc.h"
 #include "drive-snapshot.h"
 #include "drive.h"
-#include "drivecpu.h"
 #include "ioutil.h"
 #include "joystick.h"
 #include "keyboard.h"
@@ -47,7 +46,8 @@
 #include "sid-snapshot.h"
 #include "sound.h"
 #include "snapshot.h"
-#include "tape-snapshot.h"
+#include "tapeport.h"
+#include "userport.h"
 #include "tpi.h"
 #include "types.h"
 #include "vice-event.h"
@@ -63,8 +63,9 @@ int cbm2_snapshot_write(const char *name, int save_roms, int save_disks,
 
     s = snapshot_create(name, SNAP_MAJOR, SNAP_MINOR, machine_get_name());
 
-    if (s == NULL)
+    if (s == NULL) {
         return -1;
+    }
 
     sound_snapshot_prepare();
 
@@ -78,9 +79,9 @@ int cbm2_snapshot_write(const char *name, int save_roms, int save_disks,
         || sid_snapshot_write_module(s) < 0
         || drive_snapshot_write_module(s, save_disks, save_roms) < 0
         || event_snapshot_write_module(s, event_mode) < 0
-        || tape_snapshot_write_module(s, save_disks) < 0
-        || keyboard_snapshot_write_module(s)
-        || joystick_snapshot_write_module(s)) {
+        || tapeport_snapshot_write_module(s, save_disks) < 0
+        || keyboard_snapshot_write_module(s) < 0
+        || userport_snapshot_write_module(s) < 0) {
         snapshot_close(s);
         ioutil_remove(name);
         return -1;
@@ -97,13 +98,13 @@ int cbm2_snapshot_read(const char *name, int event_mode)
 
     s = snapshot_open(name, &major, &minor, machine_get_name());
 
-    if (s == NULL)
+    if (s == NULL) {
         return -1;
+    }
 
     if (major != SNAP_MAJOR || minor != SNAP_MINOR) {
-        log_error(LOG_DEFAULT,
-                  "Snapshot version (%d.%d) not valid: expecting %d.%d.",
-                  major, minor, SNAP_MAJOR, SNAP_MINOR);
+        log_error(LOG_DEFAULT, "Snapshot version (%d.%d) not valid: expecting %d.%d.", major, minor, SNAP_MAJOR, SNAP_MINOR);
+        snapshot_set_error(SNAPSHOT_MODULE_INCOMPATIBLE);
         goto fail;
     }
 
@@ -117,22 +118,22 @@ int cbm2_snapshot_read(const char *name, int event_mode)
         || sid_snapshot_read_module(s) < 0
         || drive_snapshot_read_module(s) < 0
         || event_snapshot_read_module(s, event_mode) < 0
-        || tape_snapshot_read_module(s) < 0
+        || tapeport_snapshot_read_module(s) < 0
         || keyboard_snapshot_read_module(s) < 0
-        || joystick_snapshot_read_module(s) < 0)
+        || userport_snapshot_read_module(s) < 0) {
         goto fail;
+    }
 
     sound_snapshot_finish();
 
     return 0;
 
 fail:
-    if (s != NULL)
+    if (s != NULL) {
         snapshot_close(s);
+    }
 
     machine_trigger_reset(MACHINE_RESET_MODE_SOFT);
 
     return -1;
 }
-
-

@@ -28,6 +28,8 @@
 
 #include "vice.h"
 
+#ifdef USE_SDL_AUDIO
+
 #include "vice_sdl.h"
 
 #ifdef HAVE_UNISTD_H
@@ -37,6 +39,9 @@
 #include "lib.h"
 #include "sound.h"
 
+#ifdef ANDROID_COMPILE
+#include "loader.h"
+#endif
 
 static SWORD *sdl_buf = NULL;
 static SDL_AudioSpec sdl_spec;
@@ -47,35 +52,53 @@ static int sdl_len = 0;
 
 static void sdl_callback(void *userdata, Uint8 *stream, int len)
 {
-    int	amount, total;
+    int amount, total;
     total = 0;
 
-    while (total < len/sizeof(SWORD)) {
+#ifdef ANDROID_COMPILE
+    if ((!sdl_full) && (sdl_inptr == sdl_outptr)) {
+        if (userdata) {
+            *(short *)userdata = 0;
+        }
+        return;
+	}
+#endif
+
+    while (total < (int)(len / sizeof(SWORD))) {
         amount = sdl_inptr - sdl_outptr;
         if (amount <= 0) {
             amount = sdl_len - sdl_outptr;
         }
 
-        if (amount + total > len/sizeof(SWORD)) {
-            amount = len/sizeof(SWORD) - total;
+        if (amount + total > (int)(len / sizeof(SWORD))) {
+            amount = len / sizeof(SWORD) - total;
         }
 
         sdl_full = 0;
 
         if (!amount) {
-            memset(stream + total*sizeof(SWORD), 0, len - total*sizeof(SWORD));
+            memset(stream + total * sizeof(SWORD), 0, len - total * sizeof(SWORD));
+#ifdef ANDROID_COMPILE
+            if (userdata) {
+                *(short *)userdata = len / sizeof(SWORD);
+            }
+#endif
             return;
         }
 
-        memcpy(stream + total*sizeof(SWORD), sdl_buf + sdl_outptr,
-               amount*sizeof(SWORD));
+        memcpy(stream + total * sizeof(SWORD), sdl_buf + sdl_outptr, amount * sizeof(SWORD));
         total += amount;
         sdl_outptr += amount;
 
         if (sdl_outptr == sdl_len) {
-	        sdl_outptr = 0;
+            sdl_outptr = 0;
         }
     }
+#ifdef ANDROID_COMPILE
+    if (userdata) {
+        *(short *)userdata = total;
+    }
+#endif
 }
 
 static int sdl_init(const char *param, int *speed,
@@ -88,9 +111,20 @@ static int sdl_init(const char *param, int *speed,
     spec.freq = *speed;
     spec.format = AUDIO_S16;
     spec.channels = *channels;
-    spec.samples = *fragsize;
+    spec.samples = *fragsize * 2;
     spec.callback = sdl_callback;
 
+    /* NOTE: on some backends the first (input/desired) spec passed to SDL_OpenAudio
+     *       may also get modified! because of this we can not use the spec struct
+     *       later to retrieve the original desired values.
+     * 
+     *       also apparently when the backend is pulseaudio, the number of samples
+     *       will ALWAYS get divided by two for some reason - using larger buffers
+     *       in the config may or may not be needed in that case.
+     * 
+     *       see eg http://forums.libsdl.org/viewtopic.php?t=9248&sid=92130a5b4cfd7fd713e076e122d7e2a1
+     *       to get an idea of the whole mess
+     */
     if (SDL_OpenAudio(&spec, &sdl_spec)) {
         return 1;
     }
@@ -103,11 +137,11 @@ static int sdl_init(const char *param, int *speed,
     /* recalculate the number of fragments since the frag size might
      * have changed and we want to keep approximately the same
      * buffersize */
-    nr = (*fragnr) * (*fragsize) / spec.samples;
+    nr = ((*fragnr) * (*fragsize)) / sdl_spec.samples;
 
     sdl_len = sdl_spec.samples * nr;
     sdl_inptr = sdl_outptr = sdl_full = 0;
-    sdl_buf = lib_malloc(sizeof(SWORD)*sdl_len);
+    sdl_buf = lib_calloc(sdl_len, sizeof(SWORD));
 
     if (!sdl_buf) {
         SDL_CloseAudio();
@@ -115,7 +149,7 @@ static int sdl_init(const char *param, int *speed,
     }
 
     *speed = sdl_spec.freq;
-    *fragsize = spec.samples;
+    *fragsize = sdl_spec.samples;
     *fragnr = nr;
     SDL_PauseAudio(0);
     return 0;
@@ -125,40 +159,64 @@ static int sdl_init(const char *param, int *speed,
 #if !defined(AMIGA_MORPHOS) && !defined(AMIGA_M68K)
 void swab(void *src, void *dst, size_t length)
 {
-    const char *from=src;
-    char *to=dst;
+    const char *from = src;
+    char *to = dst;
     size_t ptr;
 
-    for (ptr=1; ptr<length; ptr+=2)  {
-        char p=from[ptr];
-        char q=from[ptr-1];
-        to[ptr-1]=p;
-        to[ptr]=q;
+    for (ptr = 1; ptr < length; ptr += 2) {
+        char p = from[ptr];
+        char q = from[ptr - 1];
+        to[ptr - 1] = p;
+        to[ptr] = q;
     }
 
-    if (ptr==length) {
-        to[ptr-1]=0;
+    if (ptr == length) {
+        to[ptr - 1] = 0;
     }
 }
 #else
-#define swab(src, dst, length)              \
-    do {                                    \
-        const char *from=src;               \
-        char *to=dst;                       \
-        size_t ptr;                         \
-                                            \
-        for (ptr=1; ptr<(length); ptr+=2) { \
-            char p=from[ptr];               \
-            char q=from[ptr-1];             \
-            to[ptr-1]=p;                    \
-            to[ptr]=q;                      \
-        }                                   \
-        if (ptr==(length)) {                \
-            to[ptr-1]=0;                    \
-        }                                   \
-    }                                       \
-    while (0)
+#define swab(src, dst, length)                    \
+    do {                                          \
+        const char *from = src;                   \
+        char *to = dst;                           \
+        size_t ptr;                               \
+                                                  \
+        for (ptr = 1; ptr < (length); ptr += 2) { \
+            char p = from[ptr];                   \
+            char q = from[ptr - 1];               \
+            to[ptr - 1] = p;                      \
+            to[ptr] = q;                          \
+        }                                         \
+        if (ptr == (length)) {                    \
+            to[ptr - 1] = 0;                      \
+        }                                         \
+    } while (0)
 #endif
+#endif
+
+#ifdef ANDROID_COMPILE
+void loader_writebuffer()
+{
+    int total;
+
+    for(;;) {
+        int old_sdl_outptr = sdl_outptr;
+
+        total = sdl_inptr - sdl_outptr;
+        if (total <= 0) {
+            total = sdl_len - sdl_outptr + sdl_inptr;
+        }
+        if (total > (sdl_spec.samples << 1)) {
+            Android_AudioWriteBuffer();
+        } else {
+            break;
+        }
+
+        if (sdl_outptr == old_sdl_outptr) {
+            break;
+        }
+    };
+}
 #endif
 
 static int sdl_write(SWORD *pbuf, size_t nr)
@@ -167,21 +225,20 @@ static int sdl_write(SWORD *pbuf, size_t nr)
     total = 0;
 
 #ifdef WORDS_BIGENDIAN
-    if (sdl_spec.format != AUDIO_S16MSB)
-    {
+    if (sdl_spec.format != AUDIO_S16MSB) {
         /* Swap bytes if we're on a big-endian machine, like the Macintosh */
-        swab(pbuf, pbuf, sizeof(SWORD)*nr);
+        swab(pbuf, pbuf, sizeof(SWORD) * nr);
     }
 #endif
 
-    while (total < nr) {
+    while (total < (int)nr) {
         amount = sdl_outptr - sdl_inptr;
 
         if (amount <= 0) {
             amount = sdl_len - sdl_inptr;
         }
 
-        if (total + amount > nr) {
+        if (total + amount > (int)nr) {
             amount = nr - total;
         }
 
@@ -190,7 +247,7 @@ static int sdl_write(SWORD *pbuf, size_t nr)
             continue;
         }
 
-        memcpy(sdl_buf + sdl_inptr, pbuf + total, amount*sizeof(SWORD));
+        memcpy(sdl_buf + sdl_inptr, pbuf + total, amount * sizeof(SWORD));
         sdl_inptr += amount;
         total += amount;
 
@@ -263,3 +320,4 @@ int sound_init_sdl_device(void)
 {
     return sound_register_device(&sdl_device);
 }
+#endif

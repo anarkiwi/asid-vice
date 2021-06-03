@@ -27,8 +27,9 @@
 #include "resources.h"
 #include "autostart.h"
 #include "attach.h"
+#include "charset.h"
 #include "vsync.h"
-#include "drivecpu.h"
+#include "drive.h"
 #include "monitor.h"
 #include "monitor/mon_register.h"
 #include "monitor/montypes.h"
@@ -36,6 +37,7 @@
 #include "monitor/mon_breakpoint.h"
 #include "machine.h"
 #include "keyboard.h"
+#include "kbdbuf.h"
 #include "diskimage.h"
 #include "mousedrv.h"
 #include "lightpen.h"
@@ -48,6 +50,7 @@
 #include "interrupt.h"
 #include "tape.h"
 #include "mouse.h"
+#include "mousedrv.h"
 #include "clipboard.h"
 #include "datasette.h"
 #include "vdrive-internal.h"
@@ -169,7 +172,7 @@
 
 -(void)resetDrive:(int)unit
 {
-    drivecpu_trigger_reset(unit);
+    drive_cpu_trigger_reset(unit);
 }
 
 // ----- Monitor -----
@@ -191,14 +194,15 @@
 
     // count registers
     unsigned int cnt;
-    for (p = pMonRegs, cnt = 0; p != NULL; p = p->next, cnt++ );
+    for (p = pMonRegs, cnt = 0; p->name != NULL; p++, cnt++ );
 
     NSMutableArray *regs = [NSMutableArray arrayWithCapacity:cnt];
-    for (p = pMonRegs, cnt = 0; p != NULL; p = p->next, cnt++ ) {
+    for (p = pMonRegs, cnt = 0; p->name != NULL; p++, cnt++ ) {
         NSDictionary *entry = [NSDictionary dictionaryWithObjectsAndKeys:
         [NSString stringWithCString:p->name encoding:NSUTF8StringEncoding], @"name",
         [NSNumber numberWithUnsignedInt:p->val], @"value",
         [NSNumber numberWithUnsignedInt:p->size], @"size",
+        // FIXME: ->flags is a bitfield, see mon_register.h
         [NSNumber numberWithUnsignedInt:p->flags], @"flags",
         nil];
         [regs addObject:entry];
@@ -653,9 +657,9 @@ extern void mouse_move_f(float x, float y);
 -(void)mouseButton:(BOOL)left withState:(BOOL)pressed
 {
     if(left)
-        mouse_button_left(pressed);
+        mousedrv_button_left(pressed);
     else
-        mouse_button_right(pressed);
+        mousedrv_button_right(pressed);
 }
 
 -(void)lightpenUpdateOnScreen:(int)screen toX:(int)x andY:(int)y 
@@ -693,7 +697,8 @@ extern void mouse_move_f(float x, float y);
     const int ids[] = {
         DISK_IMAGE_TYPE_D64, DISK_IMAGE_TYPE_D67, DISK_IMAGE_TYPE_D71,
         DISK_IMAGE_TYPE_D80, DISK_IMAGE_TYPE_D81, DISK_IMAGE_TYPE_D82,
-        DISK_IMAGE_TYPE_G64, DISK_IMAGE_TYPE_P64, DISK_IMAGE_TYPE_X64
+        DISK_IMAGE_TYPE_G64, DISK_IMAGE_TYPE_P64, DISK_IMAGE_TYPE_X64,
+        DISK_IMAGE_TYPE_D1M, DISK_IMAGE_TYPE_D2M, DISK_IMAGE_TYPE_D4M
     };
     return vdrive_internal_create_format_disk_image([path fileSystemRepresentation],
                                                     [name cStringUsingEncoding:NSUTF8StringEncoding],
@@ -753,7 +758,7 @@ extern void mouse_move_f(float x, float y);
         int len = [string length];
         char *pstr = (char *)malloc(len + 1);
         memcpy(pstr,cstr,len+1);
-        charset_petconvstring(pstr,0);
+        charset_petconvstring((BYTE*)pstr,0);
         
         kbdbuf_feed(pstr);
         

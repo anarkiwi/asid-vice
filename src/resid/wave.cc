@@ -72,9 +72,9 @@ WaveformGenerator::WaveformGenerator()
 
       // Noise mask, triangle, sawtooth, pulse mask.
       // The triangle calculation is made branch-free, just for the hell of it.
-      model_wave[0][0][i] = model_wave[1][0][i] = 0xffe;
+      model_wave[0][0][i] = model_wave[1][0][i] = 0xfff;
       model_wave[0][1][i] = model_wave[1][1][i] =
-	((accumulator ^ -!!msb) >> 11) & 0xfff;
+	((accumulator ^ -!!msb) >> 11) & 0xffe;
       model_wave[0][2][i] = model_wave[1][2][i] = accumulator >> 12;
       model_wave[0][4][i] = model_wave[1][4][i] = 0xfff;
 
@@ -93,6 +93,12 @@ WaveformGenerator::WaveformGenerator()
   sync_source = this;
 
   sid_model = MOS6581;
+
+  // Accumulator's even bits are high on powerup
+  accumulator = 0x555555;
+
+  tri_saw_pipeline = 0x555;
+
   reset();
 }
 
@@ -204,7 +210,13 @@ void WaveformGenerator::writeCONTROL_REG(reg8 control)
   else if (waveform_prev) {
     // Change to floating DAC input.
     // Reset fading time for floating DAC input.
-    floating_output_ttl = 0x4000;
+    //
+    // We have two SOAS/C samplings showing that floating DAC
+    // keeps its state for at least 0x14000 cycles.
+    //
+    // This can't be found via sampling OSC3, it seems that
+    // the actual analog output must be sampled and timed.
+    floating_output_ttl = 0x14000;
   }
 
   // The gate bit is handled by the EnvelopeGenerator.
@@ -212,7 +224,7 @@ void WaveformGenerator::writeCONTROL_REG(reg8 control)
 
 reg8 WaveformGenerator::readOSC()
 {
-  return waveform_output >> 4;
+  return osc3 >> 4;
 }
 
 // ----------------------------------------------------------------------------
@@ -220,7 +232,7 @@ reg8 WaveformGenerator::readOSC()
 // ----------------------------------------------------------------------------
 void WaveformGenerator::reset()
 {
-  accumulator = 0;
+  // accumulator is not changed on reset
   freq = 0;
   pw = 0;
 
@@ -242,6 +254,7 @@ void WaveformGenerator::reset()
   shift_pipeline = 0;
 
   waveform_output = 0;
+  osc3 = 0;
   floating_output_ttl = 0;
 }
 

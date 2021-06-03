@@ -115,7 +115,7 @@ static void close_all(void)
 
 static void write_converted_text(char *text1, char *prefix_text, char *trail_text)
 {
-    char *text2 = malloc(strlen(text1) * 3);
+    char *text2 = malloc(strlen(text1) * 4);
     int i;
     int counter = 0;
 
@@ -320,6 +320,11 @@ int main(int argc, char *argv[])
                     break;
                 }
             }
+            if (text[i].msgid == NULL) {
+                printf("Cannot find %s in the po table\n", text_string);
+                exit(1);
+            }
+
             if (strlen(text[i].msgstr_da) != 0) {
                 write_converted_text(text[i].msgstr_da, prefix_string, trail_string);
             }

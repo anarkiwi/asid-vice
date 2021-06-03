@@ -2,7 +2,7 @@
  * archdep_amiga.h
  *
  * Written by
- *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -83,12 +83,8 @@
 #define ARCHDEP_ETHERNET_DEFAULT_DEVICE "eth0"
 
 /* Default sound fragment size */
-#define ARCHDEP_SOUND_FRAGMENT_SIZE 1
+#define ARCHDEP_SOUND_FRAGMENT_SIZE SOUND_FRAGMENT_MEDIUM
 
-/*
-    these are used if the monitor is in remote mode. in this case we might
-    get SIGPIPE if the connection is unexpectedly closed.
-*/
 /*
     FIXME: confirm wether SIGPIPE must be handled or not. if the emulator quits
            or crashes when the connection is closed, you might have to install
@@ -99,5 +95,11 @@
 #define archdep_signals_init(x)
 #define archdep_signals_pipe_set()
 #define archdep_signals_pipe_unset()
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR errno
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
 
 #endif

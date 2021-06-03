@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,11 +35,16 @@
 #define _INLINE_MUIMASTER_H
 #endif
 
+#include "info.h"
 #include "mui.h"
 #include "private.h"
 #include "platform_discovery.h"
 #include "intl.h"
 #include "translate.h"
+
+#ifdef USE_SVN_REVISION
+#include "svnversion.h"
+#endif
 
 ui_to_from_t *ui_find_resource(ui_to_from_t *data, char *resource)
 {
@@ -391,44 +397,44 @@ void ui_about(void)
 {
     APTR gui = GroupObject, End;
     int i = 0;
-    static const char *authors[] = {
+    static const char *authors_start[] = {
         "VICE",
         "",
         "Versatile Commodore Emulator",
         "",
+#ifdef USE_SVN_REVISION
+        "Version " VERSION "rev " VICE_SVN_REV_STRING " (" PLATFORM_CPU " " PLATFORM_OS " " PLATFORM_COMPILER ")",
+#else
         "Version " VERSION " (" PLATFORM_CPU " " PLATFORM_OS " " PLATFORM_COMPILER ")",
+#endif
         "",
         "The VICE Team",
-        "Copyright \xa9 1998-2012 Dag Lem",
-        "Copyright \xa9 1999-2012 Andreas Matthies",
-        "Copyright \xa9 1999-2012 Martin Pottendorfer",
-        "Copyright \xa9 2005-2012 Marco van den Heuvel",
-        "Copyright \xa9 2006-2012 Christian Vogelgsang",
-        "Copyright \xa9 2007-2012 Fabrizio Gennari",
-        "Copyright \xa9 2007-2012 Daniel Kahlin",
-        "Copyright \xa9 2008-2012 Antti S. Lankila",
-        "Copyright \xa9 2009-2012 Groepaz",
-        "Copyright \xa9 2009-2012 Ingo Korb",
-        "Copyright \xa9 2009-2012 Errol Smith",
-        "Copyright \xa9 2009-2012 Olaf Seibert",
-        "Copyright \xa9 2011-2012 Marcus Sutton",
-        "Copyright \xa9 2011-2012 Ulrich Schulz",
-        "Copyright \xa9 2011-2012 Stefan Haubenthal",
-        "Copyright \xa9 2011-2012 Thomas Giesel",
-        "Copyright \xa9 2011-2012 Kajtar Zsolt",
-        "Copyright \xa9 2012-2012 Benjamin 'BeRo' Rosseaux",
+        NULL};
+
+    static const char *authors_end[] = {
         "",
         "Official VICE homepage:",
         "http://vice-emu.sourceforge.net/",
         NULL};
 
-    while (authors[i] != NULL) {
+    char *tmp = NULL;
+
+    for (i = 0; authors_start[i] != NULL; i++) {
         if (i <= 5) { /* centered */
-            DoMethod(gui, OM_ADDMEMBER, CLabel(authors[i]));
+            DoMethod(gui, OM_ADDMEMBER, CLabel(authors_start[i]));
         } else {
-            DoMethod(gui, OM_ADDMEMBER, LLabel(authors[i]));
+            DoMethod(gui, OM_ADDMEMBER, LLabel(authors_start[i]));
         }
-        i++;
+    }
+
+    for (i = 0; core_team[i].name; i++) {
+        tmp = util_concat("Copyright \xa9 ", core_team[i].years, " ", core_team[i].name, NULL);
+        DoMethod(gui, OM_ADDMEMBER, LLabel(tmp));
+        lib_free(tmp);
+    }
+
+    for (i = 0; authors_end[i] != NULL; i++) {
+        DoMethod(gui, OM_ADDMEMBER, LLabel(authors_end[i]));
     }
 
     mui_show_dialog(gui, translate_text(IDS_ABOUT), NULL);

@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -28,6 +29,8 @@
 #define VICE_UIC64CART_H
 
 extern void uic64cart_init(void);
-extern void uic64cart_proc(WPARAM wparam, HWND hwnd);
+extern void uic64cart_proc(WPARAM wparam, HWND hwnd, int min_id, int max_id);
+extern void uic64cart_add_menu_item(HMENU menu, const char *name, int menu_id);
+extern void uic64cart_build_carts(int start_id);
 
 #endif

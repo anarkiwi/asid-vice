@@ -28,16 +28,8 @@
 
 #define EXACT_TYPE_NEEDED
 
-#include <Alert.h>
-#include <Application.h>
 #include <Bitmap.h>
-#include <FilePanel.h>
-#include <Menu.h>
-#include <MenuBar.h>
-#include <MenuItem.h>
 #include <Screen.h>
-#include <ScrollView.h>
-#include <TextView.h>
 #include <View.h>
 #include <Window.h>
 #include <signal.h>
@@ -47,6 +39,8 @@
 #if defined(__BEOS__) && defined(WORDS_BIGENDIAN)
 #include <string.h>
 #endif
+
+#include "vicewindow.h"
 
 extern "C" {
 #include "cmdline.h"
@@ -59,8 +53,6 @@ extern "C" {
 #include "translate.h"
 #include "types.h"
 #include "ui.h"
-#include "uiapi.h"
-#include "vicewindow.h"
 #include "video.h"
 #include "videoarch.h"
 #include "viewport.h"
@@ -82,7 +74,7 @@ int use_direct_window;
 static int set_direct_window(int val, void *param)
 {
     /* first set the new value; ui_set_window_mode need's it */
-    use_direct_window = val;
+    use_direct_window = val ? 1 : 0;
 
     /* test if we can really use the mode */
     use_direct_window = ui_set_window_mode(use_direct_window);
@@ -120,7 +112,7 @@ static const cmdline_option_t cmdline_options[] =
     { NULL }
 };
 
-int video_init_cmdline_options(void)
+int video_arch_cmdline_options_init(void)
 {
     return cmdline_register_options(cmdline_options);
 }
@@ -182,7 +174,9 @@ void video_canvas_destroy(video_canvas_t *c)
     }
 
     if (c->vicewindow != NULL) {
-        delete c->vicewindow;
+        if (c->vicewindow->Lock()) {
+            c->vicewindow->Quit();
+        }
     }
     lib_free(c->title);
 }
@@ -274,15 +268,11 @@ void video_canvas_refresh(video_canvas_t *c, unsigned int xs, unsigned int ys, u
         return;
     }
 
-    if (c->videoconfig->doublesizex) {
-        xi *= 2;
-        w *= 2;
-    }
+    xi *= c->videoconfig->scalex;
+    w *= c->videoconfig->scalex;
 
-    if (c->videoconfig->doublesizey) {
-        yi *= (c->videoconfig->doublesizey + 1);
-        h *= (c->videoconfig->doublesizey + 1);
-    }
+    yi *= c->videoconfig->scaley;
+    h *= c->videoconfig->scaley;
 
     if (!use_direct_window) {
         w = MIN(w, c->draw_buffer->canvas_physical_width - xi);
@@ -321,7 +311,7 @@ void video_canvas_refresh(video_canvas_t *c, unsigned int xs, unsigned int ys, u
 
                 /* cut left */
                 if (clip_left > 0) {
-                    xxs = xxs + clip_left / (c->videoconfig->doublesizex ? 2 : 1);
+                    xxs = xxs + clip_left / c->videoconfig->scalex;
                     ww = ww - clip_left; 
                     xxi = xxi + clip_left;
                 }
@@ -333,7 +323,7 @@ void video_canvas_refresh(video_canvas_t *c, unsigned int xs, unsigned int ys, u
 
                 /* cut top */
                 if (clip_top > 0) {
-                    yys = yys + clip_top / (c->videoconfig->doublesizey + 1);
+                    yys = yys + clip_top / c->videoconfig->scaley;
                     hh = hh - clip_top;
                     yyi = yyi + clip_top;
                 }

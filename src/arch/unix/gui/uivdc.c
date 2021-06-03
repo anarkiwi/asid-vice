@@ -27,13 +27,14 @@
 #include "vice.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include "fullscreenarch.h"
 #include "lib.h"
+#include "palette.h"
 #include "resources.h"
 #include "uiapi.h"
 #include "uimenu.h"
-#include "uipalemu.h"
 #include "uipalette.h"
 #include "uivdc.h"
 #include "uifullscreen-menu.h"
@@ -52,19 +53,70 @@ static UI_CALLBACK(radio_VDCPaletteFile)
     ui_select_palette(w, CHECK_MENUS, UI_MENU_CB_PARAM, "VDC");
 }
 
+static ui_menu_entry_t *attach_palette_submenu;
+
 static ui_menu_entry_t vdc_palette_submenu[] = {
     { N_("Internal"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_VDCPaletteFile,
       NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Default"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_VDCPaletteFile,
-      (ui_callback_data_t)"vdc_deft", NULL },
-    { N_("Composite"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_VDCPaletteFile,
-      (ui_callback_data_t)"vdc_comp", NULL },
+    { "", UI_MENU_TYPE_NONE, NULL, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Load custom"), UI_MENU_TYPE_NORMAL, (ui_callback_t)ui_load_palette,
+    { N_("Load custom"), UI_MENU_TYPE_DOTS, (ui_callback_t)ui_load_palette,
       (ui_callback_data_t)"VDC", NULL },
     { NULL }
 };
+
+static ui_menu_entry_t ui_palette_entry = {
+    NULL, UI_MENU_TYPE_TICK, (ui_callback_t)radio_VDCPaletteFile,
+    (ui_callback_data_t)0, NULL
+};
+
+static int countgroup(palette_info_t *palettelist, char *chip)
+{
+    int num = 0;
+    while(palettelist->name) {
+        /* printf("name:%s file:%s chip:%s\n",palettelist->name,palettelist->file,palettelist->chip); */
+        if (palettelist->chip && !strcmp(palettelist->chip, chip)) {
+            num++;
+        }
+        palettelist++;
+    }
+    return num;
+}
+
+static void makegroup(palette_info_t *palettelist, ui_menu_entry_t *entry, char *chip)
+{
+    while(palettelist->name) {
+        if (palettelist->chip && !strcmp(palettelist->chip, chip)) {
+            ui_palette_entry.string = palettelist->name;
+            ui_palette_entry.callback_data = (ui_callback_data_t)palettelist->file;
+            memcpy(entry, &ui_palette_entry, sizeof(ui_menu_entry_t));
+            entry++;
+        }
+        palettelist++;
+    }
+    memset(entry, 0, sizeof(ui_menu_entry_t));
+}
+
+static void uipalette_menu_create(void)
+{
+    int num;
+    palette_info_t *palettelist = palette_get_info_list();
+
+    num = countgroup(palettelist, "VDC");
+    /* printf("num:%d\n",num); */
+    attach_palette_submenu = lib_malloc(sizeof(ui_menu_entry_t) * (num + 1));
+    makegroup(palettelist, attach_palette_submenu, "VDC");
+    vdc_palette_submenu[2].sub_menu = attach_palette_submenu;
+}
+
+static void uipalette_menu_shutdown(void)
+{
+    if (attach_palette_submenu) {
+        lib_free(attach_palette_submenu);
+        attach_palette_submenu = NULL;
+    }
+}
 
 UI_MENU_DEFINE_RADIO(VDCFilter)
 
@@ -111,8 +163,14 @@ UI_MENU_DEFINE_TOGGLE(UseXSync)
 UI_MENU_DEFINE_TOGGLE(VDC64KB)
 
 #ifdef HAVE_HWSCALE
-UI_MENU_DEFINE_TOGGLE(KeepAspectRatio)
-UI_MENU_DEFINE_TOGGLE(TrueAspectRatio)
+static int get_aspect_enabled(int m)
+{
+    int n;
+    resources_get_int("VDCHwScale", &n);
+    return n && m;
+}
+UI_MENU_DEFINE_TOGGLE_COND(KeepAspectRatio, VDCHwScale, NOTHING)
+UI_MENU_DEFINE_TOGGLE_COND(TrueAspectRatio, KeepAspectRatio, get_aspect_enabled)
 #ifndef USE_GNOMEUI
 #ifdef HAVE_XVIDEO
 extern UI_CALLBACK(set_custom_aspect_ratio);
@@ -169,17 +227,9 @@ ui_menu_entry_t vdc_submenu[] = {
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Colors"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, vdc_palette_submenu },
-#ifndef USE_GNOMEUI
-    { N_("Color settings"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, NULL },
-#endif
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Render filter"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, renderer_submenu },
-#ifndef USE_GNOMEUI
-    { N_("CRT emulation settings"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, NULL },
-#endif
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Audio leak emulation"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_VDCAudioLeak, NULL, NULL },
@@ -220,18 +270,12 @@ ui_menu_entry_t vdc_submenu[] = {
 
 void uivdc_menu_create(void)
 {
-#ifndef USE_GNOMEUI
-    vdc_submenu[6].sub_menu = build_color_menu("VDC");
-    vdc_submenu[9].sub_menu = build_crt_menu("VDC");
-#endif
+    uipalette_menu_create();
     UI_FULLSCREEN_MENU_CREATE(VDC)
 }
 
 void uivdc_menu_shutdown(void)
 {
-#ifndef USE_GNOMEUI
-    shutdown_color_menu(vdc_submenu[6].sub_menu);
-    shutdown_crt_menu(vdc_submenu[9].sub_menu);
-#endif
+    uipalette_menu_shutdown();
     UI_FULLSCREEN_MENU_SHUTDOWN(VDC)
 }

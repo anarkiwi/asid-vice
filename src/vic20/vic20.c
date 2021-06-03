@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -29,20 +30,31 @@
 
 #include <stdio.h>
 
+#include "attach.h"
 #include "autostart.h"
+#include "bbrtc.h"
+#include "cardkey.h"
 #include "cartridge.h"
 #include "cartio.h"
 #include "clkguard.h"
 #include "cmdline.h"
+#include "coplin_keypad.h"
+#include "cx21.h"
+#include "cx85.h"
 #include "datasette.h"
 #include "debug.h"
+#include "diskimage.h"
 #include "drive-cmdline-options.h"
 #include "drive-resources.h"
 #include "drive-sound.h"
 #include "drive.h"
-#include "drivecpu.h"
+#include "fliplist.h"
+#include "fsdevice.h"
+#include "gfxoutput.h"
 #include "iecdrive.h"
 #include "imagecontents.h"
+#include "init.h"
+#include "joyport.h"
 #include "joystick.h"
 #include "kbdbuf.h"
 #include "keyboard.h"
@@ -55,10 +67,16 @@
 #include "maincpu.h"
 #include "mem.h"
 #include "monitor.h"
+#include "network.h"
+#include "paperclip64.h"
 #include "parallel.h"
 #include "printer.h"
 #include "rs232drv.h"
 #include "rsuser.h"
+#include "rushware_keypad.h"
+#include "sampler.h"
+#include "sampler2bit.h"
+#include "sampler4bit.h"
 #include "screenshot.h"
 #include "serial.h"
 #include "sid.h"
@@ -67,10 +85,18 @@
 #include "sid-resources.h"
 #include "sound.h"
 #include "tape.h"
+#include "tapeport.h"
+#include "translate.h"
 #include "traps.h"
 #include "types.h"
+#include "userport.h"
+#include "userport_dac.h"
+#include "userport_joystick.h"
+#include "userport_rtc_58321a.h"
+#include "userport_rtc_ds1307.h"
 #include "via.h"
 #include "vic.h"
+#include "vic-mem.h"
 #include "vic20-cmdline-options.h"
 #include "vic20-ieee488.h"
 #include "vic20-midi.h"
@@ -85,6 +111,7 @@
 #include "vic20rsuser.h"
 #include "vic20ui.h"
 #include "vic20via.h"
+#include "vice-event.h"
 #include "video.h"
 #include "video-sound.h"
 #include "vsync.h"
@@ -96,20 +123,38 @@
 
 machine_context_t machine_context;
 
-#define NUM_KEYBOARD_MAPPINGS 2
-
-const char *machine_keymap_res_name_list[NUM_KEYBOARD_MAPPINGS] = {
-    "KeymapSymFile", "KeymapPosFile"
-};
-
-char *machine_keymap_file_list[NUM_KEYBOARD_MAPPINGS] = {
-    NULL, NULL
-};
-
 const char machine_name[] = "VIC20";
 int machine_class = VICE_MACHINE_VIC20;
 
 static void machine_vsync_hook(void);
+
+int machine_get_keyboard_type(void)
+{
+#if 0
+    int type;
+    if (resources_get_int("KeyboardType", &type) < 0) {
+        return 0;
+    }
+    return type;
+#endif
+    return 0;
+}
+
+char *machine_get_keyboard_type_name(int type)
+{
+    return NULL; /* return 0 if no different types exist */
+}
+
+/* return number of available keyboard types for this machine */
+int machine_get_num_keyboard_types(void)
+{
+    return 1;
+}
+
+kbdtype_info_t *machine_get_keyboard_info_list(void)
+{
+    return NULL; /* return 0 if no different types exist */
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -225,48 +270,324 @@ static machine_timing_t machine_timing;
 
 /* ------------------------------------------------------------------------ */
 
+static int via2_dump(void)
+{
+    return viacore_dump(machine_context.via2);
+}
+
+static int via1_dump(void)
+{
+    return viacore_dump(machine_context.via1);
+}
+
+static io_source_t vic_device = {
+    "VIC",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0x9000, 0x90ff, 0xf,
+    1, /* read is always valid */
+    vic_store,
+    vic_read,
+    vic_peek,
+    vic_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_t via2_device = {
+    "VIA2",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0x9110, 0x911f, 0xf,
+    1, /* read is always valid */
+    via2_store,
+    via2_read,
+    via2_peek,
+    via2_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_t via1_device = {
+    "VIA1",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0x9120, 0x912f, 0xf,
+    1, /* read is always valid */
+    via1_store,
+    via1_read,
+    via1_peek,
+    via1_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_list_t *vic_list_item = NULL;
+static io_source_list_t *via1_list_item = NULL;
+static io_source_list_t *via2_list_item = NULL;
+
+void vic20io0_init(void)
+{
+    vic_list_item = io_source_register(&vic_device);
+    via1_list_item = io_source_register(&via1_device);
+    via2_list_item = io_source_register(&via2_device);
+}
+
+/* ------------------------------------------------------------------------ */
+
+static joyport_port_props_t control_port = 
+{
+    "Control port",
+    IDGS_CONTROL_PORT,
+    1,				/* has a potentiometer connected to this port */
+    1,				/* has lightpen support on this port */
+    1					/* port is always active */
+};
+
+static joyport_port_props_t userport_joy_control_port_1 = 
+{
+    "Userport joystick adapter port 1",
+    IDGS_USERPORT_JOY_ADAPTER_PORT_1,
+    0,				/* has NO potentiometer connected to this port */
+    0,				/* has NO lightpen support on this port */
+    0					/* port can be switched on/off */
+};
+
+static joyport_port_props_t userport_joy_control_port_2 = 
+{
+    "Userport joystick adapter port 2",
+    IDGS_USERPORT_JOY_ADAPTER_PORT_2,
+    0,				/* has NO potentiometer connected to this port */
+    0,				/* has NO lightpen support on this port */
+    0					/* port can be switched on/off */
+};
+
+static int init_joyport_ports(void)
+{
+    if (joyport_port_register(JOYPORT_1, &control_port) < 0) {
+        return -1;
+    }
+    if (joyport_port_register(JOYPORT_3, &userport_joy_control_port_1) < 0) {
+        return -1;
+    }
+    return joyport_port_register(JOYPORT_4, &userport_joy_control_port_2);
+}
+
 /* VIC20-specific resource initialization.  This is called before
    initializing the machine itself with `machine_init()'.  */
 int machine_resources_init(void)
 {
-    if (traps_resources_init() < 0
-        || vsync_resources_init() < 0
-        || machine_video_resources_init() < 0
-        || vic20_resources_init() < 0
-        || vic_resources_init() < 0
-        || sound_resources_init() < 0
-        || sidcart_resources_init() < 0
-        || rs232drv_resources_init() < 0
-        || rsuser_resources_init() < 0
-        || serial_resources_init() < 0
-        || printer_resources_init() < 0
-#ifdef HAVE_MOUSE
-        || lightpen_resources_init() < 0
-        || mouse_resources_init() < 0
-#endif
-#ifndef COMMON_KBD
-        || kbd_resources_init() < 0
-#endif
-        || drive_resources_init() < 0
-        || datasette_resources_init() < 0
-        || cartridge_resources_init() < 0
-#ifdef HAVE_MIDI
-        || vic20_midi_resources_init() < 0
-#endif
-        || vic20_ieee488_resources_init() < 0
-        || cartio_resources_init() < 0 ) {
+    if (traps_resources_init() < 0) {
+        init_resource_fail("traps");
         return -1;
     }
-
+    if (vic20_resources_init() < 0) {
+        init_resource_fail("vic20");
+        return -1;
+    }
+    if (vic_resources_init() < 0) {
+        init_resource_fail("vic");
+        return -1;
+    }
+    if (sidcart_resources_init() < 0) {
+        init_resource_fail("sidcart");
+        return -1;
+    }
+    if (rs232drv_resources_init() < 0) {
+        init_resource_fail("rs232drv");
+        return -1;
+    }
+    if (rsuser_resources_init() < 0) {
+        init_resource_fail("rsuser");
+        return -1;
+    }
+    if (serial_resources_init() < 0) {
+        init_resource_fail("serial");
+        return -1;
+    }
+    if (printer_resources_init() < 0) {
+        init_resource_fail("printer");
+        return -1;
+    }
+    if (printer_userport_resources_init() < 0) {
+        init_resource_fail("userport printer");
+        return -1;
+    }
+    if (init_joyport_ports() < 0) {
+        init_resource_fail("joyport ports");
+        return -1;
+    }
+    if (joyport_resources_init() < 0) {
+        init_resource_fail("joyport devices");
+        return -1;
+    }
+    if (joyport_sampler2bit_resources_init() < 0) {
+        init_resource_fail("joyport 2bit sampler");
+        return -1;
+    }
+    if (joyport_sampler4bit_resources_init() < 0) {
+        init_resource_fail("joyport 4bit sampler");
+        return -1;
+    }
+    if (joyport_bbrtc_resources_init() < 0) {
+        init_resource_fail("joyport bbrtc");
+        return -1;
+    }
+    if (joyport_paperclip64_resources_init() < 0) {
+        init_resource_fail("joyport paperclip64 dongle");
+        return -1;
+    }
+    if (joyport_coplin_keypad_resources_init() < 0) {
+        init_resource_fail("joyport coplin keypad");
+        return -1;
+    }
+    if (joyport_cx21_resources_init() < 0) {
+        init_resource_fail("joyport cx21 keypad");
+        return -1;
+    }
+    if (joyport_cx85_resources_init() < 0) {
+        init_resource_fail("joyport cx85 keypad");
+        return -1;
+    }
+    if (joyport_rushware_keypad_resources_init() < 0) {
+        init_resource_fail("joyport rushware keypad");
+        return -1;
+    }
+    if (joyport_cardkey_resources_init() < 0) {
+        init_resource_fail("joyport cardkey keypad");
+        return -1;
+    }
+    if (joystick_resources_init() < 0) {
+        init_resource_fail("joystick");
+        return -1;
+    }
+    if (userport_resources_init() < 0) {
+        init_resource_fail("userport devices");
+        return -1;
+    }
+    if (gfxoutput_resources_init() < 0) {
+        init_resource_fail("gfxoutput");
+        return -1;
+    }
+    if (sampler_resources_init() < 0) {
+        init_resource_fail("samplerdrv");
+        return -1;
+    }
+    if (fliplist_resources_init() < 0) {
+        init_resource_fail("flip list");
+        return -1;
+    }
+    if (file_system_resources_init() < 0) {
+        init_resource_fail("file system");
+        return -1;
+    }
+    /* Initialize file system device-specific resources.  */
+    if (fsdevice_resources_init() < 0) {
+        init_resource_fail("file system device");
+        return -1;
+    }
+    if (disk_image_resources_init() < 0) {
+        init_resource_fail("disk image");
+        return -1;
+    }
+    if (event_resources_init() < 0) {
+        init_resource_fail("event");
+        return -1;
+    }
+    if (kbdbuf_resources_init() < 0) {
+        init_resource_fail("Keyboard");
+        return -1;
+    }
+    if (autostart_resources_init() < 0) {
+        init_resource_fail("autostart");
+        return -1;
+    }
+#ifdef HAVE_NETWORK
+    if (network_resources_init() < 0) {
+        init_resource_fail("network");
+        return -1;
+    }
+#endif
+#ifdef DEBUG
+    if (debug_resources_init() < 0) {
+        init_resource_fail("debug");
+        return -1;
+    }
+#endif
+#ifdef HAVE_MOUSE
+#ifdef HAVE_LIGHTPEN
+    if (lightpen_resources_init() < 0) {
+        init_resource_fail("lightpen");
+        return -1;
+    }
+#endif
+    if (mouse_resources_init() < 0) {
+        init_resource_fail("mouse");
+        return -1;
+    }
+#endif
+#ifndef COMMON_KBD
+    if (kbd_resources_init() < 0) {
+        init_resource_fail("kbd");
+        return -1;
+    }
+#endif
+    if (drive_resources_init() < 0) {
+        init_resource_fail("drive");
+        return -1;
+    }
+    if (tapeport_resources_init() < 0) {
+        init_resource_fail("tapeport");
+        return -1;
+    }
+    if (datasette_resources_init() < 0) {
+        init_resource_fail("datasette");
+        return -1;
+    }
+    if (cartridge_resources_init() < 0) {
+        init_resource_fail("cartridge");
+        return -1;
+    }
+#ifdef HAVE_MIDI
+    if (vic20_midi_resources_init() < 0) {
+        init_resource_fail("vic20 midi");
+        return -1;
+    }
+#endif
+    if (vic20_ieee488_resources_init() < 0) {
+        init_resource_fail("vic20 ieee488");
+        return -1;
+    }
+    if (userport_joystick_resources_init() < 0) {
+        init_resource_fail("userport joystick");
+        return -1;
+    }
+    if (userport_dac_resources_init() < 0) {
+        init_resource_fail("userport dac");
+        return -1;
+    }
+    if (userport_rtc_58321a_resources_init() < 0) {
+        init_resource_fail("userport rtc (58321a)");
+        return -1;
+    }
+    if (userport_rtc_ds1307_resources_init() < 0) {
+        init_resource_fail("userport rtc (ds1307)");
+        return -1;
+    }
+    if (cartio_resources_init() < 0) {
+        init_resource_fail("cartio");
+        return -1;
+    }
     return 0;
 }
 
 void machine_resources_shutdown(void)
 {
     serial_shutdown();
-    video_resources_shutdown();
     vic20_resources_shutdown();
-    sound_resources_shutdown();
     rs232drv_resources_shutdown();
     printer_resources_shutdown();
     drive_resources_shutdown();
@@ -275,40 +596,177 @@ void machine_resources_shutdown(void)
     midi_resources_shutdown();
 #endif
     cartio_shutdown();
+    fsdevice_resources_shutdown();
+    disk_image_resources_shutdown();
+    sampler_resources_shutdown();
+    userport_rtc_58321a_resources_shutdown();
+    userport_rtc_ds1307_resources_shutdown();
+    userport_resources_shutdown();
+    joyport_bbrtc_resources_shutdown();
+    tapeport_resources_shutdown();
 }
 
 /* VIC20-specific command-line option initialization.  */
 int machine_cmdline_options_init(void)
 {
-    if (traps_cmdline_options_init() < 0
-        || vsync_cmdline_options_init() < 0
-        || video_init_cmdline_options() < 0
-        || vic20_cmdline_options_init() < 0
-        || vic_cmdline_options_init() < 0
-        || sound_cmdline_options_init() < 0
-        || sidcart_cmdline_options_init() < 0
-        || rs232drv_cmdline_options_init() < 0
-        || rsuser_cmdline_options_init() < 0
-        || serial_cmdline_options_init() < 0
-        || printer_cmdline_options_init() < 0
-#ifdef HAVE_MOUSE
-        || lightpen_cmdline_options_init() < 0
-        || mouse_cmdline_options_init() < 0
-#endif
-#ifndef COMMON_KBD
-        || kbd_cmdline_options_init() < 0
-#endif
-        || drive_cmdline_options_init() < 0
-        || datasette_cmdline_options_init() < 0
-        || cartridge_cmdline_options_init() < 0
-#ifdef HAVE_MIDI
-        || vic20_midi_cmdline_options_init() < 0
-#endif
-        || vic20_ieee488_cmdline_options_init() < 0
-        || cartio_cmdline_options_init() < 0) {
+    if (traps_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("traps");
         return -1;
     }
-
+    if (vic20_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("vic20");
+        return -1;
+    }
+    if (vic_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("vic");
+        return -1;
+    }
+    if (sidcart_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("sidcart");
+        return -1;
+    }
+    if (rs232drv_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("rs232drv");
+        return -1;
+    }
+    if (rsuser_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("rsuser");
+        return -1;
+    }
+    if (serial_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("serial");
+        return -1;
+    }
+    if (printer_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("printer");
+        return -1;
+    }
+    if (printer_userport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport printer");
+        return -1;
+    }
+    if (joyport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("joyport");
+        return -1;
+    }
+    if (joyport_bbrtc_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("bbrtc");
+        return -1;
+    }
+    if (joystick_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("joystick");
+        return -1;
+    }
+    if (userport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport");
+        return -1;
+    }
+    if (gfxoutput_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("gfxoutput");
+        return -1;
+    }
+    if (sampler_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("samplerdrv");
+        return -1;
+    }
+    if (fliplist_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("flip list");
+        return -1;
+    }
+    if (file_system_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("attach");
+        return -1;
+    }
+    if (fsdevice_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("file system");
+        return -1;
+    }
+    if (disk_image_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("disk image");
+        return -1;
+    }
+    if (event_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("event");
+        return -1;
+    }
+    if (kbdbuf_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("keyboard");
+        return -1;
+    }
+    if (autostart_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("autostart");
+        return -1;
+    }
+#ifdef HAVE_NETWORK
+    if (network_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("network");
+        return -1;
+    }
+#endif
+#ifdef DEBUG
+    if (debug_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("debug");
+        return -1;
+    }
+#endif
+#ifdef HAVE_MOUSE
+    if (mouse_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("mouse");
+        return -1;
+    }
+#endif
+#ifndef COMMON_KBD
+    if (kbd_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("kbd");
+        return -1;
+    }
+#endif
+    if (drive_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("drive");
+        return -1;
+    }
+    if (tapeport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("tapeport");
+        return -1;
+    }
+    if (datasette_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("datasette");
+        return -1;
+    }
+    if (cartridge_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("cartridge");
+        return -1;
+    }
+#ifdef HAVE_MIDI
+    if (vic20_midi_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("vic20 midi");
+        return -1;
+    }
+#endif
+    if (vic20_ieee488_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("vic20 ieee488");
+        return -1;
+    }
+    if (userport_joystick_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport joystick");
+        return -1;
+    }
+    if (userport_dac_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport dac");
+        return -1;
+    }
+    if (userport_rtc_58321a_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport rtc (58321a)");
+        return -1;
+    }
+    if (userport_rtc_ds1307_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport rtc (ds1307)");
+        return -1;
+    }
+    if (cartio_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("cartio");
+        return -1;
+    }
     return 0;
 }
 
@@ -319,15 +777,16 @@ static void vic20_monitor_init(void)
     monitor_interface_t *drive_interface_init[DRIVE_NUM];
     monitor_cpu_type_t *asmarray[3];
 
-    asmarray[0]=&asm6502;
-    asmarray[1]=&asmR65C02;
-    asmarray[2]=NULL;
+    asmarray[0] = &asm6502;
+    asmarray[1] = &asmR65C02;
+    asmarray[2] = NULL;
 
     asm6502_init(&asm6502);
     asmR65C02_init(&asmR65C02);
 
-    for (dnr = 0; dnr < DRIVE_NUM; dnr++)
-        drive_interface_init[dnr] = drivecpu_monitor_interface_get(dnr);
+    for (dnr = 0; dnr < DRIVE_NUM; dnr++) {
+        drive_interface_init[dnr] = drive_cpu_monitor_interface_get(dnr);
+    }
 
     /* Initialize the monitor.  */
     monitor_init(maincpu_monitor_interface_get(), drive_interface_init,
@@ -354,16 +813,22 @@ int machine_specific_init(void)
 
     vic20_log = log_open("VIC20");
 
-    if (mem_load() < 0)
+    if (mem_load() < 0) {
         return -1;
+    }
+
+    event_init();
 
     /* Setup trap handling.  */
     traps_init();
 
+    gfxoutput_init();
+
     /* Initialize serial traps.  If user does not want them, or if the
        ``drive'' emulation is used, do not install them.  */
-    if (serial_init(vic20_serial_traps) < 0)
+    if (serial_init(vic20_serial_traps) < 0) {
         return -1;
+    }
 
     serial_trap_init(0xa4);
     serial_iec_bus_init();
@@ -384,6 +849,8 @@ int machine_specific_init(void)
     /* Fire up the hardware-level drive emulation. */
     drive_init();
 
+    disk_image_init();
+
     /* Initialize autostart.  */
     resources_get_int("AutostartDelay", &delay);
     if (delay == 0) {
@@ -393,9 +860,17 @@ int machine_specific_init(void)
                    (delay * VIC20_PAL_RFSH_PER_SEC * VIC20_PAL_CYCLES_PER_RFSH),
                    1, 0xcc, 0xd1, 0xd3, 0xd5);
 
+#ifdef USE_BEOS_UI
+    /* Pre-init VIC20-specific parts of the menus before vic_init()
+       creates a canvas window with a menubar at the top. This could
+       also be used by other ports, e.g. GTK+...  */
+    vic20ui_init_early();
+#endif
+
     /* Initialize the VIC-I emulation.  */
-    if (vic_init() == NULL)
+    if (vic_init() == NULL) {
         return -1;
+    }
 
     via1_init(machine_context.via1);
     via2_init(machine_context.via2);
@@ -405,8 +880,9 @@ int machine_specific_init(void)
 
 #ifndef COMMON_KBD
     /* Load the default keymap file.  */
-    if (vic20_kbd_init() < 0)
+    if (vic20_kbd_init() < 0) {
         return -1;
+    }
 #endif
 
     vic20_monitor_init();
@@ -425,6 +901,9 @@ int machine_specific_init(void)
     /* Initialize cartridge based sound chips */
     cartridge_sound_chip_init();
 
+    /* Initialize userport based sound chips */
+    userport_dac_sound_chip_init();
+
     drive_sound_init();
     video_sound_init();
 
@@ -433,11 +912,19 @@ int machine_specific_init(void)
     sound_init(machine_timing.cycles_per_sec, machine_timing.cycles_per_rfsh);
 
     /* Initialize keyboard buffer.  */
-    kbdbuf_init(631, 198, 10, (CLOCK)(machine_timing.cycles_per_rfsh
-                * machine_timing.rfsh_per_sec));
+    kbdbuf_init(631, 198, 10, (CLOCK)(machine_timing.cycles_per_rfsh * machine_timing.rfsh_per_sec));
+
+    /* Initialize the VIC20-specific I/O */
+    vic20io0_init();
 
     /* Initialize the VIC20-specific part of the UI.  */
-    vic20ui_init();
+    if (!console_mode) {
+        vic20ui_init();
+    }
+
+    if (!video_disabled_mode) {
+        joystick_init();
+    }
 
     vic20iec_init();
 
@@ -446,10 +933,12 @@ int machine_specific_init(void)
 #ifdef HAVE_MOUSE
     mouse_init();
 
-    /* Initialize lightpen support and register VICII callbacks */
+#ifdef HAVE_LIGHTPEN
+    /* Initialize lightpen support and register VIC-I callbacks */
     lightpen_init();
     lightpen_register_timing_callback(vic_lightpen_timing, 0);
     lightpen_register_trigger_callback(vic_trigger_light_pen);
+#endif
 #endif
 
     /* Register joystick callback (for lightpen triggering via fire button) */
@@ -461,8 +950,7 @@ int machine_specific_init(void)
 
     machine_drive_stub();
 
-#if defined (USE_XF86_EXTENSIONS) && \
-    (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
+#if defined (USE_XF86_EXTENSIONS) && (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
     {
         /* set fullscreen if user used `-fullscreen' on cmdline */
         int fs;
@@ -499,6 +987,8 @@ void machine_specific_reset(void)
     cartridge_reset();
     drive_reset();
     datasette_reset();
+
+    sampler_reset();
 }
 
 void machine_specific_powerup(void)
@@ -525,7 +1015,9 @@ void machine_specific_shutdown(void)
     /* close the video chip(s) */
     vic_shutdown();
 
-    vic20ui_shutdown();
+    if (!console_mode) {
+        vic20ui_shutdown();
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -545,7 +1037,7 @@ static void machine_vsync_hook(void)
 
     /* The drive has to deal both with our overflowing and its own one, so
        it is called even when there is no overflowing in the main CPU.  */
-    drivecpu_prevent_clk_overflow_all(sub);
+    drive_cpu_prevent_clk_overflow_all(sub);
 }
 
 void machine_set_restore_key(int v)
@@ -572,59 +1064,34 @@ long machine_get_cycles_per_frame(void)
 
 void machine_get_line_cycle(unsigned int *line, unsigned int *cycle, int *half_cycle)
 {
-    *line = (unsigned int)((maincpu_clk) / machine_timing.cycles_per_line
-            % machine_timing.screen_lines);
+    *line = (unsigned int)((maincpu_clk) / machine_timing.cycles_per_line % machine_timing.screen_lines);
 
     *cycle = (unsigned int)((maincpu_clk) % machine_timing.cycles_per_line);
 
     *half_cycle = (int)-1;
 }
 
-void machine_change_timing(int timeval)
+void machine_change_timing(int timeval, int border_mode)
 {
-    int border_mode;
-
     switch (timeval) {
+        case MACHINE_SYNC_PAL:
+            machine_timing.cycles_per_sec = VIC20_PAL_CYCLES_PER_SEC;
+            machine_timing.cycles_per_rfsh = VIC20_PAL_CYCLES_PER_RFSH;
+            machine_timing.rfsh_per_sec = VIC20_PAL_RFSH_PER_SEC;
+            machine_timing.cycles_per_line = VIC20_PAL_CYCLES_PER_LINE;
+            machine_timing.screen_lines = VIC20_PAL_SCREEN_LINES;
+            machine_timing.power_freq = 50;
+            break;
+        case MACHINE_SYNC_NTSC:
+            machine_timing.cycles_per_sec = VIC20_NTSC_CYCLES_PER_SEC;
+            machine_timing.cycles_per_rfsh = VIC20_NTSC_CYCLES_PER_RFSH;
+            machine_timing.rfsh_per_sec = VIC20_NTSC_RFSH_PER_SEC;
+            machine_timing.cycles_per_line = VIC20_NTSC_CYCLES_PER_LINE;
+            machine_timing.screen_lines = VIC20_NTSC_SCREEN_LINES;
+            machine_timing.power_freq = 60;
+            break;
         default:
-        case MACHINE_SYNC_PAL ^ VIC_BORDER_MODE(VIC_NORMAL_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VIC_BORDER_MODE(VIC_NORMAL_BORDERS):
-            timeval ^= VIC_BORDER_MODE(VIC_NORMAL_BORDERS);
-            border_mode = VIC_NORMAL_BORDERS;
-            break;
-        case MACHINE_SYNC_PAL ^ VIC_BORDER_MODE(VIC_FULL_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VIC_BORDER_MODE(VIC_FULL_BORDERS):
-            timeval ^= VIC_BORDER_MODE(VIC_FULL_BORDERS);
-            border_mode = VIC_FULL_BORDERS;
-            break;
-        case MACHINE_SYNC_PAL ^ VIC_BORDER_MODE(VIC_DEBUG_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VIC_BORDER_MODE(VIC_DEBUG_BORDERS):
-            timeval ^= VIC_BORDER_MODE(VIC_DEBUG_BORDERS);
-            border_mode = VIC_DEBUG_BORDERS;
-            break;
-        case MACHINE_SYNC_PAL ^ VIC_BORDER_MODE(VIC_NO_BORDERS):
-        case MACHINE_SYNC_NTSC ^ VIC_BORDER_MODE(VIC_NO_BORDERS):
-            timeval ^= VIC_BORDER_MODE(VIC_NO_BORDERS);
-            border_mode = VIC_NO_BORDERS;
-            break;
-    }
-
-    switch (timeval) {
-      case MACHINE_SYNC_PAL:
-        machine_timing.cycles_per_sec = VIC20_PAL_CYCLES_PER_SEC;
-        machine_timing.cycles_per_rfsh = VIC20_PAL_CYCLES_PER_RFSH;
-        machine_timing.rfsh_per_sec = VIC20_PAL_RFSH_PER_SEC;
-        machine_timing.cycles_per_line = VIC20_PAL_CYCLES_PER_LINE;
-        machine_timing.screen_lines = VIC20_PAL_SCREEN_LINES;
-        break;
-      case MACHINE_SYNC_NTSC:
-        machine_timing.cycles_per_sec = VIC20_NTSC_CYCLES_PER_SEC;
-        machine_timing.cycles_per_rfsh = VIC20_NTSC_CYCLES_PER_RFSH;
-        machine_timing.rfsh_per_sec = VIC20_NTSC_RFSH_PER_SEC;
-        machine_timing.cycles_per_line = VIC20_NTSC_CYCLES_PER_LINE;
-        machine_timing.screen_lines = VIC20_NTSC_SCREEN_LINES;
-        break;
-      default:
-        log_error(vic20_log, "Unknown machine timing.");
+            log_error(vic20_log, "Unknown machine timing.");
     }
 
     vsync_set_machine_parameter(machine_timing.rfsh_per_sec,
@@ -636,6 +1103,9 @@ void machine_change_timing(int timeval)
                                 machine_timing.screen_lines);
     drive_set_machine_parameter(machine_timing.cycles_per_sec);
     serial_iec_device_set_machine_parameter(machine_timing.cycles_per_sec);
+#ifdef HAVE_MOUSE
+    neos_mouse_set_machine_parameter(machine_timing.cycles_per_sec);
+#endif
     clk_guard_set_clk_base(maincpu_clk_guard, machine_timing.cycles_per_rfsh);
 
     vic_change_timing(&machine_timing, border_mode);
@@ -665,14 +1135,12 @@ int machine_autodetect_psid(const char *name)
     return -1;
 }
 
-void machine_play_psid(int tune)
-{
-}
 
 int machine_screenshot(screenshot_t *screenshot, struct video_canvas_s *canvas)
 {
-    if (canvas != vic_get_canvas())
+    if (canvas != vic_get_canvas()) {
         return -1;
+    }
 
     vic_screenshot(screenshot);
     return 0;
@@ -681,16 +1149,12 @@ int machine_screenshot(screenshot_t *screenshot, struct video_canvas_s *canvas)
 int machine_canvas_async_refresh(struct canvas_refresh_s *refresh,
                                  struct video_canvas_s *canvas)
 {
-    if (canvas != vic_get_canvas())
+    if (canvas != vic_get_canvas()) {
         return -1;
+    }
 
     vic_async_refresh(refresh);
     return 0;
-}
-
-int machine_num_keyboard_mappings(void)
-{
-    return NUM_KEYBOARD_MAPPINGS;
 }
 
 struct image_contents_s *machine_diskcontents_bus_read(unsigned int unit)
@@ -703,6 +1167,11 @@ BYTE machine_tape_type_default(void)
     return TAPE_CAS_TYPE_BAS;
 }
 
+BYTE machine_tape_behaviour(void)
+{
+    return TAPE_BEHAVIOUR_NORMAL;
+}
+
 int machine_addr_in_ram(unsigned int addr)
 {
     return (addr < 0xc000) ? 1 : 0;
@@ -713,9 +1182,24 @@ const char *machine_get_name(void)
     return machine_name;
 }
 
-#ifdef USE_SDLUI
-/* Kludges for vsid & linking issues */
-const char **csidmodel = NULL;
-void psid_init_driver(void) {}
-BYTE *mem_chargen_rom = NULL;
-#endif
+/* ------------------------------------------------------------------------- */
+
+static void vic20_userport_set_flag(BYTE b)
+{
+    viacore_signal(machine_context.via2, VIA_SIG_CB1, b ? VIA_SIG_RISE : VIA_SIG_FALL);
+}
+
+static userport_port_props_t userport_props = {
+    1, /* has pa2 pin */
+    0, /* NO pa3 pin */
+    vic20_userport_set_flag, /* has flag pin */
+    0, /* NO pc pin */
+    0  /* NO cnt1, cnt2 or sp pins */
+};
+
+int machine_register_userport(void)
+{
+    userport_port_register(&userport_props);
+
+    return 0;
+}

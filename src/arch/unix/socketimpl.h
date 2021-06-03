@@ -35,7 +35,7 @@
 
 #ifdef HAVE_NETWORK
  
-#ifdef MINIX_SUPPORT
+#if defined(MINIX_SUPPORT) || defined(__minix_vmd)
 # include <limits.h>
 # define PF_INET AF_INET
 
@@ -51,17 +51,47 @@ extern ssize_t send(int socket, const void *buffer, size_t length, int flags);
 #endif
 
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/time.h>
 
-#ifndef VMS
+#ifdef NeXT
+#include <netinet/in_systm.h>
+#endif
+
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+
+#include <sys/un.h>
+
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
+#ifdef HAVE_NETINET_TCP_H
+#include <netinet/tcp.h>
+#endif
+
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+#ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
 #endif
  
+#ifndef NeXT
+#  ifdef HAVE_LIBC_H
+#    include <libc.h>
+#  endif
+#endif
+
 #include <unistd.h>
 
 #ifdef __minix
@@ -69,7 +99,7 @@ extern ssize_t send(int socket, const void *buffer, size_t length, int flags);
 extern ssize_t send(int socket, const void *buffer, size_t length, int flags);
 #endif
 
-typedef unsigned int SOCKET;
+typedef int SOCKET;
 typedef struct timeval TIMEVAL;
 
 #define closesocket close

@@ -49,28 +49,32 @@ static unsigned int profdos_al[DRIVE_NUM];
 
 int profdos_load_1571(const char *name)
 {
-    if (util_check_null_string(name))
+    if (util_check_null_string(name)) {
         return 0;
+    }
 
     if (util_file_load(name, profdos_1571_rom,
-        PROFDOS_ROM_SIZE, UTIL_FILE_LOAD_SKIP_ADDRESS) < 0)
+                       PROFDOS_ROM_SIZE, UTIL_FILE_LOAD_SKIP_ADDRESS) < 0) {
         return -1;
+    }
 
     return 0;
 }
 
-static void profdos_store(drive_context_t *drv, WORD addr, BYTE byte)
-{
-}
-
 static BYTE profdos_read(drive_context_t *drv, WORD addr)
 {
+    return profdos_1571_rom[addr & 0x1fff];
+}
+
+static BYTE profdos_read2(drive_context_t *drv, WORD addr)
+{
     if (addr >= 0x7000) {
-        if (!(addr & 0x0800))
+        if (!(addr & 0x0800)) {
             addr = (WORD)((addr & 0xff0f) | (profdos_al[drv->mynumber] << 4));
-        else
+        } else {
             addr = (WORD)((addr & 0xff00)
-                   | (profdos_al[drv->mynumber] << 4) | ((addr >> 4) & 15));
+                          | (profdos_al[drv->mynumber] << 4) | ((addr >> 4) & 15));
+        }
 
         profdos_al[drv->mynumber] = addr & 15;
     }
@@ -80,16 +84,22 @@ static BYTE profdos_read(drive_context_t *drv, WORD addr)
 
 void profdos_mem_init(struct drive_context_s *drv, unsigned int type)
 {
-    drivecpud_context_t *cpud;
+    drivecpud_context_t *cpud = drv->cpud;
 
-    cpud = drv->cpud;
+    if (!drv->drive->profdos) {
+        return;
+    }
 
     /* Setup additional profdos rom */
-    if (type == DRIVE_TYPE_1570 || type == DRIVE_TYPE_1571
-        || type == DRIVE_TYPE_1571CR) {
-        if (drv->drive->profdos) {
-            drivemem_set_func(cpud, 0x60, 0x80, profdos_read, profdos_store);
-        }
+    switch (type) {
+    case DRIVE_TYPE_1570:
+    case DRIVE_TYPE_1571:
+    case DRIVE_TYPE_1571CR:
+        drivemem_set_func(cpud, 0x60, 0x70, profdos_read, NULL, NULL, profdos_1571_rom, 0x60006ffd);
+        drivemem_set_func(cpud, 0x70, 0x80, profdos_read2, NULL, NULL, NULL, 0);
+        break;
+    default:
+        break;
     }
 }
 
@@ -101,4 +111,3 @@ void profdos_reset(drive_context_t *drv)
 {
     profdos_al[drv->mynumber] = 0;
 }
-

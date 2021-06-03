@@ -1,220 +1,347 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 2 November 2012 -->
+     from ../../doc/vice.texi on 15 December 2016 -->
 
-<TITLE>VICE Manual - 14  petcat</TITLE>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
+<TITLE>VICE Manual - 14  cartconv</TITLE>
+<style type="text/css">
+    @import 'vice.css';
+</style>
 </HEAD>
 <BODY>
-Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_13.html">previous</A>, <A HREF="vice_15.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_13.html">previous</A>, <A HREF="vice_15.html">next</A>, <A HREF="vice_22.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
 <P><HR><P>
 
 
-<H1><A NAME="SEC263" HREF="vice_toc.html#TOC263">14  petcat</A></H1>
+<H1><A NAME="SEC307" HREF="vice_toc.html#TOC307">14  cartconv</A></H1>
 
 <P>
-The petcat program is a text conversion utility, it can convert
-between ASCII, PETSCII and tokenized BASIC.
+The cartconv program is a cartridge conversion utility, it can convert
+between binary and .crt images and it can 'insert' binary and/or
+.crt images into the EPROM type of cartridges.
 
 </P>
 
 
-<H2><A NAME="SEC264" HREF="vice_toc.html#TOC264">14.1  petcat command line options</A></H2>
+<H2><A NAME="SEC308" HREF="vice_toc.html#TOC308">14.1  cartconv command line options</A></H2>
 
+<P>
+The cartconv program has the following parameters:
+
+</P>
 <DL COMPACT>
 
-<DT><CODE>-help</CODE>
+<DT><CODE>-i "input name"</CODE>
 <DD>
-<A NAME="IDX1267"></A>
+<A NAME="IDX1864"></A>
  
-Output help text
-<A NAME="IDX1268"></A>
-<DT><CODE>-v</CODE>
+This parameter is mandatory, it should contain the name of the binary/.crt
+file you want to convert. For the EPROM type of cartridges this parameter
+can be used multiple times to insert images into the resulting file.
+<A NAME="IDX1865"></A>
+<DT><CODE>-o "output name"</CODE>
 <DD>
-Same as above
-<A NAME="IDX1269"></A>
-<DT><CODE>-c</CODE>
+This parameter is mandatory, it should contain the name of the binary/.crt
+file you want to convert the input file to.
+<A NAME="IDX1866"></A>
+<DT><CODE>-t carttype</CODE>
 <DD>
-controls (interpret also control codes) (default if textmode)
-<A NAME="IDX1270"></A>
-<DT><CODE>-nc</CODE>
+This parameter is optional. It is only needed when converting to a .crt
+file. See below for the supported cartridge types.
+<A NAME="IDX1867"></A>
+<DT><CODE>-n "cart name"</CODE>
 <DD>
-no controls (suppress control codes in printout) (default if non-textmode)
-<A NAME="IDX1271"></A>
-<DT><CODE>-ic</CODE>
+This parameter is optional and is used as the cartridge name when creating
+a .crt file.
+<A NAME="IDX1868"></A>
+<DT><CODE>-l loadaddress</CODE>
 <DD>
-interpret control codes case-insensitive
-<A NAME="IDX1272"></A>
-<DT><CODE>-h</CODE>
+This parameter is optional and is used as the load-address when converting
+a .crt file to a .prg file, or when converting to a generic type .crt
+file.
+<A NAME="IDX1869"></A>
+<DT><CODE>-f "input name"</CODE>
 <DD>
-write header (default if output is stdout)
-<A NAME="IDX1273"></A>
-<DT><CODE>-nh</CODE>
+This parameter is optional, and is meant to output information about the
+named file. It can't be used in conjuction with any of the other parameters.
+<A NAME="IDX1870"></A>
+<DT><CODE>-r</CODE>
 <DD>
-no header (default if output is a file)
-<A NAME="IDX1274"></A>
-<DT><CODE>-skip &#60;n&#62;</CODE>
+This parameter is optional, it enables repair mode (accept broken input files)
+<A NAME="IDX1871"></A>
+<DT><CODE>-p</CODE>
 <DD>
-Skip &#60;n&#62; bytes in the beginning of input file. Ignored on P00.
-<A NAME="IDX1275"></A>
-<DT><CODE>-text</CODE>
+This parameter is optional, when it is given cartconv will accept input files that
+do not match the cartridge sizes (useful for development).
+<A NAME="IDX1872"></A>
+<DT><CODE>-b</CODE>
 <DD>
-Force text mode
-<DT><CODE>-&#60;version&#62;</CODE>
+This parameter is optional, when it is given cartconv will not omit banks that
+are empty (filled with $ff).
+<A NAME="IDX1873"></A>
+<DT><CODE>-q</CODE>
 <DD>
-use keywords for &#60;version&#62; instead of the v7.0 ones
-<A NAME="IDX1276"></A>
-<DT><CODE>-w&#60;version&#62;</CODE>
+This parameter is optional, it disables all non-error messages
+<A NAME="IDX1874"></A>
+<DT><CODE>--types</CODE>
 <DD>
-tokenize using keywords on specified Basic version.
-<A NAME="IDX1277"></A>
-<DT><CODE>-k&#60;version&#62;</CODE>
-<DD>
-list all keywords for the specified Basic version
-<A NAME="IDX1278"></A>
-<DT><CODE>-k</CODE>
-<DD>
-list all Basic versions available.
-<A NAME="IDX1279"></A>
-<DT><CODE>-l</CODE>
-<DD>
-Specify load address for program (in hex, no loading chars!).
-<A NAME="IDX1280"></A>
-<DT><CODE>-o &#60;name&#62;</CODE>
-<DD>
-Specify the output file name
-<A NAME="IDX1281"></A>
-<DT><CODE>-f</CODE>
-<DD>
-Force overwritten the output file. The default depends on the BASIC version.
+This parameter is optional. It shows all supported cartridge types (see below).
 </DL>
 
 <P>
-BASIC Versions:
+The following cartridge types are supported:
+
+</P>
 <DL COMPACT>
 
-<DT><CODE>1</CODE>
+<DT><CODE>bin</CODE>
 <DD>
-PET Basic V1.0
-<DT><CODE>2</CODE>
+Binary .bin file (Default crt-&#62;bin)
+<DT><CODE>normal</CODE>
 <DD>
-Basic v2.0
-<DT><CODE>superexp</CODE>
+Generic 8kB/12kB/16kB .crt file (Default bin-&#62;crt)
+<DT><CODE>prg</CODE>
 <DD>
-Basic v2.0 with Super Expander (VIC20)
-<DT><CODE>turtle</CODE>
+Binary C64 .prg file with load-address
+<DT><CODE>ulti</CODE>
 <DD>
-Basic v2.0 with Turtle Basic by Craig Bruce (VIC20)
-<DT><CODE>mighty</CODE>
+Ultimax mode 4kB/8kB/16kB .crt file
+<DT><CODE>ap</CODE>
 <DD>
-Basic v2.0 with Mighty Basic by Craig Bruce (VIC20)
-<DT><CODE>a</CODE>
+Atomic Power .crt file
+<DT><CODE>ar2</CODE>
 <DD>
-Basic v2.0 with AtBasic (C64)
-<DT><CODE>simon</CODE>
+Action Replay MK2 .crt file
+<DT><CODE>ar3</CODE>
 <DD>
-Basic v2.0 with Simon's Basic extension (C64)
-<DT><CODE>speech</CODE>
+Action Replay MK3 .crt file
+<DT><CODE>ar4</CODE>
 <DD>
-Basic v2.0 with Speech Basic v2.7 (C64)
-<DT><CODE>F</CODE>
+Action Replay MK4 .crt file
+<DT><CODE>ar5</CODE>
 <DD>
-Basic v2.0 with Final Cartridge III (C64)
-<DT><CODE>ultra</CODE>
+Action Replay V5 .crt file
+<DT><CODE>cap</CODE>
 <DD>
-Basic v2.0 with Ultrabasic-64 (C64)
-<DT><CODE>graph</CODE>
+Capture .crt file
+<DT><CODE>comal</CODE>
 <DD>
-Basic v2.0 with Graphics basic (C64)
-<DT><CODE>WSB</CODE>
+Comal 80 .crt file
+<DT><CODE>dep256</CODE>
 <DD>
-Basic v2.0 with WS basic (C64)
-<DT><CODE>WSBF</CODE>
+Dela EP256 .crt file, extra files can be inserted (1)(2)
+<DT><CODE>dep64</CODE>
 <DD>
-Basic v2.0 with WS basic final (C64)
-<DT><CODE>Pegasus</CODE>
+Dela EP64 .crt file, extra files can be inserted (1)
+<DT><CODE>dep7x8</CODE>
 <DD>
-Basic v2.0 with Pegasus basic 4.0 (C64)
-<DT><CODE>Xbasic</CODE>
+Dela EP7x8 .crt file, extra files can be inserted (1)(2)(3)
+<DT><CODE>din</CODE>
 <DD>
-Basic v2.0 with Xbasic (C64)
-<DT><CODE>Drago</CODE>
+Dinamic .crt file
+<DT><CODE>dsm</CODE>
 <DD>
-Basic v2.0 with Drago basic 2.2 (C64)
-<DT><CODE>REU</CODE>
-<DD>
-Basic v2.0 with REU-basic (C64)
-<DT><CODE>Lightning</CODE>
-<DD>
-Basic v2.0 with Basic Lightning (C64)
-<DT><CODE>magic</CODE>
-<DD>
-Basic v2.0 with Magic Basic (C64)
+Diashow-Maker .crt file
 <DT><CODE>easy</CODE>
 <DD>
-Basic v2.0 with Easy Basic (VIC20)
-<DT><CODE>blarg</CODE>
+EasyFlash .crt file
+<DT><CODE>ecr</CODE>
 <DD>
-Basic v2.0 with Blarg (C64)
-<DT><CODE>Game</CODE>
+Easy Calc Result .crt file
+<DT><CODE>epyx</CODE>
 <DD>
-Basic v2.0 with Game Basic (C64)
-<DT><CODE>BSX</CODE>
+Epyx FastLoad .crt file
+<DT><CODE>exos</CODE>
 <DD>
-Basic v2.0 with Basex (C64)
-<DT><CODE>superbas</CODE>
+EXOS .crt file
+<DT><CODE>expert</CODE>
 <DD>
-Basic v2.0 with Super Basic (C64)
-<DT><CODE>exp20</CODE>
+Expert Cartridge .crt file
+<DT><CODE>f64</CODE>
 <DD>
-Basic 2.0 with Expanded Basic (VIC20)
-<DT><CODE>exp64</CODE>
+Formel 64 .crt file
+<DT><CODE>fc1</CODE>
 <DD>
-Basic 2.0 with Expanded Basic (C64)
-<DT><CODE>sxc</CODE>
+The Final Cartridge .crt file
+<DT><CODE>fc3</CODE>
 <DD>
-Basic 2.0 with Super Expander Chip (C64)
-<DT><CODE>warsaw</CODE>
+The Final Cartridge III .crt file
+<DT><CODE>fcp</CODE>
 <DD>
-Basic 2.0 with Warsaw Basic (C64)
-<DT><CODE>4v</CODE>
+Final Cartridge Plus .crt file
+<DT><CODE>ff</CODE>
 <DD>
-Basic 2.0 with Basic 4.0 extensions (VIC20)
-<DT><CODE>4 -w4e</CODE>
+Freeze Frame .crt file
+<DT><CODE>fm</CODE>
 <DD>
-PET Basic v4.0 program (PET/C64)
-<DT><CODE>5</CODE>
+Freeze Machine .crt file
+<DT><CODE>fp</CODE>
 <DD>
-Basic 2.0 with Basic 5.0 extensions (VIC20)
-<DT><CODE>3</CODE>
+Fun Play .crt file
+<DT><CODE>gk</CODE>
 <DD>
-Basic v3.5 program (C16)
-<DT><CODE>70</CODE>
+Game Killer .crt file
+<DT><CODE>gmod2</CODE>
 <DD>
-Basic v7.0 program (C128)
-<DT><CODE>71</CODE>
+GMod2 .crt file
+<DT><CODE>gs</CODE>
 <DD>
-Basic v7.1 program (C128)
-<DT><CODE>10</CODE>
+C64 Games System .crt file
+<DT><CODE>ide64</CODE>
 <DD>
-Basic v10.0 program (C64DX)
+IDE64 .crt file
+<DT><CODE>ieee</CODE>
+<DD>
+IEEE-488 Interface .crt file
+<DT><CODE>kcs</CODE>
+<DD>
+KCS Power Cartridge .crt file
+<DT><CODE>ks</CODE>
+<DD>
+Kingsoft .crt file
+<DT><CODE>mach5</CODE>
+<DD>
+MACH 5 .crt file
+<DT><CODE>md</CODE>
+<DD>
+Magic Desk .crt file
+<DT><CODE>mf</CODE>
+<DD>
+Magic Formel .crt file
+<DT><CODE>mikro</CODE>
+<DD>
+Mikro Assembler .crt file
+<DT><CODE>mmc64</CODE>
+<DD>
+MMC64 .crt file
+<DT><CODE>mmcr</CODE>
+<DD>
+MMC Replay .crt file
+<DT><CODE>mv</CODE>
+<DD>
+Magic Voice .crt file
+<DT><CODE>ocean</CODE>
+<DD>
+Ocean .crt file
+<DT><CODE>p64</CODE>
+<DD>
+Prophet64 .crt file
+<DT><CODE>pf</CODE>
+<DD>
+Pagefox .crt file
+<DT><CODE>rep256</CODE>
+<DD>
+REX 256k EPROM Cart .crt file, extra files can be inserted (1)(2)(3)
+<DT><CODE>rgcd</CODE>
+<DD>
+RGCD .crt file
+<DT><CODE>ross</CODE>
+<DD>
+ROSS .crt file
+<DT><CODE>rr</CODE>
+<DD>
+Retro Replay .crt file
+<DT><CODE>rrnet</CODE>
+<DD>
+RR-Net MK3 .crt file
+<DT><CODE>ru</CODE>
+<DD>
+REX Utility .crt file
+<DT><CODE>s64</CODE>
+<DD>
+Snapshot 64 .crt file
+<DT><CODE>sb</CODE>
+<DD>
+Structured BASIC .crt file
+<DT><CODE>se5</CODE>
+<DD>
+Super Explode V5.0 .crt file
+<DT><CODE>sg</CODE>
+<DD>
+Super Games .crt file
+<DT><CODE>silver</CODE>
+<DD>
+Silverrock 128K Cartridge .crt file
+<DT><CODE>simon</CODE>
+<DD>
+Simons' BASIC .crt file
+<DT><CODE>ss4</CODE>
+<DD>
+Super Snapshot V4 .crt file
+<DT><CODE>ss5</CODE>
+<DD>
+Super Snapshot V5 .crt file
+<DT><CODE>star</CODE>
+<DD>
+Stardos .crt file
+<DT><CODE>wl</CODE>
+<DD>
+Westermann Learning .crt file
+<DT><CODE>ws</CODE>
+<DD>
+Warp Speed .crt file
+<DT><CODE>zaxxon</CODE>
+<DD>
+Zaxxon .crt file
 </DL>
 
 
+<UL>
+<LI>(1) insertion of 32kB EPROM files supported.
 
-<H2><A NAME="SEC265" HREF="vice_toc.html#TOC265">14.2  petcat examples</A></H2>
+<LI>(2) insertion of 8kB .crt/binary files supported.
+
+<LI>(3) insertion of 16kB .crt/binary files supported.
+
+</UL>
+
+
+
+<H2><A NAME="SEC309" HREF="vice_toc.html#TOC309">14.2  cartconv examples</A></H2>
 
 <DL COMPACT>
 
-<DT><CODE>petcat -2 -o outputfile.txt -- inputfile.prg</CODE>
+<DT><CODE>cartconv -i foo.crt -o foo.bin</CODE>
 <DD>
-Convert inputfile.prg to a text file in outputfile.txt, using BASIC V2 only
-<DT><CODE>petcat -wsimon -o outputfile.prg -- inputfile.txt</CODE>
+Convert a .crt file to a binary file with no load-address.
+<DT><CODE>cartconv -t prg -i foo.crt -o foo.prg</CODE>
 <DD>
-Convert inputfile.txt to a PRG file in outputfile.prg, using Simon's BASIC
+Convert a .crt file to a .prg file with default load-address.
+<DT><CODE>cartconv -t prg -l 49152 -i foo.crt -o foo.prg</CODE>
+<DD>
+Convert a .crt file to a .prg file with 49152 as the load-address.
+<DT><CODE>cartconv -t ocean -i foo.bin -o foo.crt</CODE>
+<DD>
+Convert a binary file to an ocean type cartridge.
+<DT><CODE>cartconv -t dep64 -i dep64.bin -i eprom.prg -o foo.crt</CODE>
+<DD>
+Inserting a 32kB EPROM file into an dep64 type cartridge.
+
+<UL>
+<LI>step 1 : use the dep64 binary file in VICE as a generic 8kB cartridge.
+
+<LI>step 2 : generate an EPROM file.
+
+<LI>step 3 : get the EPROM file to the host computer.
+
+<LI>step 4 : insert the EPROM file into the final dep64 .crt file:
+
+</UL>
+
+<DT><CODE>cartconv -t dep256 -i dep256.bin -i somegame.crt -o foo.crt</CODE>
+<DD>
+Insert an 8kB .crt file into a dep256 type cartridge.
+<DT><CODE>cartconv -t rep256 -i rep256.bin -i foo1.crt -i foo2.crt -i foo3.crt -o foo.crt</CODE>
+<DD>
+Insert multiple 8kB .crt files into a rep256 type cartridge.
+<DT><CODE>cartconv -f foo.crt</CODE>
+<DD>
+Get information about a .crt file.
 </DL>
 
 <P><HR><P>
-Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_13.html">previous</A>, <A HREF="vice_15.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_13.html">previous</A>, <A HREF="vice_15.html">next</A>, <A HREF="vice_22.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
 </BODY>
 </HTML>

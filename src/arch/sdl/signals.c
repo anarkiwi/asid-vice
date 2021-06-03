@@ -2,7 +2,8 @@
  * signals.c
  *
  * Written by
- *  Andreas Boose <viceteam@t-online.de>
+ *  Hannu Nuotio <hannu.nuotio@tut.fi>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -38,7 +39,7 @@ void signals_init(int do_core_dumps)
 }
 
 /*
-    these two are used if the monitor is in remote mode. in this case we might
+    these two are used for socket send/recv. in this case we might
     get SIGPIPE if the connection is unexpectedly closed.
 */
 void signals_pipe_set(void)

@@ -37,9 +37,6 @@
 #include "vicii.h"
 #include "vdctypes.h"
 
-#define SID_MODEL_DEFAULT_OLD SID_MODEL_6581R4AR_3789
-#define SID_MODEL_DEFAULT_NEW SID_MODEL_8580R5_3691
-
 #define CIA_MODEL_DEFAULT_OLD CIA_MODEL_6526
 #define CIA_MODEL_DEFAULT_NEW CIA_MODEL_6526A
 
@@ -48,21 +45,11 @@ static int is_new_sid(int model)
     switch (model) {
         case SID_MODEL_6581:
         case SID_MODEL_6581R4:
-        case SID_MODEL_6581R3_4885:
-        case SID_MODEL_6581R3_0486S:
-        case SID_MODEL_6581R3_3984:
-        case SID_MODEL_6581R4AR_3789:
-        case SID_MODEL_6581R3_4485:
-        case SID_MODEL_6581R4_1986S:
         default:
             return 0;
 
         case SID_MODEL_8580:
         case SID_MODEL_8580D:
-        case SID_MODEL_8580R5_3691:
-        case SID_MODEL_8580R5_3691D:
-        case SID_MODEL_8580R5_1489:
-        case SID_MODEL_8580R5_1489D:
             return 1;
     }
 }
@@ -79,7 +66,7 @@ static int is_new_cia(int model)
 }
 
 /*
-C128:             SID 6581, VDC 8563, 16 KB VDC RAM. 
+C128:             SID 6581, VDC 8563, 16 KB VDC RAM.
 C128D (plastic):  SID 6581, VDC 8563, 16 KB VDC RAM (like C128+1571)
 C128D (metal):    SID 8580, VDC 8568, 64 KB VDC RAM, new BASIC ROM?, new floppy ROM?
 C128DCR (like above)
@@ -91,19 +78,19 @@ struct model_s {
     int sid;     /* old or new */
     int vdc;     /* old or new */
     int vdc64k;
-    int sidtype; /* specific type for residfp */
 };
 
 static struct model_s c128models[] = {
-    { MACHINE_SYNC_PAL,  0, 0, VDC_REVISION_1, 0, SID_MODEL_DEFAULT_OLD },
-    { MACHINE_SYNC_PAL,  1, 1, VDC_REVISION_2, 1, SID_MODEL_DEFAULT_NEW },
-    { MACHINE_SYNC_NTSC, 0, 0, VDC_REVISION_1, 0, SID_MODEL_DEFAULT_OLD },
-    { MACHINE_SYNC_NTSC, 1, 1, VDC_REVISION_2, 1, SID_MODEL_DEFAULT_NEW },
+    { MACHINE_SYNC_PAL,  OLD_CIA, OLD_SID, VDC_REVISION_1, VDC16K },
+    { MACHINE_SYNC_PAL,  NEW_CIA, NEW_SID, VDC_REVISION_2, VDC64K },
+    { MACHINE_SYNC_NTSC, OLD_CIA, OLD_SID, VDC_REVISION_1, VDC16K },
+    { MACHINE_SYNC_NTSC, NEW_CIA, NEW_SID, VDC_REVISION_2, VDC64K },
 };
 
 /* ------------------------------------------------------------------------- */
-int c128model_get_temp(int video, int sid_model, int vdc_revision, int vdc_64k,
-                        int cia1_model, int cia2_model)
+
+static int c128model_get_temp(int video, int sid_model, int vdc_revision, int vdc_64k,
+                       int cia1_model, int cia2_model)
 {
     int new_sid;
     int new_cia;
@@ -118,10 +105,10 @@ int c128model_get_temp(int video, int sid_model, int vdc_revision, int vdc_64k,
 
     for (i = 0; i < C128MODEL_NUM; ++i) {
         if ((c128models[i].video == video)
-         && (c128models[i].vdc == vdc_revision)
-         && (c128models[i].vdc64k == vdc_64k)
-         && (c128models[i].cia == new_cia)
-         && (c128models[i].sid == new_sid)) {
+            && (c128models[i].vdc == vdc_revision)
+            && (c128models[i].vdc64k == vdc_64k)
+            && (c128models[i].cia == new_cia)
+            && (c128models[i].sid == new_sid)) {
             return i;
         }
     }
@@ -134,21 +121,22 @@ int c128model_get(void)
     int video, sid_model, cia1_model, cia2_model, vdc_revision, vdc_64k;
 
     if ((resources_get_int("MachineVideoStandard", &video) < 0)
-     || (resources_get_int("SidModel", &sid_model) < 0)
-     || (resources_get_int("CIA1Model", &cia1_model) < 0)
-     || (resources_get_int("CIA2Model", &cia2_model) < 0)
-     || (resources_get_int("VDCRevision", &vdc_revision) < 0)
-     || (resources_get_int("VDC64KB", &vdc_64k) < 0)) {
+        || (resources_get_int("SidModel", &sid_model) < 0)
+        || (resources_get_int("CIA1Model", &cia1_model) < 0)
+        || (resources_get_int("CIA2Model", &cia2_model) < 0)
+        || (resources_get_int("VDCRevision", &vdc_revision) < 0)
+        || (resources_get_int("VDC64KB", &vdc_64k) < 0)) {
         return -1;
     }
 
     return c128model_get_temp(video, sid_model, vdc_revision, vdc_64k,
-                            cia1_model, cia2_model);
+                              cia1_model, cia2_model);
 }
 
-void c128model_set_temp(int model, int *vicii_model, int *sid_model,
-                       int *vdc_revision, int *vdc_64k, int *cia1_model, 
-                       int *cia2_model)
+#if 0
+static void c128model_set_temp(int model, int *vicii_model, int *sid_model,
+                        int *vdc_revision, int *vdc_64k, int *cia1_model,
+                        int *cia2_model)
 {
     int old_model;
     int old_engine;
@@ -157,8 +145,8 @@ void c128model_set_temp(int model, int *vicii_model, int *sid_model,
     int old_type;
     int new_type;
 
-    old_model = c128model_get_temp(*vicii_model, *sid_model, *vdc_revision, 
-                                  *vdc_64k, *cia1_model, *cia2_model);
+    old_model = c128model_get_temp(*vicii_model, *sid_model, *vdc_revision,
+                                   *vdc_64k, *cia1_model, *cia2_model);
 
     if ((model == old_model) || (model == C128MODEL_UNKNOWN)) {
         return;
@@ -170,26 +158,22 @@ void c128model_set_temp(int model, int *vicii_model, int *sid_model,
     *vdc_revision = c128models[model].vdc;
     *vdc_64k = c128models[model].vdc64k;
 
-    /* Only change the SID model if the model changes from 6581 to 8580
-       or the specific SID type changes if residfp is used. This allows
-       to switch between "pal"/"oldpal" without changing the specific
-       SID model. The current engine is preserved. */
+    /* Only change the SID model if the model changes from 6581 to 8580.
+       This allows to switch between "pal"/"oldpal" without changing
+       the specific SID model. The current engine is preserved. */
     old_engine = (*sid_model >> 8);
     old_sid_model = (*sid_model & 0xff);
 
-    if (old_engine == SID_ENGINE_RESID_FP) {
-        new_sid_model = c128models[model].sidtype;
-    } else {
-        new_sid_model = c128models[model].sid;
-    }
+    new_sid_model = c128models[model].sid;
 
     old_type = is_new_sid(old_sid_model);
     new_type = is_new_sid(new_sid_model);
 
-    if (((old_engine == SID_ENGINE_RESID_FP) && (new_sid_model != old_sid_model)) || (old_type != new_type)) {
+    if (old_type != new_type) {
         *sid_model = (old_engine << 8 ) | new_sid_model;
     }
 }
+#endif
 
 void c128model_set(int model)
 {
@@ -209,27 +193,21 @@ void c128model_set(int model)
     resources_set_int("MachineVideoStandard", c128models[model].video);
     resources_set_int("CIA1Model", c128models[model].cia);
     resources_set_int("CIA2Model", c128models[model].cia);
-    resources_set_int("VICIINewLuminances", 1);
     resources_set_int("VDCRevision", c128models[model].vdc);
     resources_set_int("VDC64KB", c128models[model].vdc64k);
 
     /* Only change the SID model if the model changes from 6581 to 8580
-       or the specific SID type changes if residfp is used. This allows
-       to switch between "pal"/"oldpal" without changing the specific
-       SID model. The current engine is preserved. */
+       This allows to switch between "pal"/"oldpal" without changing
+       the specific SID model. The current engine is preserved. */
 
     resources_get_int("SidEngine", &old_engine);
     resources_get_int("SidModel", &old_sid_model);
-    if (old_engine == SID_ENGINE_RESID_FP) {
-        new_sid_model = c128models[model].sidtype;
-    } else {
-        new_sid_model = c128models[model].sid;
-    }
+    new_sid_model = c128models[model].sid;
 
     old_type = is_new_sid(old_sid_model);
     new_type = is_new_sid(new_sid_model);
 
-    if (((old_engine == SID_ENGINE_RESID_FP) && (new_sid_model != old_sid_model)) || (old_type != new_type)) {
+    if (old_type != new_type) {
         sid_set_engine_model(old_engine, new_sid_model);
     }
 }

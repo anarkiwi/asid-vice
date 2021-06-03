@@ -6,7 +6,7 @@
  *  Dirk Jagdmann <doj@cubic.org>
  *
  * Based on code by
- *  André Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -43,11 +43,10 @@
 
 #include <unistd.h>
 
-#if defined(MINIX_SUPPORT) || defined(OPENSERVER6_COMPILE)
-#include <sys/select.h>
-#endif
-
-#if defined(__QNX__) && !defined(__QNXNTO__)
+/* <sys/select.h> is required for select(2) and fd_set */
+#if defined(HAVE_SYS_SELECT_H) || \
+    defined(MINIX_SUPPORT) || defined(OPENSERVER6_COMPILE) || \
+    (defined(__QNX__) && !defined(__QNXNTO__))
 #include <sys/select.h>
 #endif
 
@@ -282,7 +281,7 @@ static void mididrv_alsa_out_close(void)
     fd_out = -1;
 }
 
-/** this function is called when one MIDI byte need to be transmitted.
+/** this function is called when one MIDI byte needs to be transmitted.
     @param b MIDI byte
  */
 static void mididrv_alsa_out(BYTE b)
@@ -606,12 +605,16 @@ static int set_midi_driver(int val, void *param)
 {
     int in_was_open, out_was_open;
 
-    if (midi_driver_num == val) {
-        return 0;
+    switch (val) {
+        case MIDI_DRIVER_OSS:
+        case MIDI_DRIVER_ALSA:
+            break;
+        default:
+            return -1;
     }
 
-    if (val != MIDI_DRIVER_OSS && val != MIDI_DRIVER_ALSA) {
-        return -1;
+    if (midi_driver_num == val) {
+        return 0;
     }
 
     in_was_open = (fd_in >= 0) ? 1 : 0;
@@ -666,18 +669,18 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "MIDIInDev", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Name"), N_("Specify MIDI-In device") },
+      N_("<Name>"), N_("Specify MIDI-In device") },
     { "-midiout", SET_RESOURCE, -1,
       NULL, NULL, "MIDIOutDev", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Name"), N_("Specify MIDI-Out device") },
+      N_("<Name>"), N_("Specify MIDI-Out device") },
 #ifdef USE_ALSA
     { "-mididrv", SET_RESOURCE, -1,
       NULL, NULL, "MIDIDriver", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Driver"), N_("Specify MIDI driver (0 = OSS, 1 = ALSA)") },
+      N_("<Driver>"), N_("Specify MIDI driver (0 = OSS, 1 = ALSA)") },
 #endif
     { NULL }
 };

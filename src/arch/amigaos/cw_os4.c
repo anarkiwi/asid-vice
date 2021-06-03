@@ -1,5 +1,5 @@
 /*
- * cw_os4.c
+ * cw_os4.c - AmigaOS4 catweasel driver.
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
@@ -40,30 +40,16 @@
 static unsigned char read_sid(unsigned char reg); // Read a SID register
 static void write_sid(unsigned char reg, unsigned char data); // Write a SID register
 
-typedef void (*voidfunc_t)(void);
-
 #define MAXSID 1
 
-/* buffer containing current register state of SIDs */
-static BYTE sidbuf[0x20 * MAXSID];
-
-static int sidfh = 0;
+static int sids_found = -1;
 
 /* read value from SIDs */
 int cw_os4_read(WORD addr, int chipno)
 {
     /* check if chipno and addr is valid */
     if (chipno < MAXSID && addr < 0x20) {
-        /* if addr is from read-only register, perform a read read */
-        if (addr >= 0x19 && addr <= 0x1C && sidfh >= 0) {
-            addr += chipno * 0x20;
-            sidbuf[addr] = read_sid(addr);
-        } else {
-          addr += chipno*0x20;
-        }
-
-        /* take value from sidbuf[] */
-        return sidbuf[addr];
+        return read_sid(addr);
     }
 
     return 0;
@@ -73,15 +59,8 @@ int cw_os4_read(WORD addr, int chipno)
 void cw_os4_store(WORD addr, BYTE val, int chipno)
 {
     /* check if chipno and addr is valid */
-    if (chipno < MAXSID && addr <= 0x18) {
-        /* correct addr, so it becomes an index into sidbuf[] and the unix device */
-        addr += chipno * 0x20;
-        /* write into sidbuf[] */
-        sidbuf[addr] = val;
-	  /* if the device is opened, write to device */
-        if (sidfh >= 0) {
-            write_sid(addr, val);
-        }
+    if (chipno < MAXSID && addr < 0x20) {
+        write_sid(addr, val);
     }
 }
 
@@ -106,45 +85,65 @@ static struct PCIDevice *CWDevPCI = NULL;
 static struct PCIResourceRange *CWDevBAR = NULL;
 int CWLock = FALSE;
 
-// Set as appropriate
-static int sid_NTSC = FALSE; // TRUE for 60Hz oscillator, FALSE for 50
+static void close_device(void)
+{
+    if (CWDevBAR) {
+        CWDevPCI->FreeResourceRange(CWDevBAR);
+    }
+    if (CWLock) {
+        CWDevPCI->Unlock();
+    }
+    if (IPCI) {
+        IExec->DropInterface((struct Interface *)IPCI);
+    }
+}
 
 int cw_os4_open(void)
 {
-    static int atexitinitialized = 0;
     unsigned int i;
 
-    if (atexitinitialized) {
-        cw_os4_close();
+    if (!sids_found) {
+        return -1;
     }
+
+    if (sids_found > 0) {
+        return 0;
+    }
+
+    sids_found = 0;
+
+    log_message(LOG_DEFAULT, "Detecting PCI CatWeasel boards.");
 
     IPCI = (struct PCIIFace *)IExec->GetInterface(ExpansionBase, "pci", 1, NULL);
     if (!IPCI) {
-        log_message(LOG_DEFAULT, "Unable to obtain PCI expansion interface\n");
+        log_message(LOG_DEFAULT, "Unable to obtain PCI expansion interface.");
         return -1;
     }
 
     // Try and find a CW on the PCI bus
-    CWDevPCI = IPCI->FindDeviceTags(FDT_VendorID, 0xe159,
-                                    FDT_DeviceID, 0x0001,
+    CWDevPCI = IPCI->FindDeviceTags(FDT_VendorID, CW_VENDOR,
+                                    FDT_DeviceID, CW_DEVICE,
                                     FDT_Index, 0,
                                     TAG_DONE);
     if (!CWDevPCI) {
-        log_message(LOG_DEFAULT, "Unable to find a Catweasel Mk3 PCI card\n");
+        log_message(LOG_DEFAULT, "Unable to find a PCI CatWeasel board.");
+        close_device();
         return -1;
     }
 
     // Lock the device, since we're a driver
     CWLock = CWDevPCI->Lock(PCI_LOCK_SHARED);
     if (!CWLock) {
-        log_message(LOG_DEFAULT, "Unable to lock the catweasel. Another driver may have an exclusive lock\n" );
+        log_message(LOG_DEFAULT, "Unable to lock the CatWeasel. Another driver may have an exclusive lock." );
+        close_device();
         return -1;
     }
 
     // Get the resource range
     CWDevBAR = CWDevPCI->GetResourceRange(0);
     if (!CWDevBAR) {
-        log_message(LOG_DEFAULT, "Unable to get resource range 0\n" );
+        log_message(LOG_DEFAULT, "Unable to get CatWeasel resource range 0." );
+        close_device();
         return -1;
     }
 
@@ -158,45 +157,30 @@ int cw_os4_open(void)
     CWDevPCI->OutByte(CWDevBAR->BaseAddress + 0x2b, 0x00);                                      
 
     /* mute all sids */
-    memset(sidbuf, 0, sizeof(sidbuf));
-    for (i = 0; i < sizeof(sidbuf); i++) {
+    for (i = 0; i < 32; i++) {
         write_sid(i, 0);
     }
 
-    log_message(LOG_DEFAULT, "CatWeasel MK3 PCI SID: opened");
+    log_message(LOG_DEFAULT, "PCI CatWeasel SID: opened at $%X.", CWDevBAR->BaseAddress);
 
-    /* install exit handler, so device is closed on exit */
-    if (!atexitinitialized) {
-        atexitinitialized = 1;
-        atexit((voidfunc_t)cw_os4_close);
-    }
+    sids_found = 1;
 
-    sidfh = 1; /* ok */
-
-    return 1;
+    return 0;
 }
 
 int cw_os4_close(void)
 {
     unsigned int i;
 
-    /* mute all sids */
-    memset(sidbuf, 0, sizeof(sidbuf));
-    for (i = 0; i < sizeof(sidbuf); i++) {
+    for (i = 0; i < 32; i++) {
         write_sid(i, 0);
     }
 
-    if (CWDevBAR) {
-        CWDevPCI->FreeResourceRange(CWDevBAR);
-    }
-    if (CWLock) {
-        CWDevPCI->Unlock();
-    }
-    if (IPCI) {
-        IExec->DropInterface((struct Interface *)IPCI);
-    }
+    close_device();
 
-    log_message(LOG_DEFAULT, "CatWeasel MK3 PCI SID: closed");
+    log_message(LOG_DEFAULT, "PCI CatWeasel SID: closed.");
+
+    sids_found = -1;
 
     return 0;
 }
@@ -206,7 +190,7 @@ static unsigned char read_sid(unsigned char reg)
     unsigned char cmd;
 
     cmd = (reg & 0x1f) | 0x20;	// Read command & address
-    if (sid_NTSC) {
+    if (catweaselmkiii_get_ntsc()) {
         cmd |= 0x40;  // Make sure its correct frequency
     }
 
@@ -225,7 +209,7 @@ static void write_sid(unsigned char reg, unsigned char data)
     unsigned char cmd;
 
     cmd = reg & 0x1f;
-    if (sid_NTSC) {
+    if (catweaselmkiii_get_ntsc()) {
         cmd |= 0x40;  // Make sure its correct frequency
     }
 
@@ -238,10 +222,8 @@ static void write_sid(unsigned char reg, unsigned char data)
     CWDevPCI->InByte(CWDevBAR->BaseAddress + CW_SID_DAT);
 }
 
-/* set current main clock frequency, which gives us the possibilty to
-   choose between pal and ntsc frequencies */
-void cw_os4_set_machine_parameter(long cycles_per_sec)
+int cw_os4_available(void)
 {
-    sid_NTSC = (cycles_per_sec <= 1000000) ? FALSE : TRUE;
+    return sids_found;
 }
 #endif

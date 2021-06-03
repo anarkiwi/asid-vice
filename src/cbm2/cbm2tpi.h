@@ -2,7 +2,7 @@
  * cbm2tpi.h - IEEE488 and keyboard interface for the CBM-II
  *
  * Written by
- *  Andre' Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -40,6 +40,8 @@ extern BYTE tpi1_read(WORD addr);
 extern BYTE tpi1_peek(WORD addr);
 
 extern void tpi1_set_tape_sense(int v);
+extern void tpi1_set_tape_write_in(int v);
+extern void tpi1_set_tape_motor_in(int v);
 
 extern void tpi2_setup_context(struct machine_context_s *machine_context);
 extern void tpi2_init(struct tpi_context_s *tpi_context);
@@ -50,4 +52,3 @@ extern BYTE tpi2_peek(WORD addr);
 extern void set_cbm2_model_port_mask(BYTE);
 
 #endif
-

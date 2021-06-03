@@ -42,6 +42,9 @@
 
 #include <proto/lowlevel.h>
 
+/* FIXME: This file needs to be updated to match the defines in arch/amigaos/joyll.h.
+   UI elements for configuring JoyKeys would also be good.  */
+
 static int ui_joystick_device_translate[] = {
     IDS_NONE,
     IDS_KEYPAD,
@@ -149,9 +152,9 @@ static ui_to_from_t ui_to_from_device[] = {
     { NULL, MUI_TYPE_CYCLE, "JoyDevice2", ui_joystick_device, ui_joystick_device_values, NULL },
     { NULL, MUI_TYPE_CYCLE, "JoyDevice3", ui_joystick_device, ui_joystick_device_values, NULL },
     { NULL, MUI_TYPE_CYCLE, "JoyDevice4", ui_joystick_device, ui_joystick_device_values, NULL },
-    { NULL, MUI_TYPE_CYCLE, "ExtraJoy", ui_joystick_enable, ui_joystick_enable_values, NULL },
-    { NULL, MUI_TYPE_CYCLE, "ExtraJoyType", ui_userport_c64_joystick, ui_userport_c64_joystick_values,NULL },
-    { NULL, MUI_TYPE_CYCLE, "ExtraJoyType", ui_userport_joystick, ui_userport_joystick_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "UserportJoy", ui_joystick_enable, ui_joystick_enable_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "UserportJoyType", ui_userport_c64_joystick, ui_userport_c64_joystick_values,NULL },
+    { NULL, MUI_TYPE_CYCLE, "UserportJoyType", ui_userport_joystick, ui_userport_joystick_values, NULL },
     UI_END /* mandatory */
 };
 
@@ -189,9 +192,7 @@ static APTR build_gui_device_c64dtv(void)
              CYCLE(ui_to_from_device[0].object, translate_text(IDS_JOY_1_DEVICE), ui_joystick_device)
              CYCLE(ui_to_from_device[1].object, translate_text(IDS_JOY_2_DEVICE), ui_joystick_device)
              CYCLE(ui_to_from_device[4].object, translate_text(IDS_USERPORT_ADAPTER), ui_joystick_enable)
-             CYCLE(ui_to_from_device[6].object, translate_text(IDS_USERPORT_ADAPTER_TYPE), ui_userport_joystick)
              CYCLE(ui_to_from_device[2].object, translate_text(IDS_USERPORT_JOY_1_DEVICE), ui_joystick_device)
-             CYCLE(ui_to_from_device[3].object, translate_text(IDS_USERPORT_JOY_2_DEVICE), ui_joystick_device)
            End;
 }
 

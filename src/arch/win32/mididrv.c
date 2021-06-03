@@ -28,6 +28,8 @@
 
 #include "vice.h"
 
+#ifdef HAVE_MIDI
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,13 +40,17 @@
 #include "log.h"
 #include "mididrv.h"
 
-#ifndef USE_SDLUI
+#if !defined(USE_SDLUI) && !defined(USE_SDLUI2)
 #include "res.h"
 #endif
 
 #include "resources.h"
 #include "translate.h"
 #include "types.h"
+
+#ifndef MAXULONG_PTR
+#define DWORD_PTR unsigned long
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -102,26 +108,27 @@ void mididrv_resources_shutdown(void)
 {
 }
 
+#if !defined(USE_SDLUI) && !defined(USE_SDLUI2)
+#define DEFAULT_PARAM USE_PARAM_ID
+#define DEFAULT_DESCR USE_DESCRIPTION_ID
+#else
+#define DEFAULT_PARAM USE_PARAM_STRING
+#define DEFAULT_DESCR USE_DESCRIPTION_STRING
+#define IDS_P_NUMBER          IDCLS_UNUSED
+#define IDS_SPECIFY_MIDI_IN   IDCLS_UNUSED
+#define IDS_SPECIFY_MIDI_OUT  IDCLS_UNUSED
+#endif
+
 static const cmdline_option_t cmdline_options[] = {
     { "-midiin", SET_RESOURCE, 1,
       NULL, NULL, "MIDIInDev", NULL,
-#ifndef USE_SDLUI
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      DEFAULT_PARAM, DEFAULT_DESCR,
       IDS_P_NUMBER, IDS_SPECIFY_MIDI_IN,
-#else
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      0, 0,
-#endif
       "<number>", "Specify MIDI-In device" },
     { "-midiout", SET_RESOURCE, 1,
       NULL, NULL, "MIDIOutDev", NULL,
-#ifndef USE_SDLUI
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      DEFAULT_PARAM, DEFAULT_DESCR,
       IDS_P_NUMBER, IDS_SPECIFY_MIDI_OUT,
-#else
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      0, 0,
-#endif
       "<number>", "Specify MIDI-Out device" },
     { NULL }
 };
@@ -133,8 +140,8 @@ int mididrv_cmdline_options_init(void)
 
 static void reset_fifo(void)
 {
-    in_wi=0;
-    in_ri=0;
+    in_wi = 0;
+    in_ri = 0;
 }
 
 static int write_fifo(BYTE data)
@@ -229,7 +236,7 @@ int mididrv_in_open(void)
     }
 
     if (midi_in_dev != -1) {
-        ret = midiInOpen(&handle_in, midi_in_dev, (DWORD)midi_callback, 0, CALLBACK_FUNCTION);
+        ret = midiInOpen(&handle_in, midi_in_dev, (DWORD_PTR)midi_callback, 0, CALLBACK_FUNCTION);
         if (ret != MMSYSERR_NOERROR) {
             log_error(mididrv_log, "Cannot open MIDI-In device #%d!", midi_in_dev);
             handle_in = 0;
@@ -402,3 +409,5 @@ int mididrv_in(BYTE *b)
     }
     return 0;
 }
+
+#endif

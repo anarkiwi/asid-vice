@@ -9,7 +9,7 @@
  *  Dag Lem <resid@nimrod.no>
  * based on c64ui.c written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -44,16 +44,18 @@
 #include "menu_common.h"
 #include "menu_debug.h"
 #include "menu_help.h"
+#include "menu_jam.h"
+#include "menu_monitor.h"
 #include "menu_reset.h"
 #include "menu_settings.h"
 #include "menu_sid.h"
 #include "menu_sound.h"
 #include "menu_speed.h"
-#include "menu_video.h"
 #include "psid.h"
 #include "ui.h"
 #include "uifilereq.h"
 #include "uimenu.h"
+#include "videoarch.h"
 #include "vsidui.h"
 #include "vsidui_sdl.h"
 
@@ -275,30 +277,26 @@ static const ui_menu_entry_t vsid_main_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)sound_output_menu },
-    { "Video settings",
-      MENU_ENTRY_SUBMENU,
-      submenu_callback,
-      (ui_callback_data_t)c64_video_menu },
     { "Reset",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)reset_menu },
+    { "Action on CPU JAM",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)jam_menu },
     { "Speed settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
-      (ui_callback_data_t)speed_menu },
+      (ui_callback_data_t)speed_menu_vsid },
     { "Pause",
       MENU_ENTRY_OTHER,
       pause_callback,
       NULL },
     { "Monitor",
-      MENU_ENTRY_OTHER,
-      monitor_callback,
-      NULL },
-    { "Statusbar",
-      MENU_ENTRY_OTHER,
-      statusbar_callback,
-      NULL },
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)monitor_menu },
 #ifdef DEBUG
     { "Debug",
       MENU_ENTRY_SUBMENU,
@@ -312,7 +310,7 @@ static const ui_menu_entry_t vsid_main_menu[] = {
     { "Settings management",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
-      (ui_callback_data_t)settings_manager_menu },
+      (ui_callback_data_t)settings_manager_menu_vsid },
     { "Quit emulator",
       MENU_ENTRY_OTHER,
       quit_callback,
@@ -322,26 +320,17 @@ static const ui_menu_entry_t vsid_main_menu[] = {
 
 
 /* ---------------------------------------------------------------------*/
-/* vsidui_sdl.h */
+/* vsidui_sdl.h draw func */
 
-int sdl_vsid_state = 0;
-
-void sdl_vsid_activate(void)
+static void draw_func(void)
 {
-    sdl_vsid_state = SDL_VSID_ACTIVE | SDL_VSID_REPAINT;
-}
+    int i, n;
 
-void sdl_vsid_close(void)
-{
-    sdl_vsid_state = 0;
-}
-
-void sdl_vsid_draw(void)
-{
-    int i;
-
-    for (i = 0; i < (int)VSID_S_NUM; ++i) {
-        sdl_ui_print(vsidstrings[i], 0, i);
+    for (n = i = 0; i < (int)VSID_S_NUM; ++i, ++n) {
+        sdl_ui_print(vsidstrings[i], 0, n);
+        if ((i == 5) || (i == 8) || (i == 11) || (i == 12)) {
+            ++n;
+        }
     }
 }
 
@@ -350,11 +339,17 @@ void sdl_vsid_draw(void)
 
 int vsid_ui_init(void)
 {
+    unsigned int width;
+    unsigned int height;
+    
     sdl_ui_set_menu_params = NULL;
+    uikeyboard_menu_create();
+    uisid_menu_create();
 
     sdl_ui_set_main_menu(vsid_main_menu);
     sdl_ui_set_menu_font(mem_chargen_rom + 0x800, 8, 8);
 
+    sdl_vsid_draw_init(draw_func);
     sdl_vsid_activate();
 
     sprintf(vsidstrings[VSID_CS_TITLE], "Title:");
@@ -362,6 +357,16 @@ int vsid_ui_init(void)
     sprintf(vsidstrings[VSID_CS_RELEASED], "Released:");
 
     sdl_ui_init_draw_params();
+
+    width = sdl_active_canvas->draw_buffer->draw_buffer_width;
+    height = sdl_active_canvas->draw_buffer->draw_buffer_height;
+    sdl_active_canvas->draw_buffer_vsid = lib_calloc(1, sizeof(draw_buffer_t));
+    sdl_active_canvas->draw_buffer_vsid->draw_buffer = lib_malloc(width * height);
+
+    draw_buffer_vsid = sdl_active_canvas->draw_buffer_vsid->draw_buffer;
+
+    memset(sdl_active_canvas->draw_buffer_vsid->draw_buffer, 0, width * height);
+
     return 0;
 }
 
@@ -391,20 +396,20 @@ void vsid_ui_display_sync(int sync)
 
 void vsid_ui_display_sid_model(int model)
 {
-    sprintf(vsidstrings[VSID_S_MODEL], "Using %s emulation", csidmodel[model > 19 ? 7 : model]);
+    sprintf(vsidstrings[VSID_S_MODEL], "Using %s emulation", model == 0 ? "MOS6581" : "MOS8580");
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_MODEL]);
 }
 
 void vsid_ui_set_default_tune(int nr)
 {
-    sprintf(vsidstrings[VSID_S_DEFAULT],"Default tune: %d", nr);
+    sprintf(vsidstrings[VSID_S_DEFAULT], "Default tune: %d", nr);
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_DEFAULT]);
     sdl_vsid_default_tune = nr;
 }
 
 void vsid_ui_display_tune_nr(int nr)
 {
-    sprintf(vsidstrings[VSID_S_PLAYING],"Playing tune: %d", nr);
+    sprintf(vsidstrings[VSID_S_PLAYING], "Playing tune: %-3d", nr);
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_PLAYING]);
     sdl_vsid_current_tune = nr;
 
@@ -415,7 +420,7 @@ void vsid_ui_display_tune_nr(int nr)
 
 void vsid_ui_display_nr_of_tunes(int count)
 {
-    sprintf(vsidstrings[VSID_S_TUNES],"Number of tunes: %d", count);
+    sprintf(vsidstrings[VSID_S_TUNES], "Number of tunes: %d", count);
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_TUNES]);
     sdl_vsid_tunes = count;
 }
@@ -438,7 +443,7 @@ void vsid_ui_display_time(unsigned int sec)
 
 void vsid_ui_display_irqtype(const char *irq)
 {
-    sprintf(vsidstrings[VSID_S_IRQ],"Using %s interrupt", irq);
+    sprintf(vsidstrings[VSID_S_IRQ], "Using %s interrupt", irq);
 }
 
 void vsid_ui_setdrv(char* driver_info_text)
@@ -451,4 +456,6 @@ void vsid_ui_setdrv(char* driver_info_text)
 
 void vsid_ui_close(void)
 {
+    uikeyboard_menu_shutdown();
+    uisid_menu_shutdown();
 }

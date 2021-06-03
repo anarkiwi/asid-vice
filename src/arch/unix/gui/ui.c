@@ -24,10 +24,14 @@
  *
  */
 
+/* #define DEBUG_UI */
+
 #include "vice.h"
 
 #include "fullscreenarch.h"
 #include "interrupt.h"
+#include "joystick.h"
+#include "machine.h"
 #include "ui.h"
 #include "uiapi.h"
 #include "uiattach.h"
@@ -39,12 +43,17 @@
 #include "vsync.h"
 #include "openGL_sync.h"
 
+#ifdef DEBUG_UI
+#define DBG(_x_) log_debug _x_
+#else
+#define DBG(_x_)
+#endif
+
 static int is_paused = 0;
 
 static void pause_trap(WORD addr, void *data)
 {
     ui_display_paused(1);
-    is_paused = 1;
     vsync_suspend_speed_eval();
     while (is_paused) {
         ui_dispatch_next_event();
@@ -53,7 +62,8 @@ static void pause_trap(WORD addr, void *data)
 
 void ui_pause_emulation(int flag)
 {
-    if (flag) {
+    if (flag && !is_paused) {
+        is_paused = 1;
         interrupt_maincpu_trigger_trap(pause_trap, 0);
     } else {
         ui_display_paused(0);
@@ -86,8 +96,22 @@ void ui_common_shutdown(void)
     uiscreenshot_shutdown();
 }
 
+extern void ui_display_joystick_status_widget(int joystick_number, int status);
+
 void ui_display_joyport(BYTE *joyport)
 {
+    if (machine_class != VICE_MACHINE_VSID) {
+        int n;
+        DBG(("ui_display_joyport %02x %02x %02x %02x %02x\n",
+            joyport[0], joyport[1], joyport[2], joyport[3], joyport[4]));
+#if 1
+        for (n = 0; n < JOYSTICK_NUM; ++n) {
+            ui_display_joystick_status_widget(n, joyport[1 + n]);
+        }
+#else
+        ui_display_joystick_status_widget(joyport[0], joyport[1 + n]);
+#endif
+    }
 }
 
 void ui_display_event_time(unsigned int current, unsigned int total)

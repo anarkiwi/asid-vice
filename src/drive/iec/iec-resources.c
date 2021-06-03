@@ -39,6 +39,7 @@
 #include "traps.h"
 #include "util.h"
 
+static char *dos_rom_name_1540 = NULL;
 static char *dos_rom_name_1541 = NULL;
 static char *dos_rom_name_1541ii = NULL;
 static char *dos_rom_name_1570 = NULL;
@@ -51,66 +52,83 @@ static void set_drive_ram(unsigned int dnr)
 {
     drive_t *drive = drive_context[dnr]->drive;
 
-    if (drive->type == DRIVE_TYPE_NONE)
+    if (drive->type == DRIVE_TYPE_NONE) {
         return;
+    }
 
     drivemem_init(drive_context[dnr], drive->type);
 
     return;
 }
 
+static int set_dos_rom_name_1540(const char *val, void *param)
+{
+    if (util_string_set(&dos_rom_name_1540, val)) {
+        return 0;
+    }
+
+    return iecrom_load_1540();
+}
+
 static int set_dos_rom_name_1541(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_1541, val))
+    if (util_string_set(&dos_rom_name_1541, val)) {
         return 0;
+    }
 
     return iecrom_load_1541();
 }
 
 static int set_dos_rom_name_1541ii(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_1541ii, val))
+    if (util_string_set(&dos_rom_name_1541ii, val)) {
         return 0;
+    }
 
     return iecrom_load_1541ii();
 }
 
 static int set_dos_rom_name_1570(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_1570, val))
+    if (util_string_set(&dos_rom_name_1570, val)) {
         return 0;
+    }
 
     return iecrom_load_1570();
 }
 
 static int set_dos_rom_name_1571(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_1571, val))
+    if (util_string_set(&dos_rom_name_1571, val)) {
         return 0;
+    }
 
     return iecrom_load_1571();
 }
 
 static int set_dos_rom_name_1581(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_1581, val))
+    if (util_string_set(&dos_rom_name_1581, val)) {
         return 0;
+    }
 
     return iecrom_load_1581();
 }
 
 static int set_dos_rom_name_2000(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_2000, val))
+    if (util_string_set(&dos_rom_name_2000, val)) {
         return 0;
+    }
 
     return iecrom_load_2000();
 }
 
 static int set_dos_rom_name_4000(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_4000, val))
+    if (util_string_set(&dos_rom_name_4000, val)) {
         return 0;
+    }
 
     return iecrom_load_4000();
 }
@@ -119,7 +137,7 @@ static int set_drive_ram2(int val, void *param)
 {
     drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    drive->drive_ram2_enabled = val;
+    drive->drive_ram2_enabled = val ? 1 : 0;
     set_drive_ram(vice_ptr_to_uint(param));
     return 0;
 }
@@ -128,7 +146,7 @@ static int set_drive_ram4(int val, void *param)
 {
     drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    drive->drive_ram4_enabled = val;
+    drive->drive_ram4_enabled = val ? 1 : 0;
     set_drive_ram(vice_ptr_to_uint(param));
     return 0;
 }
@@ -137,32 +155,34 @@ static int set_drive_ram6(int val, void *param)
 {
     drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    drive->drive_ram6_enabled = val;
+    drive->drive_ram6_enabled = val ? 1 : 0;
     set_drive_ram(vice_ptr_to_uint(param));
     return 0;
 }
 
 static int set_drive_ram8(int val, void *param)
 {
-    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;;
+    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    drive->drive_ram8_enabled = val;
+    drive->drive_ram8_enabled = val ? 1 : 0;
     set_drive_ram(vice_ptr_to_uint(param));
     return 0;
 }
 
 static int set_drive_rama(int val, void *param)
 {
-    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;;
+    drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    drive->drive_rama_enabled = val;
+    drive->drive_rama_enabled = val ? 1 : 0;
     set_drive_ram(vice_ptr_to_uint(param));
     return 0;
 }
 
 static const resource_string_t resources_string[] = {
-    { "DosName1541", "dos1541", RES_EVENT_NO, NULL,
+    { "DosName1540", "dos1540", RES_EVENT_NO, NULL,
       /* FIXME: should be same but names may differ */
+      &dos_rom_name_1540, set_dos_rom_name_1540, NULL },
+    { "DosName1541", "dos1541", RES_EVENT_NO, NULL,
       &dos_rom_name_1541, set_dos_rom_name_1541, NULL },
     { "DosName1541ii", "d1541II", RES_EVENT_NO, NULL,
       &dos_rom_name_1541ii, set_dos_rom_name_1541ii, NULL },
@@ -176,10 +196,6 @@ static const resource_string_t resources_string[] = {
       &dos_rom_name_2000, set_dos_rom_name_2000, NULL },
     { "DosName4000", "dos4000", RES_EVENT_NO, NULL,
       &dos_rom_name_4000, set_dos_rom_name_4000, NULL },
-    { NULL }
-};
-
-static const resource_int_t resources_int[] = {
     { NULL }
 };
 
@@ -221,8 +237,9 @@ int iec_resources_init(void)
         res_drive[4].value_ptr = &(drive->drive_rama_enabled);
         res_drive[4].param = uint_to_void_ptr(dnr);
 
-        if (resources_register_int(res_drive) < 0)
+        if (resources_register_int(res_drive) < 0) {
             return -1;
+        }
 
         lib_free((char *)(res_drive[0].name));
         lib_free((char *)(res_drive[1].name));
@@ -231,14 +248,16 @@ int iec_resources_init(void)
         lib_free((char *)(res_drive[4].name));
     }
 
-    if (resources_register_string(resources_string) < 0)
+    if (resources_register_string(resources_string) < 0) {
         return -1;
+    }
 
-    return resources_register_int(resources_int);
+    return 0;
 }
 
 void iec_resources_shutdown(void)
 {
+    lib_free(dos_rom_name_1540);
     lib_free(dos_rom_name_1541);
     lib_free(dos_rom_name_1541ii);
     lib_free(dos_rom_name_1570);
@@ -247,4 +266,3 @@ void iec_resources_shutdown(void)
     lib_free(dos_rom_name_2000);
     lib_free(dos_rom_name_4000);
 }
-

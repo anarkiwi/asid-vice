@@ -47,6 +47,7 @@ static struct {
     int type;
 } type_radio[] = {
     { "d64", NULL, DISK_IMAGE_TYPE_D64 },
+    { "d67", NULL, DISK_IMAGE_TYPE_D67 },
     { "d71", NULL, DISK_IMAGE_TYPE_D71 },
     { "d80", NULL, DISK_IMAGE_TYPE_D80 },
     { "d81", NULL, DISK_IMAGE_TYPE_D81 },
@@ -72,10 +73,10 @@ static GtkWidget *build_empty_disk_dialog(void)
     gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_ACCEPT);
 
     frame = gtk_frame_new(_("Disk options"));
-    box = gtk_vbox_new(0, FALSE);
+    box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     /* Diskname */
-    hbox = gtk_hbox_new(0, FALSE);
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     tmp = gtk_label_new(_("Disk name:"));
     gtk_box_pack_start(GTK_BOX(hbox), tmp, FALSE, FALSE, 0);
     gtk_widget_show(tmp);
@@ -99,7 +100,7 @@ static GtkWidget *build_empty_disk_dialog(void)
     gtk_box_pack_start(GTK_BOX(box), hbox, FALSE, FALSE, 0);
     gtk_widget_show(hbox);
 
-    hbox = gtk_hbox_new(0, FALSE);
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
     for (i = 0; type_radio[i].label; i++) {
         if (i == 0) {
@@ -118,13 +119,8 @@ static GtkWidget *build_empty_disk_dialog(void)
     gtk_container_add(GTK_CONTAINER(frame), box);
     gtk_widget_show(box);
 
-#if GTK_CHECK_VERSION(2, 14, 0)
     gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(d))), frame, FALSE, FALSE, 0);
-#else
-    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(d)->vbox), frame, FALSE, FALSE, 0);
-#endif
     gtk_widget_show(frame);
-
     return d;
 }
 
@@ -138,8 +134,8 @@ int ui_empty_disk_dialog(char *name)
     int i, type = 0, ret = 0;
 
     if (edisk_dialog) {
-        gdk_window_show(edisk_dialog->window);
-        gdk_window_raise(edisk_dialog->window);
+        gdk_window_show(gtk_widget_get_window(edisk_dialog));
+        gdk_window_raise(gtk_widget_get_window(edisk_dialog));
         gtk_widget_show(edisk_dialog);
     } else {
         edisk_dialog = build_empty_disk_dialog();
@@ -161,7 +157,7 @@ int ui_empty_disk_dialog(char *name)
     }
 
     strcpy(name, fname);
-    lib_free(fname);
+    g_free(fname);
 
     /* format label */
     dname = gtk_entry_get_text(GTK_ENTRY(diskname));
@@ -183,7 +179,7 @@ int ui_empty_disk_dialog(char *name)
 
     /* type radio button */
     for (i = 0; type_radio[i].label; i++) {
-        if (GTK_TOGGLE_BUTTON(type_radio[i].w)->active) {
+        if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(type_radio[i].w))) {
             type = type_radio[i].type;
             break;
         }

@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -56,6 +57,10 @@
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef __HAIKU__
+#include <sys/wait.h>
 #endif
 
 #include "archdep.h"
@@ -176,6 +181,15 @@ char *archdep_default_fliplist_file_name(void)
     return fname;
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    static char *fname;
+
+    lib_free(fname);
+    fname = util_concat(archdep_boot_path(), "/vice.rtc", NULL);
+    return fname;
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
   const char *home;
@@ -194,16 +208,6 @@ FILE *archdep_open_default_log_file(void)
     lib_free(fname);
 
     return f;
-}
-
-int archdep_num_text_lines(void)
-{
-    return 25;
-}
-
-int archdep_num_text_columns(void)
-{
-    return 80;
 }
 
 int archdep_default_logger(const char *level_string, const char *txt)
@@ -384,6 +388,11 @@ int archdep_file_is_blockdev(const char *name)
 int archdep_file_is_chardev(const char *name)
 {
     return 0;
+}
+
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
 }
 
 void archdep_shutdown(void)

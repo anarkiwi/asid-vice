@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -28,15 +29,17 @@
 
 #include "c64memlimit.h"
 
-
 #define NUM_SEGMENTS 7
-#define NUM_CONFIGS 32
 
-static const int mstart[NUM_SEGMENTS] = { 0x00, 0x10, 0x80,
-                                          0xa0, 0xc0, 0xd0, 0xe0 };
+static const int mstart[NUM_SEGMENTS] = {
+    0x00, 0x10, 0x80,
+    0xa0, 0xc0, 0xd0, 0xe0
+};
 
-static const int mend[NUM_SEGMENTS] = { 0x0f, 0x7f, 0x9f,
-                                        0xbf, 0xcf, 0xdf, 0xff };
+static const int mend[NUM_SEGMENTS] = {
+    0x0f, 0x7f, 0x9f,
+    0xbf, 0xcf, 0xdf, 0xff
+};
 
 static const DWORD limit_tab[NUM_SEGMENTS][NUM_CONFIGS] = {
     /* 0000-0fff */
@@ -103,7 +106,7 @@ void mem_limit_plus60k_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101])
         for (j = 0; j < NUM_SEGMENTS; j++) {
             for (k = mstart[j]; k <= mend[j]; k++) {
                 if (k < 0x10) {
-                    mem_read_limit_tab[i][k] = limit_tab[j][i];
+                    mem_read_limit_tab[i][k] = 0x00020ffd;
                 } else {
                     mem_read_limit_tab[i][k] = 0;
                 }
@@ -121,6 +124,24 @@ void mem_limit_256k_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101])
         for (j = 0; j < NUM_SEGMENTS; j++) {
             for (k = mstart[j]; k <= mend[j]; k++) {
                 mem_read_limit_tab[i][k] = 0;
+            }
+        }
+        mem_read_limit_tab[i][0x100] = 0;
+    }
+}
+
+void mem_limit_max_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101])
+{
+    int i, j, k;
+
+    for (i = 0; i < NUM_CONFIGS; i++) {
+        for (j = 0; j < NUM_SEGMENTS; j++) {
+            for (k = mstart[j]; k <= mend[j]; k++) {
+                if (k < 0x8) {
+                    mem_read_limit_tab[i][k] = 0x000207fd;
+                } else {
+                    mem_read_limit_tab[i][k] = 0;
+                }
             }
         }
         mem_read_limit_tab[i][0x100] = 0;

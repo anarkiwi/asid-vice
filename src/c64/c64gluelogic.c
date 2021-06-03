@@ -34,6 +34,7 @@
 #include "c64mem.h"
 #include "cmdline.h"
 #include "log.h"
+#include "machine.h"
 #include "maincpu.h"
 #include "resources.h"
 #include "snapshot.h"
@@ -41,7 +42,7 @@
 #include "types.h"
 #include "vicii.h"
 
-static int glue_logic_type = 0;
+static int glue_logic_type = GLUE_LOGIC_DISCRETE;
 static int old_vbank = 0;
 static int glue_alarm_active = 0;
 static alarm_t *glue_alarm = NULL;
@@ -120,12 +121,20 @@ void c64_glue_reset(void)
 
 static int set_glue_type(int val, void *param)
 {
+    switch (val) {
+        case GLUE_LOGIC_DISCRETE:
+        case GLUE_LOGIC_CUSTOM_IC:
+            break;
+        default:
+            return -1;
+    }
+
     glue_logic_type = val;
     return 0;
 }
 
 static const resource_int_t resources_int[] = {
-    { "GlueLogic", 0, RES_EVENT_NO, NULL,
+    { "GlueLogic", GLUE_LOGIC_CUSTOM_IC, RES_EVENT_NO, NULL,
       &glue_logic_type, set_glue_type, NULL },
     { NULL }
 };
@@ -155,6 +164,15 @@ void c64_glue_init(void)
 }
 
 /* ------------------------------------------------------------------------- */
+
+/* GLUE snapshot module format:
+
+   type | name         | description
+   ------------------------------
+   BYTE | type         | glue logic type
+   BYTE | old vbank    | old video bank
+   BYTE | alarm active | alarm is active
+ */
 
 static char snap_module_name[] = "GLUE";
 #define SNAP_MAJOR 1
@@ -191,17 +209,14 @@ int c64_glue_snapshot_read_module(snapshot_t *s)
     int snap_type, snap_alarm_active;
     snapshot_module_t *m;
 
-    m = snapshot_module_open(s, snap_module_name,
-                             &major_version, &minor_version);
+    m = snapshot_module_open(s, snap_module_name, &major_version, &minor_version);
     if (m == NULL) {
         return -1;
     }
 
+    /* Do not accept versions higher than current */
     if (major_version > SNAP_MAJOR || minor_version > SNAP_MINOR) {
-        log_error(LOG_ERR,
-                  "GlueLogic: Snapshot module version (%d.%d) newer than %d.%d.",
-                  major_version, minor_version,
-                  SNAP_MAJOR, SNAP_MINOR);
+        snapshot_set_error(SNAPSHOT_MODULE_HIGHER_VERSION);
         goto fail;
     }
 
@@ -238,4 +253,3 @@ fail:
     }
     return -1;
 }
-

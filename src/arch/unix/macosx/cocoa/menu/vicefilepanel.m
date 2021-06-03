@@ -56,12 +56,12 @@
 
 + (NSArray *)getDiskImageFileExtensions
 {
-    return [NSArray arrayWithObjects: @"d64" ,@"d71", @"d80", @"d81", @"d82", @"g64", @"g41", @"p64", @"x64", nil];    
+    return [NSArray arrayWithObjects: @"d64" ,@"d71", @"d80", @"d81", @"d82", @"g64", @"g41", @"p64", @"x64", @"d1m", @"d2m", @"d4m", nil];
 }
 
 + (NSArray *)getCBMImageFileExtensions
 {
-    return [NSArray arrayWithObjects: @"d64" ,@"d71", @"d80", @"d81", @"d82", @"g64", @"g41", @"p64", @"x64", 
+    return [NSArray arrayWithObjects: @"d64" ,@"d71", @"d80", @"d81", @"d82", @"g64", @"g41", @"p64", @"x64", @"d1m", @"d2m", @"d4m",
                                       @"t64", @"tap", 
                                       @"prg", @"p00", 
                                       @"zip", @"bz2", @"gz", @"d6z", @"d7z", @"d8z", @"g6z", @"g4z", @"p6z", @"x6z",
@@ -221,7 +221,7 @@
     if (result==NSFileHandlingPanelOKButton) {
 
         // fetch filename
-        fileName = [panel filename];
+        fileName = [[panel URL] path];
 
         if(imageContentsView != nil) {
             // get selected program item
@@ -272,7 +272,7 @@
     
     int result = [panel runModal];
     if (result==NSFileHandlingPanelOKButton) {
-        return [panel filename];
+        return [[panel URL] path];
     }    
     return nil;
 }
@@ -288,7 +288,7 @@
     
     int result = [panel runModal];
     if (result==NSFileHandlingPanelOKButton) {
-        return [panel filename];
+        return [[panel URL] path];
     }    
     return nil;
 }
@@ -309,7 +309,7 @@
     
     int result = [panel runModal];
     if (result==NSFileHandlingPanelOKButton) {
-        return [panel filename];
+        return [[panel URL] path];
     }    
     return nil;
 }
@@ -327,7 +327,7 @@
     
     int result = [panel runModal];
     if (result==NSFileHandlingPanelOKButton) {
-        return [panel filename];
+        return [[panel URL] path];
     }    
     return nil;
 }
@@ -342,7 +342,7 @@
     
     int result = [panel runModal];
     if (result==NSFileHandlingPanelOKButton) {
-        return [panel filename];
+        return [[panel URL] path];
     }    
     return nil;
 }
@@ -379,7 +379,7 @@
     if ([panel runModal] == NSFileHandlingPanelOKButton) {
         NSString *item = [type_button titleOfSelectedItem];
         NSNumber *number = [types valueForKey:item];
-        NSString *filename = [panel filename];
+        NSString *filename = [[panel URL] path];
         result = [NSArray arrayWithObjects:filename, number, nil];
     }
     return result;

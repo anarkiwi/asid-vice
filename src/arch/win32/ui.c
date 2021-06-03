@@ -5,6 +5,7 @@
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Tibor Biczo <crown@mail.matav.hu>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -46,7 +47,6 @@
 #include "clipboard.h"
 #include "debug.h"
 #include "drive.h"
-#include "drivecpu.h"
 #include "fullscrn.h"
 #include "imagecontents.h"
 #include "interrupt.h"
@@ -66,6 +66,7 @@
 #include "res.h"
 #include "resources.h"
 #include "system.h"
+#include "tape.h"
 #include "translate.h"
 #include "types.h"
 #include "ui.h"
@@ -103,6 +104,9 @@
 
 #define countof(array) (sizeof(array) / sizeof((array)[0]))
 
+#define VICE_WIN_LONG_MAX 2147483647L
+#define VICE_WIN_LONG_MIN (-2147483647L - 1)
+
 static TCHAR *hwnd_titles[2];
 
 /* Exposure handler.  */
@@ -115,23 +119,23 @@ int window_padding_y[2];
 static HACCEL ui_accelerator;
 
 static generic_trans_table_t generic_trans_table[] = {
-    { IDM_REFRESH_RATE_1, "1/&1" },
-    { IDM_REFRESH_RATE_2, "1/&2" },
-    { IDM_REFRESH_RATE_3, "1/&3" },
-    { IDM_REFRESH_RATE_4, "1/&4" },
-    { IDM_REFRESH_RATE_5, "1/&5" },
-    { IDM_REFRESH_RATE_6, "1/&6" },
-    { IDM_REFRESH_RATE_7, "1/&7" },
-    { IDM_REFRESH_RATE_8, "1/&8" },
-    { IDM_REFRESH_RATE_9, "1/&9" },
-    { IDM_REFRESH_RATE_10, "1/1&0" },
-    { IDM_MAXIMUM_SPEED_200, "&200%" },
-    { IDM_MAXIMUM_SPEED_100, "&100%" },
-    { IDM_MAXIMUM_SPEED_50, "&50%" },
-    { IDM_MAXIMUM_SPEED_20, "&20%" },
-    { IDM_MAXIMUM_SPEED_10, "1&0%" },
-    { IDM_SYNC_FACTOR_PAL, "&PAL" },
-    { IDM_SYNC_FACTOR_NTSC, "&NTSC" },
+    { IDM_REFRESH_RATE_1,    TEXT("1/&1")  },
+    { IDM_REFRESH_RATE_2,    TEXT("1/&2")  },
+    { IDM_REFRESH_RATE_3,    TEXT("1/&3")  },
+    { IDM_REFRESH_RATE_4,    TEXT("1/&4")  },
+    { IDM_REFRESH_RATE_5,    TEXT("1/&5")  },
+    { IDM_REFRESH_RATE_6,    TEXT("1/&6")  },
+    { IDM_REFRESH_RATE_7,    TEXT("1/&7")  },
+    { IDM_REFRESH_RATE_8,    TEXT("1/&8")  },
+    { IDM_REFRESH_RATE_9,    TEXT("1/&9")  },
+    { IDM_REFRESH_RATE_10,   TEXT("1/1&0") },
+    { IDM_MAXIMUM_SPEED_200, TEXT("&200%") },
+    { IDM_MAXIMUM_SPEED_100, TEXT("&100%") },
+    { IDM_MAXIMUM_SPEED_50,  TEXT("&50%")  },
+    { IDM_MAXIMUM_SPEED_20,  TEXT("&20%")  },
+    { IDM_MAXIMUM_SPEED_10,  TEXT("1&0%")  },
+    { IDM_SYNC_FACTOR_PAL,   TEXT("&PAL")  },
+    { IDM_SYNC_FACTOR_NTSC,  TEXT("&NTSC") },
     { 0, NULL}
 };
 
@@ -139,11 +143,18 @@ static generic_trans_table_t generic_trans_table[] = {
 static LRESULT CALLBACK dummywindowproc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam);
 static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam);
 
+/* List of functions that determine if certain items can be grayed out from the menus.  */
+static const ui_menu_grey_function_t grayed_list_function[] = {
+    { uilib_cpu_is_smp, IDM_TOGGLE_CPU_AFFINITY }, 
+    { NULL, 0 }
+};
+
 /* List of resources that can be grayed out from the menus.  */
 static const ui_menu_toggle_t grayed_list_res[] = {
-#ifdef HAVE_TFE
-/*    { "ETHERNET_DISABLED", IDM_TFE_SETTINGS }, */
-#endif /* #ifdef HAVE_TFE */
+#ifdef HAVE_PCAP
+    { "ETHERNET_DISABLED", IDM_ETHERNET_SETTINGS },
+    { "ETHERNET_DISABLED", IDM_ETHERNETCART_SETTINGS },
+#endif /* #ifdef HAVE_PCAP */
     { NULL, 0 }
 };
 
@@ -159,13 +170,12 @@ static const ui_menu_toggle_t toggle_list[] = {
     { "Sound", IDM_TOGGLE_SOUND },
     { "DriveTrueEmulation", IDM_TOGGLE_DRIVE_TRUE_EMULATION },
     { "DriveSoundEmulation", IDM_TOGGLE_DRIVE_SOUND_EMULATION },
-    { "AutostartHandleTrueDriveEmulation", IDM_TOGGLE_AUTOSTART_HANDLE_TDE },
     { "WarpMode", IDM_TOGGLE_WARP_MODE },
     { "VirtualDevices", IDM_TOGGLE_VIRTUAL_DEVICES },
     { "SaveResourcesOnExit", IDM_TOGGLE_SAVE_SETTINGS_ON_EXIT },
     { "ConfirmOnExit", IDM_TOGGLE_CONFIRM_ON_EXIT },
-    { "FullScreenEnabled", IDM_TOGGLE_FULLSCREEN },
 #ifdef HAVE_D3D9_H
+    { "FullScreenEnabled", IDM_TOGGLE_FULLSCREEN },
     { "DX9Disable", IDM_TOGGLE_DX9DISABLE },
 #endif
     { "AlwaysOnTop", IDM_TOGGLE_ALWAYSONTOP },
@@ -176,6 +186,7 @@ static const ui_menu_toggle_t toggle_list[] = {
     { "Drive0CPU_TRACE", IDM_TOGGLE_DRIVE0CPU_TRACE },
     { "Drive1CPU_TRACE", IDM_TOGGLE_DRIVE1CPU_TRACE },
 #endif
+    { "SingleCPU", IDM_TOGGLE_CPU_AFFINITY },
     { NULL, 0 }
 };
 
@@ -222,6 +233,16 @@ static const ui_res_possible_values_t SyncFactor[] = {
     { -1, 0 }
 };
 
+static const ui_res_possible_values_t JamAction[] = {
+    { MACHINE_JAM_ACTION_DIALOG, IDM_JAM_ACTION_ASK },
+    { MACHINE_JAM_ACTION_CONTINUE, IDM_JAM_ACTION_CONTINUE },
+    { MACHINE_JAM_ACTION_MONITOR, IDM_JAM_ACTION_START_MONITOR },
+    { MACHINE_JAM_ACTION_RESET, IDM_JAM_ACTION_RESET },
+    { MACHINE_JAM_ACTION_HARD_RESET, IDM_JAM_ACTION_HARD_RESET },
+    { MACHINE_JAM_ACTION_QUIT, IDM_JAM_ACTION_QUIT_EMULATOR },
+    { -1, 0 }
+};
+
 #ifdef DEBUG
 static const ui_res_possible_values_t TraceMode[] = {
     { DEBUG_NORMAL, IDM_DEBUG_MODE_NORMAL },
@@ -236,6 +257,7 @@ static const ui_res_value_list_t value_list[] = {
     { "RefreshRate", RefreshRateValues, 0 },
     { "Speed", SpeedValues, IDM_MAXIMUM_SPEED_CUSTOM },
     { "MachineVideoStandard", SyncFactor, 0 },
+    { "JAMAction", JamAction, 0 },
     { "EventStartMode", RecordingOptions, 0 },
 #ifdef DEBUG
     { "TraceMode", TraceMode, 0},
@@ -263,15 +285,15 @@ static const struct {
     { NULL, 0}
 };
 
-ui_menu_translation_table_t monitor_trans_popup_table[] = {
-    { 1, IDS_MP_FILE },
-    { 1, IDS_MP_DEBUG },
-    { 1, IDS_MP_VIEW },
-    { 1, IDS_MP_WINDOW },
+ui_popup_translation_table_t monitor_trans_popup_table[] = {
+    { 1, IDS_MP_FILE, NULL },
+    { 1, IDS_MP_DEBUG, NULL },
+    { 1, IDS_MP_VIEW, NULL },
+    { 1, IDS_MP_WINDOW, NULL },
     { 0, 0 }
 };
 
-ui_popup_translation_table_t monitor_trans_item_table[] = {
+ui_menu_translation_table_t monitor_trans_item_table[] = {
     { IDM_MON_OPEN, IDS_MI_MON_OPEN },
     { IDM_MON_SAVE, IDS_MI_MON_SAVE },
     { IDM_MON_PRINT, IDS_MI_MON_PRINT },
@@ -305,8 +327,6 @@ static HWND main_hwnd;
 
 static int emu_menu;
 
-static int pause_pending;
-
 static ui_menu_translation_table_t *menu_translation_table;
 static ui_popup_translation_table_t *popup_translation_table;
 
@@ -326,6 +346,9 @@ int ui_init(int *argc, char **argv)
         case VICE_MACHINE_C64:
         case VICE_MACHINE_C64SC:
             emu_menu = IDR_MENUC64;
+            break;
+        case VICE_MACHINE_SCPU64:
+            emu_menu = IDR_MENUSCPU64;
             break;
         case VICE_MACHINE_C64DTV:
             emu_menu = IDR_MENUC64DTV;
@@ -421,6 +444,45 @@ int ui_init_finish(void)
     return 0;
 }
 
+static int size_set[2] = { 0, 0 };
+
+static void ui_set_size(void)
+{
+    int widthres, heightres;
+    int width, height;
+    int i;
+    WINDOWPLACEMENT place;
+    RECT rect;
+
+    for (i = 0; i < number_of_windows; i++) {
+        resources_get_int_sprintf("Window%dWidth", &widthres, i);
+        resources_get_int_sprintf("Window%dHeight", &heightres, i);
+        if (widthres != CW_USEDEFAULT || heightres != CW_USEDEFAULT) {
+            place.length = sizeof(WINDOWPLACEMENT);
+            GetWindowPlacement(window_handles[i], &place);
+            GetWindowRect(window_handles[i], &rect);
+            if (place.showCmd == SW_SHOWNORMAL) {
+                if (widthres == CW_USEDEFAULT) {
+                    width = rect.right;
+                } else {
+                    width = widthres;
+                }
+                if (heightres == CW_USEDEFAULT) {
+                    height = rect.bottom;
+                } else {
+                    height = heightres;
+                }
+                SetWindowPos(window_handles[i], NULL, 0, 0, width, height, SWP_NOMOVE);
+            }
+        }
+        if (machine_class == VICE_MACHINE_C128 && (widthres != CW_USEDEFAULT || heightres != CW_USEDEFAULT)) {
+            size_set[i] = 2;
+        } else {
+            size_set[i] = 1;
+        }
+    }
+}
+
 int ui_init_finalize(void)
 {
     int alwaysontop;
@@ -428,6 +490,9 @@ int ui_init_finalize(void)
     fullscreen_setup_finished();
     resources_get_int("AlwaysOnTop", &alwaysontop);
     ui_set_alwaysontop(alwaysontop);
+    if (machine_class != VICE_MACHINE_VSID) {
+        ui_set_size();
+    }
     return 0;
 }
 
@@ -473,7 +538,10 @@ static void ui_translate_menu_popups(HMENU menu, ui_popup_translation_table_t *t
                     menu1 = GetSubMenu(menu, pos1);
                 }
                 if (trans_table[i].ids != 0) {
-                    ModifyMenu(menu, (UINT)pos1, MF_BYPOSITION | MF_STRING | MF_POPUP, vice_ptr_to_uint(menu1), translate_text(trans_table[i].ids));
+                    uilib_localize_menu_popup(menu, pos1, menu1, trans_table[i].ids);
+                    if (trans_table[i].dynmenu) {
+                        trans_table[i].dynmenu(menu1);
+                    }
                 }
                 pos2 = -1;
                 pos3 = -1;
@@ -484,7 +552,10 @@ static void ui_translate_menu_popups(HMENU menu, ui_popup_translation_table_t *t
                     pos2++;
                     menu2 = GetSubMenu(menu1, pos2);
                 }
-                ModifyMenu(menu1, (UINT)pos2, MF_BYPOSITION | MF_STRING | MF_POPUP, vice_ptr_to_uint(menu2), translate_text(trans_table[i].ids));
+                uilib_localize_menu_popup(menu1, pos2, menu2, trans_table[i].ids);
+                if (trans_table[i].dynmenu) {
+                    trans_table[i].dynmenu(menu2);
+                }
                 pos3 = -1;
                 break;
             case 3:
@@ -493,7 +564,10 @@ static void ui_translate_menu_popups(HMENU menu, ui_popup_translation_table_t *t
                     pos3++;
                     menu3 = GetSubMenu(menu2, pos3);
                 }
-                ModifyMenu(menu2, (UINT)pos3, MF_BYPOSITION | MF_STRING | MF_POPUP, vice_ptr_to_uint(menu3), translate_text(trans_table[i].ids));
+                uilib_localize_menu_popup(menu2, pos3, menu3, trans_table[i].ids);
+                if (trans_table[i].dynmenu) {
+                    trans_table[i].dynmenu(menu3);
+                }
                 break;
         }
         i++;
@@ -509,11 +583,11 @@ static void ui_translate_menu_items(HMENU menu, ui_menu_translation_table_t *tra
     }
 
     for (i = 0; trans_table[i].idm != 0; i++) {
-        ModifyMenu(menu, trans_table[i].idm, MF_BYCOMMAND | MF_STRING, trans_table[i].idm, translate_text(trans_table[i].ids));
+        uilib_localize_menu_item(menu, trans_table[i].idm, trans_table[i].ids);
     }
 
     for (i = 0; generic_trans_table[i].idm != 0; i++) {
-        ModifyMenu(menu, generic_trans_table[i].idm, MF_BYCOMMAND | MF_STRING, generic_trans_table[i].idm, generic_trans_table[i].text);
+        uilib_set_menu_item_text(menu, generic_trans_table[i].idm, MF_BYCOMMAND, generic_trans_table[i].idm, generic_trans_table[i].text);
     }
 }
 
@@ -689,25 +763,25 @@ void ui_handle_aspect_ratio(int window_index, WPARAM wparam, LPARAM lparam)
 
 static int ui_get_menu_height(HWND w)
 {
-	RECT rect;
+    RECT rect;
     int i;
-    LONG min_y = LONG_MAX, max_y = LONG_MIN;
-	HMENU hmenu = GetMenu(w);
+    LONG min_y = VICE_WIN_LONG_MAX, max_y = VICE_WIN_LONG_MIN;
+    HMENU hmenu = GetMenu(w);
  
     for(i = 0; i < GetMenuItemCount(hmenu); i++)
     {
         GetMenuItemRect(w, hmenu, i, &rect);
         if (rect.top < min_y) {
-			min_y = rect.top;
-		}
+            min_y = rect.top;
+        }
         if (rect.bottom > max_y) {
-			max_y = rect.bottom;
-		}
+            max_y = rect.bottom;
+        }
     }
-	if (max_y < min_y) {
-		return 0;
-	}
-	return (int)(max_y - min_y + 1);
+    if (max_y < min_y) {
+        return 0;
+    }
+    return (int)(max_y - min_y + 1);
 }
 
 /* Resize `w' so that the client rectangle is of the requested size.  */
@@ -720,11 +794,12 @@ void ui_resize_canvas_window(video_canvas_t *canvas)
     unsigned int width, height;
     DWORD adjust_style;
     int aspect_ratio, true_aspect_ratio, keep_aspect_ratio;
+    int menu_height;
 
     w = canvas->hwnd;
     cw = canvas->client_hwnd;
-    width = canvas->draw_buffer->visible_width * (canvas->videoconfig->doublesizex + 1);
-    height = canvas->draw_buffer->visible_height * (canvas->videoconfig->doublesizey + 1);
+    width = canvas->draw_buffer->visible_width * canvas->videoconfig->scalex;
+    height = canvas->draw_buffer->visible_height * canvas->videoconfig->scaley;
 
     if (video_dx9_enabled()) {
         resources_get_int("KeepAspectRatio", &keep_aspect_ratio);
@@ -756,30 +831,35 @@ void ui_resize_canvas_window(video_canvas_t *canvas)
     place.length = sizeof(WINDOWPLACEMENT);
     GetWindowPlacement(w, &place);
 
-    GetClientRect(w, &wrect);
-    ClientToScreen(w, (LPPOINT)&wrect);
-    wrect.right = wrect.left + width;
-    wrect.bottom = wrect.top + height + statusbar_get_status_height();
-    wrect.top -= ui_get_menu_height(w);
-    adjust_style = WS_CAPTION | WS_BORDER | WS_DLGFRAME | (GetWindowLong(w, GWL_STYLE) & WS_SIZEBOX);
-	/* As MSDN says, "The AdjustWindowRect function does not add extra space when a menu bar wraps
-	   to two or more rows". Therefore, pass FALSE as argument bMenu of AdjustWindowRect: the menu
-	   height is calculated by ui_get_menu_height() */
-    AdjustWindowRect(&wrect, adjust_style, FALSE);
-    window_padding_x[window_index] = wrect.right - wrect.left - width;
-    window_padding_y[window_index] = wrect.bottom - wrect.top - height;
+    do {
+        menu_height = ui_get_menu_height(w);
+        GetClientRect(w, &wrect);
+        ClientToScreen(w, (LPPOINT)&wrect);
+        wrect.right = wrect.left + width;
+        wrect.bottom = wrect.top + height + statusbar_get_status_height();
+        wrect.top -= ui_get_menu_height(w);
+        adjust_style = WS_CAPTION | WS_BORDER | WS_DLGFRAME | (GetWindowLong(w, GWL_STYLE) & WS_SIZEBOX);
+        /* As MSDN says, "The AdjustWindowRect function does not add extra space when a menu bar wraps
+        to two or more rows". Therefore, pass FALSE as argument bMenu of AdjustWindowRect: the menu
+        height is calculated by ui_get_menu_height() */
+        AdjustWindowRect(&wrect, adjust_style, FALSE);
+        window_padding_x[window_index] = wrect.right - wrect.left - width;
+        window_padding_y[window_index] = wrect.bottom - wrect.top - height;
 
-    if (place.showCmd == SW_SHOWNORMAL) {
-        MoveWindow(w, wrect.left, wrect.top, wrect.right - wrect.left, wrect.bottom - wrect.top, TRUE);
-        if (cw != 0) {
-            MoveWindow(cw, 0, 0, width, height, TRUE);
+        if (place.showCmd == SW_SHOWNORMAL) {
+            MoveWindow(w, wrect.left, wrect.top, wrect.right - wrect.left, wrect.bottom - wrect.top, TRUE);
+            if (cw != 0) {
+                MoveWindow(cw, 0, 0, width, height, TRUE);
+            }
         }
-    } else {
-        place.rcNormalPosition.right = place.rcNormalPosition.left + wrect.right - wrect.left;
-        place.rcNormalPosition.bottom = place.rcNormalPosition.top + wrect.bottom - wrect.top;
-        SetWindowPlacement(w, &place);
-        InvalidateRect(w, NULL, FALSE);
-    }
+        else {
+            place.rcNormalPosition.right = place.rcNormalPosition.left + wrect.right - wrect.left;
+            place.rcNormalPosition.bottom = place.rcNormalPosition.top + wrect.bottom - wrect.top;
+            SetWindowPlacement(w, &place);
+            InvalidateRect(w, NULL, FALSE);
+        }
+        /* resizing may have changed the menu height so we need another resize */
+    } while (menu_height != ui_get_menu_height(w));
 }
 
 static void ui_resize_render_window(video_canvas_t *canvas)
@@ -796,8 +876,8 @@ static void ui_resize_render_window(video_canvas_t *canvas)
         video_canvas_reset_dx9(canvas);
     }
     else if (wrect.right > wrect.left && wrect.bottom > wrect.top) {
-		canvas->draw_buffer->canvas_physical_width = wrect.right - wrect.left;
-		canvas->draw_buffer->canvas_physical_height = wrect.bottom - wrect.top - statusbar_get_status_height();
+                canvas->draw_buffer->canvas_physical_width = wrect.right - wrect.left;
+                canvas->draw_buffer->canvas_physical_height = wrect.bottom - wrect.top - statusbar_get_status_height();
         video_viewport_resize(canvas, 0);
     }
 }
@@ -825,7 +905,9 @@ void ui_update_menu(void)
     if (menu_translation_table != NULL) {
         ui_translate_menu_items(translated_menu, menu_translation_table);
         ui_translate_menu_popups(translated_menu, popup_translation_table);
+#ifndef WIN32_UNICODE_SUPPORT
         uikeyboard_menu_shortcuts(translated_menu);
+#endif
     }
     ui_show_menu();
 }
@@ -860,6 +942,11 @@ static void update_menus(HWND hwnd)
     int result;
     const char *lang;
     HMENU menu = GetMenu(hwnd);
+
+    for (i = 0; grayed_list_function[i].function != NULL; i++) {
+        value = grayed_list_function[i].function();
+        EnableMenuItem(menu, grayed_list_function[i].item_id, value ? MF_ENABLED : MF_GRAYED);
+    }
 
     for (i = 0; grayed_list_res[i].name != NULL; i++) {
         resources_get_int(grayed_list_res[i].name, &value);
@@ -966,7 +1053,7 @@ void ui_error(const char *format, ...)
 
     log_debug(tmp);
     st = system_mbstowcs_alloc(tmp);
-    ui_messagebox(st, translate_text(IDS_VICE_ERROR), MB_OK | MB_ICONSTOP);
+    ui_messagebox(st, intl_translate_tcs(IDS_VICE_ERROR), MB_OK | MB_ICONSTOP);
     system_mbstowcs_free(st);
     vsync_suspend_speed_eval();
     lib_free(tmp);
@@ -979,8 +1066,9 @@ void ui_error_string(const char *text)
 
     log_debug(text);
     st = system_mbstowcs_alloc(text);
-    ui_messagebox(st, translate_text(IDS_VICE_ERROR), MB_OK | MB_ICONSTOP);
+    ui_messagebox(st, intl_translate_tcs(IDS_VICE_ERROR), MB_OK | MB_ICONSTOP);
     system_mbstowcs_free(st);
+    vsync_suspend_speed_eval();
 }
 
 /* Report a message to the user (`printf()' style).  */
@@ -995,7 +1083,7 @@ void ui_message(const char *format, ...)
     va_end(args);
 
     st = system_mbstowcs_alloc(tmp);
-    ui_messagebox(st, translate_text(IDS_VICE_INFORMATION), MB_OK | MB_ICONASTERISK);
+    ui_messagebox(st, intl_translate_tcs(IDS_VICE_INFORMATION), MB_OK | MB_ICONASTERISK);
     system_mbstowcs_free(st);
     vsync_suspend_speed_eval();
     lib_free(tmp);
@@ -1005,17 +1093,20 @@ void ui_message(const char *format, ...)
 char *ui_get_file(const char *format,...)
 {
     char *tmp;
-    char *st;
+    TCHAR *st;
+    char *name;
     va_list args;
 
     va_start(args, format);
     tmp = lib_mvsprintf(format, args);
     va_end(args);
 
-    st = uilib_select_file(NULL, tmp, UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DISK);
+    st = system_mbstowcs_alloc(tmp);
+    name = uilib_select_file(NULL, st, UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DISK);
+    system_mbstowcs_free(st);
     lib_free(tmp);
 
-    return st;
+    return name;
 }
 
 /* Handle the "CPU JAM" case.  */
@@ -1031,7 +1122,7 @@ ui_jam_action_t ui_jam_dialog(const char *format,...)
     va_end(ap);
     txt2 = lib_msprintf(translate_text(IDS_START_MONITOR), txt);
     st = system_mbstowcs_alloc(txt2);
-    ret = ui_messagebox(st, translate_text(IDS_VICE_CPU_JAM), MB_YESNOCANCEL);
+    ret = ui_messagebox(st, intl_translate_tcs(IDS_VICE_CPU_JAM), MB_YESNOCANCEL);
     system_mbstowcs_free(st);
     lib_free(txt2);
     lib_free(txt);
@@ -1050,9 +1141,11 @@ ui_jam_action_t ui_jam_dialog(const char *format,...)
    dialog.  */
 int ui_extend_image_dialog(void)
 {
+    TCHAR *st_text = intl_translate_tcs(IDS_EXTEND_TO_40_TRACKS);
+    TCHAR *st_caption = intl_translate_tcs(IDS_VICE_QUESTION);
     int ret;
 
-    ret = ui_messagebox(translate_text(IDS_EXTEND_TO_40_TRACKS), translate_text(IDS_VICE_QUESTION), MB_YESNO | MB_ICONQUESTION);
+    ret = ui_messagebox(st_text, st_caption, MB_YESNO | MB_ICONQUESTION);
     return ret == IDYES;
 }
 
@@ -1069,17 +1162,18 @@ static void pause_trap(WORD addr, void *data)
     }
 }
 
-void ui_pause_emulation(void)
+void ui_pause_emulation(int flag)
 {
     if (network_connected()) {
         return;
     }
 
-    is_paused = is_paused ? 0 : 1;
-    if (is_paused) {
+    if (flag && !is_paused) {
+        is_paused = 1;
         interrupt_maincpu_trigger_trap(pause_trap, 0);
     } else {
-        ui_display_paused(pause_pending);
+        ui_display_paused(0);
+        is_paused = 0;
     }
 }
 
@@ -1094,20 +1188,21 @@ static int statustext_display_time = 0;
 
 void ui_display_speed(float percent, float framerate, int warp_flag)
 {
-    char *buf, *title;
-    TCHAR *st_buf;
+    TCHAR st_buf[80];
+    TCHAR *st_title, *st_warp;
     int index;
 
+    if (warp_flag) {
+        st_warp = TEXT(" (warp)");
+    } else {
+        st_warp = TEXT("");
+    }
     for (index = 0; index < number_of_windows; index++) {
-        title = system_wcstombs_alloc(hwnd_titles[index]);
+        st_title = hwnd_titles[index];
 
-        buf = lib_msprintf(intl_speed_at_text, title, (int)(percent + .5), (int)(framerate + .5), warp_flag ? " (warp)" : "");
-        system_wcstombs_free(title);
-        st_buf = system_mbstowcs_alloc(buf);
+        lib_sntprintf(st_buf, 80, intl_speed_at_text, st_title, (int)(percent + .5), (int)(framerate + .5), st_warp);
+
         SetWindowText(window_handles[index], st_buf);
-        system_mbstowcs_free(st_buf);
-
-        lib_free(buf);
     }
     
     if (statustext_display_time > 0) {
@@ -1130,7 +1225,10 @@ void ui_display_statustext(const char *text, int fade_out)
 }
 
 /* ------------------------------------------------------------------------- */
-/* Dispay the drive status.  */
+/* Display the drive status.  */
+
+static unsigned int old_pwm1[DRIVE_NUM];
+static unsigned int new_pwm1[DRIVE_NUM];
 
 void ui_enable_drive_status(ui_drive_enable_t enable, int *drive_led_color)
 {
@@ -1150,7 +1248,7 @@ void ui_display_drive_track(unsigned int drive_number, unsigned int drive_base, 
 /* Toggle displaying of the drive LED.  */
 void ui_display_drive_led(int drivenum, unsigned int led_pwm1, unsigned int led_pwm2)
 {
-    statusbar_display_drive_led(drivenum, led_pwm1);
+    new_pwm1[drivenum] = led_pwm1;
 }
 
 /* display current image */
@@ -1250,14 +1348,68 @@ void ui_display_event_time(unsigned int current, unsigned int total)
 /* ------------------------------------------------------------------------- */
 
 /* Dispay the joystick status.  */
-static BYTE ui_joyport[3] = { 0, 0, 0 };
+static BYTE ui_new_joyport[3] = { 0, 0, 0 };
+static BYTE ui_old_joyport[3] = { 0, 0, 0 };
 
 void ui_display_joyport(BYTE *joyport)
 {
-    if (ui_joyport[1] != joyport[1] || ui_joyport[2] != joyport[2]) {
-        ui_joyport[1] = joyport[1];
-        ui_joyport[2] = joyport[2];
-        statusbar_display_joyport(ui_joyport);
+    ui_new_joyport[1] = joyport[1];
+    ui_new_joyport[2] = joyport[2];
+}
+
+/* ------------------------------------------------------------------------- */
+
+static int frame = 0;
+
+void ui_frame_update_gui(void)
+{
+    int i;
+    int widthres, heightres;
+    int width, height;
+    WINDOWPLACEMENT place;
+    RECT rect;
+
+    frame = !frame;
+
+    if (frame) {
+        /* FIXME: this is a big hack, some-1 with more knowledge needs to fix this properly */
+        if (machine_class == VICE_MACHINE_C128 && (size_set[0] == 2 || size_set[1] == 2)) {
+            for (i = 0; i < number_of_windows; i++) {
+                resources_get_int_sprintf("Window%dWidth", &widthres, i);
+                resources_get_int_sprintf("Window%dHeight", &heightres, i);
+                if (widthres != CW_USEDEFAULT || heightres != CW_USEDEFAULT) {
+                    place.length = sizeof(WINDOWPLACEMENT);
+                    GetWindowPlacement(window_handles[i], &place);
+                    GetWindowRect(window_handles[i], &rect);
+                    if (place.showCmd == SW_SHOWNORMAL) {
+                        if (widthres == CW_USEDEFAULT) {
+                            width = rect.right;
+                        } else {
+                            width = widthres;
+                        }
+                        if (heightres == CW_USEDEFAULT) {
+                            height = rect.bottom;
+                        } else {
+                            height = heightres;
+                        }
+                        SetWindowPos(window_handles[i], NULL, 0, 0, width, height, SWP_NOMOVE);
+                    }
+                }
+                size_set[i] = 1;
+            }
+        }
+
+        for (i = 0; i < DRIVE_NUM; ++i) {
+            if (old_pwm1[i] != new_pwm1[i]) {
+                statusbar_display_drive_led(i, new_pwm1[i]);
+                old_pwm1[i] = new_pwm1[i];
+            }
+        }
+        if (ui_new_joyport[1] != ui_old_joyport[1] || ui_new_joyport[2] != ui_old_joyport[2]) {
+            statusbar_display_joyport(ui_new_joyport);
+            ui_old_joyport[1] = ui_new_joyport[1];
+            ui_old_joyport[2] = ui_new_joyport[2];
+        }
     }
 }
 
@@ -1266,22 +1418,27 @@ void ui_display_joyport(BYTE *joyport)
 /* Toggle displaying of paused state.  */
 void ui_display_paused(int flag)
 {
+    TCHAR st_buf[80];
+    TCHAR *st_title;
     int index;
-    char *buf, *title;
-    TCHAR *st_buf;
 
     for (index = 0; index < number_of_windows; index++) {
-        title = system_wcstombs_alloc(hwnd_titles[index]);
+        st_title = hwnd_titles[index];
         if (flag) {
-            buf = lib_msprintf("%s (%s: %s%i)", title, translate_text(IDS_PAUSED), translate_text(IDS_FRAME_NUMBER), vsync_frame_counter);
+            TCHAR *st_pause = intl_translate_tcs(IDS_PAUSED);
+            TCHAR *st_frame = intl_translate_tcs(IDS_FRAME_NUMBER);
+
+            lib_sntprintf(st_buf, 80, TEXT("%s (%s: %s%i)"), st_title, st_pause, st_frame, vsync_frame_counter);
         } else {
-            buf = lib_msprintf("%s (%s)", title, translate_text(IDS_RESUMED));
+            TCHAR *st_resume = intl_translate_tcs(IDS_RESUMED);
+
+            lib_sntprintf(st_buf, 80, TEXT("%s (%s)"), st_title, st_resume);
         }
-        system_wcstombs_free(title);
-        st_buf = system_mbstowcs_alloc(buf);
-        SetWindowText(window_handles[index], st_buf);
-        system_mbstowcs_free(st_buf);
-        lib_free(buf);
+
+        /* HACK: dont update the title in VSID. since the vsid ui is kindof standalone hack, that doesnt really work */
+        if (machine_class != VICE_MACHINE_VSID) {
+            SetWindowText(window_handles[index], st_buf);
+        }
     }
 }
 
@@ -1326,13 +1483,6 @@ void ui_dispatch_next_event(void)
 void ui_dispatch_events(void)
 {
     MSG msg;
-
-    /* this function is called once a frame, so this
-       handles single frame advance */
-    if (pause_pending) {
-        ui_pause_emulation();
-        pause_pending = 0;
-    }
 
     while (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE)) {
         ui_dispatch_next_event();
@@ -1447,7 +1597,7 @@ static void ui_paste_clipboard_text(HWND window)
         memcpy(text_in_petscii, text, size);
         text_in_petscii[size] = 0;
 
-        charset_petconvstring(text_in_petscii, 0);
+        charset_petconvstring((BYTE *)text_in_petscii, 0);
 
         kbdbuf_feed(text_in_petscii);
 
@@ -1520,7 +1670,7 @@ static void handle_wm_initmenupopup(HMENU menu)
 
 static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
 {
-    TCHAR *st_name;
+    char *name;
 
     wparam &= 0xffff;
     /* Handle machine specific commands first.  */
@@ -1532,6 +1682,7 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
         case IDM_DEVICEMANAGER:
         case IDM_FORMFEED_PRINTERIEC4:
         case IDM_FORMFEED_PRINTERIEC5:
+        case IDM_FORMFEED_PRINTERIEC6:
             uiperipheral_command(hwnd, wparam);
             break;
         case IDM_EXIT:
@@ -1546,6 +1697,7 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
         case IDM_ABOUT:
         case IDM_HELP:
         case IDM_CONTRIBUTORS:
+        case IDM_FEATURES:
         case IDM_LICENSE:
         case IDM_WARRANTY:
         case IDM_CMDLINE:
@@ -1601,13 +1753,12 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
             ResumeFullscreenModeKeep(hwnd);
             break;
         case IDM_SINGLE_FRAME_ADVANCE:
-            pause_pending = 1;
-            if (!is_paused) {
-                break;
+            if (ui_emulation_is_paused()) {
+                vsyncarch_advance_frame();
             }
-            // fall through
+            break;
         case IDM_PAUSE:
-            ui_pause_emulation();
+            ui_pause_emulation(!ui_emulation_is_paused());
             break;
         case IDM_MONITOR:
             if (!ui_emulation_is_paused()) {
@@ -1620,19 +1771,19 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
             break;
         case IDM_RESET_DRIVE8:
             vsync_suspend_speed_eval();
-            drivecpu_trigger_reset(0);
+            drive_cpu_trigger_reset(0);
             break;
         case IDM_RESET_DRIVE9:
             vsync_suspend_speed_eval();
-            drivecpu_trigger_reset(1);
+            drive_cpu_trigger_reset(1);
             break;
         case IDM_RESET_DRIVE10:
             vsync_suspend_speed_eval();
-            drivecpu_trigger_reset(2);
+            drive_cpu_trigger_reset(2);
             break;
         case IDM_RESET_DRIVE11:
             vsync_suspend_speed_eval();
-            drivecpu_trigger_reset(3);
+            drive_cpu_trigger_reset(3);
             break;
         case IDM_MAXIMUM_SPEED_CUSTOM:
             ui_speed_settings_dialog(hwnd);
@@ -1656,40 +1807,32 @@ static void handle_wm_command(WPARAM wparam, LPARAM lparam, HWND hwnd)
         case IDM_RAM_SETTINGS:
             ui_ram_settings_dialog(hwnd);
             break;
+#ifdef HAVE_D3D9_H
         case IDM_TOGGLE_FULLSCREEN:
             vsync_suspend_speed_eval();
             SwitchFullscreenMode(hwnd);
             break;
+#endif
         case IDM_SETTINGS_SAVE_FILE:
-            if ((st_name = uilib_select_file(hwnd, translate_text(IDS_SAVE_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_SAVE, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
-                char *name;
-
-                name = system_wcstombs_alloc(st_name);
-
-                if (resources_save(st_name) < 0) {
+            if ((name = uilib_select_file(hwnd, intl_translate_tcs(IDS_SAVE_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_SAVE, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
+                if (resources_save(name) < 0) {
                     ui_error(translate_text(IDS_CANNOT_SAVE_SETTINGS));
                 } else {
                     ui_message(translate_text(IDS_SETTINGS_SAVED_SUCCESS));
                 }
                 uifliplist_save_settings();
-                system_wcstombs_free(name);
-                lib_free(st_name);
+                lib_free(name);
             }
             break;
         case IDM_SETTINGS_LOAD_FILE:
-            if ((st_name = uilib_select_file(hwnd, translate_text(IDS_LOAD_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
-                char *name;
-
-                name = system_wcstombs_alloc(st_name);
-
-                if (resources_load(st_name) < 0) {
+            if ((name = uilib_select_file(hwnd, intl_translate_tcs(IDS_LOAD_CONFIG_FILE), UILIB_FILTER_ALL, UILIB_SELECTOR_TYPE_FILE_LOAD, UILIB_SELECTOR_STYLE_DEFAULT)) != NULL) {
+                if (resources_load(name) < 0) {
                     ui_error(translate_text(IDS_CANNOT_LOAD_SETTINGS));
                 } else {
                     ui_message(translate_text(IDS_SETTINGS_LOADED_SUCCESS));
                 }
                 uifliplist_save_settings();
-                system_wcstombs_free(name);
-                lib_free(st_name);
+                lib_free(name);
             }
             break;
         case IDM_SETTINGS_SAVE:
@@ -1769,6 +1912,26 @@ static LRESULT CALLBACK dummywindowproc(HWND window, UINT msg, WPARAM wparam, LP
     return DefWindowProc(window, msg, wparam, lparam);
 }
 
+static void ui_wm_size(HWND window, int window_index)
+{
+    if (window_index<number_of_windows) {
+        WINDOWPLACEMENT place;
+        RECT rect;
+
+        if (size_set[window_index] != 1) {
+            return;
+        }
+
+        place.length = sizeof(WINDOWPLACEMENT);
+        GetWindowPlacement(window, &place);
+        GetWindowRect(window, &rect);
+        if (place.showCmd == SW_SHOWNORMAL) {
+            resources_set_int_sprintf("Window%dWidth", rect.right - rect.left, window_index);
+            resources_set_int_sprintf("Window%dHeight", rect.bottom - rect.top, window_index);
+        }
+    }
+}
+
 static void ui_wm_move(HWND window, int window_index)
 {
     if (window_index<number_of_windows) {
@@ -1796,7 +1959,7 @@ static void ui_wm_close(HWND window)
     SuspendFullscreenModeKeep(window);
     vsync_suspend_speed_eval();
     if (confirm_on_exit) {
-        if (MessageBox(window, translate_text(IDS_REALLY_EXIT), TEXT("VICE"), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | MB_TASKMODAL) == IDYES) {
+        if (MessageBox(window, intl_translate_tcs(IDS_REALLY_EXIT), TEXT("VICE"), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | MB_TASKMODAL) == IDYES) {
             quit = 1;
         } else {
             quit = 0;
@@ -1816,22 +1979,25 @@ static void ui_wm_close(HWND window)
     }
 }
 
-static void ui_wm_dropfiles(HWND window, WPARAM wparam)
+static void ui_wm_dropfiles(HWND window, HDROP hDrop)
 {
-    char szFile[256];
-    HDROP hDrop;
+    TCHAR st_name[MAX_PATH];
+    char *name;
 
-    hDrop = (HDROP)wparam;
-    DragQueryFile(hDrop, 0, (char *)&szFile, 256);
+    DragQueryFile(hDrop, 0, st_name, MAX_PATH);
+    name = system_wcstombs_alloc(st_name);
     if (GetAsyncKeyState(VK_SHIFT) & 0x8000) {
-        if (file_system_attach_disk(8, szFile) < 0) {
-            ui_error(translate_text(IDS_CANNOT_ATTACH_FILE));
+        if (file_system_attach_disk(8, name) < 0) {
+            if (tape_image_attach(1, name) < 0) {
+                ui_error(translate_text(IDS_CANNOT_ATTACH_FILE));
+            }
         }
     } else {
-        if (autostart_autodetect(szFile, NULL, 0, AUTOSTART_MODE_RUN) < 0) {
+        if (autostart_autodetect(name, NULL, 0, AUTOSTART_MODE_RUN) < 0) {
             ui_error(translate_text(IDS_CANNOT_AUTOSTART_FILE));
         }
     }
+    system_wcstombs_free(name);
     DragFinish(hDrop);
 }
 
@@ -1905,6 +2071,9 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
                 statusbar_handle_WMSIZE(msg, wparam, lparam, window_index);
             }
             ui_resize_render_window(video_canvas_for_hwnd(window));
+            if (machine_class != VICE_MACHINE_VSID) {
+                ui_wm_size(window, window_index);
+            }
             return 0;
         case WM_SIZING:
             ui_handle_aspect_ratio(window_index, wparam, lparam);
@@ -1981,7 +2150,7 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
         case WM_ERASEBKGND:
             return 1;
         case WM_DROPFILES:
-            ui_wm_dropfiles(window, wparam);
+            ui_wm_dropfiles(window, (HDROP)wparam);
             return 0;
         case WM_PAINT:
             {
@@ -2013,34 +2182,34 @@ static LRESULT CALLBACK window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM
             break;
         case WM_LBUTTONDOWN:
             if (_mouse_enabled) {
-                mouse_button_left(1);
+                mousedrv_button_left(1);
             }
             break;
         case WM_MBUTTONDOWN:
             if (_mouse_enabled) {
-                mouse_button_middle(1);
+                mousedrv_button_middle(1);
             }
             break;
         case WM_RBUTTONDOWN:
             if (_mouse_enabled) {
-                mouse_button_right(1);
+                mousedrv_button_right(1);
             } else {
                 ui_paste_clipboard_text(window);
             }
             break;
         case WM_LBUTTONUP:
             if (_mouse_enabled) {
-                mouse_button_left(0);
+                mousedrv_button_left(0);
             }
             break;
         case WM_MBUTTONUP:
             if (_mouse_enabled) {
-                mouse_button_middle(0);
+                mousedrv_button_middle(0);
             }
             break;
         case WM_RBUTTONUP:
             if (_mouse_enabled) {
-                mouse_button_right(0);
+                mousedrv_button_right(0);
             }
             break;
 #else

@@ -2,7 +2,6 @@ EXTRA_DIST = \
 	ide-config.h \
 	ide-siddefs.h \
 	ide-siddtvdefs.h \
-	ide-sidfpdefs.h \
 	arch.tgt \
 	base.tgt \
 	c128.tgt \
@@ -13,12 +12,16 @@ EXTRA_DIST = \
 	c64commoncart.tgt \
 	c64commonsc.tgt \
 	c64commonsc128.tgt \
-	c64commonsc128vsid.tgt \
-	c64commonscdtv.tgt \
-	c64commonscdtv128.tgt \
-	c64commonscdtvvsid.tgt \
-	c64commonscvsid.tgt \
+	c64commonsc128scpu.tgt \
+	c64commonscdtv128scpu.tgt \
+	c64commonscdtvscpu.tgt \
+	c64commonscscpu.tgt \
+	c64commonscvsid128.tgt \
 	c64commonvsid.tgt \
+	c64commonvsidsc.tgt \
+	c64commonvsidscdtv.tgt \
+	c64commonvsidscdtvscpu.tgt \
+	c64commonvsidscscpu.tgt \
 	c64dtv.tgt \
 	c64exp.tgt \
 	c64sc.tgt \
@@ -28,6 +31,8 @@ EXTRA_DIST = \
 	cbm5x0.tgt \
 	core.tgt \
 	crtc.tgt \
+	debug.h \
+	diag.tgt \
 	diskimage.tgt \
 	drive.tgt \
 	fileio.tgt \
@@ -44,6 +49,7 @@ EXTRA_DIST = \
 	iecieee.tgt \
 	ieee.tgt \
 	imagecontents.tgt \
+	joyport.tgt \
 	maincpu.tgt \
 	make-watcom-bindist.bat \
 	monitor.tgt \
@@ -58,12 +64,15 @@ EXTRA_DIST = \
 	raster.tgt \
 	resid.tgt \
 	residdtv.tgt \
-	residfp.tgt \
 	rs232drv.tgt \
+	rtc.tgt \
+	samplerdrv.tgt \
+	scpu64.tgt \
 	serial.tgt \
 	sid.tgt \
 	sounddrv.tgt \
 	tape.tgt \
+	tapeport.tgt \
 	tcbm.tgt \
 	userport.tgt \
 	vdc.tgt \
@@ -75,6 +84,7 @@ EXTRA_DIST = \
 	viciicommon.tgt \
 	viciidtv.tgt \
 	viciinew.tgt \
+	viciivsid.tgt \
 	video.tgt \
 	vsid.tgt \
 	vsidlib.tgt \
@@ -86,4 +96,5 @@ EXTRA_DIST = \
 	xcbm5x0.tgt \
 	xpet.tgt \
 	xplus4.tgt \
+	xscpu64.tgt \
 	xvic.tgt

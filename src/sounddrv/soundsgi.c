@@ -28,6 +28,8 @@
 
 #include <stdio.h>
 
+#ifdef USE_DMEDIA
+
 #include "sound.h"
 
 #if defined(HAVE_DMEDIA_AUDIO_H)
@@ -38,19 +40,18 @@
 #include <bstring.h>
 #endif
 
-static ALconfig    sgi_audioconfig = NULL;
-static ALport      sgi_audioport = NULL;
+static ALconfig sgi_audioconfig = NULL;
+static ALport sgi_audioport = NULL;
 
 static void sgi_errorhandler(long err, const char *msg, ...)
 {
     printf("sgierrorhandler: %d, %s\n", (int)err, msg);
 }
 
-static int sgi_init(const char *param, int *speed,
-		    int *fragsize, int *fragnr, int *channels)
+static int sgi_init(const char *param, int *speed, int *fragsize, int *fragnr, int *channels)
 {
-    long	chpars[] = {AL_OUTPUT_RATE, 0};
-    int		st;
+    long chpars[] = { AL_OUTPUT_RATE, 0 };
+    int st;
 
     /* No stereo capability. */
     *channels = 1;
@@ -58,28 +59,35 @@ static int sgi_init(const char *param, int *speed,
     ALseterrorhandler(sgi_errorhandler);
     chpars[1] = *speed;
     st = ALsetparams(AL_DEFAULT_DEVICE, chpars, 2);
-    if (st < 0)
-	return 1;
+    if (st < 0) {
+        return 1;
+    }
     st = ALgetparams(AL_DEFAULT_DEVICE, chpars, 2);
-    if (st < 0)
-	return 1;
+    if (st < 0) {
+        return 1;
+    }
     *speed = chpars[1];
 
     sgi_audioconfig = ALnewconfig();
-    if (!sgi_audioconfig)
-	return 1;
+    if (!sgi_audioconfig) {
+        return 1;
+    }
     st = ALsetchannels(sgi_audioconfig, AL_MONO);
-    if (st < 0)
-	goto fail;
-    st = ALsetwidth(sgi_audioconfig, AL_SAMPLE_16);
-    if (st < 0)
-	goto fail;
-    st = ALsetqueuesize(sgi_audioconfig, *fragsize * *fragnr);
-    if (st < 0)
+    if (st < 0) {
         goto fail;
+    }
+    st = ALsetwidth(sgi_audioconfig, AL_SAMPLE_16);
+    if (st < 0) {
+        goto fail;
+    }
+    st = ALsetqueuesize(sgi_audioconfig, *fragsize * *fragnr);
+    if (st < 0) {
+        goto fail;
+    }
     sgi_audioport = ALopenport("outport", "w", sgi_audioconfig);
-    if (!sgi_audioport)
-	goto fail;
+    if (!sgi_audioport) {
+        goto fail;
+    }
     return 0;
 fail:
     ALfreeconfig(sgi_audioconfig);
@@ -89,16 +97,17 @@ fail:
 
 static int sgi_write(SWORD *pbuf, size_t nr)
 {
-    int				i;
+    int i;
     i = ALwritesamps(sgi_audioport, pbuf, nr);
-    if (i < 0)
-	return 1;
+    if (i < 0) {
+        return 1;
+    }
     return 0;
 }
 
 static int sgi_bufferspace(void)
 {
-    int				i;
+    int i;
     /* ALgetfillable returns space in samples. */
     i = ALgetfillable(sgi_audioport);
     return i;
@@ -130,3 +139,4 @@ int sound_init_sgi_device(void)
 {
     return sound_register_device(&sgi_device);
 }
+#endif

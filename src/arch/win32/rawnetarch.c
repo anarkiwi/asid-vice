@@ -27,7 +27,7 @@
 
 #include "vice.h"
 
-#ifdef HAVE_TFE 
+#ifdef HAVE_PCAP 
 
 /* #define WPCAP */
 
@@ -42,11 +42,6 @@
 #include "log.h"
 #include "rawnet.h"
 #include "rawnetarch.h"
-#include "uitfe.h"
-
-/*
-    FIXME: rename all remaining tfe_ stuff to rawnet_
-*/
 
 typedef pcap_t *(*pcap_open_live_t)(const char *, int, int, int, char *);
 typedef int (*pcap_dispatch_t)(pcap_t *, int, pcap_handler, u_char *);
@@ -55,6 +50,7 @@ typedef int (*pcap_datalink_t)(pcap_t *);
 typedef int (*pcap_findalldevs_t)(pcap_if_t **, char *);
 typedef void (*pcap_freealldevs_t)(pcap_if_t *);
 typedef int (*pcap_sendpacket_t)(pcap_t *p, u_char *buf, int size);
+typedef char *(*pcap_lookupdev_t)(char *);
 
 /** #define RAWNET_DEBUG_ARCH 1 **/
 /** #define RAWNET_DEBUG_PKTDUMP 1 **/
@@ -70,6 +66,7 @@ static pcap_findalldevs_t p_pcap_findalldevs;
 static pcap_freealldevs_t p_pcap_freealldevs;
 static pcap_sendpacket_t p_pcap_sendpacket;
 static pcap_datalink_t p_pcap_datalink;
+static pcap_lookupdev_t p_pcap_lookupdev;
 
 static HINSTANCE pcap_library = NULL;
 
@@ -78,11 +75,11 @@ static HINSTANCE pcap_library = NULL;
 
 static log_t rawnet_arch_log = LOG_ERR;
 
-static pcap_if_t *TfePcapNextDev = NULL;
-static pcap_if_t *TfePcapAlldevs = NULL;
-static pcap_t *TfePcapFP = NULL;
+static pcap_if_t *EthernetPcapNextDev = NULL;
+static pcap_if_t *EthernetPcapAlldevs = NULL;
+static pcap_t *EthernetPcapFP = NULL;
 
-static char TfePcapErrbuf[PCAP_ERRBUF_SIZE];
+static char EthernetPcapErrbuf[PCAP_ERRBUF_SIZE];
 
 #ifdef RAWNET_DEBUG_PKTDUMP
 
@@ -110,7 +107,7 @@ static void debug_output(const char *text, BYTE *what, int count)
 #endif /* #ifdef RAWNET_DEBUG_PKTDUMP */
 
 
-static void TfePcapFreeLibrary(void)
+static void EthernetPcapFreeLibrary(void)
 {
     if (pcap_library) {
         if (!FreeLibrary(pcap_library)) {
@@ -125,6 +122,7 @@ static void TfePcapFreeLibrary(void)
         p_pcap_freealldevs = NULL;
         p_pcap_sendpacket = NULL;
         p_pcap_datalink = NULL;
+        p_pcap_lookupdev = NULL;
     }
 }
 
@@ -133,14 +131,14 @@ static void TfePcapFreeLibrary(void)
     p_##_name_ = (_name_##_t) GetProcAddress(pcap_library, #_name_);     \
     if (!p_##_name_ ) {                                                  \
         log_message(rawnet_arch_log, "GetProcAddress " #_name_ " failed!"); \
-        TfePcapFreeLibrary();                                            \
+        EthernetPcapFreeLibrary();                                            \
         return FALSE;                                                    \
     } 
 
-static BOOL TfePcapLoadLibrary(void)
+static BOOL EthernetPcapLoadLibrary(void)
 {
     if (!pcap_library) {
-        pcap_library = LoadLibrary("wpcap.dll");
+        pcap_library = LoadLibrary(TEXT("wpcap.dll"));
 
         if (!pcap_library) {
             log_message(rawnet_arch_log, "LoadLibrary WPCAP.DLL failed!");
@@ -154,6 +152,7 @@ static BOOL TfePcapLoadLibrary(void)
         GET_PROC_ADDRESS_AND_TEST(pcap_freealldevs);
         GET_PROC_ADDRESS_AND_TEST(pcap_sendpacket);
         GET_PROC_ADDRESS_AND_TEST(pcap_datalink);
+        GET_PROC_ADDRESS_AND_TEST(pcap_lookupdev);
     }
 
     return TRUE;
@@ -165,9 +164,9 @@ static BOOL TfePcapLoadLibrary(void)
 /*
  These functions let the UI enumerate the available interfaces.
 
- First, TfeEnumAdapterOpen() is used to start enumeration.
+ First, rawnet_arch_enumadapter_open() is used to start enumeration.
 
- TfeEnumAdapter is then used to gather information for each adapter present
+ rawnet_arch_enumadapter is then used to gather information for each adapter present
  on the system, where:
 
    ppname points to a pointer which will hold the name of the interface
@@ -176,59 +175,59 @@ static BOOL TfePcapLoadLibrary(void)
    For each of these parameters, new memory is allocated, so it has to be
    freed with lib_free().
 
- TfeEnumAdapterClose() must be used to stop processing.
+ rawnet_arch_enumadapter_close() must be used to stop processing.
 
  Each function returns 1 on success, and 0 on failure.
- TfeEnumAdapter() only fails if there is no more adpater; in this case, 
+ rawnet_arch_enumadapter() only fails if there is no more adpater; in this case,
    *ppname and *ppdescription are not altered.
 */
 int rawnet_arch_enumadapter_open(void)
 {
-    if (!TfePcapLoadLibrary()) {
+    if (!EthernetPcapLoadLibrary()) {
         return 0;
     }
 
-    if ((*p_pcap_findalldevs)(&TfePcapAlldevs, TfePcapErrbuf) == -1) {
-        log_message(rawnet_arch_log, "ERROR in TfeEnumAdapterOpen: pcap_findalldevs: '%s'", TfePcapErrbuf);
+    if ((*p_pcap_findalldevs)(&EthernetPcapAlldevs, EthernetPcapErrbuf) == -1) {
+        log_message(rawnet_arch_log, "ERROR in rawnet_arch_enumadapter_open: pcap_findalldevs: '%s'", EthernetPcapErrbuf);
         return 0;
     }
 
-    if (!TfePcapAlldevs) {
-        log_message(rawnet_arch_log, "ERROR in TfeEnumAdapterOpen, finding all pcap devices - Do we have the necessary privilege rights?");
+    if (!EthernetPcapAlldevs) {
+        log_message(rawnet_arch_log, "ERROR in rawnet_arch_enumadapter_open, finding all pcap devices - Do we have the necessary privilege rights?");
         return 0;
     }
 
-    TfePcapNextDev = TfePcapAlldevs;
+    EthernetPcapNextDev = EthernetPcapAlldevs;
 
     return 1;
 }
 
 int rawnet_arch_enumadapter(char **ppname, char **ppdescription)
 {
-    if (!TfePcapNextDev) {
+    if (!EthernetPcapNextDev) {
         return 0;
     }
 
-    *ppname = lib_stralloc(TfePcapNextDev->name);
-    *ppdescription = lib_stralloc(TfePcapNextDev->description);
+    *ppname = lib_stralloc(EthernetPcapNextDev->name);
+    *ppdescription = lib_stralloc(EthernetPcapNextDev->description);
 
-    TfePcapNextDev = TfePcapNextDev->next;
+    EthernetPcapNextDev = EthernetPcapNextDev->next;
 
     return 1;
 }
 
 int rawnet_arch_enumadapter_close(void)
 {
-    if (TfePcapAlldevs) {
-        (*p_pcap_freealldevs)(TfePcapAlldevs);
-        TfePcapAlldevs = NULL;
+    if (EthernetPcapAlldevs) {
+        (*p_pcap_freealldevs)(EthernetPcapAlldevs);
+        EthernetPcapAlldevs = NULL;
     }
     return 1;
 }
 
-static BOOL TfePcapOpenAdapter(const char *interface_name) 
+static BOOL EthernetPcapOpenAdapter(const char *interface_name) 
 {
-    pcap_if_t *TfePcapDevice = NULL;
+    pcap_if_t *EthernetPcapDevice = NULL;
 
     if (!rawnet_enumadapter_open()) {
         return FALSE;
@@ -240,7 +239,7 @@ static BOOL TfePcapOpenAdapter(const char *interface_name)
 
         if (interface_name) {
             /* we have an interface name, try it */
-            TfePcapDevice = TfePcapAlldevs;
+            EthernetPcapDevice = EthernetPcapAlldevs;
 
             while (rawnet_enumadapter(&pname, &pdescription)) {
                 if (strcmp(pname, interface_name) == 0) {
@@ -249,30 +248,30 @@ static BOOL TfePcapOpenAdapter(const char *interface_name)
                 lib_free(pname);
                 lib_free(pdescription);
                 if (found) break;
-                TfePcapDevice = TfePcapNextDev;
+                EthernetPcapDevice = EthernetPcapNextDev;
             }
         }
 
         if (!found) {
             /* just take the first adapter */
-            TfePcapDevice = TfePcapAlldevs;
+            EthernetPcapDevice = EthernetPcapAlldevs;
         }
     }
 
-    TfePcapFP = (*p_pcap_open_live)(TfePcapDevice->name, 1700, 1, 20, TfePcapErrbuf);
-    if (TfePcapFP == NULL) {
-        log_message(rawnet_arch_log, "ERROR opening adapter: '%s'", TfePcapErrbuf);
+    EthernetPcapFP = (*p_pcap_open_live)(EthernetPcapDevice->name, 1700, 1, 20, EthernetPcapErrbuf);
+    if (EthernetPcapFP == NULL) {
+        log_message(rawnet_arch_log, "ERROR opening adapter: '%s'", EthernetPcapErrbuf);
         rawnet_enumadapter_close();
         return FALSE;
     }
 
-    if ((*p_pcap_setnonblock)(TfePcapFP, 1, TfePcapErrbuf) < 0) {
-        log_message(rawnet_arch_log, "WARNING: Setting PCAP to non-blocking failed: '%s'", TfePcapErrbuf);
+    if ((*p_pcap_setnonblock)(EthernetPcapFP, 1, EthernetPcapErrbuf) < 0) {
+        log_message(rawnet_arch_log, "WARNING: Setting PCAP to non-blocking failed: '%s'", EthernetPcapErrbuf);
     }
 
     /* Check the link layer. We support only Ethernet for simplicity. */
-    if ((*p_pcap_datalink)(TfePcapFP) != DLT_EN10MB) {
-        log_message(rawnet_arch_log, "ERROR: TFE works only on Ethernet networks.");
+    if ((*p_pcap_datalink)(EthernetPcapFP) != DLT_EN10MB) {
+        log_message(rawnet_arch_log, "ERROR: Ethernet works only on Ethernet networks.");
         rawnet_enumadapter_close();
         return FALSE;
     }
@@ -286,9 +285,9 @@ static BOOL TfePcapOpenAdapter(const char *interface_name)
 
 int rawnet_arch_init(void)
 {
-    rawnet_arch_log = log_open("TFEARCH");
+    rawnet_arch_log = log_open("EthernetARCH");
 
-    if (!TfePcapLoadLibrary()) {
+    if (!EthernetPcapLoadLibrary()) {
         return 0;
     }
 
@@ -314,7 +313,7 @@ int rawnet_arch_activate(const char *interface_name)
 #ifdef RAWNET_DEBUG_ARCH
     log_message(rawnet_arch_log, "rawnet_arch_activate().");
 #endif
-    if (!TfePcapOpenAdapter(interface_name)) {
+    if (!EthernetPcapOpenAdapter(interface_name)) {
         return 0;
     }
     return 1;
@@ -371,15 +370,15 @@ void rawnet_arch_line_ctl(int bEnableTransmitter, int bEnableReceiver)
 #endif
 }
 
-typedef struct TFE_PCAP_INTERNAL_tag {
+typedef struct Ethernet_PCAP_internal_s {
     unsigned int len;
     BYTE *buffer;
-} TFE_PCAP_INTERNAL;
+} Ethernet_PCAP_internal_t;
 
 /* Callback function invoked by libpcap for every incoming packet */
-static void TfePcapPacketHandler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt_data)
+static void EthernetPcapPacketHandler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
-    TFE_PCAP_INTERNAL *pinternal = (void*)param;
+    Ethernet_PCAP_internal_t *pinternal = (void*)param;
 
     /* determine the count of bytes which has been returned, 
      * but make sure not to overrun the buffer 
@@ -401,12 +400,12 @@ static void TfePcapPacketHandler(u_char *param, const struct pcap_pkthdr *header
 
    At most 'len' bytes are copied.
 */
-static int rawnet_arch_receive_frame(TFE_PCAP_INTERNAL *pinternal)
+static int rawnet_arch_receive_frame(Ethernet_PCAP_internal_t *pinternal)
 {
     int ret = -1;
 
     /* check if there is something to receive */
-    if ((*p_pcap_dispatch)(TfePcapFP, 1, TfePcapPacketHandler, (void*)pinternal) != 0) {
+    if ((*p_pcap_dispatch)(EthernetPcapFP, 1, EthernetPcapPacketHandler, (void*)pinternal) != 0) {
         /* Something has been received */
         ret = pinternal->len;
     }
@@ -440,7 +439,7 @@ void rawnet_arch_transmit(int force, int onecoll, int inhibit_crc, int tx_pad_di
     debug_output("Transmit frame: ", txframe, txlength);
 #endif /* #ifdef RAWNET_DEBUG_PKTDUMP */
 
-    if ((*p_pcap_sendpacket)(TfePcapFP, txframe, txlength) == -1) {
+    if ((*p_pcap_sendpacket)(EthernetPcapFP, txframe, txlength) == -1) {
         log_message(rawnet_arch_log, "WARNING! Could not send packet!");
     }
 }
@@ -487,7 +486,7 @@ int rawnet_arch_receive(BYTE *pbuffer, int *plen, int *phashed, int *phash_index
 {
     int len;
 
-    TFE_PCAP_INTERNAL internal;
+    Ethernet_PCAP_internal_t internal;
 
     internal.len = *plen;
     internal.buffer = pbuffer;
@@ -513,7 +512,7 @@ int rawnet_arch_receive(BYTE *pbuffer, int *plen, int *phashed, int *phash_index
         *plen = len;
 
         /* we don't decide if this frame fits the needs;
-         * by setting all zero, we let tfe.c do the work
+         * by setting all zero, we let ethernet.c do the work
          * for us
          */
         *phashed = *phash_index = *pbroadcast = *pcorrect_mac = *pcrc_error = 0;
@@ -526,4 +525,17 @@ int rawnet_arch_receive(BYTE *pbuffer, int *plen, int *phashed, int *phash_index
 
     return 0;
 }
-#endif /* #ifdef HAVE_TFE */
+
+char *rawnet_arch_get_standard_interface(void)
+{
+    char *dev, errbuf[PCAP_ERRBUF_SIZE];
+
+    if (!EthernetPcapLoadLibrary()) {
+        return NULL;
+    }
+
+    dev = (*p_pcap_lookupdev)(errbuf);
+
+    return dev;
+}
+#endif /* #ifdef HAVE_PCAP */
