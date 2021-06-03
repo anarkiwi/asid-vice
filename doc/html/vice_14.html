@@ -1,0 +1,220 @@
+<HTML>
+<HEAD>
+<!-- This HTML file has been created by texi2html 1.52
+     from ../../doc/vice.texi on 2 November 2012 -->
+
+<TITLE>VICE Manual - 14  petcat</TITLE>
+</HEAD>
+<BODY>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_13.html">previous</A>, <A HREF="vice_15.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+<P><HR><P>
+
+
+<H1><A NAME="SEC263" HREF="vice_toc.html#TOC263">14  petcat</A></H1>
+
+<P>
+The petcat program is a text conversion utility, it can convert
+between ASCII, PETSCII and tokenized BASIC.
+
+</P>
+
+
+<H2><A NAME="SEC264" HREF="vice_toc.html#TOC264">14.1  petcat command line options</A></H2>
+
+<DL COMPACT>
+
+<DT><CODE>-help</CODE>
+<DD>
+<A NAME="IDX1267"></A>
+ 
+Output help text
+<A NAME="IDX1268"></A>
+<DT><CODE>-v</CODE>
+<DD>
+Same as above
+<A NAME="IDX1269"></A>
+<DT><CODE>-c</CODE>
+<DD>
+controls (interpret also control codes) (default if textmode)
+<A NAME="IDX1270"></A>
+<DT><CODE>-nc</CODE>
+<DD>
+no controls (suppress control codes in printout) (default if non-textmode)
+<A NAME="IDX1271"></A>
+<DT><CODE>-ic</CODE>
+<DD>
+interpret control codes case-insensitive
+<A NAME="IDX1272"></A>
+<DT><CODE>-h</CODE>
+<DD>
+write header (default if output is stdout)
+<A NAME="IDX1273"></A>
+<DT><CODE>-nh</CODE>
+<DD>
+no header (default if output is a file)
+<A NAME="IDX1274"></A>
+<DT><CODE>-skip &#60;n&#62;</CODE>
+<DD>
+Skip &#60;n&#62; bytes in the beginning of input file. Ignored on P00.
+<A NAME="IDX1275"></A>
+<DT><CODE>-text</CODE>
+<DD>
+Force text mode
+<DT><CODE>-&#60;version&#62;</CODE>
+<DD>
+use keywords for &#60;version&#62; instead of the v7.0 ones
+<A NAME="IDX1276"></A>
+<DT><CODE>-w&#60;version&#62;</CODE>
+<DD>
+tokenize using keywords on specified Basic version.
+<A NAME="IDX1277"></A>
+<DT><CODE>-k&#60;version&#62;</CODE>
+<DD>
+list all keywords for the specified Basic version
+<A NAME="IDX1278"></A>
+<DT><CODE>-k</CODE>
+<DD>
+list all Basic versions available.
+<A NAME="IDX1279"></A>
+<DT><CODE>-l</CODE>
+<DD>
+Specify load address for program (in hex, no loading chars!).
+<A NAME="IDX1280"></A>
+<DT><CODE>-o &#60;name&#62;</CODE>
+<DD>
+Specify the output file name
+<A NAME="IDX1281"></A>
+<DT><CODE>-f</CODE>
+<DD>
+Force overwritten the output file. The default depends on the BASIC version.
+</DL>
+
+<P>
+BASIC Versions:
+<DL COMPACT>
+
+<DT><CODE>1</CODE>
+<DD>
+PET Basic V1.0
+<DT><CODE>2</CODE>
+<DD>
+Basic v2.0
+<DT><CODE>superexp</CODE>
+<DD>
+Basic v2.0 with Super Expander (VIC20)
+<DT><CODE>turtle</CODE>
+<DD>
+Basic v2.0 with Turtle Basic by Craig Bruce (VIC20)
+<DT><CODE>mighty</CODE>
+<DD>
+Basic v2.0 with Mighty Basic by Craig Bruce (VIC20)
+<DT><CODE>a</CODE>
+<DD>
+Basic v2.0 with AtBasic (C64)
+<DT><CODE>simon</CODE>
+<DD>
+Basic v2.0 with Simon's Basic extension (C64)
+<DT><CODE>speech</CODE>
+<DD>
+Basic v2.0 with Speech Basic v2.7 (C64)
+<DT><CODE>F</CODE>
+<DD>
+Basic v2.0 with Final Cartridge III (C64)
+<DT><CODE>ultra</CODE>
+<DD>
+Basic v2.0 with Ultrabasic-64 (C64)
+<DT><CODE>graph</CODE>
+<DD>
+Basic v2.0 with Graphics basic (C64)
+<DT><CODE>WSB</CODE>
+<DD>
+Basic v2.0 with WS basic (C64)
+<DT><CODE>WSBF</CODE>
+<DD>
+Basic v2.0 with WS basic final (C64)
+<DT><CODE>Pegasus</CODE>
+<DD>
+Basic v2.0 with Pegasus basic 4.0 (C64)
+<DT><CODE>Xbasic</CODE>
+<DD>
+Basic v2.0 with Xbasic (C64)
+<DT><CODE>Drago</CODE>
+<DD>
+Basic v2.0 with Drago basic 2.2 (C64)
+<DT><CODE>REU</CODE>
+<DD>
+Basic v2.0 with REU-basic (C64)
+<DT><CODE>Lightning</CODE>
+<DD>
+Basic v2.0 with Basic Lightning (C64)
+<DT><CODE>magic</CODE>
+<DD>
+Basic v2.0 with Magic Basic (C64)
+<DT><CODE>easy</CODE>
+<DD>
+Basic v2.0 with Easy Basic (VIC20)
+<DT><CODE>blarg</CODE>
+<DD>
+Basic v2.0 with Blarg (C64)
+<DT><CODE>Game</CODE>
+<DD>
+Basic v2.0 with Game Basic (C64)
+<DT><CODE>BSX</CODE>
+<DD>
+Basic v2.0 with Basex (C64)
+<DT><CODE>superbas</CODE>
+<DD>
+Basic v2.0 with Super Basic (C64)
+<DT><CODE>exp20</CODE>
+<DD>
+Basic 2.0 with Expanded Basic (VIC20)
+<DT><CODE>exp64</CODE>
+<DD>
+Basic 2.0 with Expanded Basic (C64)
+<DT><CODE>sxc</CODE>
+<DD>
+Basic 2.0 with Super Expander Chip (C64)
+<DT><CODE>warsaw</CODE>
+<DD>
+Basic 2.0 with Warsaw Basic (C64)
+<DT><CODE>4v</CODE>
+<DD>
+Basic 2.0 with Basic 4.0 extensions (VIC20)
+<DT><CODE>4 -w4e</CODE>
+<DD>
+PET Basic v4.0 program (PET/C64)
+<DT><CODE>5</CODE>
+<DD>
+Basic 2.0 with Basic 5.0 extensions (VIC20)
+<DT><CODE>3</CODE>
+<DD>
+Basic v3.5 program (C16)
+<DT><CODE>70</CODE>
+<DD>
+Basic v7.0 program (C128)
+<DT><CODE>71</CODE>
+<DD>
+Basic v7.1 program (C128)
+<DT><CODE>10</CODE>
+<DD>
+Basic v10.0 program (C64DX)
+</DL>
+
+
+
+<H2><A NAME="SEC265" HREF="vice_toc.html#TOC265">14.2  petcat examples</A></H2>
+
+<DL COMPACT>
+
+<DT><CODE>petcat -2 -o outputfile.txt -- inputfile.prg</CODE>
+<DD>
+Convert inputfile.prg to a text file in outputfile.txt, using BASIC V2 only
+<DT><CODE>petcat -wsimon -o outputfile.prg -- inputfile.txt</CODE>
+<DD>
+Convert inputfile.txt to a PRG file in outputfile.prg, using Simon's BASIC
+</DL>
+
+<P><HR><P>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_13.html">previous</A>, <A HREF="vice_15.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+</BODY>
+</HTML>

@@ -1,0 +1,5672 @@
+<HTML>
+<HEAD>
+<!-- This HTML file has been created by texi2html 1.52
+     from ../../doc/vice.texi on 2 November 2012 -->
+
+<TITLE>VICE Manual - 7  Machine-specific features</TITLE>
+</HEAD>
+<BODY>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_6.html">previous</A>, <A HREF="vice_8.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+<P><HR><P>
+
+
+<H1><A NAME="SEC93" HREF="vice_toc.html#TOC93">7  Machine-specific features</A></H1>
+
+
+
+<H2><A NAME="SEC94" HREF="vice_toc.html#TOC94">7.1  C64/128-specific commands and settings</A></H2>
+
+<P>
+This section lists the settings and commands that are C64/128 specific
+and thus are not present in the other emulators.
+
+</P>
+
+
+
+<H3><A NAME="SEC95" HREF="vice_toc.html#TOC95">7.1.1  Using cartridges</A></H3>
+
+<P>
+The cartridge system is organized in "Slots" to allow more than one cartridge
+connected at a time, like it can be done using an expansion port expander on
+a real C64 (see below).
+
+</P>
+<P>
+Generally a cartridge can be enabled by attaching its respective cartridge
+image, or using the respective menu option for cartridges that do not
+require an image.
+
+</P>
+<P>
+x64, x64sc and x128 allow you to attach the following kinds of images:
+
+</P>
+
+<UL>
+<LI>
+
+<TT>`.crt'</TT> images, as used by the CCS64 emulator by Per Håkan Sundell
+<LI>
+
+raw <TT>`.bin'</TT> images, with or without load address
+</UL>
+
+<P>
+<EM>Cartridge images</EM> are like disk images, but contain the contents of
+cartridge ROM and/or RAM images instead of disk images.
+
+</P>
+<P>
+To attach cartridges, use the "Attach a cartridge image" submenu. When using
+<TT>`.crt'</TT> images, this will work for every cartridge which is supported. For
+raw <TT>`.bin'</TT> images you might have to use command line options.
+
+</P>
+<P>
+When you have successfully attached a cartridge image,
+you should then reset the machine to make sure the cartridge initializes
+itself. (Or enable the "reset on cartridge change" option).
+
+</P>
+<P>
+Of course, it is also possible to detach a currently attached
+cartridge image ("Detach cartridge image").
+
+</P>
+<P>
+If you are using a freezer cart like an Action Replay cartridge, you can
+emulate the cartridge's freeze button with the "Cartridge freeze"
+command.
+
+</P>
+<P>
+The imaginary expansion port expander is organized in 4 slots, the
+cartridges are associated with them like this:
+
+</P>
+
+
+<H4><A NAME="SEC96" HREF="vice_toc.html#TOC96">7.1.1.1  Slot 0</A></H4>
+
+<P>
+All carts that have a passthrough connector go here. Once a "Slot 0"
+cartridge is enabled all further cartridges are connected to its respective
+passthrough port.
+
+</P>
+<P>
+Only one cartridge of this type can be active at a time.
+
+</P>
+<P>
+"Slot 0" carts have individual "enable" switches, enabling means enabling permanently.
+
+</P>
+<P>
+The following cartridges are emulated in this slot:
+
+</P>
+
+<UL>
+<LI>
+
+IEEE-488 Interface (<CODE>http://www.funet.fi/pub/cbm/schematics/cartridges/c64/ieee-488/eprom.bin</CODE>)
+<LI>
+
+Magic Voice
+<LI>
+
+MMC64
+</UL>
+
+
+
+<H4><A NAME="SEC97" HREF="vice_toc.html#TOC97">7.1.1.2  Slot 1</A></H4>
+
+<P>
+Mostly RAM based cartridges which for one reason or the other might make sense
+to be enabled together with one of the "Main Slot" cartridges go here.
+
+</P>
+<P>
+Only one cartridge of this type can be active at a time.
+
+</P>
+<P>
+"Slot 1" carts have individual "enable" switches, enabling means enabling permanently
+
+</P>
+<P>
+The following cartridges are emulated in this slot:
+
+</P>
+
+<UL>
+<LI>
+
+Double Quick Brown Box (DQBB)
+<LI>
+
+Expert Cartridge
+<LI>
+
+ISEPIC
+<LI>
+
+RamCart
+</UL>
+
+
+
+<H4><A NAME="SEC98" HREF="vice_toc.html#TOC98">7.1.1.3  Main Slot</A></H4>
+
+<P>
+All other cartridges which are not pure i/o extensions go here.
+
+</P>
+<P>
+Only one cartridge of this type can be active at a time.
+
+</P>
+<P>
+Cartridges in the "Main Slot" must be explicitly set as default to enable them permanently.
+
+</P>
+<P>
+The following cartridges are emulated in this slot:
+
+</P>
+
+<UL>
+<LI>
+
+generic 4K, 8K and 16K game- and ultimax cartridges
+<LI>
+
+Action Replay V5
+<LI>
+
+Action Replay MK2
+<LI>
+
+Action Replay MK3
+<LI>
+
+Action Replay MK4
+<LI>
+
+Atomic Power
+<LI>
+
+C64 Games System
+<LI>
+
+Capture
+<LI>
+
+Comal 80
+<LI>
+
+Dela EP64
+<LI>
+
+Dela EP7x8
+<LI>
+
+Dela EP256
+<LI>
+
+Diashow-Maker
+<LI>
+
+Dinamic
+<LI>
+
+EasyFlash
+<LI>
+
+Epyx FastLoad
+<LI>
+
+EXOS
+<LI>
+
+The Final Cartridge
+<LI>
+
+The Final Cartridge III
+<LI>
+
+Final Cartridge Plus
+<LI>
+
+Freeze Frame
+<LI>
+
+Freeze Machine
+<LI>
+
+Fun Play
+<LI>
+
+Game Killer
+<LI>
+
+IDE64 (<CODE>http://www.ide64.org/</CODE>)
+<LI>
+
+KCS Power Cartridge
+<LI>
+
+MACH 5
+<LI>
+
+Magic Desk
+<LI>
+
+Magic Formel
+<LI>
+
+Mikro Assembler
+<LI>
+
+MMC Replay
+<LI>
+
+Ocean
+<LI>
+
+Prophet64
+<LI>
+
+REX 256k EPROM Cart
+<LI>
+
+REX Utility
+<LI>
+
+Retro Replay
+<LI>
+
+ROSS
+<LI>
+
+Simons' BASIC
+<LI>
+
+Snapshot 64
+<LI>
+
+Stardos
+<LI>
+
+Structured BASIC
+<LI>
+
+Super Explode V5.0
+<LI>
+
+Super Games
+<LI>
+
+Super Snapshot V4
+<LI>
+
+Super Snapshot V5
+<LI>
+
+Warp Speed
+<LI>
+
+Westermann Learning
+<LI>
+
+Zaxxon
+</UL>
+
+
+
+<H4><A NAME="SEC99" HREF="vice_toc.html#TOC99">7.1.1.4  I/O Slot</A></H4>
+
+<P>
+All carts that are pure I/O extensions go here.
+
+</P>
+<P>
+Any number of "I/O Slot" Carts may be active at a time.
+
+</P>
+<P>
+"I/O Slot" carts have individual "enable" switches, enabling means enabling permanently.
+
+</P>
+<P>
+The following cartridges are emulated in this slot:
+
+</P>
+
+<UL>
+<LI>
+
+ACIA (Swiftlink, Turbo232)
+<LI>
+
+DigiMAX
+<LI>
+
+Ethernet (The Final Ethernet, RR-Net)
+<LI>
+
+GEO-RAM
+<LI>
+
+MIDI (Passport/Syntech, Datel/Siel/JMS/C-Lab, Maplin, Namesoft, Sequential)
+<LI>
+
+RAM Expansion Module (REU)
+<LI>
+
+SFX Sound Expander
+<LI>
+
+SFX Sound Sampler
+</UL>
+
+
+
+<H4><A NAME="SEC100" HREF="vice_toc.html#TOC100">7.1.1.5  Expected behaviour</A></H4>
+
+<P>
+When the emulator is run without arguments, all settings from the config file
+should be applied and arguments override settings from the config file.
+
+</P>
+<P>
+When saving the settings to the config file it is expected that on the next run
+of the emulator all settings will be in the same state as they were when saved.
+
+</P>
+<P>
+There is an exception to this rule: the cartridge in the "Main Slot" must be
+explicitly set as default before it gets saved to the config file.
+
+</P>
+<P>
+<CODE>+cart</CODE> should disable ALL cartridges, including eventually activated REU,
+Swithlink and all similar expansionport devices.
+
+</P>
+<P>
+<CODE>-cartXYZ</CODE> options should generally attach AND activate a cart of type XYZ.
+As a consequence, attaching carts this way which are NOT in the "Main Slot" will
+also enable the cart permanently.
+
+</P>
+
+
+<H4><A NAME="SEC101" HREF="vice_toc.html#TOC101">7.1.1.6  Common problems</A></H4>
+
+<P>
+If attaching a cartridge does not work as expected, this may be because of various
+reasons:
+
+</P>
+
+<UL>
+
+<LI>Not seldomly the CRT type is incorrectly set in <CODE>.crt</CODE> files found "in the wild".
+
+Make sure this is not the case (if in doubt use <CODE>cartconv</CODE> to verify and/or fix).
+
+<LI>You may have unintentionally enabled more than one cartridge at once, for
+
+example by saving the settings with REU enabled, and then later attaching a game
+cartridge from the command-line. The cartridge system will allow certain combinations,
+but (as on the real thing) not all do (can) actually work. To make sure this is
+not the case, either detach all cartridges from the menus, or use <CODE>+cart</CODE>
+on the command-line.
+
+<LI>The cartridge image might be broken. Try one from a different source. If you
+
+are sure the dump is ok (for example because you dumped it yourself) then make sure
+it is in proper linear order (on some cartridges, for example "capture", address and/or
+data lines at the eprom are shuffled around so a dump made with an eprom burner can not
+be used as is).
+
+<LI>Last not least you might have encountered a bug in the emulation. If you
+
+suspect this is the case, and you can still reproduce the bug after checking the
+things above, please file a bug report including the following information:
+
+
+<UL>
+<LI>attach your vicerc and a reference to the cartridge binaries
+
+<LI>if you can, comment in the respective DEBUGXYZ macros prominently defined at the
+
+top of these files: src/c64/cart/c64cart.c src/c64/cart/c64cartmem.c src/c64/c64io.c
+src/c64/c64export.c and then recompile. this will add debug output that might make
+it much easier to locate certain problems.
+</UL>
+
+</UL>
+
+
+
+<H4><A NAME="SEC102" HREF="vice_toc.html#TOC102">7.1.1.7  IEEE-488 interface</A></H4>
+
+<P>
+To be able to use an IEEE drive, you need to enable IEEE emulation for the
+emulator. To do this, follow the following steps:
+
+</P>
+<P>
+Download the IEEE 488 ROM image from the CBM archives (formerly known as FUNET)
+Attach that image with File/Attach cartridge image/IEEE488 interface image.
+
+</P>
+<P>
+Make sure you have a one-drive system only (that is, go to Settings/Peripheral
+Setting, uncheck "use IEC device" for all devices, go to Settings/Drive Settings
+and select "Floppy type" as "none" for all drives other than drive 8.
+
+</P>
+<P>
+After this, all drives can be selected in x64 and x128.
+
+</P>
+
+
+<H4><A NAME="SEC103" HREF="vice_toc.html#TOC103">7.1.1.8  The Final Cartridge 3</A></H4>
+<P>
+The Final Cartridge 3 detects whether a mouse is connected when it starts and
+disables mouse support if it doesnt detect one. So to make mouse emulation
+work you must either enable it on the command line, or reset the cartridge
+after enabling it from the user interface.
+
+</P>
+
+
+<H3><A NAME="SEC104" HREF="vice_toc.html#TOC104">7.1.2  C64 cartridge settings</A></H3>
+
+
+
+<H4><A NAME="SEC105" HREF="vice_toc.html#TOC105">7.1.2.1  C64 cartridge resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>IOCollisionHandling</CODE>
+<DD>
+<A NAME="IDX431"></A>
+ 
+Integer specifying the way the I/O collisions should be handled, (0: error message and 
+detach all involved carts, 1: error message and detach last attached involved 
+carts, 2: warning in log and 'AND' the valid return values)
+
+<A NAME="IDX432"></A>
+<DT><CODE>CartridgeReset</CODE>
+<DD>
+Boolean specifying whether the machine should be resetted when a cartridge is
+changed.
+<A NAME="IDX433"></A>
+<DT><CODE>CartridgeType</CODE>
+<DD>
+Integer specifying the type of cartridge emulated in the "main" slot
+<A NAME="IDX434"></A>
+<DT><CODE>CartridgeFile</CODE>
+<DD>
+String specifying the filename of the image for the cartridge emulated in the "main" slot
+
+<A NAME="IDX435"></A>
+<DT><CODE>DQBB</CODE>
+<DD>
+Boolean specifying whether the Double Quick Brown Box should be emulated or not.
+<A NAME="IDX436"></A>
+<DT><CODE>DQBBfilename</CODE>
+<DD>
+String specifying the filename of the DQBB RAM image.
+<A NAME="IDX437"></A>
+<DT><CODE>DQBBImageWrite</CODE>
+<DD>
+Boolean, if true write back the DQBB image file automatically, incase the RAM
+contents changed, when detaching or quitting the emulator.
+
+<A NAME="IDX438"></A>
+<DT><CODE>EasyFlashJumper</CODE>
+<DD>
+Boolean specifying whether the Easy Flash jumper is set.
+<A NAME="IDX439"></A>
+<DT><CODE>EasyFlashWriteCRT</CODE>
+<DD>
+Boolean, if true write back the Easy FLash image file automatically, incase the
+contents changed, when detaching or quitting the emulator.
+
+<A NAME="IDX440"></A>
+<DT><CODE>ExpertCartridgeEnabled</CODE>
+<DD>
+Boolean specifying whether the Expert Cartridge should be emulated or not.
+<A NAME="IDX441"></A>
+<DT><CODE>Expertfilename</CODE>
+<DD>
+String specifying the filename of the Expert Cartridge RAM image.
+<A NAME="IDX442"></A>
+<DT><CODE>ExpertImageWrite</CODE>
+<DD>
+Boolean, if true write back the Expert Cartridge image file automatically, incase the RAM
+contents changed, when detaching or quitting the emulator.
+<A NAME="IDX443"></A>
+<DT><CODE>ExpertCartridgeMode</CODE>
+<DD>
+Enum specifying the state of the expert cartridge switch (0=off 1=prg 2=on)
+<A NAME="IDX444"></A>
+<DT><CODE>IDE64Config</CODE>
+<DD>
+String encoded content of IDE64 DS1302 RAM, used to store IDEDOS setup parameters. Not meant to
+be directly manipulated as content depends on the version of IDEDOS used.
+<A NAME="IDX445"></A>
+<DT><CODE>IDE64version4</CODE>
+<DD>
+Boolean specifying whether the emulated card version is V4.1 or V3.4. This is automatically
+detected most of the time for .crt cartridge images.
+<A NAME="IDX446"></A>
+<DT><CODE>IDE64RTCOffset</CODE>
+<DD>
+Integer in seconds which gives the difference between the local time and the time of the emulated DS1302 RTC.
+<A NAME="IDX447"></A>
+<A NAME="IDX448"></A>
+<A NAME="IDX449"></A>
+<A NAME="IDX450"></A>
+<DT><CODE>IDE64Image1</CODE>
+<DD>
+<DT><CODE>IDE64Image2</CODE>
+<DD>
+<DT><CODE>IDE64Image3</CODE>
+<DD>
+<DT><CODE>IDE64Image4</CODE>
+<DD>
+String specifying the full path to the four harddisk images. If a file is non-existing the drive is not emulated.
+Some older IDEDOS versions only support the first two harddisks.
+<A NAME="IDX451"></A>
+<A NAME="IDX452"></A>
+<A NAME="IDX453"></A>
+<A NAME="IDX454"></A>
+<DT><CODE>IDE64Cylinders1</CODE>
+<DD>
+<DT><CODE>IDE64Cylinders2</CODE>
+<DD>
+<DT><CODE>IDE64Cylinders3</CODE>
+<DD>
+<DT><CODE>IDE64Cylinders4</CODE>
+<DD>
+Number of cylinders for the four harddisk images. Valid range is 1--65535.
+<A NAME="IDX455"></A>
+<A NAME="IDX456"></A>
+<A NAME="IDX457"></A>
+<A NAME="IDX458"></A>
+<DT><CODE>IDE64Heads1</CODE>
+<DD>
+<DT><CODE>IDE64Heads2</CODE>
+<DD>
+<DT><CODE>IDE64Heads3</CODE>
+<DD>
+<DT><CODE>IDE64Heads4</CODE>
+<DD>
+Number of heads for the four harddisk images. Valid range is 1--16.
+<A NAME="IDX459"></A>
+<A NAME="IDX460"></A>
+<A NAME="IDX461"></A>
+<A NAME="IDX462"></A>
+<DT><CODE>IDE64Sectors1</CODE>
+<DD>
+<DT><CODE>IDE64Sectors2</CODE>
+<DD>
+<DT><CODE>IDE64Sectors3</CODE>
+<DD>
+<DT><CODE>IDE64Sectors4</CODE>
+<DD>
+Number of sectors for the four harddisk images. Valid range is 1--63.
+<A NAME="IDX463"></A>
+<A NAME="IDX464"></A>
+<A NAME="IDX465"></A>
+<A NAME="IDX466"></A>
+<DT><CODE>IDE64AutodetectSize1</CODE>
+<DD>
+<DT><CODE>IDE64AutodetectSize2</CODE>
+<DD>
+<DT><CODE>IDE64AutodetectSize3</CODE>
+<DD>
+<DT><CODE>IDE64AutodetectSize4</CODE>
+<DD>
+Boolean specifying whether the disk geometry should be auto detected based
+on the disk image for the respective harddisk, or the cylinder/head/sector resources above should be used.
+<A NAME="IDX467"></A>
+<DT><CODE>IEEE488</CODE>
+<DD>
+Boolean specifying whether the IEEE488 interface should be emulated or not.
+<A NAME="IDX468"></A>
+<DT><CODE>IEEE488Image</CODE>
+<DD>
+String specifying the filename of the IEEE488 ROM image
+<A NAME="IDX469"></A>
+<DT><CODE>IsepicCartridgeEnabled</CODE>
+<DD>
+Boolean specifying whether ISEPIC should be emulated or not.
+<A NAME="IDX470"></A>
+<DT><CODE>Isepicfilename</CODE>
+<DD>
+String specifying the filename of the ISEPIC RAM image.
+<A NAME="IDX471"></A>
+<DT><CODE>IsepicSwitch</CODE>
+<DD>
+Boolean specifying the status of the ISEPIC switch (0: off, 1: on)
+<A NAME="IDX472"></A>
+<DT><CODE>IsepicImageWrite</CODE>
+<DD>
+Boolean, if true write back the ISEPIC image file automatically, incase the RAM
+contents changed, when detaching or quitting the emulator.
+<A NAME="IDX473"></A>
+<DT><CODE>MagicVoiceCartridgeEnabled</CODE>
+<DD>
+Boolean specifying whether the Magic Voice should be emulated or not.
+<A NAME="IDX474"></A>
+<DT><CODE>MagicVoiceImage</CODE>
+<DD>
+String specifying the filename of the Magic Voice ROM image
+
+<A NAME="IDX475"></A>
+<DT><CODE>MMC64</CODE>
+<DD>
+Boolean specifying whether the MMC64 should be emulated or not.
+<A NAME="IDX476"></A>
+<DT><CODE>MMC64BIOSfilename</CODE>
+<DD>
+String specifying the filename of the MMC64 Flash ROM image.
+<A NAME="IDX477"></A>
+<DT><CODE>MMC64_bios_write</CODE>
+<DD>
+Boolean, if true write back the MMC64 Flash ROM image file automatically, incase the
+contents changed, when detaching or quitting the emulator.
+<A NAME="IDX478"></A>
+<DT><CODE>MMC64_flashjumper</CODE>
+<DD>
+Boolean that specifies whether the MMC64 flash jumper is set.
+<A NAME="IDX479"></A>
+<DT><CODE>MMC64_revision</CODE>
+<DD>
+Integer that specifies the MMC64 hardware revision (0=Rev. A, 1=Rev. B)
+<A NAME="IDX480"></A>
+<DT><CODE>MMC64imagefilename</CODE>
+<DD>
+String specifying the filename of the SD-Card image used by the MMC64 emulation.
+<A NAME="IDX481"></A>
+<DT><CODE>MMC64_RO</CODE>
+<DD>
+Boolean, if true the SD-Card image is mounted read-only.
+<A NAME="IDX482"></A>
+<DT><CODE>MMC64_sd_type</CODE>
+<DD>
+Integer that specifies the reported type for the emulated SD-Card. (0=Auto, 1=MMC,
+2=SD, 3=SDHC)
+
+<A NAME="IDX483"></A>
+<DT><CODE>MMCRCardImage</CODE>
+<DD>
+String that specifies the filename of the SD-Card image used by the MMCR emulation.
+<A NAME="IDX484"></A>
+<DT><CODE>MMCREEPROMImage</CODE>
+<DD>
+String that specifies the filename of the MMCR EEPROM image.
+<A NAME="IDX485"></A>
+<DT><CODE>MMCRRescueMode</CODE>
+<DD>
+Boolean that specifies if the rescue mode (both buttons pressed during powerup)
+of the MMCR is active.
+<A NAME="IDX486"></A>
+<DT><CODE>MMCRImageWrite</CODE>
+<DD>
+Boolean, if true write back the MMCR Flash ROM image file automatically, incase the
+contents changed, when detaching or quitting the emulator.
+<A NAME="IDX487"></A>
+<DT><CODE>MMCRCardRW</CODE>
+<DD>
+Boolean that specifies if the SD-Card image used by the MMCR emulation is writeable.
+<A NAME="IDX488"></A>
+<DT><CODE>MMCRSDType</CODE>
+<DD>
+Integer that specifies the reported type for the emulated SD-Card. (0=Auto, 1=MMC,
+2=SD, 3=SDHC)
+<A NAME="IDX489"></A>
+<DT><CODE>MMCREEPROMRW</CODE>
+<DD>
+Boolean that specifies if the MMCR EEPROM image is writeable.
+
+<A NAME="IDX490"></A>
+<DT><CODE>RAMCART</CODE>
+<DD>
+Boolean specifying whether the RAMCart should be emulated or not.
+<A NAME="IDX491"></A>
+<DT><CODE>RAMCARTfilename</CODE>
+<DD>
+String specifying the filename of the RAMCart RAM image.
+<A NAME="IDX492"></A>
+<DT><CODE>RAMCARTImageWrite</CODE>
+<DD>
+Boolean, if true write back the RAMCart image file automatically, incase the RAM
+contents changed, when detaching or quitting the emulator.
+<A NAME="IDX493"></A>
+<DT><CODE>RAMCART_RO</CODE>
+<DD>
+Boolean, if true the RAMCart contents are read only
+<A NAME="IDX494"></A>
+<DT><CODE>RAMCARTsize</CODE>
+<DD>
+Integer specifying the size of the RAMCart in KB (64, 128)
+
+<A NAME="IDX495"></A>
+<DT><CODE>RRrevision</CODE>
+<DD>
+Integer specifying the RR hardware revision (0=retro replay, 1=nordic replay)
+<A NAME="IDX496"></A>
+<DT><CODE>RRFlashJumper</CODE>
+<DD>
+Boolean specifying whether the RR flash jumper is set or not.
+<A NAME="IDX497"></A>
+<DT><CODE>RRBankJumper</CODE>
+<DD>
+Boolean specifying whether the RR bank jumper is set or not.
+<A NAME="IDX498"></A>
+<DT><CODE>RRBiosWrite</CODE>
+<DD>
+Boolean, if true write back the RR Flash ROM image file automatically, incase the
+contents changed, when detaching or quitting the emulator.
+</DL>
+
+
+
+<H4><A NAME="SEC106" HREF="vice_toc.html#TOC106">7.1.2.2  C64 cartridge command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-iocollision &#60;method&#62;</CODE>
+<DD>
+<A NAME="IDX499"></A>
+ 
+Select the way the I/O collisions should be handled, (0: error message and 
+detach all involved carts, 1: error message and detach last attached involved 
+carts, 2: warning in log and 'AND' the valid return values
+
+<A NAME="IDX500"></A>
+<DT><CODE>+cart</CODE>
+<DD>
+Disable all cartridges (which would eventually be enabled in the config file).
+<A NAME="IDX501"></A>
+<DT><CODE>-cartreset</CODE>
+<DD>
+<DT><CODE>+cartreset</CODE>
+<DD>
+Reset/Do not reset machine if a cartridge is attached or detached
+<A NAME="IDX502"></A>
+<DT><CODE>-cart8 &#60;name&#62;</CODE>
+<DD>
+Attach generic 8KB cartridge image
+<A NAME="IDX503"></A>
+<DT><CODE>-cart16 &#60;name&#62;</CODE>
+<DD>
+Attach generic 16KB cartridge image
+<A NAME="IDX504"></A>
+<DT><CODE>-cartultimax &#60;name&#62;</CODE>
+<DD>
+Attach generic 16kB Ultimax cartridge image
+<A NAME="IDX505"></A>
+<DT><CODE>-cartcrt &#60;name&#62;</CODE>
+<DD>
+Attach CRT cartridge image
+<A NAME="IDX506"></A>
+<DT><CODE>-cartap &#60;name&#62;</CODE>
+<DD>
+Attach raw 32KB Atomic Power cartridge image
+<A NAME="IDX507"></A>
+<DT><CODE>-cartar2 &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB Action Replay MK2 cartridge image
+<A NAME="IDX508"></A>
+<DT><CODE>-cartar3 &#60;name&#62;</CODE>
+<DD>
+Attach raw 16KB Action Replay MK3 cartridge image
+<A NAME="IDX509"></A>
+<DT><CODE>-cartar4 &#60;name&#62;</CODE>
+<DD>
+Attach raw 32KB Action Replay MK4 cartridge image
+<A NAME="IDX510"></A>
+<DT><CODE>-cartar5 &#60;name&#62;</CODE>
+<DD>
+Attach raw 32KB Action Replay cartridge image
+<A NAME="IDX511"></A>
+<DT><CODE>-cartcap &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB Capture cartridge image
+<A NAME="IDX512"></A>
+<DT><CODE>-cartcomal &#60;name&#62;</CODE>
+<DD>
+Attach raw 64kB Comal 80 cartridge image
+<A NAME="IDX513"></A>
+<DT><CODE>-cartdep256 &#60;name&#62;</CODE>
+<DD>
+Attach raw Dela EP256 cartridge image
+<A NAME="IDX514"></A>
+<DT><CODE>-cartdep64 &#60;name&#62;</CODE>
+<DD>
+Attach raw Dela EP64 cartridge image
+<A NAME="IDX515"></A>
+<DT><CODE>-cartdep7x8 &#60;name&#62;</CODE>
+<DD>
+Attach raw Dela EP7x8 cartridge image
+<A NAME="IDX516"></A>
+<DT><CODE>-cartdin &#60;name&#62;</CODE>
+<DD>
+Attach raw 128kB Dinamic cartridge image
+<A NAME="IDX517"></A>
+<DT><CODE>-cartdsm &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB Diashow-Maker cartridge image
+<A NAME="IDX518"></A>
+<DT><CODE>-cartdqbb &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB Double Quick Brown Box cartridge image
+<A NAME="IDX519"></A>
+<DT><CODE>-dqbb</CODE>
+<DD>
+<DT><CODE>+dqbb</CODE>
+<DD>
+Enable/Disable Double Quick Brown Box
+<A NAME="IDX520"></A>
+<DT><CODE>-dqbbimage &#60;name&#62;</CODE>
+<DD>
+Specify Double Quick Brown Box filename
+<A NAME="IDX521"></A>
+<DT><CODE>-dqbbimagerw</CODE>
+<DD>
+<DT><CODE>+dqbbimagerw</CODE>
+<DD>
+Allow/Disallow writing to DQBB image
+<A NAME="IDX522"></A>
+<DT><CODE>-carteasy &#60;name&#62;</CODE>
+<DD>
+Attach raw EasyFlash cartridge image
+<A NAME="IDX523"></A>
+<DT><CODE>-easyflashjumper</CODE>
+<DD>
+<DT><CODE>+easyflashjumper</CODE>
+<DD>
+Enable/Disable EasyFlash jumper
+<A NAME="IDX524"></A>
+<DT><CODE>-easyflashcrtwrite</CODE>
+<DD>
+<DT><CODE>+easyflashcrtwrite</CODE>
+<DD>
+Allow/Disallow writing to EasyFlash .crt image
+<A NAME="IDX525"></A>
+<DT><CODE>-cartepyx &#60;name&#62;</CODE>
+<DD>
+Attach raw 8KB Epyx FastLoad cartridge image
+<A NAME="IDX526"></A>
+<DT><CODE>-cartexos &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB EXOS cartridge image
+<A NAME="IDX527"></A>
+<DT><CODE>-cartexpert &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB Expert Cartridge image
+<A NAME="IDX528"></A>
+<DT><CODE>-expert</CODE>
+<DD>
+<DT><CODE>+expert</CODE>
+<DD>
+Enable/Disable the Expert Cartridge
+<A NAME="IDX529"></A>
+<DT><CODE>-expertimagename &#60;name&#62;</CODE>
+<DD>
+Set Expert Cartridge image name
+<A NAME="IDX530"></A>
+<DT><CODE>-expertimagerw</CODE>
+<DD>
+<DT><CODE>+expertimagerw</CODE>
+<DD>
+Allow/Disallow writing to Expert Cartridge image
+<A NAME="IDX531"></A>
+<DT><CODE>-cartf64 &#60;Name&#62;</CODE>
+<DD>
+Attach raw 32kB Formel 64 image
+<A NAME="IDX532"></A>
+<DT><CODE>-cartfc1 &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB Final Cartridge image
+<A NAME="IDX533"></A>
+<DT><CODE>-cartfc3 &#60;name&#62;</CODE>
+<DD>
+Attach raw 64kB Final Cartridge III image
+<A NAME="IDX534"></A>
+<DT><CODE>-cartfcplus &#60;name&#62;</CODE>
+<DD>
+Attach raw 32kB Final Cartridge Plus image
+<A NAME="IDX535"></A>
+<DT><CODE>-cartff &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB Freeze Frame image
+<A NAME="IDX536"></A>
+<DT><CODE>-cartfm &#60;name&#62;</CODE>
+<DD>
+Attach raw 32kB Freeze Machine image
+<A NAME="IDX537"></A>
+<DT><CODE>-cartfp &#60;name&#62;</CODE>
+<DD>
+Attach raw 128kB Fun Play/Power Play cartridge image
+<A NAME="IDX538"></A>
+<DT><CODE>-cartgk &#60;name&#62;</CODE>
+<DD>
+Attach raw 8KB Game Killer cartridge image
+<A NAME="IDX539"></A>
+<DT><CODE>-cartgs &#60;name&#62;</CODE>
+<DD>
+Attach raw 512kB Game System cartridge image
+<A NAME="IDX540"></A>
+<DT><CODE>-cartide64 &#60;name&#62;</CODE>
+<DD>
+Attach raw 64KB or 128KB IDE64 cartridge image
+<A NAME="IDX541"></A>
+<DT><CODE>-IDE64image1 &#60;name&#62;</CODE>
+<DD>
+<A NAME="IDX542"></A>
+<DT><CODE>-IDE64image2 &#60;name&#62;</CODE>
+<DD>
+<A NAME="IDX543"></A>
+<DT><CODE>-IDE64image3 &#60;name&#62;</CODE>
+<DD>
+<A NAME="IDX544"></A>
+<DT><CODE>-IDE64image4 &#60;name&#62;</CODE>
+<DD>
+Specify path to the image files for IDE64 harddisks
+<A NAME="IDX545"></A>
+<DT><CODE>-IDE64cyl1 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX546"></A>
+<DT><CODE>-IDE64cyl2 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX547"></A>
+<DT><CODE>-IDE64cyl3 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX548"></A>
+<DT><CODE>-IDE64cyl4 &#60;value&#62;</CODE>
+<DD>
+Set number of cylinders for the IDE64 harddisk emulation (1-65535)
+<A NAME="IDX549"></A>
+<DT><CODE>-IDE64hds1 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX550"></A>
+<DT><CODE>-IDE64hds2 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX551"></A>
+<DT><CODE>-IDE64hds3 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX552"></A>
+<DT><CODE>-IDE64hds4 &#60;value&#62;</CODE>
+<DD>
+Set number of heads for the IDE64 harddisk emulation (1-16)
+<A NAME="IDX553"></A>
+<DT><CODE>-IDE64sec1 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX554"></A>
+<DT><CODE>-IDE64sec2 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX555"></A>
+<DT><CODE>-IDE64sec3 &#60;value&#62;</CODE>
+<DD>
+<A NAME="IDX556"></A>
+<DT><CODE>-IDE64sec4 &#60;value&#62;</CODE>
+<DD>
+Set number of sectors for the IDE64 harddisk emulation (1-63)
+<A NAME="IDX557"></A>
+<A NAME="IDX558"></A>
+<A NAME="IDX559"></A>
+<A NAME="IDX560"></A>
+<DT><CODE>-IDE64autosize1</CODE>
+<DD>
+<DT><CODE>+IDE64autosize1</CODE>
+<DD>
+<DT><CODE>-IDE64autosize2</CODE>
+<DD>
+<DT><CODE>+IDE64autosize2</CODE>
+<DD>
+<DT><CODE>-IDE64autosize3</CODE>
+<DD>
+<DT><CODE>+IDE64autosize3</CODE>
+<DD>
+<DT><CODE>-IDE64autosize4</CODE>
+<DD>
+<DT><CODE>+IDE64autosize4</CODE>
+<DD>
+Autodetect geometry of formatted images or do not autodetect and use specified geometry
+<A NAME="IDX561"></A>
+<DT><CODE>-IDE64version4</CODE>
+<DD>
+<DT><CODE>+IDE64version4</CODE>
+<DD>
+Emulate version 4 hardware/Emulate pre version 4 hardware
+<A NAME="IDX562"></A>
+<DT><CODE>-cartieee &#60;name&#62;</CODE>
+<DD>
+Attach CBM IEEE-488 cartridge image
+<A NAME="IDX563"></A>
+<DT><CODE>-ieee488</CODE>
+<DD>
+<DT><CODE>+ieee488</CODE>
+<DD>
+Enable (<CODE>IEEE488=1</CODE>) or disable (<CODE>IEEE488=0</CODE>) emulation of the
+IEEE488 interface.
+<A NAME="IDX564"></A>
+<DT><CODE>-ieee488image &#60;name&#62;</CODE>
+<DD>
+Set IEEE488 interface image name
+<A NAME="IDX565"></A>
+<DT><CODE>-isepic</CODE>
+<DD>
+<DT><CODE>+isepic</CODE>
+<DD>
+Enable/Disable the ISEPIC cart
+<A NAME="IDX566"></A>
+<DT><CODE>-cartisepic &#60;name&#62;</CODE>
+<DD>
+Attach raw 2kB ISEPIC cartridge image
+<A NAME="IDX567"></A>
+<DT><CODE>-isepicimagename &#60;name&#62;</CODE>
+<DD>
+Set ISEPIC image name
+<A NAME="IDX568"></A>
+<DT><CODE>-isepicimagerw</CODE>
+<DD>
+<DT><CODE>+isepicimagerw</CODE>
+<DD>
+Allow/Disallow writing to ISEPIC image
+<A NAME="IDX569"></A>
+<DT><CODE>-cartkcs &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB KCS Power cartridge image
+<A NAME="IDX570"></A>
+<DT><CODE>-cartks &#60;name&#62;</CODE>
+<DD>
+Attach raw 24kB Kingsoft cartridge image
+<A NAME="IDX571"></A>
+<DT><CODE>-cartmach5 &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB MACH 5 cartridge image
+<A NAME="IDX572"></A>
+<DT><CODE>-cartmd &#60;name&#62;</CODE>
+<DD>
+Attach raw 32/64/128kB Magic Desk cartridge image
+<A NAME="IDX573"></A>
+<DT><CODE>-cartmf &#60;name&#62;</CODE>
+<DD>
+Attach raw Magic Formel cartridge image
+<A NAME="IDX574"></A>
+<DT><CODE>-cartmikro &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB Mikro Assembler cartridge image
+<A NAME="IDX575"></A>
+<DT><CODE>-mmc64</CODE>
+<DD>
+<DT><CODE>+mmc64</CODE>
+<DD>
+Enable/Disable the MMC64 expansion
+<A NAME="IDX576"></A>
+<DT><CODE>-cartmmc64 &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB MMC64 cartridge image
+<A NAME="IDX577"></A>
+<DT><CODE>-mmc64bios &#60;name&#62;</CODE>
+<DD>
+Specify name of MMC64 BIOS image
+<A NAME="IDX578"></A>
+<DT><CODE>-mmc64image &#60;name&#62;</CODE>
+<DD>
+Specify name of MMC64 image
+<A NAME="IDX579"></A>
+<DT><CODE>-mmc64readonly</CODE>
+<DD>
+Set the MMC64 card to read-only
+<A NAME="IDX580"></A>
+<DT><CODE>-mmc64readwrite</CODE>
+<DD>
+Set the MMC64 card to read/write
+<A NAME="IDX581"></A>
+<DT><CODE>-mmc64bioswrite</CODE>
+<DD>
+Save the MMC64 bios when changed
+<A NAME="IDX582"></A>
+<DT><CODE>-cartmmcr &#60;name&#62;</CODE>
+<DD>
+Attach raw 512kB MMC Replay cartridge image
+<A NAME="IDX583"></A>
+<DT><CODE>-mmcrrescue</CODE>
+<DD>
+<DT><CODE>+mmcrrescue</CODE>
+<DD>
+Enable/Disable MMC Replay rescue mode
+<A NAME="IDX584"></A>
+<DT><CODE>-mmcrimagerw</CODE>
+<DD>
+<DT><CODE>+mmcrimagerw</CODE>
+<DD>
+Allow/Disallow writing to MMC Replay image
+<A NAME="IDX585"></A>
+<DT><CODE>-mmcrcardimage &#60;filename&#62;</CODE>
+<DD>
+Specify MMC Replay card image filename
+<A NAME="IDX586"></A>
+<DT><CODE>-mmcrcardrw</CODE>
+<DD>
+<DT><CODE>+mmcrcardrw</CODE>
+<DD>
+Allow/Disallow writes to MMC Replay card image
+<A NAME="IDX587"></A>
+<DT><CODE>-mmcreepromimage</CODE>
+<DD>
+Specify MMC Replay EEPROM image filename
+<A NAME="IDX588"></A>
+<DT><CODE>-mmcreepromrw</CODE>
+<DD>
+<DT><CODE>+mmcreepromrw</CODE>
+<DD>
+Allow/Disallow writes to MMC Replay EEPROM image
+<A NAME="IDX589"></A>
+<DT><CODE>-cartmv &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB Magic Voice cartridge image
+<A NAME="IDX590"></A>
+<DT><CODE>-cartocean &#60;name&#62;</CODE>
+<DD>
+Attach raw Ocean cartridge image
+<A NAME="IDX591"></A>
+<DT><CODE>-cartp64 &#60;name&#62;</CODE>
+<DD>
+Attach raw 256KB Prophet 64 cartridge image
+<A NAME="IDX592"></A>
+<DT><CODE>-cartpf &#60;name&#62;</CODE>
+<DD>
+Attach raw 64kb Pagefox cartridge image
+<A NAME="IDX593"></A>
+<DT><CODE>-cartramcart &#60;name&#62;</CODE>
+<DD>
+Attach raw RamCart cartridge image
+<A NAME="IDX594"></A>
+<DT><CODE>-ramcart</CODE>
+<DD>
+<DT><CODE>+ramcart</CODE>
+<DD>
+Enable/Disable the RAMCART expansion
+<A NAME="IDX595"></A>
+<DT><CODE>-ramcartsize &#60;size in KB&#62;</CODE>
+<DD>
+Size of the RAMCART expansion
+<A NAME="IDX596"></A>
+<DT><CODE>-ramcartimage &#60;name&#62;</CODE>
+<DD>
+Specify name of RAMCART image
+<A NAME="IDX597"></A>
+<DT><CODE>-ramcartimagerw</CODE>
+<DD>
+<DT><CODE>+ramcartimagerw</CODE>
+<DD>
+Allow/Disallow writing to RAMCart image
+<A NAME="IDX598"></A>
+<DT><CODE>-cartrep256 &#60;name&#62;</CODE>
+<DD>
+Attach raw REX EP256 cartridge image
+<A NAME="IDX599"></A>
+<DT><CODE>-cartross &#60;name&#62;</CODE>
+<DD>
+Attach raw 16/32kB ROSS cartridge image
+<A NAME="IDX600"></A>
+<DT><CODE>-cartrr &#60;name&#62;</CODE>
+<DD>
+Attach raw 64KB Retro Replay cartridge image
+<A NAME="IDX601"></A>
+<DT><CODE>-rrbioswrite</CODE>
+<DD>
+<DT><CODE>+rrbioswrite</CODE>
+<DD>
+Enable/Disable saving of the RR ROM at exit
+<A NAME="IDX602"></A>
+<DT><CODE>-rrbankjumper</CODE>
+<DD>
+<DT><CODE>+rrbankjumper</CODE>
+<DD>
+Set/Unset RR Bank Jumper
+<A NAME="IDX603"></A>
+<DT><CODE>-rrflashjumper</CODE>
+<DD>
+<DT><CODE>+rrflashjumper</CODE>
+<DD>
+Set/Unset RR Flash Jumper
+<A NAME="IDX604"></A>
+<DT><CODE>-cartru &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB REX Utility cartridge image
+<A NAME="IDX605"></A>
+<DT><CODE>-carts64 &#60;name&#62;</CODE>
+<DD>
+Attach raw 4kB Snapshot 64 cartridge image
+<A NAME="IDX606"></A>
+<DT><CODE>-cartsb &#60;name&#62;</CODE>
+<DD>
+Attach raw Structured Basic cartridge image
+<A NAME="IDX607"></A>
+<DT><CODE>-cartse5 &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB Super Explode V5 cartridge image
+<A NAME="IDX608"></A>
+<DT><CODE>-cartsg &#60;name&#62;</CODE>
+<DD>
+Attach raw 64kB Super Games cartridge image
+<A NAME="IDX609"></A>
+<DT><CODE>-cartsilver &#60;Name&#62;</CODE>
+<DD>
+Attach raw Silverrock 128 cartridge image
+<A NAME="IDX610"></A>
+<DT><CODE>-cartsimon &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB Simons Basic cartridge image
+<A NAME="IDX611"></A>
+<DT><CODE>-cartss4 &#60;name&#62;</CODE>
+<DD>
+Attach raw 32KB Super Snapshot V4 cartridge image
+<A NAME="IDX612"></A>
+<DT><CODE>-cartss5 &#60;name&#62;</CODE>
+<DD>
+Attach raw 64KB Super Snapshot V5 cartridge image
+<A NAME="IDX613"></A>
+<DT><CODE>-cartstar &#60;name&#62;</CODE>
+<DD>
+Attach raw 16KB Stardos cartridge image
+<A NAME="IDX614"></A>
+<DT><CODE>-cartwl &#60;name&#62;</CODE>
+<DD>
+Attach raw 16KB Westermann Learning cartridge image
+<A NAME="IDX615"></A>
+<DT><CODE>-cartws &#60;name&#62;</CODE>
+<DD>
+Attach raw 8kB Warp Speed cartridge image
+<A NAME="IDX616"></A>
+<DT><CODE>-cartzaxxon &#60;name&#62;</CODE>
+<DD>
+Attach raw 16kB Zaxxon cartridge image
+</DL>
+
+
+
+<H3><A NAME="SEC107" HREF="vice_toc.html#TOC107">7.1.3  CIA settings</A></H3>
+
+
+
+<H4><A NAME="SEC108" HREF="vice_toc.html#TOC108">7.1.3.1  CIA resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>CIA1Model</CODE>
+<DD>
+<A NAME="IDX617"></A>
+ <A NAME="IDX618"></A>
+ 
+<DT><CODE>CIA2Model</CODE>
+<DD>
+Enum specifying CIA model (0 = old 6526, 1 = new 6526A)
+
+</DL>
+
+
+
+<H4><A NAME="SEC109" HREF="vice_toc.html#TOC109">7.1.3.2  CIA command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-ciamodel &#60;model&#62;</CODE>
+<DD>
+<A NAME="IDX619"></A>
+ 
+Set both CIA models (0 = old 6526, 1 = new 6526A)
+<A NAME="IDX620"></A>
+<DT><CODE>-cia1model &#60;model&#62;</CODE>
+<DD>
+Set CIA 1 model (0 = old 6526, 1 = new 6526A)
+<A NAME="IDX621"></A>
+<DT><CODE>-cia2model &#60;model&#62;</CODE>
+<DD>
+Set CIA 2 model (0 = old 6526, 1 = new 6526A)
+
+</DL>
+
+
+
+<H3><A NAME="SEC110" HREF="vice_toc.html#TOC110">7.1.4  VIC-II settings</A></H3>
+
+<P>
+These settings control the emulation of the VIC-II (MOS6569) video chip
+used in both the C64 and the C128.
+
+</P>
+
+<UL>
+
+<LI>
+
+<A NAME="IDX622"></A>
+ 
+"Sprite-sprite collisions" and "Sprite-background collisions", if
+enabled, cause the hardware detection of sprite-to-sprite and
+sprite-to-background collisions of the VIC-II to be emulated.  This
+feature is used by many games, and disabling either of the two detection
+systems can sometimes make you invincible (although there is also a
+chance that also enemies become invincible then).
+
+<A NAME="IDX623"></A>
+<LI>
+
+"Color set" can be used to dynamically change the palette file
+being used by choosing one of the available predefined color sets:
+
+
+<UL>
+<LI>
+
+<TT>`default.vpl'</TT> ("default"), the default VICE palette;
+<LI>
+
+<TT>`c64s.vpl'</TT> ("C64S"), palette taken from the shareware C64S
+emulator by Miha Peternel.
+<LI>
+
+<TT>`ccs64.vpl'</TT> ("CCS64"), palette taken from the shareware CCS64
+emulator by Per Håkan Sundell.
+<LI>
+
+<TT>`frodo.vpl'</TT> ("Frodo"), palette taken from the free Frodo emulator
+by Christian Bauer
+(<A HREF="http://www.uni-mainz.de/~bauec002/FRMain.html">http://www.uni-mainz.de/~bauec002/FRMain.html</A>).
+<LI>
+
+<TT>`pc64.vpl'</TT> ("PC64"), palette taken from the free PC64 emulator by
+Wolfgang Lorenz.
+<LI>
+
+<TT>`godot.vpl'</TT> ("GoDot"), palette as suggested by the authors of the
+C64 graphics package GoDot
+(<A HREF="http://users.aol.com/howtogodot/welcome.htm">http://users.aol.com/howtogodot/welcome.htm</A>).
+</UL>
+
+</UL>
+
+
+
+<H4><A NAME="SEC111" HREF="vice_toc.html#TOC111">7.1.4.1  VIC-II resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>VICIIModel</CODE>
+<DD>
+<A NAME="IDX624"></A>
+ 
+Integer that specifies VIC-II model (6569/6569r1/8565/6567/8562/6567r56a).
+only available in <CODE>x64sc</CODE>.
+
+<A NAME="IDX625"></A>
+<DT><CODE>VICIICheckSsColl</CODE>
+<DD>
+Boolean specifying whether the sprite-sprite hardware collision
+detection must be emulated.
+
+<A NAME="IDX626"></A>
+<DT><CODE>VICIICheckSbColl</CODE>
+<DD>
+Boolean specifying whether the sprite-background hardware collision
+detection must be emulated.
+
+<A NAME="IDX627"></A>
+<DT><CODE>VICIIVideoCache</CODE>
+<DD>
+Boolean specifying whether the video cache is turned on.
+
+<A NAME="IDX628"></A>
+<DT><CODE>VICIIDoubleSize</CODE>
+<DD>
+Boolean specifying whether double-size mode is turned on.
+
+<A NAME="IDX629"></A>
+<DT><CODE>VICIIDoubleScan</CODE>
+<DD>
+Boolean specifying whether double-scan mode is turned on.
+
+<A NAME="IDX630"></A>
+<DT><CODE>VICIINewLuminances</CODE>
+<DD>
+Boolean specifying whether to use new (9 steps) luminances
+
+<A NAME="IDX631"></A>
+<DT><CODE>VICIIPaletteFile</CODE>
+<DD>
+String specifying the name of the palette file being used.  The
+<TT>`.vpl'</TT> extension is optional.
+
+<A NAME="IDX632"></A>
+<DT><CODE>VICIIHwScale</CODE>
+<DD>
+Boolean specifying whether to enable or disable hardware scaling
+
+<A NAME="IDX633"></A>
+<DT><CODE>VICIIFullscreenDevice</CODE>
+<DD>
+fullscreen device
+
+<A NAME="IDX634"></A>
+<DT><CODE>VICIIFullscreen</CODE>
+<DD>
+Boolean specifying whether to use fullscreen mode or not.
+
+<A NAME="IDX635"></A>
+<DT><CODE>VICIIFullscreenStatusbar</CODE>
+<DD>
+Boolean specifying whether to show the status bar in fullscreen mode or not.
+
+<A NAME="IDX636"></A>
+<DT><CODE>VICIIXRANDRFullscreenMode</CODE>
+<DD>
+integer specifying XRANDR fullscreen mode
+
+<A NAME="IDX637"></A>
+<DT><CODE>VICIIVidmodeFullscreenMode</CODE>
+<DD>
+integer specifying Vidmode fullscreen mode
+
+<A NAME="IDX638"></A>
+<DT><CODE>VICIIExternalPalette</CODE>
+<DD>
+Boolean specifying whether to use external palette file or not.
+
+<A NAME="IDX639"></A>
+<DT><CODE>VICIIColorSaturation</CODE>
+<DD>
+integer specifying saturation of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX640"></A>
+<DT><CODE>VICIIColorContrast</CODE>
+<DD>
+integer specifying contrast of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX641"></A>
+<DT><CODE>VICIIColorBrightness</CODE>
+<DD>
+integer specifying brightness of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX642"></A>
+<DT><CODE>VICIIColorGamma</CODE>
+<DD>
+integer specifying gamma of internal calculated palette [2200] &#60;0-4000&#62;
+
+<A NAME="IDX643"></A>
+<DT><CODE>VICIIColorTint</CODE>
+<DD>
+integer specifying tint of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX644"></A>
+<DT><CODE>VICIIPALScanLineShade</CODE>
+<DD>
+integer specifying amount of scan line shading for the CRT emulation [667] &#60;0-1000&#62;
+
+<A NAME="IDX645"></A>
+<DT><CODE>VICIIPALBlur</CODE>
+<DD>
+integer specifying amount of horizontal blur for the CRT emulation. [500] &#60;0-1000&#62;
+
+<A NAME="IDX646"></A>
+<DT><CODE>VICIIPALOddLinePhase</CODE>
+<DD>
+integer specifying phase offset for color carrier in odd lines [750] &#60;0-2000&#62;
+
+<A NAME="IDX647"></A>
+<DT><CODE>VICIIPALOddLineOffset</CODE>
+<DD>
+integer specifying phase for color carrier in odd lines [1250] &#60;0-2000&#62;
+
+<A NAME="IDX648"></A>
+<DT><CODE>VICIIAudioLeak</CODE>
+<DD>
+Boolean specifying whether to enable/disable video to audio leak emulation.
+
+<A NAME="IDX649"></A>
+<DT><CODE>VICIIFilter</CODE>
+<DD>
+integer specifying rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+
+<A NAME="IDX650"></A>
+<DT><CODE>VICIIBorderMode</CODE>
+<DD>
+integer specifying border display mode (0: normal, 1: full, 2: debug, 3:none)
+
+</DL>
+
+
+
+<H4><A NAME="SEC112" HREF="vice_toc.html#TOC112">7.1.4.2  VIC-II command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-VICIIcheckss</CODE>
+<DD>
+<A NAME="IDX651"></A>
+ 
+<DT><CODE>+VICIIcheckss</CODE>
+<DD>
+Enable (<CODE>VICIICheckSsColl=1</CODE>) and disable (<CODE>VICIICheckSsColl=0</CODE>)
+emulation of hardware sprite-sprite collision detection, respectively.
+
+<A NAME="IDX652"></A>
+<DT><CODE>-VICIIchecksb</CODE>
+<DD>
+<DT><CODE>+VICIIchecksb</CODE>
+<DD>
+Enable (<CODE>VICIICheckSbColl=1</CODE>) and disable (<CODE>VICIICheckSbColl=0</CODE>)
+emulation of hardware sprite-background collision detection,
+respectively.
+
+<A NAME="IDX653"></A>
+<DT><CODE>-VICIIvcache</CODE>
+<DD>
+<DT><CODE>+VICIIvcache</CODE>
+<DD>
+Enable/disable the video cache (<CODE>VICIIVideoCache=1</CODE>, <CODE>VICIIVideoCache=0</CODE>).
+
+<A NAME="IDX654"></A>
+<DT><CODE>-VICIIdsize</CODE>
+<DD>
+<DT><CODE>+VICIIdsize</CODE>
+<DD>
+Enable/disable the double size mode (<CODE>VICIIDoubleSize=1</CODE>,
+<CODE>VICIIDoubleSize=0</CODE>).
+
+<A NAME="IDX655"></A>
+<DT><CODE>-VICIIdscan</CODE>
+<DD>
+<DT><CODE>+VICIIdscan</CODE>
+<DD>
+Enable/disable the double scan mode (<CODE>VICIIDoubleScan=1</CODE>,
+<CODE>VICIIDoubleScan=0</CODE>).
+
+<A NAME="IDX656"></A>
+<DT><CODE>-VICIIhwscale</CODE>
+<DD>
+<DT><CODE>+VICIIhwscale</CODE>
+<DD>
+Enable/Disable hardware scaling
+<A NAME="IDX657"></A>
+<DT><CODE>-VICIIfilter &#60;Mode&#62;</CODE>
+<DD>
+Select rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+<A NAME="IDX658"></A>
+<DT><CODE>-VICIIintpal</CODE>
+<DD>
+Use an internal calculated palette
+<A NAME="IDX659"></A>
+<DT><CODE>-VICIIextpal</CODE>
+<DD>
+Use an external palette (file)
+
+<A NAME="IDX660"></A>
+<DT><CODE>-VICIIpalette NAME</CODE>
+<DD>
+Specify <CODE>NAME</CODE> as the palette file (<CODE>VICIIPaletteFile</CODE>).
+
+<A NAME="IDX661"></A>
+<DT><CODE>-VICIIfulldevice &#60;device&#62;</CODE>
+<DD>
+Select fullscreen device
+<A NAME="IDX662"></A>
+<DT><CODE>-VICIIXRANDRfullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX663"></A>
+<DT><CODE>-VICIIVidmodefullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX664"></A>
+<DT><CODE>-VICIIborders &#60;mode&#62;</CODE>
+<DD>
+Set VIC-II border display mode (0: normal, 1: full, 2: debug, 3:none)
+<A NAME="IDX665"></A>
+<DT><CODE>-VICIImodel &#60;model&#62;</CODE>
+<DD>
+Set VIC-II model (6569/6569r1/8565/6567/8562/6567r56a). This setting is
+only available in <CODE>x64sc</CODE>.
+
+<A NAME="IDX666"></A>
+<DT><CODE>-VICIInewluminance</CODE>
+<DD>
+<DT><CODE>+VICIInewluminance</CODE>
+<DD>
+Enable/Disable new luminances.
+
+<A NAME="IDX667"></A>
+<DT><CODE>-VICIIsaturation &#60;0-2000&#62;</CODE>
+<DD>
+Set saturation of internal calculated palette [1000]
+<A NAME="IDX668"></A>
+<DT><CODE>-VICIIcontrast &#60;0-2000&#62;</CODE>
+<DD>
+Set contrast of internal calculated palette [1000]
+<A NAME="IDX669"></A>
+<DT><CODE>-VICIIbrightness &#60;0-2000&#62;</CODE>
+<DD>
+Set brightness of internal calculated palette [1000]
+<A NAME="IDX670"></A>
+<DT><CODE>-VICIIgamma &#60;0-4000&#62;</CODE>
+<DD>
+Set gamma of internal calculated palette [2200]
+<A NAME="IDX671"></A>
+<DT><CODE>-VICIItint &#60;0-2000&#62;</CODE>
+<DD>
+Set tint of internal calculated palette [1000]
+<A NAME="IDX672"></A>
+<DT><CODE>-VICIIoddlinesphase &#60;0-2000&#62;</CODE>
+<DD>
+Set phase for color carrier in odd lines [1250]
+<A NAME="IDX673"></A>
+<DT><CODE>-VICIIoddlinesoffset &#60;0-2000&#62;</CODE>
+<DD>
+Set phase offset for color carrier in odd lines [750]
+<A NAME="IDX674"></A>
+<DT><CODE>-VICIIcrtblur &#60;0-1000&#62;</CODE>
+<DD>
+Amount of horizontal blur for the CRT emulation. [500]
+<A NAME="IDX675"></A>
+<DT><CODE>-VICIIcrtscanlineshade &#60;0-1000&#62;</CODE>
+<DD>
+Amount of scan line shading for the CRT emulation [667]
+
+<A NAME="IDX676"></A>
+<DT><CODE>-VICIIaudioleak</CODE>
+<DD>
+<DT><CODE>+VICIIaudioleak</CODE>
+<DD>
+Enable/Disable video to audio leak emulation.
+
+</DL>
+
+
+
+<H3><A NAME="SEC113" HREF="vice_toc.html#TOC113">7.1.5  SID settings</A></H3>
+
+<P>
+These settings control the emulation of the SID (MOS6581 or MOS8580)
+audio chip.
+
+</P>
+
+<UL>
+
+<LI>
+
+<A NAME="IDX677"></A>
+ 
+"Second SID" maps a second SID chip into the address space for stereo
+sound. This emulates e.g. the "SID Symphony Stereo Cartridge" from
+Dr. Evil Laboratories. The second SID can be used with software such as
+"Stereo SID Player" by Mark Dickenson or "The Enhanced Sidplayer" by
+Craig Chamberlain.
+
+<A NAME="IDX678"></A>
+<LI>
+
+"Second SID base address" sets the start address for the second SID
+chip. Software normally uses $DE00 or $DF00, since $DE00-$DEFF and
+$DF00-$DFFF can be mapped through the cartridge port of the C64. The
+default start address is $DE00.
+
+<A NAME="IDX679"></A>
+<LI>
+
+"Emulate filters" causes the built-in programmable filters of the SID
+chip to be emulated.  A lot of C64 music requires them to be emulated
+properly, but their emulation requires some additional processor power.
+
+<A NAME="IDX680"></A>
+<LI>
+
+"ChipModel" specifies the model of the SID chip being emulated: there
+are two slightly different generations of SID chips: MOS6581 ones and
+MOS8580 ones.
+
+<A NAME="IDX681"></A>
+<LI>
+
+"Use reSID emulation" specifies whether the more accurate (and
+resource hungry) reSID emulation is turned on or off.
+
+<A NAME="IDX682"></A>
+<LI>
+
+"reSID sampling method" selects the method for conversion of the SID
+output signal to a sampling rate appropriate for playback by standard
+digital sound equipment. Possible settings are:
+
+<UL>
+<LI>
+
+"Fast" simply clocks the SID chip at the output sampling frequency,
+picking the nearest sample. This yields acceptable sound quality, but
+sampling noise is noticeable in some cases, especially with SID combined
+waveforms. The sound emulation is still cycle exact.
+<LI>
+
+"Interpolating" clocks the SID chip each cycle, and calculates each
+sample with linear interpolation. The sampling noise is now strongly
+attenuated by the SID external filter (as long as "Emulate filters" is
+selected), and the linear interpolation further improves the sound
+quality.
+<LI>
+
+"Resampling" clocks the SID chip each cycle, and uses the
+theoretically correct method for sample generation. This delivers CD
+quality sound, but is extremely CPU intensive, and is thus most useful
+for non-interactive sound generation. Unless you have a very fast
+machine, that is.
+</UL>
+
+<A NAME="IDX683"></A>
+<LI>"reSID resampling passband" specifies the percentage of the
+
+total bandwidth allocated to the resampling filter passband. The work
+rate of the resampling filter is inversely proportional to the remaining
+transition band percentage. This implies that e.g. with the transition
+band starting at ~ 20kHz, it is faster to generate 48kHz than 44.1kHz
+samples. For CD quality sound generation at 44.1kHz the passband
+percentage should be set to 90 (i.e. the transition band starting at
+almost 20kHz).
+
+</UL>
+
+
+
+<H4><A NAME="SEC114" HREF="vice_toc.html#TOC114">7.1.5.1  SID resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>SidStereo</CODE>
+<DD>
+<A NAME="IDX684"></A>
+ 
+Integer specifying the amount of emulated extra SIDs. (0=off, 1=1 extra sid, 
+2=2 extra sids.
+
+<A NAME="IDX685"></A>
+<DT><CODE>SidStereoAddressStart</CODE>
+<DD>
+Integer specifying the base address of the second SID.
+
+<A NAME="IDX686"></A>
+<DT><CODE>SidTripleAddressStart</CODE>
+<DD>
+Integer specifying the base address of the third SID.
+
+<A NAME="IDX687"></A>
+<DT><CODE>SidFilters</CODE>
+<DD>
+Boolean specifying whether the built-in SID filters must be emulated.
+
+<A NAME="IDX688"></A>
+<DT><CODE>SidModel</CODE>
+<DD>
+Integer specifying what model of the SID must be emulated (<CODE>0</CODE>: 6581
+, <CODE>1</CODE>: 8580, <CODE>2</CODE>: 8580D, <CODE>3</CODE>: 6581R4, <CODE>4</CODE>: DTVSID, <CODE>8</CODE>: 6581R3_4885   
+, <CODE>9</CODE>: 6581R3_0486S, <CODE>10</CODE>: 6581R3_3984, <CODE>11</CODE>: 6581R4AR_3789, <CODE>12</CODE>: 6581R3_4485   
+, <CODE>13</CODE>: 6581R4_1986S, <CODE>16</CODE>: 8580R5_3691, <CODE>17</CODE>: 8580R5_3691D, <CODE>18</CODE>: 8580R5_1489   
+, <CODE>19</CODE>: 8580R5_1489D).
+
+<A NAME="IDX689"></A>
+<DT><CODE>SidEngine</CODE>
+<DD>
+Integer specifying what SID engine will be used (<CODE>0</CODE>: FASTSID, <CODE>1</CODE>: RESID
+, <CODE>2</CODE>: CATWEASELMKIII, <CODE>3</CODE>: HARDSID, <CODE>4</CODE>: PARSID_PORT1, <CODE>5</CODE>: PARSID_PORT2
+, <CODE>6</CODE>: PARSID_PORT3, <CODE>7</CODE>: RESID_FP).
+
+<A NAME="IDX690"></A>
+<DT><CODE>SidResidSampling</CODE>
+<DD>
+Integer specifying the sampling method (<CODE>0</CODE>: Fast, <CODE>1</CODE>:
+Interpolation, <CODE>2</CODE>: Resampling)
+
+<A NAME="IDX691"></A>
+<DT><CODE>SidResidPassband</CODE>
+<DD>
+Integer specifying the resampling filter passband in percentage of the
+total bandwidth (<CODE>0 - 90</CODE>).
+
+<A NAME="IDX692"></A>
+<DT><CODE>SidResidGain</CODE>
+<DD>
+Integer that specifies reSID gain in percent [97] (90..100)
+<A NAME="IDX693"></A>
+<DT><CODE>SidResidFilterBias</CODE>
+<DD>
+Integer that specifies reSID filter bias, which can be used to adjust DAC bias 
+in millivolts. [0] (-5000..5000)
+
+</DL>
+
+
+
+<H4><A NAME="SEC115" HREF="vice_toc.html#TOC115">7.1.5.2  SID command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-sidstereo</CODE>
+<DD>
+<A NAME="IDX694"></A>
+ 
+Emulates a second SID chip for stereo sound (<CODE>SidStereo</CODE>).
+
+<A NAME="IDX695"></A>
+<DT><CODE>-sidstereoaddress <CODE>ADDRESS</CODE></CODE>
+<DD>
+Specifies the start address for the second SID chip
+(<CODE>SidStereoAddressStart</CODE>).
+
+<A NAME="IDX696"></A>
+<DT><CODE>-sidtripleaddress <CODE>ADDRESS</CODE></CODE>
+<DD>
+Specifies the start address for the third SID chip
+(<CODE>SidTripleAddressStart</CODE>).
+
+<A NAME="IDX697"></A>
+<DT><CODE>-sidenginemodel &#60;engine and model&#62;</CODE>
+<DD>
+Specify <CODE>SID engine</CODE> and <CODE>MODEL</CODE> for the emulated SID chip (
+0: FastSID 6581,
+1: FastSID 8580,
+256: ReSID 6581,
+257: ReSID 8580,
+258: ReSID 8580 + digiboost,
+1024: ParSID in par port 1,
+1280: ParSID in par port 2,
+1536: ParSID in par port 3,
+1800: ReSID-FP 6581R3 4885,
+1801: ReSID-FP 6581R3 0486S,
+1802: ReSID-FP 6581R3 3984,
+1803: ReSID-FP 6581R4 AR 3789,
+1804: ReSID-FP 6581R3 4485,
+1805: ReSID-FP 6581R4 1986S,
+1808: ReSID-FP 8580R5 3691,
+1809: ReSID-FP 8580R5 3691 + digiboost,
+1810: ReSID-FP 8580R5 1489,
+1811: ReSID-FP 8580R5 1489D).
+
+<A NAME="IDX698"></A>
+<DT><CODE>-sidfilters</CODE>
+<DD>
+<DT><CODE>+sidfilters</CODE>
+<DD>
+Enable (<CODE>SidFilters=1</CODE>) or disable (<CODE>SidFilters=0</CODE>) emulation
+of the built-in SID filters.
+
+<A NAME="IDX699"></A>
+<DT><CODE>-residsamp <CODE>METHOD</CODE></CODE>
+<DD>
+Specifies the sampling method; fast (<CODE>SidResidSampling=0</CODE>),
+interpolating (<CODE>SidResidSampling=1</CODE>), resampling
+(<CODE>SidResidSampling=2</CODE>), fast resampling (<CODE>SidResidSampling=3</CODE>).
+
+<A NAME="IDX700"></A>
+<DT><CODE>-residpass <CODE>PERCENTAGE</CODE></CODE>
+<DD>
+Specifies the resampling filter passband in percentage of the total
+bandwidth (<CODE>SidResidPassband=0-90</CODE>).
+
+<A NAME="IDX701"></A>
+<DT><CODE>-residgain <CODE>PERCENTAGE</CODE></CODE>
+<DD>
+Specifies reSID gain in percent (90 - 100).
+
+<A NAME="IDX702"></A>
+<DT><CODE>-residfilterbias &#60;number&#62;</CODE>
+<DD>
+reSID filter bias setting, which can be used to adjust DAC bias in millivolts.
+
+</DL>
+
+
+
+<H3><A NAME="SEC116" HREF="vice_toc.html#TOC116">7.1.6  C64 I/O extension settings</A></H3>
+
+<P>
+I/O extensions are (usually) cartridges which do not map into ROM space,
+but use only the I/O space at address range $DE00 ... $DEFF and/or
+$DF00 ... $DFFF.
+
+</P>
+<P>
+Please use these extensions only when needed, as they might cause
+compatibility problems.
+
+</P>
+<P>
+The following I/O extensions are available:
+
+</P>
+
+<UL>
+
+<LI>ACIA (Swiftlink, Turbo232)
+
+<A NAME="IDX703"></A>
+ 
+
+<A NAME="IDX704"></A>
+<LI>DigiMAX
+
+<A NAME="IDX705"></A>
+<LI>Ethernet (The Final Ethernet, RR-Net)
+
+<A NAME="IDX706"></A>
+<LI>GEO-RAM
+
+<A NAME="IDX707"></A>
+<LI>MIDI (Passport, Datel, Maplin, Namesoft, Sequential)
+
+<A NAME="IDX708"></A>
+<LI>REU -
+
+The "RAM Expansion Module" extension emulates a standard
+Commodore RAM Expansion Unit; this can be used with GEOS and other
+programs that are designed to take advantage of it.  This currently
+works only in the C64 emulator.
+
+<A NAME="IDX709"></A>
+<LI>SFX Sound Expander
+
+<A NAME="IDX710"></A>
+<LI>SFX Sound Sampler
+
+</UL>
+
+
+
+<H4><A NAME="SEC117" HREF="vice_toc.html#TOC117">7.1.6.1  C64 I/O extension resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>Acia1Enable</CODE>
+<DD>
+<A NAME="IDX711"></A>
+ 
+Boolean specifying whether the ACIA (Swiftlink, Turbo232) cartridge should be emulated or not.
+<A NAME="IDX712"></A>
+<DT><CODE>Acia1Mode</CODE>
+<DD>
+Enum specifying the type of emulated RS232 interface (0: normal, 1: Swithlink, 2: Turbo232)
+<A NAME="IDX713"></A>
+<DT><CODE>Acia1Base</CODE>
+<DD>
+Integer specifying the base address for the emulated ACIA chip.
+
+<A NAME="IDX714"></A>
+<DT><CODE>DIGIMAX</CODE>
+<DD>
+Boolean specifying whether the DigiMAX cartridge should be emulated or not.
+<A NAME="IDX715"></A>
+<DT><CODE>DIGIMAXbase</CODE>
+<DD>
+Integer specifying the DigiMAX base address.
+
+<A NAME="IDX716"></A>
+<DT><CODE>ETHERNET_ACTIVE</CODE>
+<DD>
+Boolean that specifies whether the CS8900 ethernet interface emulation is active.
+<A NAME="IDX717"></A>
+<DT><CODE>ETHERNET_INTERFACE</CODE>
+<DD>
+String specifying the device name of the ethernet device to use for the emulation.
+<A NAME="IDX718"></A>
+<DT><CODE>ETHERNET_DISABLED</CODE>
+<DD>
+Boolean that specified whether ethernet emulation has been disabled because it is
+not available in the current configuration.
+<A NAME="IDX719"></A>
+<DT><CODE>ETHERNET_AS_RR</CODE>
+<DD>
+Boolean that specifies whether RR-Net compatible mapping is enabled.
+
+<A NAME="IDX720"></A>
+<DT><CODE>GEORAM</CODE>
+<DD>
+Boolean specifying whether the GEO-RAM cartridge should be emulated or not.
+<A NAME="IDX721"></A>
+<DT><CODE>GEORAMfilename</CODE>
+<DD>
+String specifying the filename of the GEORAM image.
+<A NAME="IDX722"></A>
+<DT><CODE>GEORAMImageWrite</CODE>
+<DD>
+Boolean, if true write back the GEO-RAM image file automatically, incase the RAM
+contents changed, when detaching or quitting the emulator.
+<A NAME="IDX723"></A>
+<DT><CODE>GEORAMsize</CODE>
+<DD>
+Integer specifying the size of the emulated GEO-RAM in KB (64, 128, 256, 512, 1024, 
+2048, 4096)
+
+<A NAME="IDX724"></A>
+<DT><CODE>MIDIEnable</CODE>
+<DD>
+Boolean specifying whether the MIDI cartridge should be emulated or not.
+<A NAME="IDX725"></A>
+<DT><CODE>MIDIMode</CODE>
+<DD>
+Enum specifying the type of emulated MIDI interface (0: Sequential, 1: Passport/Syntech,
+2: DATEL/Siel/JMS, 3: Namesoft, 4: Maplin)
+<A NAME="IDX726"></A>
+<DT><CODE>MIDIDriver</CODE>
+<DD>
+Enum specifying the MIDI driver (0: OSS; 1:ALSA)
+<A NAME="IDX727"></A>
+<DT><CODE>MIDIInDev</CODE>
+<DD>
+String specifying the MIDI input device.
+<A NAME="IDX728"></A>
+<DT><CODE>MIDIOutDev</CODE>
+<DD>
+String specifying the MIDI output device.
+
+<A NAME="IDX729"></A>
+<DT><CODE>REU</CODE>
+<DD>
+Boolean specifying whether the RAM Expansion Module should be emulated or not.
+<A NAME="IDX730"></A>
+<DT><CODE>REUfilename</CODE>
+<DD>
+String specifying the filename of the REU image.
+<A NAME="IDX731"></A>
+<DT><CODE>REUImageWrite</CODE>
+<DD>
+Boolean, if true write back the REU image file automatically, incase the RAM
+contents changed, when detaching or quitting the emulator.
+<A NAME="IDX732"></A>
+<DT><CODE>REUsize</CODE>
+<DD>
+Integer specifying the size of the emulated REU in KB (128, 256, 512, 1024, 2048,
+4096, 8192, 16384)
+
+<A NAME="IDX733"></A>
+<DT><CODE>SFXSoundExpander</CODE>
+<DD>
+Boolean specifying whether the SFX Sound Expander should be emulated or not.
+<A NAME="IDX734"></A>
+<DT><CODE>SFXSoundExpanderChip</CODE>
+<DD>
+Enum specifying which YM chip is emulated (0: 3526, 1: 3812)
+
+<A NAME="IDX735"></A>
+<DT><CODE>SFXSoundSampler</CODE>
+<DD>
+Boolean specifying whether the SFX Sound Sampler should be emulated or not.
+
+</DL>
+
+
+
+<H4><A NAME="SEC118" HREF="vice_toc.html#TOC118">7.1.6.2  C64 I/O extension command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-acia1</CODE>
+<DD>
+<A NAME="IDX736"></A>
+ 
+<DT><CODE>+acia1</CODE>
+<DD>
+Enable/Disable the $DE** ACIA RS232 interface emulation
+<A NAME="IDX737"></A>
+<DT><CODE>-digimax</CODE>
+<DD>
+<DT><CODE>+digimax</CODE>
+<DD>
+Enable/Disable the DigiMAX cartridge
+<A NAME="IDX738"></A>
+<DT><CODE>-digimaxbase &#60;base address&#62;</CODE>
+<DD>
+Base address of the DigiMAX cartridge
+<A NAME="IDX739"></A>
+<DT><CODE>-miditype &#60;0-4&#62;</CODE>
+<DD>
+MIDI interface type (0: Sequential, 1: Passport, 2: DATEL, 3: Namesoft, 4: Maplin)
+<A NAME="IDX740"></A>
+<DT><CODE>-midi</CODE>
+<DD>
+<DT><CODE>+midi</CODE>
+<DD>
+Enable/Disable MIDI emulation
+<A NAME="IDX741"></A>
+<DT><CODE>-midiin &#60;name&#62;</CODE>
+<DD>
+Specify MIDI-In device
+<A NAME="IDX742"></A>
+<DT><CODE>-midiout &#60;name&#62;</CODE>
+<DD>
+Specify MIDI-Out device
+<A NAME="IDX743"></A>
+<DT><CODE>-mididrv &#60;driver&#62;</CODE>
+<DD>
+Specify MIDI driver (0 = OSS, 1 = ALSA)
+<A NAME="IDX744"></A>
+<DT><CODE>-georam</CODE>
+<DD>
+<DT><CODE>+georam</CODE>
+<DD>
+Enable/Disable the GEORAM expansion unit
+<A NAME="IDX745"></A>
+<DT><CODE>-cartgeoram &#60;name&#62;</CODE>
+<DD>
+Attach raw GEO-RAM cartridge image
+<A NAME="IDX746"></A>
+<DT><CODE>-georamimage &#60;name&#62;</CODE>
+<DD>
+Specify name of GEORAM image
+<A NAME="IDX747"></A>
+<DT><CODE>-georamimagerw</CODE>
+<DD>
+<DT><CODE>+georamimagerw</CODE>
+<DD>
+Allow/Disallow writing to GEORAM image
+<A NAME="IDX748"></A>
+<DT><CODE>-georamsize &#60;size in KB&#62;</CODE>
+<DD>
+Size of the GEORAM expansion unit
+<A NAME="IDX749"></A>
+<DT><CODE>-reu</CODE>
+<DD>
+<DT><CODE>+reu</CODE>
+<DD>
+Enable (<CODE>REU=1</CODE>) or disable (<CODE>REU=0</CODE>) emulation of the
+RAM Expansion Module.
+<A NAME="IDX750"></A>
+<DT><CODE>-cartreu &#60;name&#62;</CODE>
+<DD>
+Attach raw REU cartridge image
+<A NAME="IDX751"></A>
+<DT><CODE>-reuimage &#60;name&#62;</CODE>
+<DD>
+Specify name of REU image
+<A NAME="IDX752"></A>
+<DT><CODE>-reuimagerw</CODE>
+<DD>
+<DT><CODE>+reuimagerw</CODE>
+<DD>
+Allow/Disallow writing to REU image
+<A NAME="IDX753"></A>
+<DT><CODE>-reusize &#60;size in KB&#62;</CODE>
+<DD>
+Size of the RAM expansion unit
+<A NAME="IDX754"></A>
+<DT><CODE>-sfxse</CODE>
+<DD>
+<DT><CODE>+sfxse</CODE>
+<DD>
+Enable/Disable the SFX soundexpander cartridge
+<A NAME="IDX755"></A>
+<DT><CODE>-sfxsetype &#60;type&#62;</CODE>
+<DD>
+Set YM chip type (3526 / 3812)
+<A NAME="IDX756"></A>
+<DT><CODE>-sfxss</CODE>
+<DD>
+<DT><CODE>+sfxss</CODE>
+<DD>
+Enable/Disable the SFX Sound Sampler cartridge
+<A NAME="IDX757"></A>
+<DT><CODE>-tfe</CODE>
+<DD>
+<DT><CODE>+tfe</CODE>
+<DD>
+Enable/Disable the TFE ("The Final Ethernet") unit
+<A NAME="IDX758"></A>
+<DT><CODE>-tfeif &#60;name&#62;</CODE>
+<DD>
+Set the system ethernet interface for TFE emulation
+<A NAME="IDX759"></A>
+<DT><CODE>-tferrnet</CODE>
+<DD>
+<DT><CODE>+tferrnet</CODE>
+<DD>
+Enable/Disable RRNet mode of TFE emulation
+<A NAME="IDX760"></A>
+<DT><CODE>-burstmod &#60;value&#62;</CODE>
+<DD>
+Enable/Disable burst modification. If it's 1 the cable is connected to CIA1, if 2
+then to CIA2 and 0 disables it. This is emulates the fast serial bus connection
+as described at <A HREF="http://www.cs.tut.fi/~albert/Dev/burst/">http://www.cs.tut.fi/~albert/Dev/burst/</A>, with the wire to
+the tape port cut.
+</DL>
+
+
+
+<H3><A NAME="SEC119" HREF="vice_toc.html#TOC119">7.1.7  C64/128 system ROM settings</A></H3>
+
+<P>
+These settings can be used to control what system ROMs are loaded in the
+C64/128 emulators at startup.  They cannot be changed from the menus.
+
+</P>
+
+
+
+<H4><A NAME="SEC120" HREF="vice_toc.html#TOC120">7.1.7.1  C64/128 system ROM resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>KernalName</CODE>
+<DD>
+<A NAME="IDX761"></A>
+ 
+String specifying the name of the Kernal ROM (default <TT>`kernal'</TT>).
+
+<A NAME="IDX762"></A>
+<DT><CODE>BasicName</CODE>
+<DD>
+String specifying the name of the Basic ROM (default <TT>`basic'</TT>).  In
+the C128 emulator, the ROM image must actually include the editor ROM too.
+
+<A NAME="IDX763"></A>
+<DT><CODE>ChargenName</CODE>
+<DD>
+String specifying the name of the character generator ROM (default
+<TT>`chargen'</TT>).
+
+<A NAME="IDX764"></A>
+<DT><CODE>KernalRev</CODE>
+<DD>
+String specifying the Kernal revision.  This resource can be used to
+control what revision of the C64 kernal is being used; it cannot be
+changed at runtime.  VICE is able to automatically convert one ROM
+revision into another, by manually patching the loaded image.  This way,
+it is possible to use any of the ROM revisions without changing the ROM
+set.  Valid values are:
+
+<DL COMPACT>
+
+<DT><CODE>0</CODE>
+<DD>
+Kernal revision 0;
+<DT><CODE>3</CODE>
+<DD>
+Kernal revision 3;
+<DT><CODE>sx</CODE>
+<DD>
+<DT><CODE>67</CODE>
+<DD>
+Commodore SX-64 ROM;
+<DT><CODE>100</CODE>
+<DD>
+<DT><CODE>4064</CODE>
+<DD>
+Commodore 4064 (also known as "PET64" or "Educator 64") ROM.
+</DL>
+
+</DL>
+
+
+
+<H4><A NAME="SEC121" HREF="vice_toc.html#TOC121">7.1.7.2  C64/128 system ROM command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-kernal NAME</CODE>
+<DD>
+<A NAME="IDX765"></A>
+ 
+Specify <TT>`NAME'</TT> as the Kernal ROM file (<CODE>KernalName</CODE>).
+
+<A NAME="IDX766"></A>
+<DT><CODE>-basic NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the Basic ROM file (<CODE>BasicName</CODE>).
+
+<A NAME="IDX767"></A>
+<DT><CODE>-chargen NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the character generator ROM file
+(<CODE>ChargenName</CODE>).
+
+<A NAME="IDX768"></A>
+<DT><CODE>-kernalrev REVISION</CODE>
+<DD>
+Specify Kernal revision (<CODE>KernalRev</CODE>).
+
+</DL>
+
+
+
+<H3><A NAME="SEC122" HREF="vice_toc.html#TOC122">7.1.8  C64 settings</A></H3>
+
+
+
+<H4><A NAME="SEC123" HREF="vice_toc.html#TOC123">7.1.8.1  C64 resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>GlueLogic</CODE>
+<DD>
+<A NAME="IDX769"></A>
+ 
+Integer specifying the type of emulated glue-log. (0: discrete, 1: custom IC)
+
+<A NAME="IDX770"></A>
+<DT><CODE>BurstMod</CODE>
+<DD>
+Boolean, enable/disable the Burst-Mode modification.
+
+<A NAME="IDX771"></A>
+<DT><CODE>PLUS60K</CODE>
+<DD>
+Boolean, enable/disable the PLUS60K RAM expansion
+<A NAME="IDX772"></A>
+<DT><CODE>PLUS60Kfilename</CODE>
+<DD>
+String specifying the filename of the PLUS60K RAM image.
+<A NAME="IDX773"></A>
+<DT><CODE>PLUS60Kbase</CODE>
+<DD>
+Integer that specifies the base address of the PLUS60K RAM expansion.
+
+<A NAME="IDX774"></A>
+<DT><CODE>PLUS256K</CODE>
+<DD>
+Boolean, enable/disable the PLUS256K RAM expansion
+<A NAME="IDX775"></A>
+<DT><CODE>PLUS256Kfilename</CODE>
+<DD>
+String specifying the filename of the PLUS256K RAM image.
+
+<A NAME="IDX776"></A>
+<DT><CODE>C64_256K</CODE>
+<DD>
+Boolean, enable/disable the 256K RAM expansion
+<A NAME="IDX777"></A>
+<DT><CODE>C64_256Kfilename</CODE>
+<DD>
+String specifying the filename of the 256K RAM image.
+<A NAME="IDX778"></A>
+<DT><CODE>C64_256Kbase</CODE>
+<DD>
+Integer that specifies the base address of the 256K RAM expansion.
+
+</DL>
+
+
+
+<H4><A NAME="SEC124" HREF="vice_toc.html#TOC124">7.1.8.2  C64 command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-gluelogictype &#60;type&#62;</CODE>
+<DD>
+<A NAME="IDX779"></A>
+ 
+Set glue logic type (0 = discrete, 1 = 252535-01)
+
+<A NAME="IDX780"></A>
+<DT><CODE>-plus60k</CODE>
+<DD>
+<DT><CODE>+plus60k</CODE>
+<DD>
+Enable/Disable the PLUS60K RAM expansion
+<A NAME="IDX781"></A>
+<DT><CODE>-plus60kimage &#60;name&#62;</CODE>
+<DD>
+Specify name of PLUS60K image
+<A NAME="IDX782"></A>
+<DT><CODE>-plus60kbase &#60;base address&#62;</CODE>
+<DD>
+Base address of the PLUS60K expansion
+
+<A NAME="IDX783"></A>
+<DT><CODE>-plus256k</CODE>
+<DD>
+<DT><CODE>+plus256k</CODE>
+<DD>
+Enable/Disable the PLUS256K RAM expansion
+<A NAME="IDX784"></A>
+<DT><CODE>-plus256kimage &#60;name&#62;</CODE>
+<DD>
+Specify name of PLUS256K image
+
+<A NAME="IDX785"></A>
+<DT><CODE>-256k</CODE>
+<DD>
+<DT><CODE>+256k</CODE>
+<DD>
+Enable/Disable the 256K RAM expansion
+<A NAME="IDX786"></A>
+<DT><CODE>-256kimage &#60;name&#62;</CODE>
+<DD>
+Specify name of 256K image
+<A NAME="IDX787"></A>
+<DT><CODE>-256kbase &#60;base address&#62;</CODE>
+<DD>
+Base address of the 256K expansion
+
+</DL>
+
+
+
+<H2><A NAME="SEC125" HREF="vice_toc.html#TOC125">7.2  C128-specific commands and settings</A></H2>
+
+
+
+<H3><A NAME="SEC126" HREF="vice_toc.html#TOC126">7.2.1  VDC settings</A></H3>
+
+
+
+<H4><A NAME="SEC127" HREF="vice_toc.html#TOC127">7.2.1.1  VDC resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>VDC64KB</CODE>
+<DD>
+<A NAME="IDX788"></A>
+ 
+Boolean, enabled full 64k video ram.
+<A NAME="IDX789"></A>
+<DT><CODE>VDCRevision</CODE>
+<DD>
+Integer specifying the VDC hardware revision. (0: Rev 0, 1: Rev 1, 2: Rev 2)
+
+<A NAME="IDX790"></A>
+<DT><CODE>VDCVideoCache</CODE>
+<DD>
+Boolean specifying whether the video cache is turned on.
+
+<A NAME="IDX791"></A>
+<DT><CODE>VDCDoubleSize</CODE>
+<DD>
+Boolean specifying whether double-size mode is turned on.
+
+<A NAME="IDX792"></A>
+<DT><CODE>VDCDoubleScan</CODE>
+<DD>
+Boolean specifying whether double-scan mode is turned on.
+
+<A NAME="IDX793"></A>
+<DT><CODE>VDCStretchVertical</CODE>
+<DD>
+Boolean specifying whether vertical stretching is turned on.
+
+<A NAME="IDX794"></A>
+<DT><CODE>VDCPaletteFile</CODE>
+<DD>
+String specifying the name of the palette file being used.  The
+<TT>`.vpl'</TT> extension is optional.
+
+<A NAME="IDX795"></A>
+<DT><CODE>VDCHwScale</CODE>
+<DD>
+Boolean specifying whether to enable or disable hardware scaling
+
+<A NAME="IDX796"></A>
+<DT><CODE>VDCFullscreenDevice</CODE>
+<DD>
+fullscreen device
+
+<A NAME="IDX797"></A>
+<DT><CODE>VDCFullscreen</CODE>
+<DD>
+Boolean specifying whether to use fullscreen mode or not.
+
+<A NAME="IDX798"></A>
+<DT><CODE>VDCFullscreenStatusbar</CODE>
+<DD>
+Boolean specifying whether to show the status bar in fullscreen mode or not.
+
+<A NAME="IDX799"></A>
+<DT><CODE>VDCXRANDRFullscreenMode</CODE>
+<DD>
+integer specifying XRANDR fullscreen mode
+
+<A NAME="IDX800"></A>
+<DT><CODE>VDCVidmodeFullscreenMode</CODE>
+<DD>
+integer specifying Vidmode fullscreen mode
+
+<A NAME="IDX801"></A>
+<DT><CODE>VDCExternalPalette</CODE>
+<DD>
+Boolean specifying whether to use external palette file or not.
+
+<A NAME="IDX802"></A>
+<DT><CODE>VDCColorSaturation</CODE>
+<DD>
+integer specifying saturation of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX803"></A>
+<DT><CODE>VDCColorContrast</CODE>
+<DD>
+integer specifying contrast of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX804"></A>
+<DT><CODE>VDCColorBrightness</CODE>
+<DD>
+integer specifying brightness of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX805"></A>
+<DT><CODE>VDCColorGamma</CODE>
+<DD>
+integer specifying gamma of internal calculated palette [2200] &#60;0-4000&#62;
+
+<A NAME="IDX806"></A>
+<DT><CODE>VDCColorTint</CODE>
+<DD>
+integer specifying tint of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX807"></A>
+<DT><CODE>VDCPALScanLineShade</CODE>
+<DD>
+integer specifying amount of scan line shading for the CRT emulation [667] &#60;0-1000&#62;
+
+<A NAME="IDX808"></A>
+<DT><CODE>VDCPALBlur</CODE>
+<DD>
+integer specifying amount of horizontal blur for the CRT emulation. [500] &#60;0-1000&#62;
+
+<A NAME="IDX809"></A>
+<DT><CODE>VDCPALOddLinePhase</CODE>
+<DD>
+integer specifying phase offset for color carrier in odd lines [750] &#60;0-2000&#62;
+
+<A NAME="IDX810"></A>
+<DT><CODE>VDCPALOddLineOffset</CODE>
+<DD>
+integer specifying phase for color carrier in odd lines [1250] &#60;0-2000&#62;
+
+<A NAME="IDX811"></A>
+<DT><CODE>VDCAudioLeak</CODE>
+<DD>
+Boolean specifying whether to enable/disable video to audio leak emulation.
+
+<A NAME="IDX812"></A>
+<DT><CODE>VDCFilter</CODE>
+<DD>
+integer specifying rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+</DL>
+
+
+
+<H4><A NAME="SEC128" HREF="vice_toc.html#TOC128">7.2.1.2  VDC command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-VDCvcache</CODE>
+<DD>
+<A NAME="IDX813"></A>
+ 
+<DT><CODE>+VDCvcache</CODE>
+<DD>
+Enable/Disable the video cache
+<A NAME="IDX814"></A>
+<DT><CODE>-VDCdsize</CODE>
+<DD>
+<DT><CODE>+VDCdsize</CODE>
+<DD>
+Enable/Disable double size
+<A NAME="IDX815"></A>
+<DT><CODE>-VDCstretchvertical</CODE>
+<DD>
+<DT><CODE>+VDCstretchvertical</CODE>
+<DD>
+Enable/Disable vertical stretching
+<A NAME="IDX816"></A>
+<DT><CODE>-VDCdscan</CODE>
+<DD>
+<DT><CODE>+VDCdscan</CODE>
+<DD>
+Enable/Disable double scan
+<A NAME="IDX817"></A>
+<DT><CODE>-VDChwscale</CODE>
+<DD>
+<DT><CODE>+VDChwscale</CODE>
+<DD>
+Enable/Disable hardware scaling
+<A NAME="IDX818"></A>
+<DT><CODE>-VDCintpal</CODE>
+<DD>
+Use an internal calculated palette
+<A NAME="IDX819"></A>
+<DT><CODE>-VDCextpal</CODE>
+<DD>
+Use an external palette (file)
+<A NAME="IDX820"></A>
+<DT><CODE>-VDCpalette &#60;name&#62;</CODE>
+<DD>
+Specify name of file of external palette
+<A NAME="IDX821"></A>
+<DT><CODE>-VDCfulldevice &#60;device&#62;</CODE>
+<DD>
+Select fullscreen device
+<A NAME="IDX822"></A>
+<DT><CODE>-VDCXRANDRfullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX823"></A>
+<DT><CODE>-VDCVidmodefullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX824"></A>
+<DT><CODE>-VDC16KB</CODE>
+<DD>
+Set the VDC memory size to 16KB
+<A NAME="IDX825"></A>
+<DT><CODE>-VDC64KB</CODE>
+<DD>
+Set the VDC memory size to 64KB
+<A NAME="IDX826"></A>
+<DT><CODE>-VDCRevision &#60;number&#62;</CODE>
+<DD>
+Set VDC revision (0..2)
+
+<A NAME="IDX827"></A>
+<DT><CODE>-VDCsaturation &#60;0-2000&#62;</CODE>
+<DD>
+Set saturation of internal calculated palette [1000]
+<A NAME="IDX828"></A>
+<DT><CODE>-VDCcontrast &#60;0-2000&#62;</CODE>
+<DD>
+Set contrast of internal calculated palette [1000]
+<A NAME="IDX829"></A>
+<DT><CODE>-VDCbrightness &#60;0-2000&#62;</CODE>
+<DD>
+Set brightness of internal calculated palette [1000]
+<A NAME="IDX830"></A>
+<DT><CODE>-VDCgamma &#60;0-4000&#62;</CODE>
+<DD>
+Set gamma of internal calculated palette [2200]
+<A NAME="IDX831"></A>
+<DT><CODE>-VDCtint &#60;0-2000&#62;</CODE>
+<DD>
+Set tint of internal calculated palette [1000]
+<A NAME="IDX832"></A>
+<DT><CODE>-VDCoddlinesphase &#60;0-2000&#62;</CODE>
+<DD>
+Set phase for color carrier in odd lines [1250]
+<A NAME="IDX833"></A>
+<DT><CODE>-VDCoddlinesoffset &#60;0-2000&#62;</CODE>
+<DD>
+Set phase offset for color carrier in odd lines [750]
+<A NAME="IDX834"></A>
+<DT><CODE>-VDCcrtblur &#60;0-1000&#62;</CODE>
+<DD>
+Amount of horizontal blur for the CRT emulation. [500]
+<A NAME="IDX835"></A>
+<DT><CODE>-VDCcrtscanlineshade &#60;0-1000&#62;</CODE>
+<DD>
+Amount of scan line shading for the CRT emulation [667]
+
+<A NAME="IDX836"></A>
+<DT><CODE>-VDCaudioleak</CODE>
+<DD>
+<DT><CODE>+VDCaudioleak</CODE>
+<DD>
+Enable/Disable video to audio leak emulation.
+
+</DL>
+
+
+
+<H3><A NAME="SEC129" HREF="vice_toc.html#TOC129">7.2.2  C128 system ROM settings</A></H3>
+
+
+
+<H4><A NAME="SEC130" HREF="vice_toc.html#TOC130">7.2.2.1  C128 system ROM resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>ChargenIntName</CODE>
+<DD>
+<A NAME="IDX837"></A>
+ <A NAME="IDX838"></A>
+ <A NAME="IDX839"></A>
+ <A NAME="IDX840"></A>
+ 
+<DT><CODE>ChargenDEName</CODE>
+<DD>
+<DT><CODE>ChargenFRName</CODE>
+<DD>
+<DT><CODE>ChargenSEName</CODE>
+<DD>
+Strings specifying the filename of the Chargen ROM images.
+
+<A NAME="IDX841"></A>
+<A NAME="IDX842"></A>
+<A NAME="IDX843"></A>
+<A NAME="IDX844"></A>
+<A NAME="IDX845"></A>
+<A NAME="IDX846"></A>
+<A NAME="IDX847"></A>
+<DT><CODE>KernalIntName</CODE>
+<DD>
+<DT><CODE>KernalDEName</CODE>
+<DD>
+<DT><CODE>KernalFIName</CODE>
+<DD>
+<DT><CODE>KernalFRName</CODE>
+<DD>
+<DT><CODE>KernalITName</CODE>
+<DD>
+<DT><CODE>KernalNOName</CODE>
+<DD>
+<DT><CODE>KernalSEName</CODE>
+<DD>
+Strings specifying the filename of the Kernal ROM images.
+
+<A NAME="IDX848"></A>
+<A NAME="IDX849"></A>
+<DT><CODE>BasicLoName</CODE>
+<DD>
+<DT><CODE>BasicHiName</CODE>
+<DD>
+Strings specifying the filename of the Basic ROM images.
+
+<A NAME="IDX850"></A>
+<DT><CODE>Kernal64Name</CODE>
+<DD>
+String specifying the filename of the C64 kernal ROM image.
+<A NAME="IDX851"></A>
+<DT><CODE>Basic64Name</CODE>
+<DD>
+String specifying the filename of the C64 basic ROM image.
+
+<A NAME="IDX852"></A>
+<DT><CODE>InternalFunctionROM</CODE>
+<DD>
+Boolean, enables the internal function ROM.
+<A NAME="IDX853"></A>
+<DT><CODE>InternalFunctionName</CODE>
+<DD>
+Strings specifying the filename of the ROM image for the internal function ROM.
+
+<A NAME="IDX854"></A>
+<DT><CODE>ExternalFunctionROM</CODE>
+<DD>
+Boolean, enables the external function ROM.
+<A NAME="IDX855"></A>
+<DT><CODE>ExternalFunctionName</CODE>
+<DD>
+Strings specifying the filename of the ROM image for the external function ROM.
+
+</DL>
+
+
+
+<H4><A NAME="SEC131" HREF="vice_toc.html#TOC131">7.2.2.2  C128 system ROM command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-basic64 &#60;name&#62;</CODE>
+<DD>
+<A NAME="IDX856"></A>
+ 
+Specify name of C64 mode BASIC ROM image
+<A NAME="IDX857"></A>
+<DT><CODE>-kernal64 &#60;name&#62;</CODE>
+<DD>
+Specify name of C64 mode Kernal ROM image
+
+<A NAME="IDX858"></A>
+<DT><CODE>-basiclo &#60;name&#62;</CODE>
+<DD>
+Specify name of BASIC ROM image (lower part)
+<A NAME="IDX859"></A>
+<DT><CODE>-basichi &#60;name&#62;</CODE>
+<DD>
+Specify name of BASIC ROM image (higher part)
+
+<A NAME="IDX860"></A>
+<DT><CODE>-kernal &#60;name&#62;</CODE>
+<DD>
+Specify name of international Kernal ROM image
+<A NAME="IDX861"></A>
+<DT><CODE>-kernalde &#60;name&#62;</CODE>
+<DD>
+Specify name of German Kernal ROM image
+<A NAME="IDX862"></A>
+<DT><CODE>-kernalfi &#60;name&#62;</CODE>
+<DD>
+Specify name of Finnish Kernal ROM image
+<A NAME="IDX863"></A>
+<DT><CODE>-kernalfr &#60;name&#62;</CODE>
+<DD>
+Specify name of French Kernal ROM image
+<A NAME="IDX864"></A>
+<DT><CODE>-kernalit &#60;name&#62;</CODE>
+<DD>
+Specify name of Italian Kernal ROM image
+<A NAME="IDX865"></A>
+<DT><CODE>-kernalno &#60;name&#62;</CODE>
+<DD>
+Specify name of Norwegian Kernal ROM image
+<A NAME="IDX866"></A>
+<DT><CODE>-kernalse &#60;name&#62;</CODE>
+<DD>
+Specify name of Swedish Kernal ROM image
+
+<A NAME="IDX867"></A>
+<DT><CODE>-chargen &#60;name&#62;</CODE>
+<DD>
+Specify name of international character generator ROM image
+<A NAME="IDX868"></A>
+<DT><CODE>-chargde &#60;name&#62;</CODE>
+<DD>
+Specify name of German character generator ROM image
+<A NAME="IDX869"></A>
+<DT><CODE>-chargfr &#60;name&#62;</CODE>
+<DD>
+Specify name of French character generator ROM image
+<A NAME="IDX870"></A>
+<DT><CODE>-chargse &#60;name&#62;</CODE>
+<DD>
+Specify name of Swedish character generator ROM image
+
+<A NAME="IDX871"></A>
+<DT><CODE>-intfunc</CODE>
+<DD>
+<DT><CODE>+intfunc</CODE>
+<DD>
+Enable/Disable the internal Function ROM
+<A NAME="IDX872"></A>
+<DT><CODE>-intfrom &#60;name&#62;</CODE>
+<DD>
+Specify name of internal Function ROM image
+
+<A NAME="IDX873"></A>
+<DT><CODE>-extfunc</CODE>
+<DD>
+<DT><CODE>+extfunc</CODE>
+<DD>
+Enable/Disable the external Function ROM
+<A NAME="IDX874"></A>
+<DT><CODE>-extfrom &#60;name&#62;</CODE>
+<DD>
+Specify name of external Function ROM image
+
+</DL>
+
+
+
+<H3><A NAME="SEC132" HREF="vice_toc.html#TOC132">7.2.3  C128 settings</A></H3>
+
+
+
+<H4><A NAME="SEC133" HREF="vice_toc.html#TOC133">7.2.3.1  C128 resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>40/80ColumnKey</CODE>
+<DD>
+<A NAME="IDX875"></A>
+ 
+Boolean, status of the 40/80 columns key
+<A NAME="IDX876"></A>
+<DT><CODE>Go64Mode</CODE>
+<DD>
+Boolean, if true enter C64 mode on reset
+<A NAME="IDX877"></A>
+<DT><CODE>C128FullBanks</CODE>
+<DD>
+Boolean, enables Banks 2 and 3.
+<A NAME="IDX878"></A>
+<DT><CODE>MachineType</CODE>
+<DD>
+Integer specifying the C128 machine type. (0: Internatinal, 1: Finnish, 2: French,
+3: German, 4: Italian, 5: Norwegian, 6: Swedish)
+</DL>
+
+
+
+<H4><A NAME="SEC134" HREF="vice_toc.html#TOC134">7.2.3.2  C128 command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-40col</CODE>
+<DD>
+<A NAME="IDX879"></A>
+ 
+Activate 40 column mode
+<A NAME="IDX880"></A>
+<DT><CODE>-80col</CODE>
+<DD>
+Activate 80 column mode
+
+<A NAME="IDX881"></A>
+<DT><CODE>-go64</CODE>
+<DD>
+Always switch to C64 mode on reset
+<DT><CODE>+go64</CODE>
+<DD>
+Always switch to C128 mode on reset
+
+</DL>
+
+
+
+<H2><A NAME="SEC135" HREF="vice_toc.html#TOC135">7.3  C64DTV-specific commands and settings</A></H2>
+
+<P>
+This section lists the settings and commands that are C64DTV specific
+and thus are not present in the other emulators.
+
+</P>
+
+
+
+<H3><A NAME="SEC136" HREF="vice_toc.html#TOC136">7.3.1  C64DTV ROM image</A></H3>
+
+<P>
+The DTV has a 2MB Flash chip which contains the kernal, basic and
+character set ROMs along with other data, such as games in the case of
+the original C64DTV ROM.
+
+</P>
+<P>
+The image file is a dump of the flash chip. It is exactly 2MB (2097152 bytes).
+
+</P>
+<P>
+If you do not have a suitable image file, an image using the C64 kernal,
+basic and charset is automatically created.
+
+</P>
+<P>
+If writing to the C64DTV ROM is enabled, the image file is rewritten with
+the current data when exiting x64dtv.
+
+</P>
+<P>
+Note that x64dtv tries to load the image file from the C64DTV
+directory first, and if it isn't found there, x64dtv tries to
+load it from the current directory. If you do not have <TT>`dtvrom.bin'</TT>
+in your C64DTV directory and writing to DTV ROM is enabled,
+the <TT>`dtvrom.bin'</TT> file is created to the current directory.
+
+</P>
+<P>
+NOTE: The original C64DTV ROM has somewhat distorted colors,
+normally you should use a patched rom.
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>-c64dtvromimage NAME</CODE>
+<DD>
+<A NAME="IDX882"></A>
+ 
+Specify <TT>`NAME'</TT> as the C64DTV ROM image
+
+<A NAME="IDX883"></A>
+<DT><CODE>-c64dtvromrw</CODE>
+<DD>
+<DT><CODE>+c64dtvromrw</CODE>
+<DD>
+Enable or disable writing to C64DTV ROM image
+
+</DL>
+
+<P>
+The trueflashfs option is analogous to True drive emulation.  If disabled,
+any file access to the flash filesystem (device 1) will go to the local
+file system instead.
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>-trueflashfs</CODE>
+<DD>
+<A NAME="IDX884"></A>
+ 
+<DT><CODE>+trueflashfs</CODE>
+<DD>
+Enable or disable true hardware flash file system
+
+<A NAME="IDX885"></A>
+<DT><CODE>-fsflash NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as directory for flash file system device
+
+</DL>
+
+
+
+<H3><A NAME="SEC137" HREF="vice_toc.html#TOC137">7.3.2  DTV revision</A></H3>
+
+<P>
+The DTV revision 2 has a bug in the Blitter. Using revision 3
+is recommended. Emulation of DTV revision 2 including Blitter
+bug is intended for testing DTV software.
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>-dtvrev REVISION</CODE>
+<DD>
+<A NAME="IDX886"></A>
+ 
+Specify DTV <TT>`REVISION'</TT> (2 or 3)
+
+</DL>
+
+
+
+<H3><A NAME="SEC138" HREF="vice_toc.html#TOC138">7.3.3  LumaFix</A></H3>
+
+<P>
+The PAL C64DTVs have wrong resistors in the video output circuit,
+which causes incorrect luminances. Several hardware solutions
+("LumaFixes") have been developed to fix this flaw.
+
+</P>
+<P>
+The fixed video output is emulated by selecting "New Luminances".
+The unmodified C64DTV video output can be emulated with "Old Luminances".
+
+</P>
+<P>
+The default setting is "New Luminances".
+
+</P>
+
+
+
+<H3><A NAME="SEC139" HREF="vice_toc.html#TOC139">7.3.4  Userport</A></H3>
+
+<P>
+The C64DTV userport emulation currently supports three devices:
+Hummer ADC, userport joystick and PS/2 mouse.
+
+</P>
+<P>
+The joystick that controls either the Hummer ADC or userport joystick
+can be selected using the same parameter or menu option.
+
+</P>
+<P>
+While using the Hummer ADC, joystick UP and DOWN are mapped to
+the Hummer buttons A and B respectively. LEFT and RIGHT set the ADCs
+output to 0 and 255. Centering the joystick results in the ADC value of 128.
+
+</P>
+<P>
+Currently the Hummer ADC and userport joystick are mutually exclusive.
+This means that enabling one disables the other. PS/2 mouse emulation
+can be used simultaneously with either Hummer ADC or userport joystick.
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>-hummeradc</CODE>
+<DD>
+<A NAME="IDX887"></A>
+ 
+<DT><CODE>+hummeradc</CODE>
+<DD>
+Enable/Disable Hummer ADC
+
+<A NAME="IDX888"></A>
+<DT><CODE>-ps2mouse</CODE>
+<DD>
+<DT><CODE>+ps2mouse</CODE>
+<DD>
+Enable or disable PS/2 mouse on userport
+
+</DL>
+
+
+
+<H3><A NAME="SEC140" HREF="vice_toc.html#TOC140">7.3.5  Debug</A></H3>
+
+<P>
+Debugging information on Blitter, DMA and Flash can be enabled with command
+line parameters. This can be useful for DTV software development.
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>-dtvblitterlog</CODE>
+<DD>
+<A NAME="IDX889"></A>
+ 
+<DT><CODE>+dtvblitterlog</CODE>
+<DD>
+Enable or disable DTV Blitter log
+
+<A NAME="IDX890"></A>
+<DT><CODE>-dtvdmalog</CODE>
+<DD>
+<DT><CODE>+dtvdmalog</CODE>
+<DD>
+Enable or disable DTV DMA log
+
+<A NAME="IDX891"></A>
+<DT><CODE>-dtvflashlog</CODE>
+<DD>
+<DT><CODE>+dtvflashlog</CODE>
+<DD>
+Enable or disable DTV Flash log
+
+</DL>
+
+
+
+<H3><A NAME="SEC141" HREF="vice_toc.html#TOC141">7.3.6  Monitor DTV features</A></H3>
+
+<P>
+Currently the registers A, Y and X are registers R0, R1 and R2 regardless of
+the mapping, which can be seen and modified via the registers ACM and XYM.
+
+</P>
+<P>
+The monitor can access all 2MB of RAM and 2MB of Flash, but only 64 kB at a time.
+The 64kB bank can be selected with "bank ram00".."ram1f" for RAM and
+"bank rom00".."rom1f" for Flash.
+
+</P>
+<P>
+The "load" command can load large files (&#62;64kB) correctly if the bank is set
+to "ramXX", where XX is the starting bank (usually "bank00").
+
+</P>
+
+
+<H3><A NAME="SEC142" HREF="vice_toc.html#TOC142">7.3.7  DTV resources</A></H3>
+
+<DL COMPACT>
+
+<DT><CODE>DtvRevision</CODE>
+<DD>
+<A NAME="IDX892"></A>
+ 
+Integer specifying the emulated DTV revision (2: DTV2, 3: DTV3)
+
+<A NAME="IDX893"></A>
+<DT><CODE>c64dtvromfilename</CODE>
+<DD>
+String specifying the filename of the DTV Flash ROM image.
+<A NAME="IDX894"></A>
+<DT><CODE>c64dtvromrw</CODE>
+<DD>
+Boolean that specifies whether the emulated Flash ROM is writeable.
+<A NAME="IDX895"></A>
+<DT><CODE>FSFlashDir</CODE>
+<DD>
+String specifying the working directory for the flash file system.
+<A NAME="IDX896"></A>
+<DT><CODE>FlashTrueFS</CODE>
+<DD>
+Boolean, enables true hardware flash file system.
+
+<A NAME="IDX897"></A>
+<DT><CODE>HummerADC</CODE>
+<DD>
+Boolean, enables Hummer ADC emulation.
+
+<A NAME="IDX898"></A>
+<DT><CODE>ps2mouse</CODE>
+<DD>
+Boolean, enables PS/2 Mouse emulation.
+
+<A NAME="IDX899"></A>
+<DT><CODE>DtvBlitterLog</CODE>
+<DD>
+Boolean, enables Blitter logging.
+<A NAME="IDX900"></A>
+<DT><CODE>DtvDMALog</CODE>
+<DD>
+Boolean, enables DMA logging.
+<A NAME="IDX901"></A>
+<DT><CODE>DtvFlashLog</CODE>
+<DD>
+Boolean, enables Flash ROM logging.
+
+</DL>
+
+
+
+<H2><A NAME="SEC143" HREF="vice_toc.html#TOC143">7.4  VIC20-specific commands and settings</A></H2>
+
+<P>
+This section lists the settings and commands that are VIC20-specific and
+thus are not present in the other emulators.
+
+</P>
+
+
+
+<H3><A NAME="SEC144" HREF="vice_toc.html#TOC144">7.4.1  Using cartridge images</A></H3>
+
+<P>
+As with the C64 (see section <A HREF="vice_7.html#SEC95">7.1.1  Using cartridges</A>), it is possible to attach
+several types of cartridge images:
+
+</P>
+
+<UL>
+<LI>
+
+4 or 8 Kbyte cartridges located at $2000;
+<LI>
+
+4 or 8 Kbyte cartridges located at $4000;
+<LI>
+
+4 or 8 Kbyte cartridges located at $6000;
+<LI>
+
+4 or 8 Kbyte cartridges located at $A000;
+<LI>
+
+4 Kbyte cartridges located at $B000.
+</UL>
+
+<P>
+This can all be done via the "Attach cartridge image..." command in
+the left-button menu.  It is also possible to let xvic "guess" the
+type of cartridge using "Smart-attach cartridge image...".
+
+</P>
+<P>
+Notice that several cartridges are actually made up of two pieces (and
+two files), that need to be loaded separately at different addresses.
+In that case, you have to know the addresses (which are usually
+specified in the file name) and use the "attach" command twice.
+
+</P>
+<P>
+A special kind of cartridge file is where the two files mentioned
+above are concatenated (with removing the two byte load address of
+the second image) into one 16k image. There are only few of those
+images, though. Normally the second part is located at $A000.
+Vice can now attach such concatenated files at the start address
+$2000, $4000, and $6000. The second half of such an image is
+moved to $A000. If you encounter 16k images that have the second
+half not at $A000 you can split the image into two halfs
+(i.e. one 8194 byte and one 8192 byte, because the first has the load
+address) and attach both files separately.
+
+</P>
+<P>
+One cartridge that is currently only partially supported here is
+the VIC1112 IEEE488 interface. You have to load the ROM as a cartridge,
+but you also have to enable the IEEE488 hardware by menu.
+
+</P>
+
+
+<H3><A NAME="SEC145" HREF="vice_toc.html#TOC145">7.4.2  VIC20 cartridge settings</A></H3>
+
+
+
+<H4><A NAME="SEC146" HREF="vice_toc.html#TOC146">7.4.2.1  VIC20 cartridge resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>CartridgeReset</CODE>
+<DD>
+<A NAME="IDX902"></A>
+ 
+Boolean specifying whether the machine should be resetted when a cartridge is
+changed.
+<A NAME="IDX903"></A>
+<DT><CODE>CartridgeType</CODE>
+<DD>
+Integer specifying the type of cartridge emulated.
+<A NAME="IDX904"></A>
+<DT><CODE>CartridgeFile</CODE>
+<DD>
+String specifying the filename of the image for the current cartridge.
+
+<A NAME="IDX905"></A>
+<DT><CODE>IOCollisionHandling</CODE>
+<DD>
+Integer specifying the way the I/O collisions should be handled, (0: error message and 
+detach all involved carts, 1: error message and detach last attached involved 
+carts, 2: warning in log and 'AND' the valid return values)
+
+<A NAME="IDX906"></A>
+<A NAME="IDX907"></A>
+<A NAME="IDX908"></A>
+<A NAME="IDX909"></A>
+<A NAME="IDX910"></A>
+<DT><CODE>GenericCartridgeFile2000</CODE>
+<DD>
+<DT><CODE>GenericCartridgeFile4000</CODE>
+<DD>
+<DT><CODE>GenericCartridgeFile6000</CODE>
+<DD>
+<DT><CODE>GenericCartridgeFileA000</CODE>
+<DD>
+<DT><CODE>GenericCartridgeFileB000</CODE>
+<DD>
+String specifying the name of the respective cartridge ROM images.
+
+<A NAME="IDX911"></A>
+<DT><CODE>FinalExpansionWriteBack</CODE>
+<DD>
+Boolean, if true write back the Flash ROM image file automatically, incase the
+contents changed, when detaching or quitting the emulator.
+
+<A NAME="IDX912"></A>
+<DT><CODE>VicFlashPluginWriteBack</CODE>
+<DD>
+Boolean, if true write back the Flash ROM image file automatically, incase the
+contents changed, when detaching or quitting the emulator.
+
+<A NAME="IDX913"></A>
+<DT><CODE>MegaCartNvRAMfilename</CODE>
+<DD>
+String specifying the filename of the MegaCart NvRAM image.
+<A NAME="IDX914"></A>
+<DT><CODE>MegaCartNvRAMWriteBack</CODE>
+<DD>
+Boolean, if true write back the NvRAM image file automatically, incase the RAM
+contents changed, when detaching or quitting the emulator.
+
+<A NAME="IDX915"></A>
+<DT><CODE>TFEIOSwap</CODE>
+<DD>
+Boolean, swap/don't swap io mapping (map cart I/O to VIC20 I/O-2)
+<A NAME="IDX916"></A>
+<DT><CODE>SFXSoundExpanderIOSwap</CODE>
+<DD>
+Boolean, swap/don't swap io mapping (map cart I/O to VIC20 I/O-2)
+<A NAME="IDX917"></A>
+<DT><CODE>SFXSoundSamplerIOSwap</CODE>
+<DD>
+Boolean, swap/don't swap io mapping (map cart I/O to VIC20 I/O-2)
+<A NAME="IDX918"></A>
+<DT><CODE>GEORAMIOSwap</CODE>
+<DD>
+Boolean, swap/don't swap  io mapping (map cart I/O-1 to VIC20 I/O-3 and cart I/O-2 to VIC20 I/O-2)
+
+<A NAME="IDX919"></A>
+<DT><CODE>SidCart</CODE>
+<DD>
+Boolean, enables SID cart emulation.
+<A NAME="IDX920"></A>
+<DT><CODE>SidAddress</CODE>
+<DD>
+Integer that specifies the base address of the emulated SID chip.
+<A NAME="IDX921"></A>
+<DT><CODE>SidClock</CODE>
+<DD>
+Integer specifying the clock rate used for the emulated SID chip (0: C64, 1: VIC-20)
+
+</DL>
+
+
+
+<H4><A NAME="SEC147" HREF="vice_toc.html#TOC147">7.4.2.2  VIC20 cartridge command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-iocollision &#60;method&#62;</CODE>
+<DD>
+<A NAME="IDX922"></A>
+ 
+Select the way the I/O collisions should be handled, (0: error message and 
+detach all involved carts, 1: error message and detach last attached involved 
+carts, 2: warning in log and 'AND' the valid return values
+
+<A NAME="IDX923"></A>
+<DT><CODE>-cart2 &#60;name&#62;</CODE>
+<DD>
+Specify 4/8/16K extension ROM name at $2000
+<A NAME="IDX924"></A>
+<DT><CODE>-cart4 &#60;name&#62;</CODE>
+<DD>
+Specify 4/8/16K extension ROM name at $4000
+<A NAME="IDX925"></A>
+<DT><CODE>-cart6 &#60;name&#62;</CODE>
+<DD>
+Specify 4/8/16K extension ROM name at $6000
+<A NAME="IDX926"></A>
+<DT><CODE>-cartA &#60;name&#62;</CODE>
+<DD>
+Specify 4/8K extension ROM name at $A000
+<A NAME="IDX927"></A>
+<DT><CODE>-cartB &#60;name&#62;</CODE>
+<DD>
+Specify 4K extension ROM name at $B000
+<A NAME="IDX928"></A>
+<DT><CODE>-cartgeneric &#60;name&#62;</CODE>
+<DD>
+Specify generic extension ROM name
+
+<A NAME="IDX929"></A>
+<DT><CODE>-cartmega &#60;name&#62;</CODE>
+<DD>
+Specify Mega-Cart extension ROM name
+<A NAME="IDX930"></A>
+<DT><CODE>-mcnvramfile &#60;name&#62;</CODE>
+<DD>
+Set Mega-Cart NvRAM filename
+<A NAME="IDX931"></A>
+<DT><CODE>-mcnvramwriteback</CODE>
+<DD>
+<DT><CODE>+mcnvramwriteback</CODE>
+<DD>
+Enable/Disable Mega-Cart NvRAM writeback
+
+<A NAME="IDX932"></A>
+<DT><CODE>-cartfe &#60;name&#62;</CODE>
+<DD>
+Specify Final Expansion extension ROM name
+<A NAME="IDX933"></A>
+<DT><CODE>-fewriteback</CODE>
+<DD>
+<DT><CODE>+fewriteback</CODE>
+<DD>
+Enable/Disable Final Expansion write back to ROM file
+
+<A NAME="IDX934"></A>
+<DT><CODE>-cartfp &#60;name&#62;</CODE>
+<DD>
+Specify Vic Flash Plugin extension ROM name
+<A NAME="IDX935"></A>
+<DT><CODE>-fpwriteback</CODE>
+<DD>
+<DT><CODE>+fpwriteback</CODE>
+<DD>
+Enable/Disable Vic Flash Plugin write back to ROM file
+
+<A NAME="IDX936"></A>
+<DT><CODE>-ieee488</CODE>
+<DD>
+<DT><CODE>+ieee488</CODE>
+<DD>
+Enable/Disable VIC-1112 IEEE488 interface
+
+<A NAME="IDX937"></A>
+<DT><CODE>-sidcart</CODE>
+<DD>
+<DT><CODE>+sidcart</CODE>
+<DD>
+Enable/Disable SID Cartridge
+
+<A NAME="IDX938"></A>
+<DT><CODE>-tfeioswap</CODE>
+<DD>
+<DT><CODE>+tfeioswap</CODE>
+<DD>
+Swap/don't swap io mapping (map cart I/O to VIC20 I/O-2)
+<A NAME="IDX939"></A>
+<DT><CODE>-tfe</CODE>
+<DD>
+<DT><CODE>+tfe</CODE>
+<DD>
+Enable/Disable the TFE ("The Final Ethernet") unit
+<A NAME="IDX940"></A>
+<DT><CODE>-tfeif &#60;name&#62;</CODE>
+<DD>
+Set the system ethernet interface for TFE emulation
+<A NAME="IDX941"></A>
+<DT><CODE>-tferrnet</CODE>
+<DD>
+<DT><CODE>+tferrnet</CODE>
+<DD>
+Enable/Disable RRNet mode of TFE emulation
+
+<A NAME="IDX942"></A>
+<DT><CODE>-digimax</CODE>
+<DD>
+<DT><CODE>+digimax</CODE>
+<DD>
+Enable/Disable the DigiMAX cartridge
+<A NAME="IDX943"></A>
+<DT><CODE>-digimaxbase &#60;base address&#62;</CODE>
+<DD>
+Base address of the DigiMAX cartridge
+
+<A NAME="IDX944"></A>
+<DT><CODE>-sfxseioswap</CODE>
+<DD>
+<DT><CODE>+sfxseioswap</CODE>
+<DD>
+Swap/don't swap io mapping (map cart I/O to VIC20 I/O-2)
+<A NAME="IDX945"></A>
+<DT><CODE>-sfxse</CODE>
+<DD>
+<DT><CODE>+sfxse</CODE>
+<DD>
+Enable/Disable the SFX soundexpander cartridge
+<A NAME="IDX946"></A>
+<DT><CODE>-sfxsetype &#60;type&#62;</CODE>
+<DD>
+Set YM chip type (3526 / 3812)
+
+<A NAME="IDX947"></A>
+<DT><CODE>-sfxssioswap</CODE>
+<DD>
+<DT><CODE>+sfxssioswap</CODE>
+<DD>
+Swap/don't swap io mapping (map cart I/O to VIC20 I/O-2)
+<A NAME="IDX948"></A>
+<DT><CODE>-sfxss</CODE>
+<DD>
+<DT><CODE>+sfxss</CODE>
+<DD>
+Enable/Disable the SFX Sound Sampler cartridge
+
+<A NAME="IDX949"></A>
+<DT><CODE>-georamioswap</CODE>
+<DD>
+<DT><CODE>+georamioswap</CODE>
+<DD>
+Swap/don't swap  io mapping (map cart I/O-1 to VIC20 I/O-3 and cart I/O-2 to VIC20 I/O-2)
+<A NAME="IDX950"></A>
+<DT><CODE>-georam</CODE>
+<DD>
+<DT><CODE>+georam</CODE>
+<DD>
+Enable/Disable the GEORAM expansion unit
+<A NAME="IDX951"></A>
+<DT><CODE>-georamimage &#60;name&#62;</CODE>
+<DD>
+Specify name of GEORAM image
+<A NAME="IDX952"></A>
+<DT><CODE>-georamimagerw</CODE>
+<DD>
+<DT><CODE>+georamimagerw</CODE>
+<DD>
+Allow/Disallow writing to GEORAM image
+<A NAME="IDX953"></A>
+<DT><CODE>-georamsize &#60;size in KB&#62;</CODE>
+<DD>
+Size of the GEORAM expansion unit
+
+</DL>
+
+
+
+<H3><A NAME="SEC148" HREF="vice_toc.html#TOC148">7.4.3  VIC settings</A></H3>
+
+
+
+<H4><A NAME="SEC149" HREF="vice_toc.html#TOC149">7.4.3.1  VIC resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>VICVideoCache</CODE>
+<DD>
+<A NAME="IDX954"></A>
+ 
+Boolean specifying whether the video cache is turned on.
+
+<A NAME="IDX955"></A>
+<DT><CODE>VICDoubleSize</CODE>
+<DD>
+Boolean specifying whether double-size mode is turned on.
+
+<A NAME="IDX956"></A>
+<DT><CODE>VICDoubleScan</CODE>
+<DD>
+Boolean specifying whether double-scan mode is turned on.
+
+<A NAME="IDX957"></A>
+<DT><CODE>VICPaletteFile</CODE>
+<DD>
+String specifying the name of the palette file being used.  The
+<TT>`.vpl'</TT> extension is optional.
+
+<A NAME="IDX958"></A>
+<DT><CODE>VICHwScale</CODE>
+<DD>
+Boolean specifying whether to enable or disable hardware scaling
+
+<A NAME="IDX959"></A>
+<DT><CODE>VICFullscreenDevice</CODE>
+<DD>
+fullscreen device
+
+<A NAME="IDX960"></A>
+<DT><CODE>VICFullscreen</CODE>
+<DD>
+Boolean specifying whether to use fullscreen mode or not.
+
+<A NAME="IDX961"></A>
+<DT><CODE>VICFullscreenStatusbar</CODE>
+<DD>
+Boolean specifying whether to show the status bar in fullscreen mode or not.
+
+<A NAME="IDX962"></A>
+<DT><CODE>VICXRANDRFullscreenMode</CODE>
+<DD>
+integer specifying XRANDR fullscreen mode
+
+<A NAME="IDX963"></A>
+<DT><CODE>VICVidmodeFullscreenMode</CODE>
+<DD>
+integer specifying Vidmode fullscreen mode
+
+<A NAME="IDX964"></A>
+<DT><CODE>VICExternalPalette</CODE>
+<DD>
+Boolean specifying whether to use external palette file or not.
+
+<A NAME="IDX965"></A>
+<DT><CODE>VICColorSaturation</CODE>
+<DD>
+integer specifying saturation of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX966"></A>
+<DT><CODE>VICColorContrast</CODE>
+<DD>
+integer specifying contrast of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX967"></A>
+<DT><CODE>VICColorBrightness</CODE>
+<DD>
+integer specifying brightness of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX968"></A>
+<DT><CODE>VICColorGamma</CODE>
+<DD>
+integer specifying gamma of internal calculated palette [2200] &#60;0-4000&#62;
+
+<A NAME="IDX969"></A>
+<DT><CODE>VICColorTint</CODE>
+<DD>
+integer specifying tint of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX970"></A>
+<DT><CODE>VICPALScanLineShade</CODE>
+<DD>
+integer specifying amount of scan line shading for the CRT emulation [667] &#60;0-1000&#62;
+
+<A NAME="IDX971"></A>
+<DT><CODE>VICPALBlur</CODE>
+<DD>
+integer specifying amount of horizontal blur for the CRT emulation. [500] &#60;0-1000&#62;
+
+<A NAME="IDX972"></A>
+<DT><CODE>VICPALOddLinePhase</CODE>
+<DD>
+integer specifying phase offset for color carrier in odd lines [750] &#60;0-2000&#62;
+
+<A NAME="IDX973"></A>
+<DT><CODE>VICPALOddLineOffset</CODE>
+<DD>
+integer specifying phase for color carrier in odd lines [1250] &#60;0-2000&#62;
+
+<A NAME="IDX974"></A>
+<DT><CODE>VICAudioLeak</CODE>
+<DD>
+Boolean specifying whether to enable/disable video to audio leak emulation.
+
+<A NAME="IDX975"></A>
+<DT><CODE>VICFilter</CODE>
+<DD>
+integer specifying rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+
+<A NAME="IDX976"></A>
+<DT><CODE>VICBorderMode</CODE>
+<DD>
+integer specifying border display mode (0: normal, 1: full, 2: debug, 3:none)
+
+</DL>
+
+
+
+<H4><A NAME="SEC150" HREF="vice_toc.html#TOC150">7.4.3.2  VIC command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-VICvcache</CODE>
+<DD>
+<A NAME="IDX977"></A>
+ 
+<DT><CODE>+VICvcache</CODE>
+<DD>
+Enable/disable the video cache (<CODE>VICVideoCache=1</CODE>, <CODE>VICVideoCache=0</CODE>).
+
+<A NAME="IDX978"></A>
+<DT><CODE>-VICdsize</CODE>
+<DD>
+<DT><CODE>+VICdsize</CODE>
+<DD>
+Enable/disable the double size mode (<CODE>VICDoubleSize=1</CODE>,
+<CODE>VICDoubleSize=0</CODE>).
+
+<A NAME="IDX979"></A>
+<DT><CODE>-VICdscan</CODE>
+<DD>
+<DT><CODE>+VICdscan</CODE>
+<DD>
+Enable/disable the double scan mode (<CODE>VICDoubleScan=1</CODE>,
+<CODE>VICDoubleScan=0</CODE>).
+
+<A NAME="IDX980"></A>
+<DT><CODE>-VIChwscale</CODE>
+<DD>
+<DT><CODE>+VIChwscale</CODE>
+<DD>
+Enable/Disable hardware scaling
+
+<A NAME="IDX981"></A>
+<DT><CODE>-VICfilter &#60;Mode&#62;</CODE>
+<DD>
+Select rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+
+<A NAME="IDX982"></A>
+<DT><CODE>-VICpalette NAME</CODE>
+<DD>
+Specify <CODE>NAME</CODE> as the palette file (<CODE>VICPaletteFile</CODE>).
+
+<A NAME="IDX983"></A>
+<DT><CODE>-VICintpal</CODE>
+<DD>
+Use an internal calculated palette
+<A NAME="IDX984"></A>
+<DT><CODE>-VICextpal</CODE>
+<DD>
+Use an external palette (file)
+<A NAME="IDX985"></A>
+<DT><CODE>-VICfulldevice &#60;device&#62;</CODE>
+<DD>
+Select fullscreen device
+<A NAME="IDX986"></A>
+<DT><CODE>-VICXRANDRfullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX987"></A>
+<DT><CODE>-VICVidmodefullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX988"></A>
+<DT><CODE>-VICborders &#60;mode&#62;</CODE>
+<DD>
+Set VIC border display mode (0: normal, 1: full, 2: debug, 3:none)
+
+<A NAME="IDX989"></A>
+<DT><CODE>-VICsaturation &#60;0-2000&#62;</CODE>
+<DD>
+Set saturation of internal calculated palette [1000]
+<A NAME="IDX990"></A>
+<DT><CODE>-VICcontrast &#60;0-2000&#62;</CODE>
+<DD>
+Set contrast of internal calculated palette [1000]
+<A NAME="IDX991"></A>
+<DT><CODE>-VICbrightness &#60;0-2000&#62;</CODE>
+<DD>
+Set brightness of internal calculated palette [1000]
+<A NAME="IDX992"></A>
+<DT><CODE>-VICgamma &#60;0-4000&#62;</CODE>
+<DD>
+Set gamma of internal calculated palette [2200]
+<A NAME="IDX993"></A>
+<DT><CODE>-VICtint &#60;0-2000&#62;</CODE>
+<DD>
+Set tint of internal calculated palette [1000]
+<A NAME="IDX994"></A>
+<DT><CODE>-VICoddlinesphase &#60;0-2000&#62;</CODE>
+<DD>
+Set phase for color carrier in odd lines [1250]
+<A NAME="IDX995"></A>
+<DT><CODE>-VICoddlinesoffset &#60;0-2000&#62;</CODE>
+<DD>
+Set phase offset for color carrier in odd lines [750]
+<A NAME="IDX996"></A>
+<DT><CODE>-VICcrtblur &#60;0-1000&#62;</CODE>
+<DD>
+Amount of horizontal blur for the CRT emulation. [500]
+<A NAME="IDX997"></A>
+<DT><CODE>-VICcrtscanlineshade &#60;0-1000&#62;</CODE>
+<DD>
+Amount of scan line shading for the CRT emulation [667]
+
+<A NAME="IDX998"></A>
+<DT><CODE>-VICaudioleak</CODE>
+<DD>
+<DT><CODE>+VICaudioleak</CODE>
+<DD>
+Enable/Disable video to audio leak emulation.
+
+</DL>
+
+
+
+<H3><A NAME="SEC151" HREF="vice_toc.html#TOC151">7.4.4  Changing memory configuration</A></H3>
+
+<P>
+It is possible to change the VIC20 memory configuration in two ways: by
+enabling and/or disabling certain individual memory blocks, or by
+choosing one among a few typical memory configurations.  The former can
+be done by modifying resource values directly or from the right-button
+menu; the latter can only be done from the menu.
+
+</P>
+<P>
+There are 5 RAM expansion blocks in the VIC20, numbered 0, 1, 2, 3 and
+5:
+
+</P>
+
+<UL>
+<LI>
+
+block 0 (3 Kbytes at $0400-$0FFF);
+<LI>
+
+block 1 (8 Kbytes at $2000-$3FFF);
+<LI>
+
+block 2 (8 Kbytes at $4000-$5FFF);
+<LI>
+
+block 3 (8 Kbytes at $6000-$7FFF);
+<LI>
+
+block 5 (8 Kbytes at $A000-$BFFF).
+</UL>
+
+<P>
+These blocks are called <EM>expansion blocks</EM> because they are not
+present a stock ("unexpanded") machine.  Each of them is associated to
+a boolean <CODE>RamBlockX</CODE> resource (where <CODE>X</CODE> is the block number)
+that specifies whether the block is enabled or not.
+
+</P>
+<P>
+There are also some common memory configurations you can pick from the
+right-button menu:
+
+</P>
+
+<UL>
+<LI>
+
+no RAM expansion blocks at all;
+<LI>
+
+all RAM expansion blocks enabled;
+<LI>
+
+3K expansion (only block 0 is enabled);
+<LI>
+
+8K expansion (only block 1 is enabled);
+<LI>
+
+16K expansion (only blocks 1 and 2 are enabled);
+<LI>
+
+24K expansion (only blocks 1, 2 and 3 are enabled).
+</UL>
+
+
+
+<H4><A NAME="SEC152" HREF="vice_toc.html#TOC152">7.4.4.1  VIC20 memory configuration resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>RAMBlock0</CODE>
+<DD>
+<A NAME="IDX999"></A>
+ <A NAME="IDX1000"></A>
+ <A NAME="IDX1001"></A>
+ <A NAME="IDX1002"></A>
+ <A NAME="IDX1003"></A>
+ 
+<DT><CODE>RAMBlock1</CODE>
+<DD>
+<DT><CODE>RAMBlock2</CODE>
+<DD>
+<DT><CODE>RAMBlock3</CODE>
+<DD>
+<DT><CODE>RAMBlock5</CODE>
+<DD>
+Booleans specifying whether RAM blocks 0, 1, 2, 3 and 5 must be enabled.
+
+</DL>
+
+
+
+<H4><A NAME="SEC153" HREF="vice_toc.html#TOC153">7.4.4.2  VIC20 memory configuration command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-memory CONFIG</CODE>
+<DD>
+<A NAME="IDX1004"></A>
+ 
+Specify memory configuration.  It must be a comma-separated list of
+options, each of which can be one the following:
+
+
+<UL>
+<LI>
+
+<CODE>none</CODE> (no extension);
+<LI>
+
+<CODE>all</CODE> (all blocks);
+<LI>
+
+<CODE>3k</CODE> (3k space in block 0);
+<LI>
+
+<CODE>8k</CODE> (first 8k extension block);
+<LI>
+
+<CODE>16k</CODE> (first and second 8k extension blocks);
+<LI>
+
+<CODE>24k</CODE> (first, second and 3rd extension blocks);
+<LI>
+
+<CODE>0</CODE>, <CODE>1</CODE>, <CODE>2</CODE>, <CODE>3</CODE>, <CODE>5</CODE> (memory in respective
+blocks);
+<LI>
+
+<CODE>04</CODE>, <CODE>20</CODE>, <CODE>40</CODE>, <CODE>60</CODE>, <CODE>A0</CODE> (memory at
+respective address.
+</UL>
+
+For example,
+
+
+<PRE>
+xvic -memory none
+</PRE>
+
+gives an unexpanded VIC20.  While
+
+
+<PRE>
+xvic -memory 60,a0
+</PRE>
+
+or
+
+
+<PRE>
+xvic -memory 3,5
+</PRE>
+
+enables memory in blocks 3 and 5, which is the usual configuration for
+16k ROM modules.
+
+</DL>
+
+
+
+<H3><A NAME="SEC154" HREF="vice_toc.html#TOC154">7.4.5  VIC20 system ROM settings</A></H3>
+
+<P>
+These settings can be used to control what system ROMs are loaded in the
+VIC20 emulator at startup.  They cannot be changed from the menus.
+
+</P>
+
+
+
+<H4><A NAME="SEC155" HREF="vice_toc.html#TOC155">7.4.5.1  VIC20 system ROM resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>KernalName</CODE>
+<DD>
+<A NAME="IDX1005"></A>
+ 
+String specifying the name of the Kernal ROM (default <TT>`kernal'</TT>).
+
+<A NAME="IDX1006"></A>
+<DT><CODE>BasicName</CODE>
+<DD>
+String specifying the name of the Basic ROM (default <TT>`basic'</TT>).
+
+<A NAME="IDX1007"></A>
+<DT><CODE>ChargenName</CODE>
+<DD>
+String specifying the name of the character generator ROM (default
+<TT>`chargen'</TT>).
+
+</DL>
+
+
+
+<H4><A NAME="SEC156" HREF="vice_toc.html#TOC156">7.4.5.2  VIC20 system ROM command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-kernal NAME</CODE>
+<DD>
+<A NAME="IDX1008"></A>
+ 
+Specify <TT>`NAME'</TT> as the Kernal ROM file (<CODE>KernalName</CODE>).
+
+<A NAME="IDX1009"></A>
+<DT><CODE>-basic NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the Basic ROM file (<CODE>BasicName</CODE>).
+
+<A NAME="IDX1010"></A>
+<DT><CODE>-chargen NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the character generator ROM file
+(<CODE>ChargenName</CODE>).
+
+<A NAME="IDX1011"></A>
+<A NAME="IDX1012"></A>
+<A NAME="IDX1013"></A>
+<A NAME="IDX1014"></A>
+<A NAME="IDX1015"></A>
+<DT><CODE>-cart2 NAME</CODE>
+<DD>
+<DT><CODE>-cart4 NAME</CODE>
+<DD>
+<DT><CODE>-cart6 NAME</CODE>
+<DD>
+<DT><CODE>-cartA NAME</CODE>
+<DD>
+<DT><CODE>-cartB NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the cartridge image to attach.
+(<CODE>CartridgeFile2000</CODE>, ..., <CODE>CartridgeFileB000</CODE>).
+
+</DL>
+
+
+
+<H3><A NAME="SEC157" HREF="vice_toc.html#TOC157">7.4.6  VIC20 settings</A></H3>
+
+
+
+<H4><A NAME="SEC158" HREF="vice_toc.html#TOC158">7.4.6.1  VIC20 command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-OEMjoy</CODE>
+<DD>
+<A NAME="IDX1016"></A>
+ 
+<DT><CODE>+OEMjoy</CODE>
+<DD>
+Enable/Disable the OEM userport joystick adapter
+
+</DL>
+
+
+
+<H2><A NAME="SEC159" HREF="vice_toc.html#TOC159">7.5  PLUS4-specific commands and settings</A></H2>
+
+
+
+<H3><A NAME="SEC160" HREF="vice_toc.html#TOC160">7.5.1  TED settings</A></H3>
+
+
+
+<H4><A NAME="SEC161" HREF="vice_toc.html#TOC161">7.5.1.1  TED resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>TEDVideoCache</CODE>
+<DD>
+<A NAME="IDX1017"></A>
+ 
+Boolean specifying whether the video cache is turned on.
+
+<A NAME="IDX1018"></A>
+<DT><CODE>TEDDoubleSize</CODE>
+<DD>
+Boolean specifying whether double-size mode is turned on.
+
+<A NAME="IDX1019"></A>
+<DT><CODE>TEDDoubleScan</CODE>
+<DD>
+Boolean specifying whether double-scan mode is turned on.
+
+<A NAME="IDX1020"></A>
+<DT><CODE>TEDPaletteFile</CODE>
+<DD>
+String specifying the name of the palette file being used.  The
+<TT>`.vpl'</TT> extension is optional.
+
+<A NAME="IDX1021"></A>
+<DT><CODE>TEDHwScale</CODE>
+<DD>
+Boolean specifying whether to enable or disable hardware scaling
+
+<A NAME="IDX1022"></A>
+<DT><CODE>TEDFullscreenDevice</CODE>
+<DD>
+fullscreen device
+
+<A NAME="IDX1023"></A>
+<DT><CODE>TEDFullscreen</CODE>
+<DD>
+Boolean specifying whether to use fullscreen mode or not.
+
+<A NAME="IDX1024"></A>
+<DT><CODE>TEDFullscreenStatusbar</CODE>
+<DD>
+Boolean specifying whether to show the status bar in fullscreen mode or not.
+
+<A NAME="IDX1025"></A>
+<DT><CODE>TEDXRANDRFullscreenMode</CODE>
+<DD>
+integer specifying XRANDR fullscreen mode
+
+<A NAME="IDX1026"></A>
+<DT><CODE>TEDVidmodeFullscreenMode</CODE>
+<DD>
+integer specifying Vidmode fullscreen mode
+
+<A NAME="IDX1027"></A>
+<DT><CODE>TEDExternalPalette</CODE>
+<DD>
+Boolean specifying whether to use external palette file or not.
+
+<A NAME="IDX1028"></A>
+<DT><CODE>TEDColorSaturation</CODE>
+<DD>
+integer specifying saturation of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1029"></A>
+<DT><CODE>TEDColorContrast</CODE>
+<DD>
+integer specifying contrast of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1030"></A>
+<DT><CODE>TEDColorBrightness</CODE>
+<DD>
+integer specifying brightness of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1031"></A>
+<DT><CODE>TEDColorGamma</CODE>
+<DD>
+integer specifying gamma of internal calculated palette [2200] &#60;0-4000&#62;
+
+<A NAME="IDX1032"></A>
+<DT><CODE>TEDColorTint</CODE>
+<DD>
+integer specifying tint of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1033"></A>
+<DT><CODE>TEDPALScanLineShade</CODE>
+<DD>
+integer specifying amount of scan line shading for the CRT emulation [667] &#60;0-1000&#62;
+
+<A NAME="IDX1034"></A>
+<DT><CODE>TEDPALBlur</CODE>
+<DD>
+integer specifying amount of horizontal blur for the CRT emulation. [500] &#60;0-1000&#62;
+
+<A NAME="IDX1035"></A>
+<DT><CODE>TEDPALOddLinePhase</CODE>
+<DD>
+integer specifying phase offset for color carrier in odd lines [750] &#60;0-2000&#62;
+
+<A NAME="IDX1036"></A>
+<DT><CODE>TEDPALOddLineOffset</CODE>
+<DD>
+integer specifying phase for color carrier in odd lines [1250] &#60;0-2000&#62;
+
+<A NAME="IDX1037"></A>
+<DT><CODE>TEDAudioLeak</CODE>
+<DD>
+Boolean specifying whether to enable/disable video to audio leak emulation.
+
+<A NAME="IDX1038"></A>
+<DT><CODE>TEDFilter</CODE>
+<DD>
+integer specifying rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+
+<A NAME="IDX1039"></A>
+<DT><CODE>TEDBorderMode</CODE>
+<DD>
+integer specifying border display mode (0: normal, 1: full, 2: debug, 3:none)
+
+</DL>
+
+
+
+<H4><A NAME="SEC162" HREF="vice_toc.html#TOC162">7.5.1.2  TED command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-TEDvcache</CODE>
+<DD>
+<A NAME="IDX1040"></A>
+ 
+<DT><CODE>+TEDvcache</CODE>
+<DD>
+Enable/Disable the video cache
+<A NAME="IDX1041"></A>
+<DT><CODE>-TEDdsize</CODE>
+<DD>
+<DT><CODE>+TEDdsize</CODE>
+<DD>
+Enable/Disable double size
+<A NAME="IDX1042"></A>
+<DT><CODE>-TEDdscan</CODE>
+<DD>
+<DT><CODE>+TEDdscan</CODE>
+<DD>
+Enable/Disable double scan
+<A NAME="IDX1043"></A>
+<DT><CODE>-TEDfilter &#60;Mode&#62;</CODE>
+<DD>
+Select rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+<A NAME="IDX1044"></A>
+<DT><CODE>-TEDhwscale</CODE>
+<DD>
+<DT><CODE>+TEDhwscale</CODE>
+<DD>
+Enable/Disable hardware scaling
+<A NAME="IDX1045"></A>
+<DT><CODE>-TEDintpal</CODE>
+<DD>
+Use an internal calculated palette
+<A NAME="IDX1046"></A>
+<DT><CODE>-TEDextpal</CODE>
+<DD>
+Use an external palette (file)
+<A NAME="IDX1047"></A>
+<DT><CODE>-TEDpalette &#60;name&#62;</CODE>
+<DD>
+Specify name of file of external palette
+<A NAME="IDX1048"></A>
+<DT><CODE>-TEDfulldevice &#60;device&#62;</CODE>
+<DD>
+Select fullscreen device
+<A NAME="IDX1049"></A>
+<DT><CODE>-TEDXRANDRfullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX1050"></A>
+<DT><CODE>-TEDVidmodefullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX1051"></A>
+<DT><CODE>-TEDborders &#60;mode&#62;</CODE>
+<DD>
+Set TED border display mode (0: normal, 1: full, 2: debug, 3:none)
+
+<A NAME="IDX1052"></A>
+<DT><CODE>-TEDsaturation &#60;0-2000&#62;</CODE>
+<DD>
+Set saturation of internal calculated palette [1000]
+<A NAME="IDX1053"></A>
+<DT><CODE>-TEDcontrast &#60;0-2000&#62;</CODE>
+<DD>
+Set contrast of internal calculated palette [1000]
+<A NAME="IDX1054"></A>
+<DT><CODE>-TEDbrightness &#60;0-2000&#62;</CODE>
+<DD>
+Set brightness of internal calculated palette [1000]
+<A NAME="IDX1055"></A>
+<DT><CODE>-TEDgamma &#60;0-4000&#62;</CODE>
+<DD>
+Set gamma of internal calculated palette [2200]
+<A NAME="IDX1056"></A>
+<DT><CODE>-TEDtint &#60;0-2000&#62;</CODE>
+<DD>
+Set tint of internal calculated palette [1000]
+<A NAME="IDX1057"></A>
+<DT><CODE>-TEDoddlinesphase &#60;0-2000&#62;</CODE>
+<DD>
+Set phase for color carrier in odd lines [1250]
+<A NAME="IDX1058"></A>
+<DT><CODE>-TEDoddlinesoffset &#60;0-2000&#62;</CODE>
+<DD>
+Set phase offset for color carrier in odd lines [750]
+<A NAME="IDX1059"></A>
+<DT><CODE>-TEDcrtblur &#60;0-1000&#62;</CODE>
+<DD>
+Amount of horizontal blur for the CRT emulation. [500]
+<A NAME="IDX1060"></A>
+<DT><CODE>-TEDcrtscanlineshade &#60;0-1000&#62;</CODE>
+<DD>
+Amount of scan line shading for the CRT emulation [667]
+
+<A NAME="IDX1061"></A>
+<DT><CODE>-TEDaudioleak</CODE>
+<DD>
+<DT><CODE>+TEDaudioleak</CODE>
+<DD>
+Enable/Disable video to audio leak emulation.
+
+</DL>
+
+
+
+<H3><A NAME="SEC163" HREF="vice_toc.html#TOC163">7.5.2  PLUS4 I/O extension settings</A></H3>
+
+
+
+<H4><A NAME="SEC164" HREF="vice_toc.html#TOC164">7.5.2.1  PLUS4 I/O extension resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>CartridgeReset</CODE>
+<DD>
+<A NAME="IDX1062"></A>
+ 
+Boolean specifying whether the machine should be resetted when a cartridge is
+changed.
+
+<A NAME="IDX1063"></A>
+<DT><CODE>DIGIBLASTER</CODE>
+<DD>
+Boolean, enables Digiblaster emulation.
+
+<A NAME="IDX1064"></A>
+<DT><CODE>SpeechEnabled</CODE>
+<DD>
+Boolean, enables emulation of the V364 speech chip.
+<A NAME="IDX1065"></A>
+<DT><CODE>SpeechImage</CODE>
+<DD>
+String specifying the filename of the speech ROM image.
+
+<A NAME="IDX1066"></A>
+<DT><CODE>SidCart</CODE>
+<DD>
+Boolean, enables emulation of the SID-Cart
+<A NAME="IDX1067"></A>
+<DT><CODE>SidAddress</CODE>
+<DD>
+Integer that specifies the base address of the emulated SID chip.
+<A NAME="IDX1068"></A>
+<DT><CODE>SidClock</CODE>
+<DD>
+Integer specifying the clock rate used for the emulated SID chip (0: C64, 1: Plus4)
+<A NAME="IDX1069"></A>
+<DT><CODE>SIDCartJoy</CODE>
+<DD>
+Boolean, enables emulation of the SID-Cart joystick
+
+</DL>
+
+
+
+<H4><A NAME="SEC165" HREF="vice_toc.html#TOC165">7.5.2.2  PLUS4 I/O extension command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-cartreset</CODE>
+<DD>
+<A NAME="IDX1070"></A>
+ 
+<DT><CODE>+cartreset</CODE>
+<DD>
+Do/don't reset machine if a cartridge is attached or detached
+<A NAME="IDX1071"></A>
+<DT><CODE>-cart &#60;Name&#62;</CODE>
+<DD>
+Smart-attach cartridge image
+<A NAME="IDX1072"></A>
+<DT><CODE>+cart</CODE>
+<DD>
+Disable default cartridge
+
+<A NAME="IDX1073"></A>
+<DT><CODE>-digiblaster</CODE>
+<DD>
+<DT><CODE>+digiblaster</CODE>
+<DD>
+Enable/Disable the digiblaster add-on
+
+<A NAME="IDX1074"></A>
+<DT><CODE>-sidcart</CODE>
+<DD>
+<DT><CODE>+sidcart</CODE>
+<DD>
+Enable/Disable SID Cartridge
+
+<A NAME="IDX1075"></A>
+<DT><CODE>-sidcartjoy</CODE>
+<DD>
+<DT><CODE>+sidcartjoy</CODE>
+<DD>
+Enable/Disable SID cartridge joystick
+
+<A NAME="IDX1076"></A>
+<DT><CODE>-speech</CODE>
+<DD>
+<DT><CODE>+speech</CODE>
+<DD>
+Enable/Disable the v364 speech add-on
+
+<A NAME="IDX1077"></A>
+<DT><CODE>-speechrom &#60;name&#62;</CODE>
+<DD>
+Attach Speech ROM image
+
+</DL>
+
+
+
+<H3><A NAME="SEC166" HREF="vice_toc.html#TOC166">7.5.3  PLUS4 system ROM settings</A></H3>
+
+
+
+<H4><A NAME="SEC167" HREF="vice_toc.html#TOC167">7.5.3.1  PLUS4 system ROM resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>FunctionLowName</CODE>
+<DD>
+<A NAME="IDX1078"></A>
+ 
+String specifying the filenames of the Lo Function ROM.
+<A NAME="IDX1079"></A>
+<DT><CODE>FunctionHighName</CODE>
+<DD>
+String specifying the filenames of the High Function ROM.
+
+<A NAME="IDX1080"></A>
+<DT><CODE>c1loName</CODE>
+<DD>
+String specifying the filenames of cartridge 1 Lo ROM.
+<A NAME="IDX1081"></A>
+<DT><CODE>c1hiName</CODE>
+<DD>
+String specifying the filenames of cartridge 1 High ROM.
+<A NAME="IDX1082"></A>
+<DT><CODE>c2loName</CODE>
+<DD>
+String specifying the filenames of cartridge 2 Lo ROM.
+<A NAME="IDX1083"></A>
+<DT><CODE>c2hiName</CODE>
+<DD>
+String specifying the filenames of cartridge 2 High ROM.
+
+</DL>
+
+
+
+<H4><A NAME="SEC168" HREF="vice_toc.html#TOC168">7.5.3.2  PLUS4 system ROM command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-functionlo &#60;name&#62;</CODE>
+<DD>
+<A NAME="IDX1084"></A>
+ 
+Specify name of Function low ROM image
+<A NAME="IDX1085"></A>
+<DT><CODE>-functionhi &#60;name&#62;</CODE>
+<DD>
+Specify name of Function high ROM image
+
+<A NAME="IDX1086"></A>
+<DT><CODE>-c1lo &#60;name&#62;</CODE>
+<DD>
+Specify name of Cartridge 1 low ROM image
+<A NAME="IDX1087"></A>
+<DT><CODE>-c1hi &#60;name&#62;</CODE>
+<DD>
+Specify name of Cartridge 1 high ROM image
+<A NAME="IDX1088"></A>
+<DT><CODE>-c2lo &#60;name&#62;</CODE>
+<DD>
+Specify name of Cartridge 2 low ROM image
+<A NAME="IDX1089"></A>
+<DT><CODE>-c2hi &#60;name&#62;</CODE>
+<DD>
+Specify name of Cartridge 2 high ROM image
+
+</DL>
+
+
+
+<H3><A NAME="SEC169" HREF="vice_toc.html#TOC169">7.5.4  PLUS4 settings</A></H3>
+
+
+
+<H4><A NAME="SEC170" HREF="vice_toc.html#TOC170">7.5.4.1  PLUS4 resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>H256K</CODE>
+<DD>
+<A NAME="IDX1090"></A>
+ 
+Integer, enables the HANNES 256K RAM expansion (0: disabled, 1: 256kB, 2: 1024kB,
+3: 4096kB)
+
+<A NAME="IDX1091"></A>
+<DT><CODE>CS256K</CODE>
+<DD>
+Boolean, enables the CSORY 256K RAM expansion
+
+<A NAME="IDX1092"></A>
+<DT><CODE>Acia1Enable</CODE>
+<DD>
+Boolean specifying whether the ACIA should be emulated or not.
+
+</DL>
+
+
+
+<H4><A NAME="SEC171" HREF="vice_toc.html#TOC171">7.5.4.2  PLUS4 command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-ramsize &#60;ramsize&#62;</CODE>
+<DD>
+<A NAME="IDX1093"></A>
+ 
+Specify size of RAM installed in kb (16/32/64)
+
+<A NAME="IDX1094"></A>
+<DT><CODE>-h256k</CODE>
+<DD>
+Enable the HANNES 256K RAM expansion
+<A NAME="IDX1095"></A>
+<DT><CODE>-h1024k</CODE>
+<DD>
+Enable the HANNES 1024K RAM expansion
+<A NAME="IDX1096"></A>
+<DT><CODE>-h4096k</CODE>
+<DD>
+Enable the HANNES 4096K RAM expansion
+<A NAME="IDX1097"></A>
+<DT><CODE>-cs256k</CODE>
+<DD>
+Enable the CSORY 256K RAM expansion
+
+<A NAME="IDX1098"></A>
+<DT><CODE>-acia</CODE>
+<DD>
+<DT><CODE>+acia</CODE>
+<DD>
+Enable/Disable the ACIA emulation
+
+</DL>
+
+
+
+<H2><A NAME="SEC172" HREF="vice_toc.html#TOC172">7.6  PET-specific commands and settings</A></H2>
+
+<P>
+This section lists the settings and commands that are PET-specific and
+thus are not present in the other emulators.
+
+</P>
+
+
+
+<H3><A NAME="SEC173" HREF="vice_toc.html#TOC173">7.6.1  Changing PET model settings</A></H3>
+
+<P>
+With <CODE>xpet</CODE>, it is possible to change at runtime the
+characteristics of the emulated PET so that it matches (or not) the ones
+of a certain PET model, and it is also possible to select from a common
+set of PET models so that all the features are selected accordingly.
+
+</P>
+<P>
+The former is done by changing the following resources (via resource
+file, command line options or right-menu items):
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>RamSize</CODE>
+<DD>
+<A NAME="IDX1099"></A>
+ 
+Size of memory in kByte. 96k denotes a 8096, 128k a 8296.
+
+<A NAME="IDX1100"></A>
+<DT><CODE>IOSize</CODE>
+<DD>
+Size of I/O area in Byte.  Either 2048 or 256 for 8296.
+
+<A NAME="IDX1101"></A>
+<DT><CODE>VideoSize</CODE>
+<DD>
+The number of columns on the screen (40 or 80).  A 0 auto-detects this
+from the ROM.
+
+<A NAME="IDX1102"></A>
+<DT><CODE>Ram9</CODE>
+<DD>
+The 8296 can map RAM into the address range $9***
+
+<A NAME="IDX1103"></A>
+<DT><CODE>RamA</CODE>
+<DD>
+The 8296 can map RAM into the address range $A***
+
+<A NAME="IDX1104"></A>
+<DT><CODE>SuperPET</CODE>
+<DD>
+This resource enables the SuperPET (MicroMainFrame 9000) I/O and 6809 CPU,
+and disables the 8x96 mappings.
+
+<A NAME="IDX1105"></A>
+<DT><CODE>Basic1</CODE>
+<DD>
+If (by checksum) a version 1 kernal is detected, then the
+kernal ROM is patched to make the IEEE488 interface work.
+
+<A NAME="IDX1106"></A>
+<DT><CODE>Basic1Chars</CODE>
+<DD>
+Exchanges some character in the character ROM that have changed
+between the first PET 2001 and all newer versions.
+
+<A NAME="IDX1107"></A>
+<DT><CODE>EoiBlank</CODE>
+<DD>
+This resource enables the "blank screen on EOI" feature of the
+oldest PET 2001.
+
+<A NAME="IDX1108"></A>
+<DT><CODE>DiagPin</CODE>
+<DD>
+Set the diagnositc pin on the PET userport (see below).
+
+<A NAME="IDX1109"></A>
+<DT><CODE>ChargenName</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the character generator ROM file
+
+<A NAME="IDX1110"></A>
+<DT><CODE>KernalName</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the kernal ROM file.  This file contains the
+complete BASIC, EDITOR and KERNAL ROMs and is either 16k (BASIC 1 and 2)
+or 20k (BASIC 4) in size.
+
+<A NAME="IDX1111"></A>
+<DT><CODE>EditorName</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the editor ROM file.  This file contains
+an overlay for the editor ROM at $E000-$E7FF if necessary.
+
+<A NAME="IDX1112"></A>
+<DT><CODE>RomModule9Name</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the $9*** Expansion ROM file.  This file contains
+an expansion ROM image of 4k.
+
+<A NAME="IDX1113"></A>
+<DT><CODE>RomModuleAName</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the $A*** Expansion ROM file.  This file contains
+an expansion ROM image of 4k.
+
+<A NAME="IDX1114"></A>
+<DT><CODE>RomModuleBName</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the $B*** Expansion ROM file.  This file contains
+an expansion ROM image of 4k.
+This file overlays the lowest 4k of a BASIC 4 ROM.
+
+</DL>
+
+<P>
+Choosing a common PET model is done from the right-button menu instead,
+by choosing an item from the "Model defaults" submenu.  Available
+models are:
+
+</P>
+
+<UL>
+<LI>
+
+PET 2001-8N
+<LI>
+
+PET 3008
+<LI>
+
+PET 3016
+<LI>
+
+PET 3032
+<LI>
+
+PET 3032B
+<LI>
+
+PET 4016
+<LI>
+
+PET 4032
+<LI>
+
+PET 4032B
+<LI>
+
+PET 8032
+<LI>
+
+PET 8096
+<LI>
+
+PET 8296
+<LI>
+
+SuperPET
+</UL>
+
+<P>
+Notice that this will <STRONG>reset the emulated machine</STRONG>.
+
+</P>
+<P>
+It is also possible to select the PET model at startup, with the
+<CODE>-model</CODE> command-line option: for example, <SAMP>`xpet -model 3032'</SAMP>
+will emulate a PET 3032 while <SAMP>`xpet -model 8296'</SAMP> will emulate a PET
+8296.
+
+</P>
+
+
+<H3><A NAME="SEC174" HREF="vice_toc.html#TOC174">7.6.2  CRTC Settings</A></H3>
+
+
+
+<H4><A NAME="SEC175" HREF="vice_toc.html#TOC175">7.6.2.1  CRTC resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>Crtc</CODE>
+<DD>
+<A NAME="IDX1115"></A>
+ 
+Enables CRTC 6545 emulation (all models from 40xx and above)
+
+<A NAME="IDX1116"></A>
+<DT><CODE>CrtcVideoCache</CODE>
+<DD>
+Boolean specifying whether the video cache is turned on.
+
+<A NAME="IDX1117"></A>
+<DT><CODE>CrtcDoubleSize</CODE>
+<DD>
+Boolean specifying whether double-size mode is turned on.
+
+<A NAME="IDX1118"></A>
+<DT><CODE>CrtcDoubleScan</CODE>
+<DD>
+Boolean specifying whether double-scan mode is turned on.
+
+<A NAME="IDX1119"></A>
+<DT><CODE>CrtcStretchVertical</CODE>
+<DD>
+Boolean specifying whether vertical stretching is turned on.
+
+<A NAME="IDX1120"></A>
+<DT><CODE>CrtcPaletteFile</CODE>
+<DD>
+String specifying the name of the palette file being used.  The
+<TT>`.vpl'</TT> extension is optional.
+
+<A NAME="IDX1121"></A>
+<DT><CODE>CrtcHwScale</CODE>
+<DD>
+Boolean specifying whether to enable or disable hardware scaling
+
+<A NAME="IDX1122"></A>
+<DT><CODE>CrtcFullscreenDevice</CODE>
+<DD>
+fullscreen device
+
+<A NAME="IDX1123"></A>
+<DT><CODE>CrtcFullscreen</CODE>
+<DD>
+Boolean specifying whether to use fullscreen mode or not.
+
+<A NAME="IDX1124"></A>
+<DT><CODE>CrtcFullscreenStatusbar</CODE>
+<DD>
+Boolean specifying whether to show the status bar in fullscreen mode or not.
+
+<A NAME="IDX1125"></A>
+<DT><CODE>CrtcXRANDRFullscreenMode</CODE>
+<DD>
+integer specifying XRANDR fullscreen mode
+
+<A NAME="IDX1126"></A>
+<DT><CODE>CrtcVidmodeFullscreenMode</CODE>
+<DD>
+integer specifying Vidmode fullscreen mode
+
+<A NAME="IDX1127"></A>
+<DT><CODE>CrtcExternalPalette</CODE>
+<DD>
+Boolean specifying whether to use external palette file or not.
+
+<A NAME="IDX1128"></A>
+<DT><CODE>CrtcColorSaturation</CODE>
+<DD>
+integer specifying saturation of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1129"></A>
+<DT><CODE>CrtcColorContrast</CODE>
+<DD>
+integer specifying contrast of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1130"></A>
+<DT><CODE>CrtcColorBrightness</CODE>
+<DD>
+integer specifying brightness of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1131"></A>
+<DT><CODE>CrtcColorGamma</CODE>
+<DD>
+integer specifying gamma of internal calculated palette [2200] &#60;0-4000&#62;
+
+<A NAME="IDX1132"></A>
+<DT><CODE>CrtcColorTint</CODE>
+<DD>
+integer specifying tint of internal calculated palette [1000] &#60;0-2000&#62;
+
+<A NAME="IDX1133"></A>
+<DT><CODE>CrtcPALScanLineShade</CODE>
+<DD>
+integer specifying amount of scan line shading for the CRT emulation [667] &#60;0-1000&#62;
+
+<A NAME="IDX1134"></A>
+<DT><CODE>CrtcPALBlur</CODE>
+<DD>
+integer specifying amount of horizontal blur for the CRT emulation. [500] &#60;0-1000&#62;
+
+<A NAME="IDX1135"></A>
+<DT><CODE>CrtcPALOddLinePhase</CODE>
+<DD>
+integer specifying phase offset for color carrier in odd lines [750] &#60;0-2000&#62;
+
+<A NAME="IDX1136"></A>
+<DT><CODE>CrtcPALOddLineOffset</CODE>
+<DD>
+integer specifying phase for color carrier in odd lines [1250] &#60;0-2000&#62;
+
+<A NAME="IDX1137"></A>
+<DT><CODE>CrtcAudioLeak</CODE>
+<DD>
+Boolean specifying whether to enable/disable video to audio leak emulation.
+
+<A NAME="IDX1138"></A>
+<DT><CODE>CrtcFilter</CODE>
+<DD>
+integer specifying rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+
+</DL>
+
+
+
+<H4><A NAME="SEC176" HREF="vice_toc.html#TOC176">7.6.2.2  CRTC command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-Crtcvcache</CODE>
+<DD>
+<A NAME="IDX1139"></A>
+ 
+<DT><CODE>+Crtcvcache</CODE>
+<DD>
+Enable/Disable the video cache
+<A NAME="IDX1140"></A>
+<DT><CODE>-Crtcdsize</CODE>
+<DD>
+<DT><CODE>+Crtcdsize</CODE>
+<DD>
+Enable/Disable double size
+<A NAME="IDX1141"></A>
+<DT><CODE>-CRTCstretchvertical</CODE>
+<DD>
+<DT><CODE>+CRTCstretchvertical</CODE>
+<DD>
+Enable/Disable vertical stretching
+<A NAME="IDX1142"></A>
+<DT><CODE>-Crtcdscan</CODE>
+<DD>
+<DT><CODE>+Crtcdscan</CODE>
+<DD>
+Enable/Disable double scan
+<A NAME="IDX1143"></A>
+<DT><CODE>-Crtcfilter &#60;Mode&#62;</CODE>
+<DD>
+Select rendering filter, 0:none, 1:CRT emulation, 2: scale2x
+<A NAME="IDX1144"></A>
+<DT><CODE>-Crtchwscale</CODE>
+<DD>
+<DT><CODE>+Crtchwscale</CODE>
+<DD>
+Enable/Disable hardware scaling
+<A NAME="IDX1145"></A>
+<DT><CODE>-Crtcintpal</CODE>
+<DD>
+Use an internal calculated palette
+<A NAME="IDX1146"></A>
+<DT><CODE>-Crtcextpal</CODE>
+<DD>
+Use an external palette (file)
+<A NAME="IDX1147"></A>
+<DT><CODE>-Crtcpalette NAME</CODE>
+<DD>
+Specify <CODE>NAME</CODE> as the palette file (<CODE>CrtcPaletteFile</CODE>).
+<A NAME="IDX1148"></A>
+<DT><CODE>-Crtcfulldevice &#60;device&#62;</CODE>
+<DD>
+Select fullscreen device
+<A NAME="IDX1149"></A>
+<DT><CODE>-CrtcXRANDRfullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+<A NAME="IDX1150"></A>
+<DT><CODE>-CrtcVidmodefullmode &#60;mode&#62;</CODE>
+<DD>
+Select fullscreen mode
+
+<A NAME="IDX1151"></A>
+<DT><CODE>-Crtcsaturation &#60;0-2000&#62;</CODE>
+<DD>
+Set saturation of internal calculated palette [1000]
+<A NAME="IDX1152"></A>
+<DT><CODE>-Crtccontrast &#60;0-2000&#62;</CODE>
+<DD>
+Set contrast of internal calculated palette [1000]
+<A NAME="IDX1153"></A>
+<DT><CODE>-Crtcbrightness &#60;0-2000&#62;</CODE>
+<DD>
+Set brightness of internal calculated palette [1000]
+<A NAME="IDX1154"></A>
+<DT><CODE>-Crtcgamma &#60;0-4000&#62;</CODE>
+<DD>
+Set gamma of internal calculated palette [2200]
+<A NAME="IDX1155"></A>
+<DT><CODE>-Crtctint &#60;0-2000&#62;</CODE>
+<DD>
+Set tint of internal calculated palette [1000]
+<A NAME="IDX1156"></A>
+<DT><CODE>-Crtcoddlinesphase &#60;0-2000&#62;</CODE>
+<DD>
+Set phase for color carrier in odd lines [1250]
+<A NAME="IDX1157"></A>
+<DT><CODE>-Crtcoddlinesoffset &#60;0-2000&#62;</CODE>
+<DD>
+Set phase offset for color carrier in odd lines [750]
+<A NAME="IDX1158"></A>
+<DT><CODE>-Crtccrtblur &#60;0-1000&#62;</CODE>
+<DD>
+Amount of horizontal blur for the CRT emulation. [500]
+<A NAME="IDX1159"></A>
+<DT><CODE>-Crtccrtscanlineshade &#60;0-1000&#62;</CODE>
+<DD>
+Amount of scan line shading for the CRT emulation [667]
+
+<A NAME="IDX1160"></A>
+<DT><CODE>-Crtcaudioleak</CODE>
+<DD>
+<DT><CODE>+Crtcaudioleak</CODE>
+<DD>
+Enable/Disable video to audio leak emulation.
+
+</DL>
+
+
+
+<H3><A NAME="SEC177" HREF="vice_toc.html#TOC177">7.6.3  PET I/O extension settings</A></H3>
+
+
+
+<H4><A NAME="SEC178" HREF="vice_toc.html#TOC178">7.6.3.1  PET I/O extension resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>PETREU</CODE>
+<DD>
+<A NAME="IDX1161"></A>
+ 
+Boolean specifying whether PET REU emulation is enabled.
+<A NAME="IDX1162"></A>
+<DT><CODE>PETREUfilename</CODE>
+<DD>
+String specifying the filename of the PET REU image.
+<A NAME="IDX1163"></A>
+<DT><CODE>PETREUsize</CODE>
+<DD>
+Integer specifying the size of the emulated PET REU in KB (128, 512, 1024, 2048)
+
+<A NAME="IDX1164"></A>
+<DT><CODE>PETDWW</CODE>
+<DD>
+Boolean specifying whether DWW emulation is enabled.
+<A NAME="IDX1165"></A>
+<DT><CODE>PETDWWfilename</CODE>
+<DD>
+String specifying the filename of the DWW image RAM image.
+
+<A NAME="IDX1166"></A>
+<DT><CODE>UserportDAC</CODE>
+<DD>
+Boolean specifying whether userport DAC emulation is enabled.
+
+<A NAME="IDX1167"></A>
+<DT><CODE>SidCart</CODE>
+<DD>
+Boolean specifying whether SID Cart emulation is enabled.
+<A NAME="IDX1168"></A>
+<DT><CODE>SidAddress</CODE>
+<DD>
+Integer that specifies the base address of the emulated SID chip.
+<A NAME="IDX1169"></A>
+<DT><CODE>SidClock</CODE>
+<DD>
+Integer specifying the clock rate used for the emulated SID chip (0: C64, 1: PET)
+
+</DL>
+
+
+
+<H4><A NAME="SEC179" HREF="vice_toc.html#TOC179">7.6.3.2  PET I/O extension command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-petreu</CODE>
+<DD>
+<A NAME="IDX1170"></A>
+ 
+<DT><CODE>+petreu</CODE>
+<DD>
+Enable or disable the PET Memory Expansion Unit.
+
+<A NAME="IDX1171"></A>
+<DT><CODE>-petreuimage &#60;name&#62;</CODE>
+<DD>
+Specify name of PET Ram and Expansion Unit image
+<A NAME="IDX1172"></A>
+<DT><CODE>-petreuramsize &#60;size in KB&#62;</CODE>
+<DD>
+Size of the PET Ram and Expansion Unit
+
+<A NAME="IDX1173"></A>
+<DT><CODE>-userportdac, +userportdac</CODE>
+<DD>
+Enable or disable the userport DAC.
+
+<A NAME="IDX1174"></A>
+<DT><CODE>-petdww</CODE>
+<DD>
+<DT><CODE>+petdww</CODE>
+<DD>
+Enable/Disable the PET DWW hi-res board
+<A NAME="IDX1175"></A>
+<DT><CODE>-petdwwimage &#60;name&#62;</CODE>
+<DD>
+Specify name of PET DWW image
+
+<A NAME="IDX1176"></A>
+<DT><CODE>-sidcart</CODE>
+<DD>
+<DT><CODE>+sidcart</CODE>
+<DD>
+Enable/Disable SID Cartridge
+
+</DL>
+
+
+
+<H3><A NAME="SEC180" HREF="vice_toc.html#TOC180">7.6.4  PET system ROM settings</A></H3>
+
+
+
+<H4><A NAME="SEC181" HREF="vice_toc.html#TOC181">7.6.4.1  PET system ROM resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>H6809RomAName</CODE>
+<DD>
+<A NAME="IDX1177"></A>
+ <A NAME="IDX1178"></A>
+ <A NAME="IDX1179"></A>
+ <A NAME="IDX1180"></A>
+ <A NAME="IDX1181"></A>
+ <A NAME="IDX1182"></A>
+ 
+<DT><CODE>H6809RomBName</CODE>
+<DD>
+<DT><CODE>H6809RomCName</CODE>
+<DD>
+<DT><CODE>H6809RomDName</CODE>
+<DD>
+<DT><CODE>H6809RomEName</CODE>
+<DD>
+<DT><CODE>H6809RomFName</CODE>
+<DD>
+Strings specifying the filenames of the respective H6809 ROM images,
+relevant for the SuperPET.
+
+</DL>
+
+
+
+<H4><A NAME="SEC182" HREF="vice_toc.html#TOC182">7.6.4.2  PET system ROM command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-kernal NAME</CODE>
+<DD>
+<A NAME="IDX1183"></A>
+ 
+Specify <TT>`NAME'</TT> as the Kernal/BASIC ROM file (<CODE>KernalName</CODE>).
+
+<A NAME="IDX1184"></A>
+<DT><CODE>-editor NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the editor ROM file (<CODE>EditorName</CODE>).
+
+<A NAME="IDX1185"></A>
+<DT><CODE>-chargen NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the character generator ROM file
+(<CODE>ChargenName</CODE>).
+
+<A NAME="IDX1186"></A>
+<A NAME="IDX1187"></A>
+<A NAME="IDX1188"></A>
+<DT><CODE>-rom9 NAME, -romA NAME, -romB NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the ROM image file for the respective
+cartridge areas (<CODE>RomModule9Name</CODE>, <CODE>RomModuleAName</CODE>,
+<CODE>RomModuleBName</CODE>).
+
+<A NAME="IDX1189"></A>
+<DT><CODE>-6809romA &#60;Name&#62;</CODE>
+<DD>
+Specify 4K to 24K ROM file name at $A000 for 6809
+<A NAME="IDX1190"></A>
+<DT><CODE>-6809romB &#60;Name&#62;</CODE>
+<DD>
+Specify 4K to 20K ROM file name at $B000 for 6809
+<A NAME="IDX1191"></A>
+<DT><CODE>-6809romC &#60;Name&#62;</CODE>
+<DD>
+Specify 4K to 16K ROM file name at $C000 for 6809
+<A NAME="IDX1192"></A>
+<DT><CODE>-6809romD &#60;Name&#62;</CODE>
+<DD>
+Specify 4K to 12K ROM file name at $D000 for 6809
+<A NAME="IDX1193"></A>
+<DT><CODE>-6809romE &#60;Name&#62;</CODE>
+<DD>
+Specify 2K or 8K ROM file name at $E000 for 6809
+<A NAME="IDX1194"></A>
+<DT><CODE>-6809romF &#60;Name&#62;</CODE>
+<DD>
+Specify 4K ROM file name at $F000 for 6809
+
+</DL>
+
+
+
+<H3><A NAME="SEC183" HREF="vice_toc.html#TOC183">7.6.5  The PET diagnostic pin</A></H3>
+
+<P>
+It is possible to enable or disable emulation of the PET diagnostic pin
+via the <CODE>DiagPin</CODE> resource, or the "PET userport diagnostic pin"
+item in the right-button menu.
+
+</P>
+<P>
+When the diagnostic pin is set, the Kernal does not try to initialize
+the BASIC, but directly jumps into the builtin machine monitor.
+
+</P>
+
+
+<H3><A NAME="SEC184" HREF="vice_toc.html#TOC184">7.6.6  PET settings</A></H3>
+
+
+
+<H4><A NAME="SEC185" HREF="vice_toc.html#TOC185">7.6.6.1  PET resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>CPUswitch</CODE>
+<DD>
+<A NAME="IDX1195"></A>
+ 
+Integer specifying the status of the SuperPET CPU switch (0: 6502, 1: 6809, 2: PROG)
+
+</DL>
+
+
+
+<H4><A NAME="SEC186" HREF="vice_toc.html#TOC186">7.6.6.2  PET command line options</A></H4>
+
+<P>
+These are the commandline options specific for the CBM-II models.
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>-model MODEL</CODE>
+<DD>
+<A NAME="IDX1196"></A>
+ 
+Specify the PET model you want to emulate.
+
+<A NAME="IDX1197"></A>
+<DT><CODE>-petram9, +petram9</CODE>
+<DD>
+Switch on RAM mapping on addresses
+$9000-$9fff (<CODE>Ram9</CODE>).
+
+<A NAME="IDX1198"></A>
+<DT><CODE>-petramA, +petramA</CODE>
+<DD>
+Switch on RAM mapping on addresses
+$a000-$afff (<CODE>RamA</CODE>).
+
+<A NAME="IDX1199"></A>
+<DT><CODE>-superpet, +superpet</CODE>
+<DD>
+Enable/Disable SuperPET I/O and CPU emulation (<CODE>SuperPET</CODE>).
+
+<A NAME="IDX1200"></A>
+<DT><CODE>-cpu6502</CODE>
+<DD>
+Set SuperPET CPU switch to '6502'
+<A NAME="IDX1201"></A>
+<DT><CODE>-cpu6809</CODE>
+<DD>
+Set SuperPET CPU switch to '6809'
+<A NAME="IDX1202"></A>
+<DT><CODE>-cpuprog</CODE>
+<DD>
+Set SuperPET CPU switch to 'Prog'
+
+<A NAME="IDX1203"></A>
+<DT><CODE>-basic1, +basic1</CODE>
+<DD>
+Enable/Disable patching the IEEE488 section of the PET2001 ROM when detected
+(<CODE>Basic1</CODE>).
+
+<A NAME="IDX1204"></A>
+<DT><CODE>-basic1char, +basic1char</CODE>
+<DD>
+Enable/Disable PET 2001 character generator
+(<CODE>Basic1Chars</CODE>).
+
+<A NAME="IDX1205"></A>
+<DT><CODE>-eoiblank, +eoiblank</CODE>
+<DD>
+Enable/Disable EOI blanking the screen
+(<CODE>EoiBlank</CODE>).
+
+<A NAME="IDX1206"></A>
+<DT><CODE>-diagpin</CODE>
+<DD>
+<DT><CODE>+diagpin</CODE>
+<DD>
+Enable (<CODE>DiagPin=1</CODE>) or disable (<CODE>DiagPin=0</CODE>) the
+diagnostic pin at the PET userport.
+
+</DL>
+
+
+
+<H3><A NAME="SEC187" HREF="vice_toc.html#TOC187">7.6.7  Changing screen colors</A></H3>
+
+<P>
+It is also possible to choose what color set is used for the emulation
+window.  This is done by specifying a palette file name (see section <A HREF="vice_4.html#SEC27">4.3  Palette files</A>) in the <CODE>PaletteName</CODE> resource.  The menu provides the
+following values:
+
+</P>
+
+<UL>
+<LI>
+
+<CODE>green.vpl</CODE> (default, "green)"), the good old green-on-black
+feeling;
+<LI>
+
+<CODE>amber.vpl</CODE> ("amber"), an amber phosphor lookalike;
+<LI>
+
+<CODE>white.vpl</CODE> ("white"), simple white-on-black palette.
+</UL>
+
+
+
+<H2><A NAME="SEC188" HREF="vice_toc.html#TOC188">7.7  CBM-II-specific commands and settings</A></H2>
+
+<P>
+This section lists the settings and commands that are CBM-II-specific and
+thus are not present in the other emulators.
+
+</P>
+
+
+
+<H3><A NAME="SEC189" HREF="vice_toc.html#TOC189">7.7.1  Changing CBM-II model</A></H3>
+
+<P>
+With <CODE>xcbm2</CODE> and <CODE>xcbm5x0</CODE>, it is possible to change at runtime the
+characteristics of the emulated CBM so that it matches (or not) the ones
+of a certain CBM model, and it is also possible to select from a common
+set of CBM models so that all the features are selected accordingly.
+
+</P>
+<P>
+The former is done by changing the following resources (via resource
+file, command line options or right-menu items):
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>RamSize</CODE>
+<DD>
+<A NAME="IDX1207"></A>
+ 
+Size of memory in kByte.  Possible values are 128, 256, 512 and 1024
+
+<A NAME="IDX1208"></A>
+<A NAME="IDX1209"></A>
+<A NAME="IDX1210"></A>
+<A NAME="IDX1211"></A>
+<A NAME="IDX1212"></A>
+<A NAME="IDX1213"></A>
+<DT><CODE>Ram08</CODE>
+<DD>
+<DT><CODE>Ram1</CODE>
+<DD>
+<DT><CODE>Ram2</CODE>
+<DD>
+<DT><CODE>Ram4</CODE>
+<DD>
+<DT><CODE>Ram6</CODE>
+<DD>
+<DT><CODE>RamC</CODE>
+<DD>
+Expanded CBM-II models could map RAM to the expansion ROM areas
+at $0800-$0fff, $1000-$1fff, $2000-$3FFF, $4000-$5FFF, $6000-$7FFF
+and $c000-$cfff respectively.
+
+<A NAME="IDX1214"></A>
+<A NAME="IDX1215"></A>
+<A NAME="IDX1216"></A>
+<A NAME="IDX1217"></A>
+<DT><CODE>Cart1Name</CODE>
+<DD>
+<DT><CODE>Cart2Name</CODE>
+<DD>
+<DT><CODE>Cart4Name</CODE>
+<DD>
+<DT><CODE>Cart6Name</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the $1000-$1FFF, $2000-$3FFF, $4000-$5FFF or $6000-$6FFF
+Expansion ROM file.  This file contains an 8k ROM dump.
+
+<A NAME="IDX1218"></A>
+<DT><CODE>ModelLine</CODE>
+<DD>
+The CBM-II business models have two hardcoded lines at one of the I/O ports.
+From those lines the kernal determines how it should init the
+CRTC video chip for either 50Hz (Europe) or 60Hz (North America),
+and either for 8 (C6x0) or 14 (C7x0) scanlines per character.
+0 = CBM 7x0 (50Hz), 1 = 60Hz C6x0, 2 = 50Hz C6x0).
+
+</DL>
+
+<P>
+Choosing a common CBM-II model is done from the right-button menu instead,
+by choosing an item from the "Model defaults" submenu.  Available
+models are:
+
+</P>
+
+<UL>
+<LI>
+
+C510 PAL or NTSC (128k RAM)
+<LI>
+
+C610 PAL or NTSC (128k RAM)
+<LI>
+
+C620 (256k RAM)
+<LI>
+
+C620+ (1024k RAM, expanded) PAL or NTSC
+<LI>
+
+C710 (128k RAM) NTSC
+<LI>
+
+C720 (256k RAM) NTSC
+<LI>
+
+C720+ (1024k RAM, expanded) NTSC
+</UL>
+
+<P>
+Notice that this will <STRONG>reset the emulated machine</STRONG>.
+
+</P>
+<P>
+<B>Warning:</B> At this time the 5x0 and other machines are implemented
+in different executables, so switching between those models is not possible.
+
+</P>
+<P>
+It is also possible to select the CBM model at startup, with the
+<CODE>-model</CODE> command-line option: for example, <SAMP>`xcbm2 -model 610'</SAMP>
+will emulate a CBM 610 while <SAMP>`xcbm2 -model 620'</SAMP> will emulate a CBM
+620.
+
+</P>
+
+
+<H3><A NAME="SEC190" HREF="vice_toc.html#TOC190">7.7.2  CBM-II system ROM settings</A></H3>
+
+
+
+<H4><A NAME="SEC191" HREF="vice_toc.html#TOC191">7.7.2.1  CBM-II system ROM resources</A></H4>
+
+
+
+<H4><A NAME="SEC192" HREF="vice_toc.html#TOC192">7.7.2.2  CBM-II system ROM command line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-kernal NAME</CODE>
+<DD>
+<A NAME="IDX1219"></A>
+ 
+Specify <TT>`NAME'</TT> as the Kernal ROM file (<CODE>KernalName</CODE>).
+
+<A NAME="IDX1220"></A>
+<DT><CODE>-basic NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the Basic ROM file (<CODE>BasicName</CODE>).
+
+<A NAME="IDX1221"></A>
+<DT><CODE>-chargen NAME</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the character generator ROM file
+(<CODE>ChargenName</CODE>).
+
+<A NAME="IDX1222"></A>
+<DT><CODE>-cart1 &#60;name&#62;</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the ROM image file for the
+cartridge area $1000-$1FFF (<CODE>Cart1Name</CODE>).
+<A NAME="IDX1223"></A>
+<DT><CODE>-cart2 &#60;name&#62;</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the ROM image file for the
+cartridge area $2000-$3fff (<CODE>Cart2Name</CODE>).
+<A NAME="IDX1224"></A>
+<DT><CODE>-cart4 &#60;name&#62;</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the ROM image file for the
+cartridge area $4000-$5fff (<CODE>Cart4Name</CODE>).
+<A NAME="IDX1225"></A>
+<DT><CODE>-cart6 &#60;name&#62;</CODE>
+<DD>
+Specify <TT>`NAME'</TT> as the ROM image file for the
+cartridge area $6000-$7fff (<CODE>Cart6Name</CODE>).
+</DL>
+
+
+
+<H3><A NAME="SEC193" HREF="vice_toc.html#TOC193">7.7.3  CBM-II command line options</A></H3>
+
+<P>
+These are the commandline options specific for the CBM-II models.
+
+</P>
+<DL COMPACT>
+
+<DT><CODE>-ramsize &#60;ramsize&#62;</CODE>
+<DD>
+<A NAME="IDX1226"></A>
+ 
+Specify size of RAM (64/128/256/512/1024 kByte)
+
+<A NAME="IDX1227"></A>
+<DT><CODE>-ram08</CODE>
+<DD>
+<DT><CODE>+ram08</CODE>
+<DD>
+Enable/Disable RAM mapping in bank 15 on addresses  $0800-$0FFF
+resp (<CODE>Ram08</CODE>).
+<A NAME="IDX1228"></A>
+<DT><CODE>-ram1</CODE>
+<DD>
+<DT><CODE>+ram1</CODE>
+<DD>
+Enable/Disable RAM mapping in bank 15 on addresses  $1000-$1FFF
+resp (<CODE>Ram1</CODE>).
+<A NAME="IDX1229"></A>
+<DT><CODE>-ram2</CODE>
+<DD>
+<DT><CODE>+ram2</CODE>
+<DD>
+Enable/Disable RAM mapping in bank 15 on addresses  $2000-$3FFF
+resp (<CODE>Ram2</CODE>).
+<A NAME="IDX1230"></A>
+<DT><CODE>-ram4</CODE>
+<DD>
+<DT><CODE>+ram4</CODE>
+<DD>
+Enable/Disable RAM mapping in bank 15 on addresses  $4000-$5FFF
+resp (<CODE>Ram4</CODE>).
+<A NAME="IDX1231"></A>
+<DT><CODE>-ram6</CODE>
+<DD>
+<DT><CODE>+ram6</CODE>
+<DD>
+Enable/Disable RAM mapping in bank 15 on addresses  $6000-$7FFF
+resp (<CODE>Ram6</CODE>).
+<A NAME="IDX1232"></A>
+<DT><CODE>-ramC</CODE>
+<DD>
+<DT><CODE>+ramC</CODE>
+<DD>
+Enable/Disable RAM mapping in bank 15 on addresses  $C000-$CFFF
+resp (<CODE>RamC</CODE>).
+
+<A NAME="IDX1233"></A>
+<DT><CODE>-model &#60;modelnumber&#62;</CODE>
+<DD>
+Specify CBM-II model to emulate
+
+</DL>
+
+
+
+<H3><A NAME="SEC194" HREF="vice_toc.html#TOC194">7.7.4  Changing screen colors</A></H3>
+
+<P>
+It is also possible to choose what color set is used for the emulation
+window.  This is done by specifying a palette file name (see section <A HREF="vice_4.html#SEC27">4.3  Palette files</A>) in the <CODE>PaletteName</CODE> resource.  The menu provides the
+following values:
+
+</P>
+
+<UL>
+<LI>
+
+<CODE>green.vpl</CODE> (default, "green"), the good old green-on-black
+feeling;
+<LI>
+
+<CODE>amber.vpl</CODE> ("amber"), an amber phosphor lookalike;
+<LI>
+
+<CODE>white.vpl</CODE> ("white"), simple white-on-black palette.
+</UL>
+
+
+
+<H2><A NAME="SEC195" HREF="vice_toc.html#TOC195">7.8  VSID-specific commands and settings</A></H2>
+
+
+
+<H3><A NAME="SEC196" HREF="vice_toc.html#TOC196">7.8.1  VSID settings</A></H3>
+
+
+
+<H4><A NAME="SEC197" HREF="vice_toc.html#TOC197">7.8.1.1  VSID resources</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>PSIDKeepEnv</CODE>
+<DD>
+<A NAME="IDX1234"></A>
+ 
+Boolean that specifies whether to override PSID settings for Video standard and 
+SID model.
+
+<A NAME="IDX1235"></A>
+<DT><CODE>PSIDTune</CODE>
+<DD>
+Integer that specifies the currently played sub tune.
+
+</DL>
+
+
+
+<H4><A NAME="SEC198" HREF="vice_toc.html#TOC198">7.8.1.2  VSID command-line options</A></H4>
+
+<DL COMPACT>
+
+<DT><CODE>-keepenv</CODE>
+<DD>
+<A NAME="IDX1236"></A>
+ 
+Override PSID settings for Video standard and SID model
+<A NAME="IDX1237"></A>
+<DT><CODE>-tune &#60;number&#62;</CODE>
+<DD>
+Specify PSID tune &#60;number&#62;
+
+</DL>
+
+<P><HR><P>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_6.html">previous</A>, <A HREF="vice_8.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+</BODY>
+</HTML>
