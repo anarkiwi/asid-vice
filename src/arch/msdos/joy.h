@@ -3,6 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -38,10 +39,7 @@ typedef enum {
     JOYDEV_HW2
 } joystick_device_t;
 
-extern int joy_arch_init(void);
 extern void joystick_close(void);
-extern int joystick_arch_init_resources(void);
-extern int joystick_init_cmdline_options(void);
 extern void joystick_update(void);
 extern int joystick_handle_key(kbd_code_t kcode, int pressed);
 

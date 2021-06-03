@@ -2,7 +2,7 @@
  * vic20rsuser.c - VIC20 RS232 userport interface
  *
  * Written by
- *  André Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -53,7 +53,5 @@ static void vic20_trigger_start(void)
 void vic20_rsuser_init(void)
 {
     /* The 1.0 is the CPU clk ratio to 1 MHz */
-    rsuser_init(machine_get_cycles_per_second(), 
-                vic20_trigger_start, NULL);
+    rsuser_init(machine_get_cycles_per_second(), vic20_trigger_start, NULL);
 }
-

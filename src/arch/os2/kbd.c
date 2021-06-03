@@ -81,11 +81,22 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "KeymapFile", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      "<name>", "Specify name of keymap file" },
+      "<name>", "Specify the name of the keymap file" },
     { NULL }
 };
 
 int kbd_cmdline_options_init(void)
 {
     return cmdline_register_options(cmdline_options);
+}
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages/actual detection
+*/
+int kbd_arch_get_host_mapping(void)
+{
+    return KBD_MAPPING_US;
 }

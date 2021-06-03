@@ -3,6 +3,7 @@
  *
  * Written by
  *  Hannu Nuotio <hannu.nuotio@tut.fi>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * Based on code by
  *  Ettore Perazzoli <ettore@comm2000.it>
@@ -36,6 +37,7 @@
 #include <string.h>
 
 #include "archdep.h"
+#include "cmdline.h"
 #include "kbd.h"
 #include "fullscreenarch.h"
 #include "keyboard.h"
@@ -45,11 +47,14 @@
 #include "monitor.h"
 #include "resources.h"
 #include "sysfile.h"
+#include "translate.h"
 #include "ui.h"
 #include "uihotkey.h"
 #include "uimenu.h"
 #include "util.h"
 #include "vkbd.h"
+
+/* #define SDL_DEBUG */
 
 static log_t sdlkbd_log = LOG_ERR;
 
@@ -71,7 +76,7 @@ ui_menu_entry_t *sdlkbd_ui_hotkeys[SDLKBD_UI_HOTKEYS_MAX];
 static int hotkey_file_set(const char *val, void *param)
 {
 #ifdef SDL_DEBUG
-    fprintf(stderr,"%s: %s\n",__func__,val);
+    fprintf(stderr, "%s: %s\n", __func__, val);
 #endif
 
     if (util_string_set(&hotkey_file, val)) {
@@ -107,11 +112,141 @@ void sdlkbd_resources_shutdown(void)
 
 /* ------------------------------------------------------------------------ */
 
+static const cmdline_option_t cmdline_options[] = {
+    { "-hotkeyfile", SET_RESOURCE, 1,
+      NULL, NULL, "HotkeyFile", NULL,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      "<name>", "Specify name of hotkey file" },
+    CMDLINE_LIST_END
+};
+
+int sdlkbd_init_cmdline(void)
+{
+    return cmdline_register_options(cmdline_options);
+}
+
+/* ------------------------------------------------------------------------ */
+
+/* Convert 'known' keycodes to SDL1x keycodes.
+   Unicode keycodes and 'unknown' keycodes are
+   translated to 'SDLK_UNKNOWN'.
+
+   This makes SDL2 key handling compatible with
+   SDL1 key handling, but a proper solution for
+   handling unicode will still need to be made.
+ */
+#ifdef USE_SDLUI2
+typedef struct SDL2Key_s {
+    SDLKey SDL1x;
+    SDLKey SDL2x;
+} SDL2Key_t;
+
+static SDL2Key_t SDL2xKeys[] = {
+    { 12, SDLK_CLEAR },
+    { 19, SDLK_PAUSE },
+    { 256, SDLK_KP_0 },
+    { 257, SDLK_KP_1 },
+    { 258, SDLK_KP_2 },
+    { 259, SDLK_KP_3 },
+    { 260, SDLK_KP_4 },
+    { 261, SDLK_KP_5 },
+    { 262, SDLK_KP_6 },
+    { 263, SDLK_KP_7 },
+    { 264, SDLK_KP_8 },
+    { 265, SDLK_KP_9 },
+    { 266, SDLK_KP_PERIOD },
+    { 267, SDLK_KP_DIVIDE },
+    { 268, SDLK_KP_MULTIPLY },
+    { 269, SDLK_KP_MINUS },
+    { 270, SDLK_KP_PLUS },
+    { 271, SDLK_KP_ENTER },
+    { 272, SDLK_KP_EQUALS },
+    { 273, SDLK_UP },
+    { 274, SDLK_DOWN },
+    { 275, SDLK_RIGHT },
+    { 276, SDLK_LEFT },
+    { 277, SDLK_INSERT },
+    { 278, SDLK_HOME },
+    { 279, SDLK_END },
+    { 280, SDLK_PAGEUP },
+    { 281, SDLK_PAGEDOWN },
+    { 282, SDLK_F1 },
+    { 283, SDLK_F2 },
+    { 284, SDLK_F3 },
+    { 285, SDLK_F4 },
+    { 286, SDLK_F5 },
+    { 287, SDLK_F6 },
+    { 288, SDLK_F7 },
+    { 289, SDLK_F8 },
+    { 290, SDLK_F9 },
+    { 291, SDLK_F10 },
+    { 292, SDLK_F11 },
+    { 293, SDLK_F12 },
+    { 294, SDLK_F13 },
+    { 295, SDLK_F14 },
+    { 296, SDLK_F15 },
+    { 300, SDLK_NUMLOCKCLEAR },
+    { 301, SDLK_CAPSLOCK },
+    { 302, SDLK_SCROLLLOCK },
+    { 303, SDLK_RSHIFT },
+    { 304, SDLK_LSHIFT },
+    { 305, SDLK_RCTRL },
+    { 306, SDLK_LCTRL },
+    { 307, SDLK_RALT },
+    { 308, SDLK_LALT },
+    { 309, SDLK_RGUI },
+    { 310, SDLK_LGUI },
+    { 313, SDLK_MODE },
+    { 314, SDLK_APPLICATION },
+    { 315, SDLK_HELP },
+    { 316, SDLK_PRINTSCREEN },
+    { 317, SDLK_SYSREQ },
+    { 319, SDLK_MENU },
+    { 320, SDLK_POWER },
+    { 322, SDLK_UNDO },
+    { 0, SDLK_UNKNOWN }
+};
+
+SDLKey SDL2x_to_SDL1x_Keys(SDLKey key)
+{
+    int i;
+
+    /* keys 0-255 are the same on SDL1x */
+    if (key < 256) {
+        return key;
+    }
+
+    /* keys 0x40000xxx need translation */
+    if (key & 0x40000000) {
+        for (i = 0; SDL2xKeys[i].SDL1x; ++i) {
+            if (SDL2xKeys[i].SDL2x == key) {
+                return SDL2xKeys[i].SDL1x;
+            }
+        } /* fallthrough, unknown SDL2x key */
+    } else { /* SDL1 format key may come from ini file */
+        for (i = 0; SDL2xKeys[i].SDL1x; ++i) {
+            if (SDL2xKeys[i].SDL1x == key) {
+                return SDL2xKeys[i].SDL1x;
+            }
+        }
+    }
+
+    /* unicode key, so return 'unknown' */
+    return SDLK_UNKNOWN;
+}
+#else
+SDLKey SDL2x_to_SDL1x_Keys(SDLKey key)
+{
+    return key;
+}
+#endif
+
 static inline int sdlkbd_key_mod_to_index(SDLKey key, SDLMod mod)
 {
     int i = 0;
 
-    mod &= (KMOD_CTRL|KMOD_SHIFT|KMOD_ALT|KMOD_META);
+    mod &= (KMOD_CTRL | KMOD_SHIFT | KMOD_ALT | KMOD_META);
 
     if (mod) {
         if (mod & KMOD_SHIFT) {
@@ -231,10 +366,10 @@ int sdlkbd_hotkeys_load(const char *filename)
 
             /* remove comments */
             if ((p = strchr(buffer, '#'))) {
-                *p=0;
+                *p = 0;
             }
 
-            switch(*buffer) {
+            switch (*buffer) {
                 case 0:
                     break;
                 case '!':
@@ -259,8 +394,9 @@ int sdlkbd_hotkeys_dump(const char *filename)
     int i;
     char *hotkey_path;
 
-    if (filename == NULL)
+    if (filename == NULL) {
         return -1;
+    }
 
     fp = fopen(filename, MODE_WRITE_TEXT);
 
@@ -270,7 +406,7 @@ int sdlkbd_hotkeys_dump(const char *filename)
 
     fprintf(fp, "# VICE hotkey mapping file\n"
             "#\n"
-            "# A hotkey map is read in as patch to the current map.\n"
+            "# A hotkey map is read in as a patch to the current map.\n"
             "#\n"
             "# File format:\n"
             "# - comment lines start with '#'\n"
@@ -280,14 +416,14 @@ int sdlkbd_hotkeys_dump(const char *filename)
             "# Keywords and their lines are:\n"
             "# '!CLEAR'    clear all mappings\n"
             "#\n\n"
-        );
+            );
 
     fprintf(fp, "!CLEAR\n\n");
 
     for (i = 0; i < SDLKBD_UI_HOTKEYS_MAX; ++i) {
         if (sdlkbd_ui_hotkeys[i]) {
             hotkey_path = sdl_ui_hotkey_path(sdlkbd_ui_hotkeys[i]);
-            fprintf(fp,"%i %s\n",i,hotkey_path);
+            fprintf(fp, "%i %s\n", i, hotkey_path);
             lib_free(hotkey_path);
         }
     }
@@ -305,7 +441,7 @@ ui_menu_action_t sdlkbd_press(SDLKey key, SDLMod mod)
     ui_menu_entry_t *hotkey_action = NULL;
 
 #ifdef SDL_DEBUG
-    fprintf(stderr, "%s: %i (%s),%i\n",__func__,key,SDL_GetKeyName(key),mod);
+    fprintf(stderr, "%s: %i (%s),%i\n", __func__, key, SDL_GetKeyName(key), mod);
 #endif
     if (sdl_menu_state || (sdl_vkbd_state & SDL_VKBD_ACTIVE)) {
         if (key != SDLK_UNKNOWN) {
@@ -391,13 +527,13 @@ const char *kbd_arch_keynum_to_keyname(signed long keynum)
 
 void kbd_initialize_numpad_joykeys(int* joykeys)
 {
-    joykeys[0] = SDLK_KP0;
-    joykeys[1] = SDLK_KP1;
-    joykeys[2] = SDLK_KP2;
-    joykeys[3] = SDLK_KP3;
-    joykeys[4] = SDLK_KP4;
-    joykeys[5] = SDLK_KP6;
-    joykeys[6] = SDLK_KP7;
-    joykeys[7] = SDLK_KP8;
-    joykeys[8] = SDLK_KP9;
+    joykeys[0] = SDL2x_to_SDL1x_Keys(SDLK_KP0);
+    joykeys[1] = SDL2x_to_SDL1x_Keys(SDLK_KP1);
+    joykeys[2] = SDL2x_to_SDL1x_Keys(SDLK_KP2);
+    joykeys[3] = SDL2x_to_SDL1x_Keys(SDLK_KP3);
+    joykeys[4] = SDL2x_to_SDL1x_Keys(SDLK_KP4);
+    joykeys[5] = SDL2x_to_SDL1x_Keys(SDLK_KP6);
+    joykeys[6] = SDL2x_to_SDL1x_Keys(SDLK_KP7);
+    joykeys[7] = SDL2x_to_SDL1x_Keys(SDLK_KP8);
+    joykeys[8] = SDL2x_to_SDL1x_Keys(SDLK_KP9);
 }

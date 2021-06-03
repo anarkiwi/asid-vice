@@ -27,23 +27,24 @@
  
 #include <Box.h>
 #include <CheckBox.h>
-#include <Directory.h>
-#include <Entry.h>
+#include <List.h>
 #include <ListItem.h>
 #include <ListView.h>
 #include <RadioButton.h>
 #include <ScrollView.h>
 #include <Slider.h>
-#include <string.h>
+#include <String.h>
+#include <TabView.h>
 #include <Window.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 extern "C" { 
-#include "archapi.h"
 #include "constants.h"
 #include "lib.h"
 #include "machine.h"
+#include "palette.h"
 #include "resources.h"
 #include "ui.h"
 #include "ui_video.h"
@@ -52,8 +53,8 @@ extern "C" {
 }
 
 typedef struct control_res_s {
-    char *name;
-    char *res_name;
+    const char *name;
+    const char *res_name;
     int multiplier;
 } control_res_t;
 
@@ -74,28 +75,38 @@ static control_res_t crt_controls[] = {
     { NULL, NULL, 0 }
 };
 
-static char *chip_name_table[] = { "VICII", "VIC", "CRTC", "VDC", "TED" };
+static const char *chip_display_names[] = { "VIC-II", "VIC", "CRTC", "VDC", "TED" };
 
-static int chip[] = { -1, -1 };
+static const char *res_prefixes[] = { "VICII", "VIC", "Crtc", "VDC", "TED" };
 
-class VideoWindow : public BWindow {
+static palette_info_t *palettelist;
+
+class VideoView : public BView {
         BBox *color_ctrlsbox;
         BBox *crt_ctrlsbox;
         BListView *palettelistview;
-        int chip_no;
-        char *chip_name;
+        BList *palettelistfiles;
+        const char *res_prefix;
 
         void CreateSliders(BBox *parent, control_res_t *ctrls);
         //~ void EnableSliders(BBox *parent);
     public:
-        VideoWindow(int chipno);
-        ~VideoWindow();
-        virtual void MessageReceived(BMessage *msg);
+        VideoView(BRect r, int chiptype);
+        ~VideoView();
 };
 
-static VideoWindow *videowindow[] = { NULL, NULL };
+class VideoWindow : public BWindow {
+    public:
+        VideoWindow(int chip1type, int chip2type);
+        ~VideoWindow();
+        virtual void MessageReceived(BMessage *msg);
+    private:
+        //~ VideoView *vv[2]; /* pointers to the VideoViews */
+};
 
-void VideoWindow::CreateSliders(BBox *parent, control_res_t *ctrls)
+static VideoWindow *videowindow = NULL;
+
+void VideoView::CreateSliders(BBox *parent, control_res_t *ctrls)
 {
     int res_val;
     char *resname;
@@ -107,12 +118,11 @@ void VideoWindow::CreateSliders(BBox *parent, control_res_t *ctrls)
     r.bottom = 50;
     r.InsetBy(5, 15);
     for (int i = 0; ctrls[i].name; i++) {
-        resname = util_concat(chip_name, ctrls[i].res_name, NULL);
+        resname = util_concat(res_prefix, ctrls[i].res_name, NULL);
         if (resources_get_int(resname, &res_val) == 0) {
             slider = new BSlider(r.OffsetByCopy(0, i * 45), resname, ctrls[i].name, NULL, 0, ctrls[i].multiplier, B_TRIANGLE_THUMB);
             msg = new BMessage(MESSAGE_VIDEO_COLOR);
             msg->AddString("resname", resname);
-            msg->AddPointer("slider", slider);
             slider->SetMessage(msg);
             slider->SetValue(res_val);
             slider->SetHashMarkCount(11);
@@ -123,136 +133,159 @@ void VideoWindow::CreateSliders(BBox *parent, control_res_t *ctrls)
     }
 }
 
-VideoWindow::VideoWindow(int chipno) 
-    : BWindow(BRect(250, 50, 640, 345), "Video settings", B_TITLED_WINDOW, B_NOT_ZOOMABLE | B_NOT_RESIZABLE) 
+VideoView::VideoView(BRect r, int chiptype) : BView(r, "video_view", B_FOLLOW_NONE, B_WILL_DRAW)
 {
     BMessage *msg;
     BCheckBox *checkbox;
-    BRect r;
-    BView *background;
-    BDirectory dir;
-    BEntry entry;
-    int res_val;
     char *resname;
-    char *dirpath;
     const char *palettefile_const;
     char *palettefile;
     //~ BRadioButton *rb_mode;
+    int res_val;
 
-    switch (machine_class) {
-        case VICE_MACHINE_C128:
-            chip[1] = 3;
-            /* fall through */
-        case VICE_MACHINE_C64:
-        case VICE_MACHINE_C64SC:
-        case VICE_MACHINE_C64DTV:
-        case VICE_MACHINE_CBM5x0:
-        default:
-            chip[0] = 0;
-            break;
-        case VICE_MACHINE_CBM6x0:
-        case VICE_MACHINE_PET:
-            chip[0] = 2;
-            break;
-        case VICE_MACHINE_PLUS4:
-            chip[0] = 4;
-            break;
-        case VICE_MACHINE_VIC20:
-            chip[0] = 1;
-            break;
-    }
+    BView::SetViewColor(220, 220, 220, 0);
 
-    chip_no = chipno;
-    chip_name = chip_name_table[chip[chipno]];
-
-    if (machine_class == VICE_MACHINE_C128) {
-        if (chipno == 0) {
-            SetTitle("Video settings (VIC-II)");
-        } else {
-            SetTitle("Video settings (VDC)");
-        }
-    }
-
-
-    r = Bounds();
-    background = new BView(r, NULL,  B_FOLLOW_NONE, B_WILL_DRAW);
-    background->SetViewColor(220, 220, 220, 0);
-    AddChild(background);
+    res_prefix = res_prefixes[chiptype];
 
     /* Sliders for color control */
     color_ctrlsbox = new BBox(BRect(10, 10, 120, 255), "Color controls");
     color_ctrlsbox->SetLabel("Color controls");
     CreateSliders(color_ctrlsbox, color_controls);
-    background->AddChild(color_ctrlsbox);
+    AddChild(color_ctrlsbox);
     //~ color_ctrlsbox->SetViewColor(216, 216, 216, 0);
 
     /* Sliders for CRT Emulation control */
     crt_ctrlsbox = new BBox(BRect(130, 10, 240, 210), "CRT emulation");
     crt_ctrlsbox->SetLabel("CRT emulation");
     CreateSliders(crt_ctrlsbox, crt_controls);
-    background->AddChild(crt_ctrlsbox);
+    AddChild(crt_ctrlsbox);
+
+    /* Audio Leak check box */
+    resname = util_concat(res_prefix, "AudioLeak", NULL);
+    msg = new BMessage(MESSAGE_VIDEO_AUDIO_LEAK);
+    msg->AddString("resname", resname);
+    checkbox = new BCheckBox(BRect(250, 210, 380, 225), "AudioLeak", "Audio Leak", msg);
+    AddChild(checkbox);
+    resources_get_int(resname, &res_val);
+    checkbox->SetValue(res_val);
+    lib_free(resname);
 
     /* External Palette check box */
-    resname = util_concat(chip_name, "ExternalPalette", NULL);
+    resname = util_concat(res_prefix, "ExternalPalette", NULL);
     msg = new BMessage(MESSAGE_VIDEO_EXTERNALPALETTE);
     msg->AddString("resname", resname);
     checkbox = new BCheckBox(BRect(250, 10, 380, 25), "ExternalPalette", "External Palette", msg);
-    background->AddChild(checkbox);
+    AddChild(checkbox);
     resources_get_int(resname, &res_val);
     checkbox->SetValue(res_val);
     lib_free(resname);
 
     /* External Palette File list box */
-    resname = util_concat(chip_name, "PaletteFile", NULL);
+    resname = util_concat(res_prefix, "PaletteFile", NULL);
+    palettelistfiles = new BList();
     msg = new BMessage(MESSAGE_VIDEO_PALETTEFILE);
     msg->AddString("resname", resname);
+    msg->AddPointer("filelist", palettelistfiles);
     palettelistview = new BListView(BRect(250, 35, 360, 125), "PaletteFile");
     palettelistview->SetSelectionMessage(msg);
-    background->AddChild(new BScrollView("scroll", palettelistview, B_FOLLOW_LEFT | B_FOLLOW_TOP, 0, false, true));
+    AddChild(new BScrollView("scroll", palettelistview, B_FOLLOW_LEFT | B_FOLLOW_TOP, 0, false, true));
 
     /* Fill External Palette File list box */
     resources_get_string(resname, &palettefile_const);
     palettefile = lib_stralloc(palettefile_const);
     util_add_extension(&palettefile, "vpl");
-    dirpath = util_concat(archdep_boot_path(), "/", machine_name, NULL);
-    dir = BDirectory(dirpath);
-    while (dir.GetNextEntry(&entry) != B_ENTRY_NOT_FOUND) {
-        char s[255];
+    for (int i = 0; palettelist[i].name; i++) {
         BListItem *item;
+        BString *bstr;
 
-        entry.GetName(s);
-        if (strstr(s, ".vpl")) {
-            palettelistview->AddItem(item = new BStringItem(s));
-            if (strncmp(s, palettefile, strlen(s)) == 0) {
+        if (palettelist[i].chip && !strcmp(palettelist[i].chip, res_prefix)) {
+            palettelistview->AddItem(item = new BStringItem(palettelist[i].name));
+            palettelistfiles->AddItem(bstr = new BString(palettelist[i].file));
+            if (strncmp(bstr->String(), palettefile, bstr->Length()) == 0) {
                 palettelistview->Select(palettelistview->IndexOf(item));
             }
         }
     }
-    lib_free(dirpath);
     lib_free(palettefile);
     lib_free(resname);
+}
 
+VideoView::~VideoView()
+{
+    BStringItem *item;
+    BString *bstr;
+    int32 count;
+
+    count = palettelistview->CountItems();
+    while (count > 0) {
+        item = (BStringItem *)palettelistview->RemoveItem(--count);
+        delete item;
+    }
+
+    count = palettelistfiles->CountItems();
+    while (count > 0) {
+        bstr = (BString *)palettelistfiles->RemoveItem(--count);
+        delete bstr;
+    }
+
+    delete palettelistfiles;
+}
+
+VideoWindow::VideoWindow(int chip1type, int chip2type)
+    : BWindow(BRect(250, 50, 640, 375), "Video settings", B_TITLED_WINDOW, B_NOT_ZOOMABLE | B_NOT_RESIZABLE)
+{
+    BRect frame;
+    BTabView *tabview;
+    BTab *tab;
+    char str[24];
+    int chip_type[2];
+    int chip_no;
+
+    frame = Bounds();
+    tabview = new BTabView(frame, "tab_view");
+    tabview->SetViewColor(220, 220, 220, 0);
+
+    frame = tabview->Bounds();
+    frame.InsetBy(5, 5);
+    //~ frame.OffsetTo(3, 3);
+    frame.bottom -= tabview->TabHeight();
+
+    /* the video chips 1 & 2 */
+    chip_type[0] = chip1type;
+    chip_type[1] = chip2type;
+    for (chip_no = 0; (chip_no < 2) && (chip_type[chip_no] >= 0); chip_no++) {
+        tab = new BTab();
+        tabview->AddTab(new VideoView(frame, chip_type[chip_no]), tab);
+        //~ tabview->AddTab(vv[chip_no] = new VideoView(frame, chip_type[chip_no]), tab);
+        sprintf(str, "%s Colors", chip_display_names[chip_type[chip_no]]);
+        tab->SetLabel(str);
+    }
+
+    AddChild(tabview);
+    tabview->SetTabWidth(B_WIDTH_FROM_WIDEST);
     Show();
 }
 
-VideoWindow::~VideoWindow() 
+VideoWindow::~VideoWindow()
 {
-    videowindow[chip_no] = NULL;
+    videowindow = NULL;
 }
 
 void VideoWindow::MessageReceived(BMessage *msg)
 {
     const char *resname;
-    int32 val;
     BMessage *msr;
     BSlider *slider;
-    BListItem *item;
+    BListView *listview;
+    BList *filelist;
+    BString *bstr;
+    int32 val;
 
     msg->FindString("resname", &resname);
 
     switch (msg->what) {
         case MESSAGE_VIDEO_COLOR:
-            msg->FindPointer("slider", (void **)&slider);
+            msg->FindPointer("source", (void **)&slider);
             val = slider->Value();
             msr = new BMessage(MESSAGE_SET_RESOURCE);
             msr->AddString("resname", resname);
@@ -268,12 +301,23 @@ void VideoWindow::MessageReceived(BMessage *msg)
             ui_add_event((void*)msr);
             delete msr;
             break;
+        case MESSAGE_VIDEO_AUDIO_LEAK:
+            resources_get_int(resname, (int *)&val);
+            msr = new BMessage(MESSAGE_SET_RESOURCE);
+            msr->AddString("resname", resname);
+            msr->AddInt32("resval", 1 - val);
+            ui_add_event((void*)msr);
+            delete msr;
+            break;
         case MESSAGE_VIDEO_PALETTEFILE:
-            item = palettelistview->ItemAt(palettelistview->CurrentSelection());
-            if (item) {
+            msg->FindPointer("source", (void **)&listview);
+            msg->FindPointer("filelist", (void **)&filelist);
+            val = listview->CurrentSelection();
+            bstr = (BString *)filelist->ItemAt(val);
+            if (bstr) {
                 msr = new BMessage(MESSAGE_SET_RESOURCE);
                 msr->AddString("resname", resname);
-                msr->AddString("resvalstr", ((BStringItem*) item)->Text());
+                msr->AddString("resvalstr", bstr->String());
                 ui_add_event((void*)msr);
                 delete msr;
             }
@@ -283,12 +327,26 @@ void VideoWindow::MessageReceived(BMessage *msg)
     }
 }
 
-void ui_video(int chip_no)
+void ui_video_two_chip(int chip1_type, int chip2_type)
 {
-    if (videowindow[chip_no] != NULL) {
-        videowindow[chip_no]->Activate();
+    if (videowindow != NULL) {
+        videowindow->Activate();
         return;
     }
 
-    videowindow[chip_no] = new VideoWindow(chip_no);
+    palettelist = palette_get_info_list();
+
+    videowindow = new VideoWindow(chip1_type, chip2_type);
+}
+
+void ui_video(int chip_type)
+{
+    if (videowindow != NULL) {
+        videowindow->Activate();
+        return;
+    }
+
+    palettelist = palette_get_info_list();
+
+    videowindow = new VideoWindow(chip_type, UI_VIDEO_CHIP_NONE);
 }

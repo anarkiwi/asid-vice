@@ -3,6 +3,7 @@
  *
  * Written by
  *  Hannu Nuotio <hannu.nuotio@tut.fi>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * Based on code by
  *  Ettore Perazzoli <ettore@comm2000.it>
@@ -33,6 +34,7 @@
 #include "interrupt.h"
 #include "ioutil.h"
 #include "joy.h"
+#include "kbd.h"
 #include "lib.h"
 #include "machine.h"
 #include "menu_common.h"
@@ -50,6 +52,10 @@
 #include "vkbd.h"
 #include "vsidui_sdl.h"
 #include "vsync.h"
+
+#ifdef ANDROID_COMPILE
+#include "loader.h"
+#endif
 
 #include "vice_sdl.h"
 #include <stdio.h>
@@ -105,7 +111,12 @@ static void sdl_ui_putchar(BYTE c, int pos_x, int pos_y)
     BYTE *draw_pos;
 
     font_pos = &(menufont.font[menufont.translate[(int)c]]);
-    draw_pos = &(sdl_active_canvas->draw_buffer->draw_buffer[pos_x * menufont.w + pos_y * menufont.h * menu_draw.pitch]);
+
+    if (machine_class == VICE_MACHINE_VSID) {
+        draw_pos = &(sdl_active_canvas->draw_buffer_vsid->draw_buffer[pos_x * menufont.w + pos_y * menufont.h * menu_draw.pitch]);
+    } else {
+        draw_pos = &(sdl_active_canvas->draw_buffer->draw_buffer[pos_x * menufont.w + pos_y * menufont.h * menu_draw.pitch]);
+    }
 
     draw_pos += menu_draw.offset;
 
@@ -208,9 +219,9 @@ static void sdl_ui_display_item(ui_menu_entry_t *item, int y_pos, int value_offs
         sdl_ui_reverse_colors();
     }
 
-    i = sdl_ui_print(item->string, MENU_FIRST_X, y_pos+MENU_FIRST_Y);
+    i = sdl_ui_print(item->string, MENU_FIRST_X, y_pos + MENU_FIRST_Y);
 
-    if ((item->type == MENU_ENTRY_TEXT)&&(vice_ptr_to_int(item->data) == 1)) {
+    if ((item->type == MENU_ENTRY_TEXT) && (vice_ptr_to_int(item->data) == 1)) {
         sdl_ui_reverse_colors();
     }
 
@@ -236,6 +247,11 @@ static ui_menu_retval_t sdl_ui_menu_display(ui_menu_entry_t *menu, const char *t
     int num_items = 0, cur = 0, cur_old = -1, cur_offset = 0, in_menu = 1, redraw = 1;
     int *value_offsets = NULL;
     ui_menu_retval_t menu_retval = MENU_RETVAL_DEFAULT;
+
+    /* SDL mode: prevent core dump - pressing menu key in -console mode causes menu to be NULL */
+    if (menu == NULL) {
+        return MENU_RETVAL_EXIT_UI;
+    }
 
     while (menu[num_items].string != NULL) {
         ++num_items;
@@ -292,7 +308,7 @@ static ui_menu_retval_t sdl_ui_menu_display(ui_menu_entry_t *menu, const char *t
                 if ((menu[cur + cur_offset].type != MENU_ENTRY_SUBMENU) && (menu[cur + cur_offset].type != MENU_ENTRY_DYNAMIC_SUBMENU)) {
                     break;
                 }
-                /* fall through */
+            /* fall through */
             case MENU_ACTION_SELECT:
                 if (sdl_ui_menu_item_activate(&(menu[cur + cur_offset])) == MENU_RETVAL_EXIT_UI) {
                     in_menu = 0;
@@ -303,7 +319,7 @@ static ui_menu_retval_t sdl_ui_menu_display(ui_menu_entry_t *menu, const char *t
                 break;
             case MENU_ACTION_EXIT:
                 menu_retval = MENU_RETVAL_EXIT_UI;
-                /* fall through */
+            /* fall through */
             case MENU_ACTION_LEFT:
             case MENU_ACTION_CANCEL:
                 in_menu = 0;
@@ -327,7 +343,7 @@ static ui_menu_retval_t sdl_ui_menu_item_activate(ui_menu_entry_t *item)
 {
     const char *p = NULL;
 
-    switch(item->type) {
+    switch (item->type) {
         case MENU_ENTRY_OTHER:
         case MENU_ENTRY_DIALOG:
         case MENU_ENTRY_RESOURCE_TOGGLE:
@@ -359,6 +375,7 @@ static void sdl_ui_trap(WORD addr, void *data)
     width = sdl_active_canvas->draw_buffer->draw_buffer_width;
     height = sdl_active_canvas->draw_buffer->draw_buffer_height;
     draw_buffer_backup = lib_malloc(width * height);
+
     memcpy(draw_buffer_backup, sdl_active_canvas->draw_buffer->draw_buffer, width * height);
 
     sdl_ui_activate_pre_action();
@@ -370,9 +387,14 @@ static void sdl_ui_trap(WORD addr, void *data)
         sdl_ui_menu_item_activate((ui_menu_entry_t *)data);
     }
 
-    if (ui_emulation_is_paused() && (width == sdl_active_canvas->draw_buffer->draw_buffer_width) && (height == sdl_active_canvas->draw_buffer->draw_buffer_height)) {
-        memcpy(sdl_active_canvas->draw_buffer->draw_buffer, draw_buffer_backup, width * height);
+    if (machine_class == VICE_MACHINE_VSID) {
+        memset(sdl_active_canvas->draw_buffer_vsid->draw_buffer, 0, width * height);
         sdl_ui_refresh();
+    } else {
+        if (ui_emulation_is_paused() && (width == sdl_active_canvas->draw_buffer->draw_buffer_width) && (height == sdl_active_canvas->draw_buffer->draw_buffer_height)) {
+            memcpy(sdl_active_canvas->draw_buffer->draw_buffer, draw_buffer_backup, width * height);
+            sdl_ui_refresh();
+        }
     }
 
     sdl_ui_activate_post_action();
@@ -383,7 +405,7 @@ static void sdl_ui_trap(WORD addr, void *data)
 /* ------------------------------------------------------------------ */
 /* Readline static functions/variables */
 
-#define PC_VKBD_ACTIVATE SDLK_F10
+#define PC_VKBD_ACTIVATE VICE_SDLK_F10
 #define PC_VKBD_W 17
 #define PC_VKBD_H 4
 
@@ -408,14 +430,15 @@ static const BYTE keytable_pc_shift[] =
     "   \x87ZXCVBNM<>?\x87\x85\x86";
 
 static const SDLKey keytable_pc_special[] = {
-    SDLK_BACKSPACE,
-    SDLK_ESCAPE,
-    SDLK_RETURN,
-    SDLK_LEFT,
-    SDLK_RIGHT,
-    SDLK_HOME,
-    SDLK_END,
-    PC_VKBD_ACTIVATE
+    VICE_SDLK_BACKSPACE,
+    VICE_SDLK_ESCAPE,
+    VICE_SDLK_RETURN,
+    VICE_SDLK_LEFT,
+    VICE_SDLK_RIGHT,
+    VICE_SDLK_HOME,
+    VICE_SDLK_END,
+    PC_VKBD_ACTIVATE,
+    -1
 };
 
 static int pc_vkbd_pos_x, pc_vkbd_pos_y, pc_vkbd_x, pc_vkbd_y;
@@ -509,7 +532,7 @@ static int sdl_ui_readline_vkbd_input(SDLKey *key, SDLMod *mod, Uint16 *c_uni)
                 break;
             case MENU_ACTION_MAP:
             case MENU_ACTION_EXIT:
-                *key = PC_VKBD_ACTIVATE;
+                *key = SDL2x_to_SDL1x_Keys(PC_VKBD_ACTIVATE);
                 done = 1;
                 break;
             default:
@@ -525,22 +548,110 @@ static int sdl_ui_readline_input(SDLKey *key, SDLMod *mod, Uint16 *c_uni)
     SDL_Event e;
     int got_key = 0;
     ui_menu_action_t action = MENU_ACTION_NONE;
+#ifdef USE_SDLUI2
+    int i;
+#endif
 
     *mod = KMOD_NONE;
     *c_uni = 0;
 
+#ifdef USE_SDLUI2
+    SDL_StartTextInput();
+#endif
+
     do {
+#ifdef ANDROID_COMPILE
+        struct locnet_al_event event1;
+        struct locnet_al_event *event = &event1;
+        ui_menu_action_t action2;
+#endif
         action = MENU_ACTION_NONE;
 
+#ifdef ANDROID_COMPILE
+        while (!Android_PollEvent(&event1)) {
+            SDL_Delay(20);
+        }
+        switch (event->eventType) {
+            case SDL_JOYAXISMOTION:
+                {
+                    action = sdljoy_axis_event(0, 0, event->x / 256.0f * 32767);
+                    action2 = sdljoy_axis_event(0, 1, event->y / 256.0f * 32767);
+                    if (action == MENU_ACTION_NONE) {
+                        action = action2;
+                    }
+                }
+                break;
+            case SDL_JOYBUTTONDOWN:
+                {
+                    action = sdljoy_button_event(0, event->keycode, 1);
+                }
+                break;
+            case SDL_JOYBUTTONUP:
+                {
+                    action = sdljoy_button_event(0, event->keycode, 0);
+                }
+                break;
+            case SDL_KEYDOWN:
+                {
+                    unsigned long modifier = event->modifier;
+                    int ctrl = ((modifier & KEYBOARD_CTRL_FLAG) != 0);
+                    int alt = ((modifier & KEYBOARD_ALT_FLAG) != 0);
+                    int shift = ((modifier & KEYBOARD_SHIFT_FLAG) != 0);
+                    unsigned long kcode = (unsigned long)event->keycode;
+
+                    int kmod = 0;
+
+                    if (ctrl) {
+                        kmod |= KMOD_LCTRL;
+                    }
+                    if (alt) {
+                        kmod |= KMOD_LALT;
+                    }
+                    if (shift) {
+                        kmod |= KMOD_LSHIFT;
+                    }
+
+                    *key = kcode;
+                    *mod = kmod;
+                    *c_uni = event->unicode;
+                    got_key = 1;
+                }
+                break;
+        }
+#else
         SDL_WaitEvent(&e);
 
         switch (e.type) {
             case SDL_KEYDOWN:
-                *key = e.key.keysym.sym;
+                *key = SDL2x_to_SDL1x_Keys(e.key.keysym.sym);
                 *mod = e.key.keysym.mod;
+#ifdef USE_SDLUI2
+                /* For SDL2x only get 'special' keys from keydown event. */
+                for (i = 0; keytable_pc_special[i] != -1; ++i) {
+                    SDLKey special = SDL2x_to_SDL1x_Keys(e.key.keysym.sym);
+                    if (special == keytable_pc_special[i]) {
+                        *c_uni = special;
+                        got_key = 1;
+                    }
+                }
+#else
                 *c_uni = e.key.keysym.unicode;
                 got_key = 1;
+#endif
                 break;
+
+#ifdef USE_SDLUI2
+            case SDL_TEXTINPUT:
+                if (e.text.text[0] != 0) {
+                    *key = e.text.text[0];
+                    *c_uni = (Uint16)e.text.text[0];
+                    SDL_StopTextInput();
+                    SDL_StartTextInput();
+                    got_key = 1;
+                }
+                break;
+#endif
+
 #ifdef HAVE_SDL_NUMJOYSTICKS
             case SDL_JOYAXISMOTION:
                 action = sdljoy_axis_event(e.jaxis.which, e.jaxis.axis, e.jaxis.value);
@@ -556,18 +667,19 @@ static int sdl_ui_readline_input(SDLKey *key, SDLMod *mod, Uint16 *c_uni)
                 ui_handle_misc_sdl_event(e);
                 break;
         }
+#endif
 
         switch (action) {
             case MENU_ACTION_LEFT:
-                *key = SDLK_LEFT;
+                *key = VICE_SDLK_LEFT;
                 got_key = 1;
                 break;
             case MENU_ACTION_RIGHT:
-                *key = SDLK_RIGHT;
+                *key = VICE_SDLK_RIGHT;
                 got_key = 1;
                 break;
             case MENU_ACTION_SELECT:
-                *key = SDLK_RETURN;
+                *key = VICE_SDLK_RETURN;
                 got_key = 1;
                 break;
             case MENU_ACTION_CANCEL:
@@ -580,9 +692,12 @@ static int sdl_ui_readline_input(SDLKey *key, SDLMod *mod, Uint16 *c_uni)
             default:
                 break;
         }
-        SDL_Delay(20);
 
     } while (!got_key);
+
+#ifdef USE_SDLUI2
+    SDL_StopTextInput();
+#endif
 
     return got_key;
 }
@@ -604,6 +719,11 @@ static int sdl_ui_slider(const char* title, const int cur, const int min, const 
         i = max;
     }
 
+    /* adjust step to about 1% */
+    if ((max - min) > 100) {
+        step = (max - min) / 100;
+    }
+
     segment = (float)((max - min) / (menu_draw.max_text_x - 1));
 
     do {
@@ -620,7 +740,7 @@ static int sdl_ui_slider(const char* title, const int cur, const int min, const 
             sdl_ui_print_wrap(new_string, pos_x, &pos_y);
             pos_y++;
 
-            sprintf(new_string, "%-10i", i);
+            sprintf(new_string, "%-10i %3i%%", i, (100 * i) / max);
             sdl_ui_print_wrap(new_string, pos_x, &pos_y);
             pos_y = pos_y - 2;
 
@@ -628,7 +748,7 @@ static int sdl_ui_slider(const char* title, const int cur, const int min, const 
             screen_dirty = 0;
         }
 
-        switch(sdl_ui_menu_poll_input()) {
+        switch (sdl_ui_menu_poll_input()) {
             case MENU_ACTION_LEFT:
                 if (i > min) {
                     i = i - step;
@@ -747,11 +867,13 @@ void sdl_ui_activate_pre_action(void)
         sdl_vkbd_close();
     }
 
-    if (vsid_mode && (sdl_vsid_state & SDL_VSID_ACTIVE)) {
+    if (sdl_vsid_state & SDL_VSID_ACTIVE) {
         sdl_vsid_close();
     }
 
+#ifndef USE_SDLUI2
     SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+#endif
     sdl_menu_state = 1;
     ui_check_mouse_cursor();
 }
@@ -762,7 +884,9 @@ void sdl_ui_activate_post_action(void)
 
     sdl_menu_state = 0;
     ui_check_mouse_cursor();
+#ifndef USE_SDLUI2
     SDL_EnableKeyRepeat(0, 0);
+#endif
 
     /* Do not resume sound if in warp mode */
     resources_get_int("WarpMode", &warp_state);
@@ -770,12 +894,15 @@ void sdl_ui_activate_post_action(void)
         sound_resume();
     }
 
-    if (vsid_mode) {
+    if (machine_class == VICE_MACHINE_VSID) {
         sdl_vsid_activate();
     }
 
     /* Force a video refresh */
-    raster_force_repaint(sdl_active_canvas->parent_raster);
+    /* SDL mode: prevent core dump - pressing menu key in -console mode causes parent_raster to be NULL */
+    if (sdl_active_canvas->parent_raster) {
+        raster_force_repaint(sdl_active_canvas->parent_raster);
+    }
 }
 
 void sdl_ui_init_draw_params(void)
@@ -786,8 +913,8 @@ void sdl_ui_init_draw_params(void)
 
     menu_draw.pitch = sdl_active_canvas->draw_buffer->draw_buffer_pitch;
     menu_draw.offset = sdl_active_canvas->geometry->gfx_position.x + menu_draw.extra_x
-                     + (sdl_active_canvas->geometry->gfx_position.y + menu_draw.extra_y) * menu_draw.pitch
-                     + sdl_active_canvas->geometry->extra_offscreen_border_left;
+                       + (sdl_active_canvas->geometry->gfx_position.y + menu_draw.extra_y) * menu_draw.pitch
+                       + sdl_active_canvas->geometry->extra_offscreen_border_left;
 }
 
 void sdl_ui_reverse_colors(void)
@@ -873,7 +1000,7 @@ int sdl_ui_print_center(const char *text, int pos_y)
         return -1;
     }
 
-    if ((pos_x >= menu_draw.max_text_x)||(pos_y >= menu_draw.max_text_y)) {
+    if ((pos_x >= menu_draw.max_text_x) || (pos_y >= menu_draw.max_text_y)) {
         return -1;
     }
 
@@ -901,7 +1028,11 @@ void sdl_ui_invert_char(int pos_x, int pos_y)
         ++pos_y;
     }
 
-    draw_pos = &(sdl_active_canvas->draw_buffer->draw_buffer[pos_x * menufont.w + pos_y * menufont.h * menu_draw.pitch]);
+    if (machine_class == VICE_MACHINE_VSID) {
+        draw_pos = &(sdl_active_canvas->draw_buffer_vsid->draw_buffer[pos_x * menufont.w + pos_y * menufont.h * menu_draw.pitch]);
+    } else {
+        draw_pos = &(sdl_active_canvas->draw_buffer->draw_buffer[pos_x * menufont.w + pos_y * menufont.h * menu_draw.pitch]);
+    }
 
     draw_pos += menu_draw.offset;
 
@@ -1006,7 +1137,9 @@ char* sdl_ui_readline(const char* previous, int pos_x, int pos_y)
     /* draw previous string (if any), initialize size and cursor position */
     size = i = sdl_ui_print_wrap(new_string, pos_x, &pos_y);
 
+#ifndef USE_SDLUI2
     SDL_EnableUNICODE(1);
+#endif
 
     do {
         if (i != prev) {
@@ -1048,21 +1181,21 @@ char* sdl_ui_readline(const char* previous, int pos_x, int pos_y)
             got_key = sdl_ui_readline_input(&key, &mod, &c_uni);
         }
 
-        switch(key) {
-            case SDLK_LEFT:
+        switch (key) {
+            case VICE_SDLK_LEFT:
                 if (i > 0) {
                     --i;
                 }
                 break;
-            case SDLK_RIGHT:
+            case VICE_SDLK_RIGHT:
                 if (i < (int)size) {
                     ++i;
                 }
                 break;
-            case SDLK_HOME:
+            case VICE_SDLK_HOME:
                 i = 0;
                 break;
-            case SDLK_END:
+            case VICE_SDLK_END:
                 i = size;
                 break;
             case PC_VKBD_ACTIVATE:
@@ -1078,7 +1211,7 @@ char* sdl_ui_readline(const char* previous, int pos_x, int pos_y)
                     }
                 }
                 break;
-            case SDLK_BACKSPACE:
+            case VICE_SDLK_BACKSPACE:
                 if (i > 0) {
                     memmove(new_string + i - 1, new_string + i, size - i + 1);
                     --size;
@@ -1092,11 +1225,11 @@ char* sdl_ui_readline(const char* previous, int pos_x, int pos_y)
                     string_changed = 1;
                 }
                 break;
-            case SDLK_ESCAPE:
+            case VICE_SDLK_ESCAPE:
                 string_changed = 0;
                 escaped = 1;
-                /* fall through */
-            case SDLK_RETURN:
+            /* fall through */
+            case VICE_SDLK_RETURN:
                 if (pc_vkbd_state) {
                     sdl_ui_readline_vkbd_erase();
                 }
@@ -1119,10 +1252,11 @@ char* sdl_ui_readline(const char* previous, int pos_x, int pos_y)
             prev = -1;
             string_changed = 1;
         }
-
     } while (!done);
 
+#ifndef USE_SDLUI2
     SDL_EnableUNICODE(0);
+#endif
 
     if ((!string_changed && previous) || escaped) {
         lib_free(new_string);
@@ -1162,7 +1296,13 @@ void sdl_ui_refresh(void)
 void sdl_ui_scroll_screen_up(void)
 {
     int i, j;
-    BYTE *draw_pos = sdl_active_canvas->draw_buffer->draw_buffer + menu_draw.offset;
+    BYTE *draw_pos;
+
+    if (machine_class == VICE_MACHINE_VSID) {
+        draw_pos = sdl_active_canvas->draw_buffer_vsid->draw_buffer + menu_draw.offset;
+    } else {
+        draw_pos = sdl_active_canvas->draw_buffer->draw_buffer + menu_draw.offset;
+    }
 
     for (i = 0; i < menu_draw.max_text_y - 1; ++i) {
         for (j = 0; j < menufont.h; ++j) {

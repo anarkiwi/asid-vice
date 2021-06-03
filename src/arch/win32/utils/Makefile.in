@@ -14,7 +14,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -34,35 +33,19 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = genwinres$(EXEEXT)
 subdir = src/arch/win32/utils
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/src/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__installdirs = "$(DESTDIR)$(bindir)"
-PROGRAMS = $(bin_PROGRAMS)
-am_genwinres_OBJECTS = genwinres.$(OBJEXT)
-genwinres_OBJECTS = $(am_genwinres_OBJECTS)
-genwinres_LDADD = $(LDADD)
-DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
-depcomp = $(SHELL) $(top_srcdir)/depcomp
-am__depfiles_maybe = depfiles
-am__mv = mv -f
-COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
-	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-CCLD = $(CC)
-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(genwinres_SOURCES)
-DIST_SOURCES = $(genwinres_SOURCES)
-ETAGS = etags
-CTAGS = ctags
+SOURCES =
+DIST_SOURCES =
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -77,7 +60,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BINDIR = @BINDIR@
+CAIRO_CFLAGS = @CAIRO_CFLAGS@
+CAIRO_LIBS = @CAIRO_LIBS@
 CATALOGS = @CATALOGS@
 CATOBJEXT = @CATOBJEXT@
 CC = @CC@
@@ -109,10 +93,17 @@ EGREP = @EGREP@
 ENABLE_ARCH = @ENABLE_ARCH@
 EXEEXT = @EXEEXT@
 FCCACHE = @FCCACHE@
+FFMPEGSUB = @FFMPEGSUB@
+FFMPEG_AVRESAMPLE_CFLAGS = @FFMPEG_AVRESAMPLE_CFLAGS@
+FFMPEG_AVRESAMPLE_LIBS = @FFMPEG_AVRESAMPLE_LIBS@
 FFMPEG_AV_CFLAGS = @FFMPEG_AV_CFLAGS@
 FFMPEG_AV_LIBS = @FFMPEG_AV_LIBS@
+FFMPEG_DEP = @FFMPEG_DEP@
+FFMPEG_DIR = @FFMPEG_DIR@
 FFMPEG_INCLUDES = @FFMPEG_INCLUDES@
 FFMPEG_LIBS = @FFMPEG_LIBS@
+FFMPEG_SWRESAMPLE_CFLAGS = @FFMPEG_SWRESAMPLE_CFLAGS@
+FFMPEG_SWRESAMPLE_LIBS = @FFMPEG_SWRESAMPLE_LIBS@
 FFMPEG_SWSCALE_CFLAGS = @FFMPEG_SWSCALE_CFLAGS@
 FFMPEG_SWSCALE_LIBS = @FFMPEG_SWSCALE_LIBS@
 FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
@@ -141,12 +132,15 @@ INTLLIBS = @INTLLIBS@
 INTLOBJS = @INTLOBJS@
 IPFC = @IPFC@
 JOY_LIBS = @JOY_LIBS@
+LAMEMP3SUB = @LAMEMP3SUB@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+LIBFFMPEGSUB = @LIBFFMPEGSUB@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBX264SUB = @LIBX264SUB@
 LINKCC = @LINKCC@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -155,8 +149,10 @@ MAKEINFO = @MAKEINFO@
 MAKERTF = @MAKERTF@
 MAX_INLINE_INSN_SINGLE = @MAX_INLINE_INSN_SINGLE@
 MKDIR_P = @MKDIR_P@
+MKFONTDIR_BIN = @MKFONTDIR_BIN@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MSGFMT = @MSGFMT@
+NATIVE_TOOLS_COMPILER = @NATIVE_TOOLS_COMPILER@
 NETPLAY_LIBS = @NETPLAY_LIBS@
 NLS_LOCALEDIR = @NLS_LOCALEDIR@
 OBJC = @OBJC@
@@ -170,10 +166,13 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PANGO_CFLAGS = @PANGO_CFLAGS@
+PANGO_LIBS = @PANGO_LIBS@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
+PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -181,19 +180,18 @@ QUICKTIME_LIBS = @QUICKTIME_LIBS@
 RANLIB = @RANLIB@
 READLINE = @READLINE@
 READLINE_LIBS = @READLINE_LIBS@
+RESIDDTVSUB = @RESIDDTVSUB@
+RESIDSUB = @RESIDSUB@
 RESID_DEP = @RESID_DEP@
 RESID_DIR = @RESID_DIR@
 RESID_DTV_DEP = @RESID_DTV_DEP@
 RESID_DTV_DIR = @RESID_DTV_DIR@
 RESID_DTV_INCLUDES = @RESID_DTV_INCLUDES@
 RESID_DTV_LIBS = @RESID_DTV_LIBS@
-RESID_FP_DEP = @RESID_FP_DEP@
-RESID_FP_DIR = @RESID_FP_DIR@
-RESID_FP_INCLUDES = @RESID_FP_INCLUDES@
-RESID_FP_LIBS = @RESID_FP_LIBS@
 RESID_INCLUDES = @RESID_INCLUDES@
 RESID_LIBS = @RESID_LIBS@
 SDL_EXTRA_LIBS = @SDL_EXTRA_LIBS@
+SDL_VERSION = @SDL_VERSION@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOUND_AIX_OBJ = @SOUND_AIX_OBJ@
@@ -205,6 +203,9 @@ SOUND_SDL_OBJ = @SOUND_SDL_OBJ@
 SOUND_SGI_OBJ = @SOUND_SGI_OBJ@
 SOUND_USS_OBJ = @SOUND_USS_OBJ@
 STRIP = @STRIP@
+SVN = @SVN@
+SVNVERSION = @SVNVERSION@
+TAR = @TAR@
 TEXI2DVI = @TEXI2DVI@
 TEXI2IPF = @TEXI2IPF@
 TFE_LIBS = @TFE_LIBS@
@@ -213,9 +214,11 @@ UNIX_MACOSX_UITYPE = @UNIX_MACOSX_UITYPE@
 USE_INCLUDED_LIBINTL = @USE_INCLUDED_LIBINTL@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+VERSION_COMBINED = @VERSION_COMBINED@
 VERSION_RC = @VERSION_RC@
 VICEDIR = @VICEDIR@
 VICE_SYNC = @VICE_SYNC@
+VICE_UI_THREADS = @VICE_UI_THREADS@
 VICE_VERSION = @VICE_VERSION@
 VICE_VERSION_BUILD = @VICE_VERSION_BUILD@
 VICE_VERSION_MAJOR = @VICE_VERSION_MAJOR@
@@ -234,13 +237,14 @@ XGETTEXT = @XGETTEXT@
 XMKMF = @XMKMF@
 XPET_WINRES = @XPET_WINRES@
 XPLUS4_WINRES = @XPLUS4_WINRES@
+XSCPU64_WINRES = @XSCPU64_WINRES@
 XVIC_WINRES = @XVIC_WINRES@
 X_CFLAGS = @X_CFLAGS@
 X_EXTRA_LIBS = @X_EXTRA_LIBS@
 X_LIBS = @X_LIBS@
 X_PRE_LIBS = @X_PRE_LIBS@
 YACC = @YACC@
-YFLAGS = @YFLAGS@
+YASM = @YASM@
 ZLIB_LIBS = @ZLIB_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -248,7 +252,6 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_sdl_config = @ac_ct_sdl_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -267,6 +270,7 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+ffmpeg_have_bash = @ffmpeg_have_bash@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -288,6 +292,7 @@ prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
+sdl2_config = @sdl2_config@
 sdl_config = @sdl_config@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -303,17 +308,17 @@ x64_LDFLAGS = @x64_LDFLAGS@
 xcbm2_LDFLAGS = @xcbm2_LDFLAGS@
 xpet_LDFLAGS = @xpet_LDFLAGS@
 xplus4_LDFLAGS = @xplus4_LDFLAGS@
+xscpu64_LDFLAGS = @xscpu64_LDFLAGS@
 xvic_LDFLAGS = @xvic_LDFLAGS@
-genwinres_SOURCES = genwinres.c
 EXTRA_DIST = \
 	geninfocontrib.c \
 	genmsvcver.c \
-	gentranslate.c
+	gentranslate.c \
+	genwinres.c
 
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -344,120 +349,12 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
-install-binPROGRAMS: $(bin_PROGRAMS)
-	@$(NORMAL_INSTALL)
-	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
-	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
-	for p in $$list; do echo "$$p $$p"; done | \
-	sed 's/$(EXEEXT)$$//' | \
-	while read p p1; do if test -f $$p; \
-	  then echo "$$p"; echo "$$p"; else :; fi; \
-	done | \
-	sed -e 'p;s,.*/,,;n;h' -e 's|.*|.|' \
-	    -e 'p;x;s,.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/' | \
-	sed 'N;N;N;s,\n, ,g' | \
-	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1 } \
-	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
-	    if ($$2 == $$4) files[d] = files[d] " " $$1; \
-	    else { print "f", $$3 "/" $$4, $$1; } } \
-	  END { for (d in files) print "f", d, files[d] }' | \
-	while read type dir files; do \
-	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
-	    test -z "$$files" || { \
-	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
-	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
-	    } \
-	; done
-
-uninstall-binPROGRAMS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
-	files=`for p in $$list; do echo "$$p"; done | \
-	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
-	      -e 's/$$/$(EXEEXT)/' `; \
-	test -n "$$list" || exit 0; \
-	echo " ( cd '$(DESTDIR)$(bindir)' && rm -f" $$files ")"; \
-	cd "$(DESTDIR)$(bindir)" && rm -f $$files
-
-clean-binPROGRAMS:
-	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
-genwinres$(EXEEXT): $(genwinres_OBJECTS) $(genwinres_DEPENDENCIES) $(EXTRA_genwinres_DEPENDENCIES) 
-	@rm -f genwinres$(EXEEXT)
-	$(LINK) $(genwinres_OBJECTS) $(genwinres_LDADD) $(LIBS)
-
-mostlyclean-compile:
-	-rm -f *.$(OBJEXT)
-
-distclean-compile:
-	-rm -f *.tab.c
-
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/genwinres.Po@am__quote@
-
-.c.o:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c $<
-
-.c.obj:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
-
-ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
-	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
-	unique=`for i in $$list; do \
-	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
-	  done | \
-	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
-	      END { if (nonempty) { for (i in files) print i; }; }'`; \
-	mkid -fID $$unique
 tags: TAGS
+TAGS:
 
-TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
-		$(TAGS_FILES) $(LISP)
-	set x; \
-	here=`pwd`; \
-	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
-	unique=`for i in $$list; do \
-	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
-	  done | \
-	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
-	      END { if (nonempty) { for (i in files) print i; }; }'`; \
-	shift; \
-	if test -z "$(ETAGS_ARGS)$$*$$unique"; then :; else \
-	  test -n "$$unique" || unique=$$empty_fix; \
-	  if test $$# -gt 0; then \
-	    $(ETAGS) $(ETAGSFLAGS) $(AM_ETAGSFLAGS) $(ETAGS_ARGS) \
-	      "$$@" $$unique; \
-	  else \
-	    $(ETAGS) $(ETAGSFLAGS) $(AM_ETAGSFLAGS) $(ETAGS_ARGS) \
-	      $$unique; \
-	  fi; \
-	fi
 ctags: CTAGS
-CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
-		$(TAGS_FILES) $(LISP)
-	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
-	unique=`for i in $$list; do \
-	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
-	  done | \
-	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
-	      END { if (nonempty) { for (i in files) print i; }; }'`; \
-	test -z "$(CTAGS_ARGS)$$unique" \
-	  || $(CTAGS) $(CTAGSFLAGS) $(AM_CTAGSFLAGS) $(CTAGS_ARGS) \
-	     $$unique
+CTAGS:
 
-GTAGS:
-	here=`$(am__cd) $(top_builddir) && pwd` \
-	  && $(am__cd) $(top_srcdir) \
-	  && gtags -i $(GTAGS_ARGS) "$$here"
-
-distclean-tags:
-	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
 distdir: $(DISTFILES)
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
@@ -491,11 +388,8 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)"; do \
-	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
-	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -528,13 +422,11 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
+clean-am: clean-generic mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
-distclean-am: clean-am distclean-compile distclean-generic \
-	distclean-tags
+distclean-am: clean-am distclean-generic
 
 dvi: dvi-am
 
@@ -554,7 +446,7 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-binPROGRAMS
+install-exec-am:
 
 install-html: install-html-am
 
@@ -577,13 +469,12 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-compile mostlyclean-generic
+mostlyclean-am: mostlyclean-generic
 
 pdf: pdf-am
 
@@ -593,22 +484,19 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS
+uninstall-am:
 
 .MAKE: install-am install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-am clean clean-binPROGRAMS \
-	clean-generic ctags distclean distclean-compile \
-	distclean-generic distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-binPROGRAMS \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-binPROGRAMS
+.PHONY: all all-am check check-am clean clean-generic distclean \
+	distclean-generic distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic pdf pdf-am ps ps-am uninstall uninstall-am
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

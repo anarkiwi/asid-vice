@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -26,6 +27,10 @@
  */
 
 #include "vice.h"
+
+#ifdef __NeXT__
+#define _POSIX_SOURCE
+#endif
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -130,9 +135,7 @@ const char *archdep_boot_path(void)
 const char *archdep_home_path(void)
 {
     char *home;
-#if defined(GP2X) || defined(WIZ)
-    home = ".";
-#else
+
     home = getenv("HOME");
     if (home == NULL) {
 #ifdef HAVE_GETPWUID
@@ -147,7 +150,6 @@ const char *archdep_home_path(void)
         home = ".";
 #endif
     }
-#endif
 
     return home;
 }
@@ -226,64 +228,88 @@ char *archdep_make_backup_filename(const char *fname)
     return util_concat(fname, "~", NULL);
 }
 
-char *archdep_default_resource_file_name(void)
+/* create the default directory where prefs, fliplist, autostart images etc are stored
+   a pointer to the resulting path is returned, and it should be freed by the caller. */
+static char *archdep_make_default_pref_path(int create)
 {
+    char *path;
     if (archdep_pref_path == NULL) {
         const char *home;
-      
         home = archdep_home_path();
-        return util_concat(home, "/.vice/vicerc", NULL);
+        path = util_concat(home, "/.vice", NULL);
     } else {
-        return util_concat(archdep_pref_path, "/vicerc", NULL);
+        path = lib_stralloc(archdep_pref_path);
     }
+    if(create) {
+        if (access(path, F_OK)) {
+            mkdir(path, S_IRWXU);
+        }
+    }
+    return path;
+}
+
+char *archdep_default_resource_file_name(void)
+{
+    char *fname;
+    const char *viceuserdir;
+
+    viceuserdir = archdep_make_default_pref_path(0);
+    fname = util_concat(viceuserdir, "/vicerc", NULL);
+    lib_free(viceuserdir);
+
+    return fname;
 }
 
 char *archdep_default_fliplist_file_name(void)
 {
-    if (archdep_pref_path == NULL) {
-        const char *home;
+    char *fname;
+    const char *viceuserdir;
 
-        home = archdep_home_path();
-        return util_concat(home, "/.vice/fliplist-", machine_get_name(), ".vfl", NULL);
-    } else {
-        return util_concat(archdep_pref_path, "/fliplist-", machine_get_name(), ".vfl", NULL);
-    }
+    viceuserdir = archdep_make_default_pref_path(0);
+    fname = util_concat(viceuserdir, "/fliplist-", machine_get_name(), ".vfl", NULL);
+    lib_free(viceuserdir);
+
+    return fname;
+}
+
+char *archdep_default_rtc_file_name(void)
+{
+    char *fname;
+    const char *viceuserdir;
+
+    viceuserdir = archdep_make_default_pref_path(0);
+    fname = util_concat(viceuserdir, "/vice.rtc", NULL);
+    lib_free(viceuserdir);
+
+    return fname;
 }
 
 char *archdep_default_autostart_disk_image_file_name(void)
 {
-    if (archdep_pref_path == NULL) {
-        const char *home;
+    char *fname;
+    const char *viceuserdir;
 
-        home = archdep_home_path();
-        return util_concat(home, "/.vice/autostart-", machine_get_name(), ".d64", NULL);
-    } else {
-        return util_concat(archdep_pref_path, "/autostart-", machine_get_name(), ".d64", NULL);
-    }
+    viceuserdir = archdep_make_default_pref_path(0);
+    fname = util_concat(viceuserdir, "/autostart-", machine_get_name(), ".d64", NULL);
+    lib_free(viceuserdir);
+
+    return fname;
 }
 
+/* same as archdep_default_resource_file_name() but also creates the directory */
+/* FIXME: checking for existance and creating the directory should perhaps be
+          handled in common code instead. for the time being its created always
+          here, which isnt 'nice' but shouldnt do any harm either. it is needed
+          so on a fresh install the related features work, ie before the settings
+          were saved (and thus the directory created) (see bug #629) */
 char *archdep_default_save_resource_file_name(void)
 { 
     char *fname;
-    const char *home;
     const char *viceuserdir;
 
-    if (archdep_pref_path == NULL) {
-        home = archdep_home_path();
-        viceuserdir = util_concat(home, "/.vice", NULL);
-    } else {
-        viceuserdir = archdep_pref_path;
-    }
-
-    if (access(viceuserdir, F_OK)) {
-        mkdir(viceuserdir, 0700);
-    }
-
+    viceuserdir = archdep_make_default_pref_path(1);
     fname = util_concat(viceuserdir, "/vicerc", NULL);
-    
-    if (archdep_pref_path==NULL) {
-        lib_free(viceuserdir);
-    }
+    lib_free(viceuserdir);
 
     return fname;
 }
@@ -305,30 +331,6 @@ FILE *archdep_open_default_log_file(void)
     return stdout;
 }
 #endif
-
-int archdep_num_text_lines(void)
-{
-    char *s;
-
-    s = getenv("LINES");
-    if (s == NULL) {
-        log_verbose("LINES not set.");
-        return -1;
-    }
-    return atoi(s);
-}
-
-int archdep_num_text_columns(void)
-{
-    char *s;
-
-    s = getenv("COLUMNS");
-    if (s == NULL) {
-        log_verbose("COLUMNS not set.");
-        return -1;
-    }
-    return atoi(s);
-}
 
 int archdep_default_logger(const char *level_string, const char *txt)
 {
@@ -352,16 +354,19 @@ int archdep_spawn(const char *name, char **argv, char **pstdout_redir, const cha
 #if !defined(OPENSTEP_COMPILE) && !defined(NEXTSTEP_COMPILE)
     pid_t child_pid;
     int child_status;
-    char *stdout_redir = NULL;
+    char *stdout_redir;
+
+    child_pid = vfork();
 
     if (pstdout_redir != NULL) {
         if (*pstdout_redir == NULL) {
             *pstdout_redir = archdep_tmpnam();
         }
         stdout_redir = *pstdout_redir;
+    } else {
+        stdout_redir = NULL;
     }
 
-    child_pid = vfork();
     if (child_pid < 0) {
         log_error(LOG_DEFAULT, "vfork() failed: %s.", strerror(errno));
         return -1;
@@ -395,12 +400,23 @@ int archdep_spawn(const char *name, char **argv, char **pstdout_redir, const cha
 #endif
 }
 
-/* return malloc'd version of full pathname of orig_name */
+/** \brief  Return malloc'd version of full pathname of orig_name
+ *
+ * Returns the absolute path of \a orig_name. Expands '~' to the user's home
+ * path.
+ *
+ * \param[out]  return_path pointer to expand path destination
+ * \param[in]   orig_name   original path
+ *
+ * \return  0
+ */
 int archdep_expand_path(char **return_path, const char *orig_name)
 {
     /* Unix version.  */
     if (*orig_name == '/') {
         *return_path = lib_stralloc(orig_name);
+    } else if (*orig_name == '~' && *(orig_name +1) == '/') {
+        *return_path = util_concat(archdep_home_path(), orig_name + 1, NULL);
     } else {
         static char *cwd;
 
@@ -429,11 +445,11 @@ char *archdep_filename_parameter(const char *name)
 /*
     "special" chars in *unix are:
 
-    "'\[]()´
+    "'\[]() and acute/forward tick
 
     tested unproblematic (no escaping):
 
-    "'()´
+    "'() and acute/forward tick
 
     tested problematic (need escaping):
 
@@ -455,13 +471,6 @@ char *archdep_quote_parameter(const char *name)
 
 char *archdep_tmpnam(void)
 {
-#if defined(GP2X) || defined(WIZ)
-    static unsigned int tmp_string_counter = 0;
-    char tmp_string[32];
-
-    sprintf(tmp_string, "vice%d.tmp", tmp_string_counter++);
-    return lib_stralloc(tmp_string);
-#else
 #ifdef HAVE_MKSTEMP
     char *tmp_name;
     const char mkstemp_template[] = "/vice.XXXXXX";
@@ -489,29 +498,11 @@ char *archdep_tmpnam(void)
 #else
     return lib_stralloc(tmpnam(NULL));
 #endif
-#endif
 }
 
 FILE *archdep_mkstemp_fd(char **filename, const char *mode)
 {
-#if defined(GP2X) || defined(WIZ)
-    static unsigned int tmp_string_counter = 0;
-    char *tmp;
-    FILE *fd;
-
-    tmp = lib_msprintf("vice%d.tmp", tmp_string_counter++);
-
-    fd = fopen(tmp, mode);
-
-    if (fd == NULL) {
-        lib_free(tmp);
-        return NULL;
-    }
-
-    *filename = tmp;
-
-    return fd;
-#elif defined HAVE_MKSTEMP
+#if defined HAVE_MKSTEMP
     char *tmp;
     const char template[] = "/vice.XXXXXX";
     int fildes;
@@ -579,6 +570,7 @@ int archdep_file_set_gzip(const char *name)
     return 0;
 }
 
+/* called by ioutil_mkdir, modes defined in ioutil.h */
 int archdep_mkdir(const char *pathname, int mode)
 {
 #ifndef __NeXT__
@@ -604,12 +596,16 @@ int archdep_stat(const char *file_name, unsigned int *len, unsigned int *isdir)
     return 0;
 }
 
+#ifndef DEFFILEMODE
+#define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+#endif
+
 /* set permissions of given file to rw, respecting current umask */
 int archdep_fix_permissions(const char *file_name)
 {
     mode_t mask = umask(0);
     umask(mask);
-    return chmod(file_name, mask ^ 0666);
+    return chmod(file_name, mask ^ DEFFILEMODE); /* 0666 */
 }
 
 int archdep_file_is_blockdev(const char *name)
@@ -642,6 +638,11 @@ int archdep_file_is_chardev(const char *name)
     return 0;
 }
 
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
+}
+
 void archdep_shutdown(void)
 {
     lib_free(argv0);
@@ -650,58 +651,20 @@ void archdep_shutdown(void)
 
 char *archdep_get_runtime_os(void)
 {
-
-/* Windows on cygwin */
-#ifdef __CYGWIN32__
-#define RUNTIME_OS_HANDLED
-    return platform_get_windows_runtime_os();
-#endif
-
-/* MacOSX */
-#if defined(MACOSX_COCOA)
-#define RUNTIME_OS_HANDLED
-    return platform_get_macosx_runtime_os();
-#endif
-
-/* Solaris */
-#if (defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__))
-#define RUNTIME_OS_HANDLED
-    return platform_get_solaris_runtime_os();
-#endif
-
-/* Syllable */
-#ifdef __SYLLABLE__
-#define RUNTIME_OS_HANDLED
-    return platform_get_syllable_runtime_os();
-#endif
-
 /* TODO: add runtime os detection code for other *nix os'es */
-#ifndef RUNTIME_OS_HANDLED
+#ifndef RUNTIME_OS_CALL
     return "*nix";
+#else
+    return RUNTIME_OS_CALL();
 #endif
 }
 
 char *archdep_get_runtime_cpu(void)
 {
-/* MacOSX */
-#if defined(MACOSX_COCOA)
-#define RUNTIME_CPU_HANDLED
-    return platform_get_macosx_runtime_cpu();
-#endif
-
-#ifdef __SYLLABLE__
-#define RUNTIME_CPU_HANDLED
-    return platform_get_syllable_runtime_cpu();
-#endif
-
-/* x86/amd64/x86_64 */
-#if !defined(RUNTIME_CPU_HANDLED) && (defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__amd64__) || defined(__x86_64__))
-#define RUNTIME_CPU_HANDLED
-    return platform_get_x86_runtime_cpu();
-#endif
-
 /* TODO: add runtime cpu detection code for other cpu's */
-#ifndef RUNTIME_CPU_HANDLED
+#ifndef RUNTIME_CPU_CALL
     return "Unknown CPU";
+#else
+    return RUNTIME_CPU_CALL();
 #endif
 }

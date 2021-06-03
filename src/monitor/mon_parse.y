@@ -30,10 +30,12 @@
 
 #include "vice.h"
 
-#ifndef MINIXVMD
+#if !defined(__minix_vmd) && !defined(MACOS_COMPILE)
 #ifdef __GNUC__
 #undef alloca
+#ifndef ANDROID_COMPILE
 #define        alloca(n)       __builtin_alloca (n)
+#endif
 #else
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>
@@ -72,7 +74,9 @@ extern char *alloca();
 #include "mon_disassemble.h"
 #include "mon_drive.h"
 #include "mon_file.h"
+#include "mon_memmap.h"
 #include "mon_memory.h"
+#include "mon_register.h"
 #include "mon_util.h"
 #include "montypes.h"
 #include "resources.h"
@@ -116,6 +120,7 @@ extern int cur_len, last_len;
 #define ERR_UNDEFINED_LABEL 13
 #define ERR_EXPECT_DEVICE_NUM 14
 #define ERR_EXPECT_ADDRESS 15
+#define ERR_INVALID_REGISTER 16
 
 #define BAD_ADDR (new_addr(e_invalid_space, 0))
 #define CHECK_ADDR(x) ((x) == addr_mask(x))
@@ -147,8 +152,8 @@ extern int cur_len, last_len;
 %token CMD_MEM_DISPLAY CMD_BREAK CMD_TRACE CMD_IO CMD_BRMON CMD_COMPARE
 %token CMD_DUMP CMD_UNDUMP CMD_EXIT CMD_DELETE CMD_CONDITION CMD_COMMAND
 %token CMD_ASSEMBLE CMD_DISASSEMBLE CMD_NEXT CMD_STEP CMD_PRINT CMD_DEVICE
-%token CMD_HELP CMD_WATCH CMD_DISK CMD_SYSTEM CMD_QUIT CMD_CHDIR CMD_BANK
-%token CMD_LOAD_LABELS CMD_SAVE_LABELS CMD_ADD_LABEL CMD_DEL_LABEL CMD_SHOW_LABELS
+%token CMD_HELP CMD_WATCH CMD_DISK CMD_QUIT CMD_CHDIR CMD_BANK
+%token CMD_LOAD_LABELS CMD_SAVE_LABELS CMD_ADD_LABEL CMD_DEL_LABEL CMD_SHOW_LABELS CMD_CLEAR_LABELS
 %token CMD_RECORD CMD_MON_STOP CMD_PLAYBACK CMD_CHAR_DISPLAY CMD_SPRITE_DISPLAY
 %token CMD_TEXT_DISPLAY CMD_SCREENCODE_DISPLAY CMD_ENTER_DATA CMD_ENTER_BIN_DATA CMD_KEYBUF
 %token CMD_BLOAD CMD_BSAVE CMD_SCREEN CMD_UNTIL CMD_CPU CMD_YYDEBUG
@@ -181,7 +186,7 @@ extern int cur_len, last_len;
 %token<i> MASK
 %type<str> hunt_list hunt_element
 %type<mode> asm_operand_mode
-%type<i> index_reg index_usreg
+%type<i> index_reg index_ureg
 
 %left '+' '-'
 %left '*' '/'
@@ -299,6 +304,10 @@ symbol_table_rules: CMD_LOAD_LABELS memspace opt_sep filename end_cmd
                     { mon_print_symbol_table($2); }
                   | CMD_SHOW_LABELS end_cmd
                     { mon_print_symbol_table(e_default_space); }
+                  | CMD_CLEAR_LABELS memspace end_cmd
+                    { mon_clear_symbol_table($2); }
+                  | CMD_CLEAR_LABELS end_cmd
+                    { mon_clear_symbol_table(e_default_space); }
                   | CMD_LABEL_ASGN EQUALS address end_cmd
                     {
                         mon_add_name_to_symbol_table($3, mon_prepend_dot_to_name($1));
@@ -409,8 +418,12 @@ checkpoint_rules: CMD_BREAK opt_mem_op address_opt_range opt_if_cond_expr end_cm
 
 checkpoint_control_rules: CMD_CHECKPT_ON checkpt_num end_cmd
                           { mon_breakpoint_switch_checkpoint(e_ON, $2); }
+                        | CMD_CHECKPT_ON end_cmd
+                          { mon_breakpoint_switch_checkpoint(e_ON, -1); }
                         | CMD_CHECKPT_OFF checkpt_num end_cmd
                           { mon_breakpoint_switch_checkpoint(e_OFF, $2); }
+                        | CMD_CHECKPT_OFF end_cmd
+                          { mon_breakpoint_switch_checkpoint(e_OFF, -1); }
                         | CMD_IGNORE checkpt_num end_cmd
                           { mon_breakpoint_set_ignore_count($2, -1); }
                         | CMD_IGNORE checkpt_num opt_sep expression end_cmd
@@ -472,8 +485,6 @@ monitor_misc_rules: CMD_DISK rest_of_line end_cmd
                     { mon_command_print_help(NULL); }
                   | CMD_HELP rest_of_line end_cmd
                     { mon_command_print_help($2); }
-                  | CMD_SYSTEM rest_of_line end_cmd
-                    { printf("SYSTEM COMMAND: %s\n",$2); }
                   | CONVERT_OP expression end_cmd
                     { mon_print_convert($2); }
                   | CMD_CHDIR rest_of_line end_cmd
@@ -595,8 +606,18 @@ opt_mem_op: mem_op { $$ = $1; }
           | { $$ = 0; }
           ;
 
-register: MON_REGISTER          { $$ = new_reg(default_memspace, $1); }
-        | memspace MON_REGISTER { $$ = new_reg($1, $2); }
+register: MON_REGISTER          {
+                                    if (!mon_register_valid(default_memspace, $1)) {
+                                        return ERR_INVALID_REGISTER;
+                                    }
+                                    $$ = new_reg(default_memspace, $1);
+                                }
+        | memspace MON_REGISTER {
+                                    if (!mon_register_valid($1, $2)) {
+                                        return ERR_INVALID_REGISTER;
+                                    }
+                                    $$ = new_reg($1, $2);
+                                }
         ;
 
 reg_list: reg_list COMMA reg_asgn
@@ -767,7 +788,10 @@ asm_operand_mode: ARG_IMMEDIATE number { if ($2 > 0xff) {
                           $$.addr_mode = ASM_ADDR_MODE_IMMEDIATE;
                           $$.param = $2;
                         } }
-  | number { if ($1 < 0x100) {
+  | number { if ($1 >= 0x10000) {
+               $$.addr_mode = ASM_ADDR_MODE_ABSOLUTE_LONG;
+               $$.param = $1;
+             } else if ($1 < 0x100) {
                $$.addr_mode = ASM_ADDR_MODE_ZERO_PAGE;
                $$.param = $1;
              } else {
@@ -775,7 +799,10 @@ asm_operand_mode: ARG_IMMEDIATE number { if ($2 > 0xff) {
                $$.param = $1;
              }
            }
-  | number COMMA REG_X  { if ($1 < 0x100) {
+  | number COMMA REG_X  { if ($1 >= 0x10000) {
+                            $$.addr_mode = ASM_ADDR_MODE_ABSOLUTE_LONG_X;
+                            $$.param = $1;
+                          } else if ($1 < 0x100) { 
                             $$.addr_mode = ASM_ADDR_MODE_ZERO_PAGE_X;
                             $$.param = $1;
                           } else {
@@ -789,6 +816,25 @@ asm_operand_mode: ARG_IMMEDIATE number { if ($2 > 0xff) {
                           } else {
                             $$.addr_mode = ASM_ADDR_MODE_ABSOLUTE_Y;
                             $$.param = $1;
+                          }
+                        }
+  | number COMMA REG_S  { if ($1 < 0x100) {
+                            $$.addr_mode = ASM_ADDR_MODE_STACK_RELATIVE;
+                            $$.param = $1;
+                          } else { /* 6809 */
+                            $$.addr_mode = ASM_ADDR_MODE_INDEXED;
+                            if ($1 >= -16 && $1 < 16) {
+                                $$.addr_submode = $3 | ($1 & 0x1F);
+                            } else if ($1 >= -128 && $1 < 128) {
+                                $$.addr_submode = 0x80 | $3 | ASM_ADDR_MODE_INDEXED_OFF8;
+                                $$.param = $1;
+                            } else if ($1 >= -32768 && $1 < 32768) {
+                                $$.addr_submode = 0x80 | $3 | ASM_ADDR_MODE_INDEXED_OFF16;
+                                $$.param = $1;
+                            } else {
+                                $$.addr_mode = ASM_ADDR_MODE_ILLEGAL;
+                                mon_out("offset too large even for 16 bits (signed)\n");
+                            }
                           }
                         }
   | number COMMA number { if ($1 < 0x100) {
@@ -813,6 +859,8 @@ asm_operand_mode: ARG_IMMEDIATE number { if ($2 > 0xff) {
                                            $$.param = $2;
                                          }
                                        }
+  | L_PAREN number COMMA REG_S R_PAREN COMMA REG_Y
+    { $$.addr_mode = ASM_ADDR_MODE_STACK_RELATIVE_Y; $$.param = $2; }
   | L_PAREN number R_PAREN COMMA REG_Y
     { $$.addr_mode = ASM_ADDR_MODE_INDIRECT_Y; $$.param = $2; }
   | L_PAREN REG_BC R_PAREN { $$.addr_mode = ASM_ADDR_MODE_REG_IND_BC; }
@@ -850,15 +898,15 @@ asm_operand_mode: ARG_IMMEDIATE number { if ($2 > 0xff) {
   | REG_SP { $$.addr_mode = ASM_ADDR_MODE_REG_SP; }
     /* 6809 modes */
   | LESS_THAN number { $$.addr_mode = ASM_ADDR_MODE_DIRECT; $$.param = $2; }
-  | number COMMA index_usreg {    /* Clash with addr,x addr,y modes! */
+  | number COMMA index_ureg {    /* Clash with addr,x addr,y addr,s modes! */
         $$.addr_mode = ASM_ADDR_MODE_INDEXED;
         if ($1 >= -16 && $1 < 16) {
-            $$.addr_submode = $3 | ($1 & 0x1F);
+            $$.addr_submode = (3 << 5) | ($1 & 0x1F);
         } else if ($1 >= -128 && $1 < 128) {
-            $$.addr_submode = 0x80 | $3 | ASM_ADDR_MODE_INDEXED_OFF8;
+            $$.addr_submode = 0x80 | (3 << 5) | ASM_ADDR_MODE_INDEXED_OFF8;
             $$.param = $1;
         } else if ($1 >= -32768 && $1 < 32768) {
-            $$.addr_submode = 0x80 | $3 | ASM_ADDR_MODE_INDEXED_OFF16;
+            $$.addr_submode = 0x80 | (3 << 5) | ASM_ADDR_MODE_INDEXED_OFF16;
             $$.param = $1;
         } else {
             $$.addr_mode = ASM_ADDR_MODE_ILLEGAL;
@@ -973,18 +1021,22 @@ asm_operand_mode: ARG_IMMEDIATE number { if ($2 > 0xff) {
         $$.addr_submode = 0x80 | ASM_ADDR_MODE_EXTENDED_INDIRECT;
         $$.param = $2;
         }
+  | L_BRACKET number R_BRACKET COMMA REG_Y {
+        $$.addr_mode = ASM_ADDR_MODE_INDIRECT_LONG_Y;
+        $$.param = $2;
+        }
   /* TODO: register lists for PSHx PULx, and register pairs for TFR and EXG */
   ;
 
 index_reg:
     REG_X { $$ = (0 << 5); printf("reg_x\n"); }
   | REG_Y { $$ = (1 << 5); printf("reg_y\n"); }
-  | index_usreg { $$ = $1; }
+  | index_ureg { $$ = $1; }
+  | REG_S { $$ = (3 << 5); printf("reg_s\n"); }
   ;
 
-index_usreg:
+index_ureg:
     REG_U { $$ = (2 << 5); printf("reg_u\n"); }
-  | REG_S { $$ = (3 << 5); printf("reg_s\n"); }
   ;
 
 
@@ -1003,6 +1055,7 @@ void parse_and_execute_line(char *input)
    temp_buf[i++] = '\0';
 
    make_buffer(temp_buf);
+   mon_clear_buffer();
    if ( (rc =yyparse()) != 0) {
        mon_out("ERROR -- ");
        switch(rc) {
@@ -1047,6 +1100,9 @@ void parse_and_execute_line(char *input)
            break;
          case ERR_EXPECT_ADDRESS:
            mon_out("Expecting an address.\n");
+           break;
+         case ERR_INVALID_REGISTER:
+           mon_out("Invalid register.\n");
            break;
          case ERR_ILLEGAL_INPUT:
          default:

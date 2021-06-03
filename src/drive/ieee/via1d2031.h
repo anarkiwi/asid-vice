@@ -2,7 +2,7 @@
  * via1d2031.h - Drive 2031 VIA definitions.
  *
  * Written by
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -36,12 +36,10 @@ struct via_context_s;
 extern void via1d2031_setup_context(struct drive_context_s *ctxptr);
 
 extern void via1d2031_init(struct drive_context_s *ctxptr);
-extern void via1d2031_store(struct drive_context_s *ctxptr, WORD addr,
-                                     BYTE byte);
+extern void via1d2031_store(struct drive_context_s *ctxptr, WORD addr, BYTE byte);
 extern BYTE via1d2031_read(struct drive_context_s *ctxptr, WORD addr);
 extern BYTE via1d2031_peek(struct drive_context_s *ctxptr, WORD addr);
 
 extern void via1d2031_set_atn(struct via_context_s *via_context, int state);
 
 #endif
-

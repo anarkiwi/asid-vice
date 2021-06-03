@@ -45,7 +45,13 @@ struct video_canvas_s {
     unsigned int initialized;
     unsigned int created;
     GtkWidget *emuwindow, *pane;
+#if !defined(HAVE_CAIRO)
+    /* deprecated since 2.22, removed in 3.0 */
     GdkImage *gdk_image;
+#else
+    GdkPixbuf *gdk_pixbuf;
+    cairo_t *cairo_ctx;
+#endif
     struct video_render_config_s *videoconfig;
     struct draw_buffer_s *draw_buffer;
     struct viewport_s *viewport;
@@ -66,5 +72,18 @@ struct video_canvas_s {
     int app_shell; /* app shell that belongs to this canvas */
 };
 typedef struct video_canvas_s video_canvas_t;
+
+/* structure for multibuffering */
+#define MAX_BUFFERS 12
+struct s_mbufs
+{
+    long stamp; /* timestamp in usecs */
+    int w;
+    int h;
+    unsigned char *buffer;
+    struct s_mbufs *next;
+    /*GLu */ unsigned int bindId; /* XXX Fixme: try to avoid GL specifics */
+    float alpha;
+};
 
 #endif

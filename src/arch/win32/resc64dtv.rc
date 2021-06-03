@@ -1,12 +1,19 @@
-// C64 specific resources.
+// C64DTV specific resources.
 //
 
 #include "vice.h"
 
+#ifdef IDE_COMPILE
+#include <winuser.h>
+#endif
+
 #include "debug.h"
 #include "res.h"
 #include "rescommon.h"
+
+#ifdef IDE_COMPILE
 #include "videoarch.h"
+#endif
 
 #ifndef WINDRES_CP_IGNORE
 #pragma code_page(28591)
@@ -43,12 +50,6 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "", IDM_DETACH_ALL
         END
-        POPUP "DTV ROM image File"
-        BEGIN
-            MENUITEM "", IDM_ATTACH_DTV_FLASH
-            MENUITEM "", IDM_DETACH_DTV_FLASH
-            MENUITEM "", IDM_CREATE_DTV_FLASH
-        END
         POPUP "Flip list"
         BEGIN
             MENUITEM "", IDM_FLIP_ADD
@@ -59,9 +60,17 @@ BEGIN
             MENUITEM "", IDM_FLIP_LOAD
             MENUITEM "", IDM_FLIP_SAVE
         END
+        POPUP "DTV ROM image File"
+        BEGIN
+            MENUITEM "", IDM_ATTACH_DTV_FLASH
+            MENUITEM "", IDM_DETACH_DTV_FLASH
+            MENUITEM "", IDM_CREATE_DTV_FLASH
+        END
         MENUITEM SEPARATOR
-        MENUITEM "", IDM_PAUSE, CHECKED
         MENUITEM "", IDM_MONITOR
+        MENUITEM SEPARATOR
+        MENUITEM "", IDM_NETWORK_SETTINGS
+        MENUITEM SEPARATOR
         POPUP "Reset"
         BEGIN
             MENUITEM "", IDM_RESET_HARD
@@ -71,6 +80,15 @@ BEGIN
             MENUITEM "", IDM_RESET_DRIVE9
             MENUITEM "", IDM_RESET_DRIVE10
             MENUITEM "", IDM_RESET_DRIVE11
+        END
+        POPUP "Default CPU JAM action"
+        BEGIN
+            MENUITEM "", IDM_JAM_ACTION_ASK
+            MENUITEM "", IDM_JAM_ACTION_CONTINUE
+            MENUITEM "", IDM_JAM_ACTION_START_MONITOR
+            MENUITEM "", IDM_JAM_ACTION_RESET
+            MENUITEM "", IDM_JAM_ACTION_HARD_RESET
+            MENUITEM "", IDM_JAM_ACTION_QUIT_EMULATOR
         END
 #ifdef DEBUG
         POPUP "Debug"
@@ -120,7 +138,7 @@ BEGIN
         MENUITEM "", IDM_SOUND_RECORD_START
         MENUITEM "", IDM_SOUND_RECORD_STOP
     END
-    POPUP "Options"
+    POPUP "Settings"
     BEGIN
         POPUP "Refresh rate"
         BEGIN
@@ -147,56 +165,60 @@ BEGIN
             MENUITEM SEPARATOR
             MENUITEM "", IDM_MAXIMUM_SPEED_CUSTOM
         END
+        MENUITEM "", IDM_PAUSE, CHECKED
+        MENUITEM "", IDM_SINGLE_FRAME_ADVANCE
         MENUITEM "", IDM_TOGGLE_WARP_MODE,             CHECKED
         MENUITEM SEPARATOR
-        MENUITEM "", IDM_TOGGLE_FULLSCREEN
-        MENUITEM "", IDM_TOGGLE_ALWAYSONTOP
-#ifdef HAVE_D3D9_H
-        MENUITEM "", IDM_TOGGLE_DX9DISABLE
-#endif
-        MENUITEM SEPARATOR
-        MENUITEM "", IDM_TOGGLE_VIDEOCACHE,            CHECKED
-        MENUITEM "", IDM_TOGGLE_DOUBLESIZE,            CHECKED
-        MENUITEM "", IDM_TOGGLE_DOUBLESCAN,            CHECKED
-        MENUITEM SEPARATOR
-        MENUITEM "", IDM_SWAP_JOYSTICK
-        MENUITEM "", IDM_SWAP_EXTRA_JOYSTICK
-        MENUITEM "", IDM_ALLOW_JOY_OPPOSITE_TOGGLE
-        MENUITEM "", IDM_JOYKEYS_TOGGLE
-        MENUITEM SEPARATOR
-        MENUITEM "", IDM_TOGGLE_SOUND,                 CHECKED
-        MENUITEM SEPARATOR
-        MENUITEM "", IDM_TOGGLE_DRIVE_TRUE_EMULATION,  CHECKED
-        MENUITEM "", IDM_TOGGLE_DRIVE_SOUND_EMULATION, CHECKED
-        MENUITEM "", IDM_TOGGLE_AUTOSTART_HANDLE_TDE
-        MENUITEM "", IDM_TOGGLE_FLASH_TRUE_FILESYSTEM, CHECKED
-        MENUITEM "", IDM_TOGGLE_VIRTUAL_DEVICES
-        MENUITEM SEPARATOR
-        POPUP "Video standard"
+        MENUITEM "", IDM_KEYBOARD_SETTINGS
+        POPUP "Sound settings"
         BEGIN
-            MENUITEM "", IDM_SYNC_FACTOR_PAL
-            MENUITEM "", IDM_SYNC_FACTOR_NTSC
+            MENUITEM "", IDM_TOGGLE_SOUND,                CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "", IDM_SOUND_SETTINGS
+        END
+        MENUITEM "", IDM_SAMPLER_SETTINGS
+        MENUITEM SEPARATOR
+        MENUITEM "", IDM_AUTOSTART_SETTINGS
+        POPUP "Drive settings"
+        BEGIN
+            MENUITEM "", IDM_TOGGLE_DRIVE_TRUE_EMULATION,  CHECKED
+            MENUITEM "", IDM_TOGGLE_DRIVE_SOUND_EMULATION, CHECKED
+            MENUITEM SEPARATOR
+            MENUITEM "", IDM_DRIVE_SETTINGS
+        END
+        MENUITEM "", IDM_DEVICEMANAGER
+        MENUITEM "", IDM_TOGGLE_VIRTUAL_DEVICES
+        MENUITEM "", IDM_TOGGLE_FLASH_TRUE_FILESYSTEM, CHECKED
+        MENUITEM SEPARATOR
+        MENUITEM "", IDM_JOYPORT_SETTINGS
+        POPUP "Joystick settings"
+        BEGIN
+            MENUITEM "", IDM_JOY_SETTINGS
+            MENUITEM "", IDM_EXTRA_JOY_SETTINGS
+            MENUITEM SEPARATOR
+            MENUITEM "", IDM_SWAP_JOYSTICK
+            MENUITEM "", IDM_ALLOW_JOY_OPPOSITE_TOGGLE
+            MENUITEM "", IDM_JOYKEYS_TOGGLE
+        END
+        POPUP "Mouse settings"
+        BEGIN
+            MENUITEM "", IDM_PS2MOUSE
+            MENUITEM "", IDM_MOUSE
         END
         MENUITEM SEPARATOR
-        MENUITEM "", IDM_PS2MOUSE
-        MENUITEM "", IDM_MOUSE
-    END
-    POPUP "Settings"
-    BEGIN
-        MENUITEM "", IDM_C64DTVMODEL_SETTINGS
-        MENUITEM "", IDM_AUTOSTART_SETTINGS
         MENUITEM "", IDM_VIDEO_SETTINGS
-        MENUITEM "", IDM_DEVICEMANAGER
-        MENUITEM "", IDM_DRIVE_SETTINGS
-        MENUITEM "", IDM_VICII_SETTINGS
-        MENUITEM "", IDM_JOY_SETTINGS
-        MENUITEM "", IDM_EXTRA_JOY_SETTINGS
-        MENUITEM "", IDM_KEYBOARD_SETTINGS
-        MENUITEM "", IDM_SOUND_SETTINGS
-        MENUITEM "", IDM_SID_SETTINGS
-        MENUITEM "", IDM_ROM_SETTINGS
-        MENUITEM "", IDM_RAM_SETTINGS
+#ifdef HAVE_D3D9_H
+        MENUITEM "", IDM_TOGGLE_FULLSCREEN
+#endif
+        MENUITEM "", IDM_TOGGLE_ALWAYSONTOP
+        MENUITEM "", IDM_TOGGLE_CPU_AFFINITY
+        MENUITEM SEPARATOR
+        MENUITEM "", IDM_C64DTVMODEL_SETTINGS
         MENUITEM "", IDM_C64DTV_SETTINGS
+        MENUITEM "", IDM_RAM_SETTINGS
+        MENUITEM "", IDM_ROM_SETTINGS
+        MENUITEM "", IDM_VICII_SETTINGS
+        MENUITEM "", IDM_SID_SETTINGS
         MENUITEM SEPARATOR
         MENUITEM "", IDM_SETTINGS_SAVE_FILE
         MENUITEM "", IDM_SETTINGS_LOAD_FILE
@@ -223,13 +245,14 @@ BEGIN
         MENUITEM "", IDM_LANG_SV
         MENUITEM "", IDM_LANG_TR
     END
-    POPUP "Help"
+    POPUP "Help", HELP
     BEGIN
         MENUITEM "", IDM_HELP
         MENUITEM SEPARATOR
         MENUITEM "", IDM_ABOUT
         MENUITEM SEPARATOR
         MENUITEM "", IDM_CMDLINE
+        MENUITEM "", IDM_FEATURES
         MENUITEM SEPARATOR
         MENUITEM "", IDM_CONTRIBUTORS
         MENUITEM "", IDM_LICENSE
@@ -250,6 +273,8 @@ BEGIN
                   4, 12, 60, 8
     COMBOBOX      IDC_C64DTVMODEL_LIST,
                   45, 11, 90, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    AUTOCHECKBOX  "", IDC_TOGGLE_VICII_NEWLUM,
+                  7, 28, 75, 10, BS_AUTOCHECKBOX | WS_TABSTOP
 
     DEFPUSHBUTTON   "", IDOK,
                     20, 60, 50, 14, WS_TABSTOP
@@ -291,151 +316,65 @@ END
 
 // dialog template for all languages
 
-IDD_C64DRIVEROM_SETTINGS_DIALOG DIALOG DISCARDABLE 0, 0, 240, 250
+IDD_C64DRIVEROM_SETTINGS_DIALOG DIALOG DISCARDABLE 0, 0, 240, 270
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 FONT 8, "MS Sans Serif"
 BEGIN
-    LTEXT      "", IDC_1541,
+    LTEXT      "", IDC_1540,
                9, 8, 40, 8
-    EDITTEXT   IDC_DRIVEROM_1541_FILE,
+    EDITTEXT   IDC_DRIVEROM_1540_FILE,
                55, 7, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
-    PUSHBUTTON "", IDC_DRIVEROM_1541_BROWSE,
+    PUSHBUTTON "", IDC_DRIVEROM_1540_BROWSE,
                185, 7, 50, 14, 0
 
-    LTEXT      "", IDC_1541_II,
+    LTEXT      "", IDC_1541,
                9, 28, 40, 8
-    EDITTEXT   IDC_DRIVEROM_1541II_FILE,
+    EDITTEXT   IDC_DRIVEROM_1541_FILE,
                55, 27, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
-    PUSHBUTTON "", IDC_DRIVEROM_1541II_BROWSE,
+    PUSHBUTTON "", IDC_DRIVEROM_1541_BROWSE,
                185, 27, 50, 14, 0
 
-    LTEXT      "", IDC_1570,
+    LTEXT      "", IDC_1541_II,
                9, 48, 40, 8
-    EDITTEXT   IDC_DRIVEROM_1570_FILE,
+    EDITTEXT   IDC_DRIVEROM_1541II_FILE,
                55, 47, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
-    PUSHBUTTON "", IDC_DRIVEROM_1570_BROWSE,
+    PUSHBUTTON "", IDC_DRIVEROM_1541II_BROWSE,
                185, 47, 50, 14, 0
 
-    LTEXT      "", IDC_1571,
+    LTEXT      "", IDC_1570,
                9, 68, 40, 8
-    EDITTEXT   IDC_DRIVEROM_1571_FILE,
+    EDITTEXT   IDC_DRIVEROM_1570_FILE,
                55, 67, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
-    PUSHBUTTON "", IDC_DRIVEROM_1571_BROWSE,
+    PUSHBUTTON "", IDC_DRIVEROM_1570_BROWSE,
                185, 67, 50, 14, 0
 
-    LTEXT      "", IDC_1581,
+    LTEXT      "", IDC_1571,
                9, 88, 40, 8
-    EDITTEXT   IDC_DRIVEROM_1581_FILE,
+    EDITTEXT   IDC_DRIVEROM_1571_FILE,
                55, 87, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
-    PUSHBUTTON "", IDC_DRIVEROM_1581_BROWSE,
+    PUSHBUTTON "", IDC_DRIVEROM_1571_BROWSE,
                185, 87, 50, 14, 0
 
-    LTEXT      "", IDC_2000,
+    LTEXT      "", IDC_1581,
                9, 108, 40, 8
-    EDITTEXT   IDC_DRIVEROM_2000_FILE,
+    EDITTEXT   IDC_DRIVEROM_1581_FILE,
                55, 107, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
-    PUSHBUTTON "", IDC_DRIVEROM_2000_BROWSE,
+    PUSHBUTTON "", IDC_DRIVEROM_1581_BROWSE,
                185, 107, 50, 14, 0
 
-    LTEXT      "", IDC_4000,
+    LTEXT      "", IDC_2000,
                9, 128, 40, 8
-    EDITTEXT   IDC_DRIVEROM_4000_FILE,
+    EDITTEXT   IDC_DRIVEROM_2000_FILE,
                55, 127, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
-    PUSHBUTTON "", IDC_DRIVEROM_4000_BROWSE,
+    PUSHBUTTON "", IDC_DRIVEROM_2000_BROWSE,
                185, 127, 50, 14, 0
-END
 
-// -----------------------------------------------------------------------------
-
-// dialog template for all languages
-
-IDD_C64ROM_RESOURCE_DIALOG DIALOG DISCARDABLE 0, 0, 160, 85
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-FONT 8, "MS Sans Serif"
-BEGIN
-    GROUPBOX      "", IDC_COMPUTER_RESOURCES,
-                  4, 3, 151, 55
-    AUTOCHECKBOX  "", IDC_C64ROM_KERNAL_RESOURCE,
-                  11, 13, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_C64ROM_BASIC_RESOURCE,
-                  11, 28, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_C64ROM_CHARGEN_RESOURCE,
-                  11, 43, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-
-    DEFPUSHBUTTON "", IDOK,
-                  20, 65, 50, 14, WS_TABSTOP
-    PUSHBUTTON    "", IDCANCEL,
-                  80, 65, 50, 14, WS_TABSTOP
-END
-
-// -----------------------------------------------------------------------------
-
-// dialog template for all languages
-
-IDD_C64ROMDRIVE_RESOURCE_DIALOG DIALOG DISCARDABLE 0, 0, 160, 220
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-FONT 8, "MS Sans Serif"
-BEGIN
-    GROUPBOX      "", IDC_DRIVE_RESOURCES,
-                  4, 3, 151, 190
-    AUTOCHECKBOX  "", IDC_DRIVEROM_1541_RESOURCE,
-                  11, 13, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_DRIVEROM_1541II_RESOURCE,
-                  11, 28, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_DRIVEROM_1570_RESOURCE,
-                  11, 43, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_DRIVEROM_1571_RESOURCE,
-                  11, 58, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_DRIVEROM_1581_RESOURCE,
-                  11, 73, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_DRIVEROM_2000_RESOURCE,
-                  11, 88, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-    AUTOCHECKBOX  "", IDC_DRIVEROM_4000_RESOURCE,
-                  11, 103, 95, 10, BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP
-
-    DEFPUSHBUTTON "", IDOK,
-                  20, 200, 50, 14, WS_TABSTOP
-    PUSHBUTTON    "", IDCANCEL,
-                  80, 200, 50, 14, WS_TABSTOP
-END
-
-// -----------------------------------------------------------------------------
-
-// dialog template for all languages
-
-IDD_C64KBD_MAPPING_SETTINGS_DIALOG DIALOG DISCARDABLE 0, 0, 240, 140
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-FONT 8, "MS Sans Serif"
-BEGIN
-    AUTORADIOBUTTON "", IDC_C64KBD_MAPPING_SELECT_SYM,
-                    10, 10, 54, 10, BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP
-    AUTORADIOBUTTON "", IDC_C64KBD_MAPPING_SELECT_SYMDE,
-                    10, 30, 54, 10, BS_AUTORADIOBUTTON
-    AUTORADIOBUTTON "", IDC_C64KBD_MAPPING_SELECT_POS,
-                    10, 50, 54, 10, BS_AUTORADIOBUTTON
-
-    EDITTEXT        IDC_C64KBD_MAPPING_SYM,
-                    65, 9, 110, 12, WS_TABSTOP
-    PUSHBUTTON      "", IDC_C64KBD_MAPPING_SYM_BROWSE,
-                    185, 9, 50, 14, 0
-    EDITTEXT        IDC_C64KBD_MAPPING_SYMDE,
-                    65, 29, 110, 12, WS_TABSTOP
-    PUSHBUTTON      "", IDC_C64KBD_MAPPING_SYMDE_BROWSE,
-                    185, 29, 50, 14, 0
-    EDITTEXT        IDC_C64KBD_MAPPING_POS,
-                    65, 49, 110, 12, WS_TABSTOP
-    PUSHBUTTON      "", IDC_C64KBD_MAPPING_POS_BROWSE,
-                    185, 49, 50, 14, 0
-
-    PUSHBUTTON      "", IDC_C64KBD_MAPPING_DUMP,
-                    10, 74, 60, 14, 0
-    PUSHBUTTON      "", IDC_KBD_SHORTCUT_DUMP,
-                    80, 74, 60, 14, 0
-
-    DEFPUSHBUTTON   "", IDOK,
-                    20, 120, 50, 14, WS_TABSTOP
-    PUSHBUTTON      "", IDCANCEL,
-                    80, 120, 50, 14, WS_TABSTOP
+    LTEXT      "", IDC_4000,
+               9, 148, 40, 8
+    EDITTEXT   IDC_DRIVEROM_4000_FILE,
+               55, 147, 125, 12, WS_TABSTOP | ES_AUTOHSCROLL
+    PUSHBUTTON "", IDC_DRIVEROM_4000_BROWSE,
+               185, 147, 50, 14, 0
 END
 
 // -----------------------------------------------------------------------------
@@ -527,6 +466,8 @@ BEGIN
   IDS_CREATE                      "Create"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "C64DTV model"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Select file for C64DTV ROM"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM image File"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV model settings..."
   IDS_MI_AUTOSTART_DISK           "Autostart disk image..."
@@ -557,6 +498,8 @@ BEGIN
   IDS_CREATE                      "Opret"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "C64DTV-model"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Vælg fil for C64DTV-ROM"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM-imagefil"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV-modelindstillinger..."
   IDS_MI_AUTOSTART_DISK           "Autostart disk-image..."
@@ -581,18 +524,20 @@ BEGIN
   IDS_C64DTV_SETTINGS_CAPTION     "C64DTV Einstellungen"
   IDS_DTV_REVISION_LABEL          "C64DTV Modell"
   IDS_ENABLE_HUMMER_ADC           "Hummer ADC Aktivieren"
-  IDS_CREATE_FLASH_CAPTION        "DTV Image Datei erzeugen"
+  IDS_CREATE_FLASH_CAPTION        "DTV Imagedatei erzeugen"
   IDS_DTV_ROM_CREATION            "DTV ROM Erzeugung"
   IDS_C64DTV_ROM_COPY_C64         "C64 ROMS auf Image kopieren"
   IDS_CREATE                      "Erzeugen"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "C64DTV Modell"
+  IDS_VICII_LUMINANCE             "Farben Fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Datei für C64DTV ROM auswählen"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM Image Name"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV Modell Einstellungen..."
   IDS_MI_AUTOSTART_DISK           "Autostart Disk Image..."
   IDS_MI_ATTACH_DTV_FLASH         "Flash ROM Image einlegen"
   IDS_MI_DETACH_DTV_FLASH         "Flash ROM Image entfernen"
-  IDS_MI_CREATE_DTV_FLASH         "DTV Image Datei erzeugen"
+  IDS_MI_CREATE_DTV_FLASH         "DTV Imagedatei erzeugen"
   IDS_MI_FLASH_TRUE_FILESYSTEM    "True flash Dateisystem"
   IDS_MI_PS2MOUSE                 "PS/2 Userport Mausemulation"
   IDS_MI_C64DTV_SETTINGS          "C64DTV Einstellungen..."
@@ -617,6 +562,8 @@ BEGIN
   IDS_CREATE                      "Crear"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "Modelo C64DTV"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Seleccionar fichero para C64DTV ROM"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "Fichero imagen DTV ROM"
   IDS_MI_C64DTVMODEL_SETTINGS     "Ajustes modelo C64DTV..."
   IDS_MI_AUTOSTART_DISK           "Autoarranque de imagen de disco..."
@@ -634,28 +581,30 @@ END
 STRINGTABLE
 LANGUAGE LANG_FRENCH, SUBLANG_NEUTRAL
 BEGIN
-  IDS_ATTACH_FLASH_CAPTION        "Attach DTV Flash Image"
-  IDS_DTV_ROM                     "DTV ROM"
-  IDS_C64DTV_ROM_IMAGE_FILE_LABEL "DTV ROM image File"
-  IDS_C64DTV_ROM_WRITE_ENABLE     "Enable writes to C64DTV ROM image"
-  IDS_C64DTV_SETTINGS_CAPTION     "C64DTV settings"
-  IDS_DTV_REVISION_LABEL          "C64DTV model"
-  IDS_ENABLE_HUMMER_ADC           "Enable Hummer ADC"
-  IDS_CREATE_FLASH_CAPTION        "Create DTV Flash Image"
-  IDS_DTV_ROM_CREATION            "DTV ROM Creation"
-  IDS_C64DTV_ROM_COPY_C64         "Copy C64 ROMS into image"
-  IDS_CREATE                      "Create"
+  IDS_ATTACH_FLASH_CAPTION        "Attacher une image DTV Flash"
+  IDS_DTV_ROM                     "ROM DTV"
+  IDS_C64DTV_ROM_IMAGE_FILE_LABEL "Nom d'image DTV ROM"
+  IDS_C64DTV_ROM_WRITE_ENABLE     "Permetre l'écriture à l'image ROM C64DTV"
+  IDS_C64DTV_SETTINGS_CAPTION     "Paramètres C64DTV"
+  IDS_DTV_REVISION_LABEL          "Modèle C64DTV"
+  IDS_ENABLE_HUMMER_ADC           "Activer Hummer ADC"
+  IDS_CREATE_FLASH_CAPTION        "Créer image Flash DTV"
+  IDS_DTV_ROM_CREATION            "Création ROM DTV"
+  IDS_C64DTV_ROM_COPY_C64         "Copier ROMS C64 dans l'image"
+  IDS_CREATE                      "Créer"
   IDS_JOYSTICK                    "Joystick"
-  IDS_C64DTVMODEL                 "C64DTV model"
-  IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM image File"
-  IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV model settings..."
-  IDS_MI_AUTOSTART_DISK           "Démarrer automatiquement une image de disque..."
-  IDS_MI_ATTACH_DTV_FLASH         "Attach flash rom image"
-  IDS_MI_DETACH_DTV_FLASH         "Detach flash rom image"
-  IDS_MI_CREATE_DTV_FLASH         "Create DTV Flash Image"
-  IDS_MI_FLASH_TRUE_FILESYSTEM    "True flash filesystem"
-  IDS_MI_PS2MOUSE                 "PS/2 mouse on Userport"
-  IDS_MI_C64DTV_SETTINGS          "C64DTV settings..."
+  IDS_C64DTVMODEL                 "Modèle C64DTV"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Sélectionner fichier RO C64DTV"
+  IDS_MP_DTV_FLASH_ROM_IMAGE      "Nom d'image DTV ROM"
+  IDS_MI_C64DTVMODEL_SETTINGS     "Paramètres du modèle C64DTV..."
+  IDS_MI_AUTOSTART_DISK           "Autodémarrage image disque..."
+  IDS_MI_ATTACH_DTV_FLASH         "Attacher une image Flash Rom"
+  IDS_MI_DETACH_DTV_FLASH         "Détacher une image de disque"
+  IDS_MI_CREATE_DTV_FLASH         "Créer image Flash DTV"
+  IDS_MI_FLASH_TRUE_FILESYSTEM    "Système de fichier réel flash"
+  IDS_MI_PS2MOUSE                 "Souris PS/2 sur port utilisateur"
+  IDS_MI_C64DTV_SETTINGS          "Paramètres C64DTV..."
 END
 
 
@@ -680,6 +629,8 @@ BEGIN
   IDS_CREATE                      "Létrehozás"
   IDS_JOYSTICK                    "Botkormány"
   IDS_C64DTVMODEL                 "C64DTV model"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Válasszon fájlt a C64DTV ROM-hoz"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM image File"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV model settings..."
   IDS_MI_AUTOSTART_DISK           "Lemezképmás automatikus indítása..."
@@ -713,6 +664,8 @@ BEGIN
   IDS_CREATE                      "Crea"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "Modello C64DTV"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Seleziona il file per la ROM C64DTV"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "File immagine ROM DTV"
   IDS_MI_C64DTVMODEL_SETTINGS     "Impostazioni modello C64DTV..."
   IDS_MI_AUTOSTART_DISK           "Avvia automaticamente immagine disco..."
@@ -746,6 +699,8 @@ BEGIN
   IDS_CREATE                      "»ý¼º"
   IDS_JOYSTICK                    "Á¶ÀÌ½ºÆ½"
   IDS_C64DTVMODEL                 "C64DTV model"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Select file for C64DTV ROM"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM image File"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV model settings..."
   IDS_MI_AUTOSTART_DISK           "ÀÚµ¿ ½ÃÀÛ µð½ºÅ© ÀÌ¹ÌÁö..."
@@ -769,7 +724,7 @@ BEGIN
   IDS_ATTACH_FLASH_CAPTION        "Koppel DTV Flash Bestand"
   IDS_DTV_ROM                     "DTV ROM"
   IDS_C64DTV_ROM_IMAGE_FILE_LABEL "DTV ROM bestand"
-  IDS_C64DTV_ROM_WRITE_ENABLE     "Aktiveer schrijven naar DTV ROM bestand"
+  IDS_C64DTV_ROM_WRITE_ENABLE     "Activeer schrijven naar DTV ROM bestand"
   IDS_C64DTV_SETTINGS_CAPTION     "C64DTV Instellingen"
   IDS_DTV_REVISION_LABEL          "C64DTV model"
   IDS_ENABLE_HUMMER_ADC           "Activeer Hummer ADC"
@@ -779,6 +734,8 @@ BEGIN
   IDS_CREATE                      "Maak"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "C64DTV model"
+  IDS_VICII_LUMINANCE             "Kleuren correctie"
+  IDS_C64DTV_ROM_SELECT_FILE      "Selecteer bestand voor C64DTV ROM"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM bestand"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV model instellingen..."
   IDS_MI_AUTOSTART_DISK           "Autostart schijfbestand..."
@@ -812,6 +769,8 @@ BEGIN
   IDS_CREATE                      "Utwórz"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "Model C64DTV"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Wybierz plik ROM C64DTV"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "Plik obrazu ROM DTV"
   IDS_MI_C64DTVMODEL_SETTINGS     "Ustawienia modelu C64DTV..."
   IDS_MI_AUTOSTART_DISK           "Automatycznie startuj z obrazu dyskietki..."
@@ -848,6 +807,8 @@ BEGIN
   IDS_CREATE                      "ÁÞ×ÔÐâì"
   IDS_JOYSTICK                    "´ÖÞÙáâØÚ"
   IDS_C64DTVMODEL                 "C64DTV model"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Select file for C64DTV ROM"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM image File"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV model settings..."
   IDS_MI_AUTOSTART_DISK           "Autostart disk image..."
@@ -881,6 +842,8 @@ BEGIN
   IDS_CREATE                      "Skapa"
   IDS_JOYSTICK                    "Styrspak"
   IDS_C64DTVMODEL                 "C64DTV-modell"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "Välj fil för C64DTV-ROM"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM-avbildningsfil"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV-modellinställningar..."
   IDS_MI_AUTOSTART_DISK           "Autostarta diskettavbildning..."
@@ -914,6 +877,8 @@ BEGIN
   IDS_CREATE                      "Yarat"
   IDS_JOYSTICK                    "Joystick"
   IDS_C64DTVMODEL                 "C64DTV modeli"
+  IDS_VICII_LUMINANCE             "Color fix"
+  IDS_C64DTV_ROM_SELECT_FILE      "C64DTV ROM'u için dosya seçin"
   IDS_MP_DTV_FLASH_ROM_IMAGE      "DTV ROM imaj Dosyasý"
   IDS_MI_C64DTVMODEL_SETTINGS     "C64DTV model ayarlarý..."
   IDS_MI_AUTOSTART_DISK           "Disk imajýný otomatik baþlat..."

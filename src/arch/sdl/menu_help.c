@@ -41,6 +41,11 @@
 #include "uimenu.h"
 #include "util.h"
 #include "version.h"
+#include "vicefeatures.h"
+
+#ifdef USE_SVN_REVISION
+#include "svnversion.h"
+#endif
 
 #ifdef WINMIPS
 static char *concat_all(char **text)
@@ -119,7 +124,7 @@ static char *convert_cmdline_to_n_cols(const char *text, int cols)
     return new_text;
 }
 
-static char *contrib_convert(char *text, int cols)
+static char *contrib_convert(const char *text, int cols)
 {
     char *new_text;
     char *pos;
@@ -137,7 +142,7 @@ static char *contrib_convert(char *text, int cols)
         } else {
             if ((text[i] == ' ' || text[i] == '\n') && text[i + 1] == '<') {
                 while (text[i] != '>') {
-                   i++;
+                    i++;
                 }
                 i++;
             } else {
@@ -205,6 +210,20 @@ static unsigned int scroll_up(const char *text, int first_line, int amount)
     return line;
 }
 
+#define CHARCODE_UMLAUT_A_LOWER         ((char)0xe4)
+#define CHARCODE_UMLAUT_A_UPPER         ((char)0xc4)
+
+#define CHARCODE_UMLAUT_O_LOWER         ((char)0xf6)
+#define CHARCODE_UMLAUT_O_UPPER         ((char)0xd6)
+
+#define CHARCODE_UMLAUT_U_LOWER         ((char)0xfc)
+#define CHARCODE_UMLAUT_U_UPPER         ((char)0xdc)
+
+#define CHARCODE_GRAVE_E_LOWER          ((char)0xe8)
+#define CHARCODE_AIGU_E_LOWER           ((char)0xe9)
+
+#define CHARCODE_KROUZEK_A_LOWER        ((char)0xe5)
+
 static void show_text(const char *text)
 {
     int first_line = 0;
@@ -228,29 +247,40 @@ static void show_text(const char *text)
         first_line = current_line;
         for (y = 0; (y < menu_draw->max_text_y) && (current_line < len); y++) {
             z = 0;
-            for (x = 0; text[current_line + x] != '\n'; x++) {
+            for (x = 0; (text[current_line + x] != '\n') &&
+                        (text[current_line + x] != 0); x++) {
                 switch (text[current_line + x]) {
                     case '`':
                         string[x + z] = '\'';
                         break;
-                    case 'ä':
+                    case CHARCODE_UMLAUT_A_LOWER:
+		    case CHARCODE_KROUZEK_A_LOWER:
                         string[x + z] = 'a';
+                        break;
+                    case CHARCODE_UMLAUT_A_UPPER:
+                        string[x + z] = 'A';
                         break;
                     case '~':
                         string[x + z] = '-';
                         break;
-                    case 'é':
-                    case 'è':
+                    case CHARCODE_GRAVE_E_LOWER:
+                    case CHARCODE_AIGU_E_LOWER:
                         string[x + z] = 'e';
                         break;
-                    case 'Ö':
+                    case CHARCODE_UMLAUT_O_UPPER:
                         string[x + z] = 'O';
                         break;
-                    case 'ö':
+                    case CHARCODE_UMLAUT_O_LOWER:
                         string[x + z] = 'o';
                         break;
-                    case 'å':
-                        string[x + z] = 'a';
+                    case CHARCODE_UMLAUT_U_UPPER:
+                        string[x + z] = 'U';
+                        break;
+                    case CHARCODE_UMLAUT_U_LOWER:
+                        string[x + z] = 'u';
+                        break;
+                    case '_':
+                        string[x + z] = (unsigned char)164;
                         break;
                     case '\t':
                         string[x + z] = ' ';
@@ -260,8 +290,8 @@ static void show_text(const char *text)
                         z += 3;
                         break;
                     default:
-                       string[x + z] = text[current_line + x];
-                       break;
+                        string[x + z] = text[current_line + x];
+                        break;
                 }
             }
             if (x != 0) {
@@ -278,7 +308,7 @@ static void show_text(const char *text)
         sdl_ui_refresh();
 
         while (active_keys) {
-            switch(sdl_ui_menu_poll_input()) {
+            switch (sdl_ui_menu_poll_input()) {
                 case MENU_ACTION_CANCEL:
                 case MENU_ACTION_EXIT:
                 case MENU_ACTION_SELECT:
@@ -313,36 +343,37 @@ static void show_text(const char *text)
 static UI_MENU_CALLBACK(about_callback)
 {
     int active = 1;
+    int i;
+    int j;
+    char *tmp;
 
     if (activated) {
         sdl_ui_clear();
-        sdl_ui_print_center("VICE", 0);
-        sdl_ui_print_center("Versatile Commodore Emulator", 1);
-        sdl_ui_print_center("Version " VERSION, 2);
-        sdl_ui_print_center("SDL " PLATFORM_CPU " " PLATFORM_OS " " PLATFORM_COMPILER, 3);
-        sdl_ui_print_center("The VICE Team", 5);
-        sdl_ui_print_center("(C) 1998-2012 Dag Lem", 6);
-        sdl_ui_print_center("(C) 1999-2012 Andreas Matthies", 7);
-        sdl_ui_print_center("(C) 1999-2012 Martin Pottendorfer", 8);
-        sdl_ui_print_center("(C) 2005-2012 Marco van den Heuvel", 9);
-        sdl_ui_print_center("(C) 2006-2012 Christian Vogelgsang", 10);
-        sdl_ui_print_center("(C) 2007-2012 Fabrizio Gennari", 11);
-        sdl_ui_print_center("(C) 2007-2012 Daniel Kahlin", 12);
-        sdl_ui_print_center("(C) 2008-2012 Antti S. Lankila", 13);
-        sdl_ui_print_center("(C) 2009-2012 Groepaz", 14);
-        sdl_ui_print_center("(C) 2009-2012 Ingo Korb", 15);
-        sdl_ui_print_center("(C) 2009-2012 Errol Smith", 16);
-        sdl_ui_print_center("(C) 2010-2012 Olaf Seibert", 17);
-        sdl_ui_print_center("(C) 2011-2012 Marcus Sutton", 18);
-        sdl_ui_print_center("(C) 2011-2012 Ulrich Schulz", 19);
-        sdl_ui_print_center("(C) 2011-2012 Stefan Haubenthal", 20);
-        sdl_ui_print_center("(C) 2011-2012 Thomas Giesel", 21);
-        sdl_ui_print_center("(C) 2011-2012 Kajtar Zsolt", 22);
-        sdl_ui_print_center("(C) 2012-2012 Benjamin 'BeRo' Rosseaux", 23);
+        i = 0;
+        sdl_ui_print_center("VICE", i++);
+        sdl_ui_print_center("Versatile Commodore Emulator", i++);
+#ifdef USE_SVN_REVISION
+        sdl_ui_print_center("Version " VERSION " rev " VICE_SVN_REV_STRING, i);
+#else
+        sdl_ui_print_center("Version " VERSION, i);
+#endif
+        i++;
+#ifdef USE_SDLUI2
+        sdl_ui_print_center("SDL2 " PLATFORM_CPU " " PLATFORM_OS " " PLATFORM_COMPILER, i++);
+#else
+        sdl_ui_print_center("SDL " PLATFORM_CPU " " PLATFORM_OS " " PLATFORM_COMPILER, i++);
+#endif
+        i++;
+        sdl_ui_print_center("The VICE Team", i++);
+        for (j = 0; core_team[j].name; j++) {
+            tmp = util_concat("(C) ", core_team[j].years, " ", core_team[j].name, NULL);
+            sdl_ui_print_center(tmp, i++);
+            lib_free(tmp);
+        }
         sdl_ui_refresh();
 
         while (active) {
-            switch(sdl_ui_menu_poll_input()) {
+            switch (sdl_ui_menu_poll_input()) {
                 case MENU_ACTION_CANCEL:
                 case MENU_ACTION_EXIT:
                 case MENU_ACTION_SELECT:
@@ -353,6 +384,42 @@ static UI_MENU_CALLBACK(about_callback)
                     break;
             }
         }
+    }
+    return NULL;
+}
+
+static char *get_compiletime_features(void)
+{
+    feature_list_t *list;
+    char *str, *lstr;
+    unsigned int len = 0;
+
+    list = vice_get_feature_list();
+    while (list->symbol) {
+        len += strlen(list->descr) + strlen(list->symbol) + (15);
+        ++list;
+    }
+    str = lib_malloc(len);
+    lstr = str;
+    list = vice_get_feature_list();
+    while (list->symbol) {
+        sprintf(lstr, "%s\n%s\n%s\n\n", list->isdefined ? "yes " : "no  ", list->descr, list->symbol);
+        lstr += strlen(lstr);
+        ++list;
+    }
+    return str;
+}
+
+static UI_MENU_CALLBACK(features_callback)
+{
+    /* menu_draw_t *menu_draw; */
+    char *features;
+
+    if (activated) {
+        /* menu_draw = sdl_ui_get_menu_param(); */
+        features = get_compiletime_features();
+        show_text((const char *)features);
+        lib_free(features);
     }
     return NULL;
 }
@@ -389,7 +456,7 @@ static UI_MENU_CALLBACK(contributors_callback)
         info_contrib_text_n = contrib_convert(new_text, menu_draw->max_text_x);
         lib_free(new_text);
 #else
-        info_contrib_text_n = contrib_convert((char *)info_contrib_text, menu_draw->max_text_x);
+        info_contrib_text_n = contrib_convert(info_contrib_text, menu_draw->max_text_x);
 #endif
         show_text((const char *)info_contrib_text_n);
         lib_free(info_contrib_text_n);
@@ -462,7 +529,7 @@ static UI_MENU_CALLBACK(show_font_callback)
         }
         sdl_ui_refresh();
         while (active) {
-            switch(sdl_ui_menu_poll_input()) {
+            switch (sdl_ui_menu_poll_input()) {
                 case MENU_ACTION_CANCEL:
                 case MENU_ACTION_EXIT:
                     active = 0;
@@ -485,6 +552,10 @@ const ui_menu_entry_t help_menu[] = {
     { "Command-line options",
       MENU_ENTRY_DIALOG,
       cmdline_callback,
+      NULL },
+    { "Compile time features",
+      MENU_ENTRY_DIALOG,
+      features_callback,
       NULL },
     { "Contributors",
       MENU_ENTRY_DIALOG,

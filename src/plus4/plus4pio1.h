@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -35,4 +36,3 @@ extern void pio1_store(WORD addr, BYTE value);
 extern void pio1_set_tape_sense(int sense);
 
 #endif
-

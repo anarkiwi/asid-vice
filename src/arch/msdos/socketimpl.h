@@ -45,7 +45,11 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-typedef unsigned int SOCKET;
+#ifdef HAVE_NETINET_TCP_H
+#include <netinet/tcp.h>
+#endif
+
+typedef int SOCKET;
 typedef struct timeval TIMEVAL;
 
 #ifndef INVALID_SOCKET

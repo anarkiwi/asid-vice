@@ -40,31 +40,19 @@
 
 #include <os2.h>
 
-#ifdef WATCOM_COMPILE
 #define INCL_MMIOOS2
-#else
-#define INCL_MMIO
-#endif
-
 #define INCL_MM_OS2          // DiveBlitImageLines
+
 #include <os2me.h>
 
-#if defined(__IBMC__) || defined(WATCOM_COMPILE)
 #include "fullscr.h"
 #include <fourcc.h>
-#endif
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-#ifdef __EMX__
-#include <graph.h>
-#endif
-
-#ifdef WATCOM_COMPILE
 #include <process.h>
-#endif
 
 #include "video.h"
 #include "videoarch.h"
@@ -95,6 +83,10 @@
 #define divecaps.fccColorEncoding
 #define divecaps.ulDepth
 #endif
+
+#define VIDEO_BORDER_NONE    0
+#define VIDEO_BORDER_SMALL   1
+#define VIDEO_BORDER_DIALOG  2
 
 //
 //  VICE Speed Test... Warp Mode: Speed(%), Frames per Second (fps)
@@ -182,6 +174,10 @@ static int set_stretch_factor(int val, void *param)
 {
     int i = 0;
 
+    if (val <= 0) {
+        return -1;
+    }
+
     if (!hwndlist || stretch == val) {
         stretch = val;
         return 0;
@@ -200,8 +196,8 @@ static int set_stretch_factor(int val, void *param)
             //
             // resize canvas
             //
-            const int dsx = c->videoconfig->doublesizex + 1;
-            const int dsy = c->videoconfig->doublesizey + 1;
+            const int dsx = c->videoconfig->scalex;
+            const int dsy = c->videoconfig->scaley;
 
             c->draw_buffer->canvas_physical_width = c->draw_buffer->canvas_physical_width / dsx;
             c->draw_buffer->canvas_physical_height = c->draw_buffer->canvas_physical_height / dsy;
@@ -304,7 +300,7 @@ static int set_menu(int val, void *param)
 {
     int i = 0;
 
-    menu = val;
+    menu = val ? 1 : 0;
 
     if (!hwndlist) {
         return 0;
@@ -342,21 +338,23 @@ static int set_border_type(int val, void *param)
 {
     switch (val)
     {
-        case 1:
+        case VIDEO_BORDER_SMALL:
             flFrameFlags &= ~FCF_DLGBORDER;
             flFrameFlags |= FCF_BORDER;
-            border = 1;
             break;
-        case 2:
+        case VIDEO_BORDER_DIALOG:
             flFrameFlags &= ~FCF_BORDER;
             flFrameFlags |= FCF_DLGBORDER;
-            border = 2;
             break;
-        default:
+        case VIDEO_BORDER_NONE:
             flFrameFlags &= ~FCF_BORDER;
             flFrameFlags &= ~FCF_DLGBORDER;
-            border = 0;
+            break;
+        default:
+            return -1;
     }
+    border = val;
+
     return 0;
 }
 
@@ -364,7 +362,7 @@ static int logwin;
 
 static int set_logging(int val, void *param)
 {
-    logwin = val;
+    logwin = val ? 1 : 0;
 
     return 0;
 }
@@ -374,7 +372,7 @@ static const resource_int_t resources1_int[] = {
     { "WindowStretchFactor", 1, RES_EVENT_NO, NULL,
       &stretch, set_stretch_factor, NULL },
 #endif
-    { "PMBorderType", 2, RES_EVENT_NO, NULL,
+    { "PMBorderType", VIDEO_BORDER_DIALOG, RES_EVENT_NO, NULL,
       &border, set_border_type, NULL },
     { "Menubar", 1, RES_EVENT_NO, NULL,
       &menu, set_menu, NULL },
@@ -408,7 +406,7 @@ static const cmdline_option_t cmdline_options1[] = {
       NULL, NULL, "PMBorderType", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      "<number>", "Specify window border type (1=small, 2=dialog, else=no border)" },
+      "<number>", "Specify window border type (0=no border, 1=small, 2=dialog)" },
     { "-menu", SET_RESOURCE, 0,
       NULL, NULL, "Menubar", (resource_value_t) 1,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
@@ -436,7 +434,7 @@ static const cmdline_option_t cmdline_options2[] = {
     { NULL }
 };
 
-int video_init_cmdline_options(void)
+int video_arch_cmdline_options_init(void)
 {
     return ((machine_class == VICE_MACHINE_VSID) ? 0 : cmdline_register_options(cmdline_options1)) | cmdline_register_options(cmdline_options2);
 }
@@ -933,8 +931,8 @@ void VideoCanvasBlit(video_canvas_t *c, UINT xs, UINT ys, UINT xi, UINT yi, UINT
     ULONG scanlinesize = 0;
     BYTE *targetbuffer = NULL;
 
-    const int dsx = c->videoconfig->doublesizex + 1;
-    const int dsy = c->videoconfig->doublesizey + 1;
+    const int dsx = c->videoconfig->scalex;
+    const int dsy = c->videoconfig->scaley;
 
     const UINT linesz = dsx * c->draw_buffer->draw_buffer_width;
     const UINT bufh = dsy * c->draw_buffer->draw_buffer_height;
@@ -1889,17 +1887,13 @@ void video_canvas_refresh(video_canvas_t *c, unsigned int xs, unsigned int ys, u
     // changed, but it doesn't speed up anything
     //
     if (c->vrenabled) {
-        if (c->videoconfig->doublesizex) {
-            xs *= (c->videoconfig->doublesizex + 1);
-            xi *= (c->videoconfig->doublesizex + 1);
-            w *= (c->videoconfig->doublesizex + 1);
-        }
+        xs *= c->videoconfig->scalex;
+        xi *= c->videoconfig->scalex;
+        w *= c->videoconfig->scalex;
 
-        if (c->videoconfig->doublesizey) {
-            ys *= (c->videoconfig->doublesizey + 1);
-            yi *= (c->videoconfig->doublesizey + 1);
-            h *= (c->videoconfig->doublesizey + 1);
-        }
+        ys *= c->videoconfig->scaley;
+        yi *= c->videoconfig->scaley;
+        h *= c->videoconfig->scaley;
         VideoCanvasBlit(c, xs, ys, xi, yi, w, h);
     }
 

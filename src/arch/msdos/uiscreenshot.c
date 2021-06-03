@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "archdep.h"
+#include "gfxoutput.h"
 #include "lib.h"
 #include "machine.h"
 #include "screenshot.h"
@@ -43,11 +44,30 @@
 #include "util.h"
 #include "videoarch.h"
 
+TUI_MENU_DEFINE_RADIO(DoodleOversizeHandling)
+TUI_MENU_DEFINE_RADIO(DoodleUndersizeHandling)
+TUI_MENU_DEFINE_RADIO(DoodleMultiColorHandling)
+TUI_MENU_DEFINE_RADIO(DoodleTEDLumHandling)
+TUI_MENU_DEFINE_RADIO(DoodleCRTCTextColor)
+TUI_MENU_DEFINE_RADIO(KoalaOversizeHandling)
+TUI_MENU_DEFINE_RADIO(KoalaUndersizeHandling)
+TUI_MENU_DEFINE_RADIO(KoalaTEDLumHandling)
+TUI_MENU_DEFINE_RADIO(KoalaCRTCTextColor)
+
 static TUI_MENU_CALLBACK(bmp_file_name_callback);
 static TUI_MENU_CALLBACK(write_bmp_screenshot_callback);
 
 static TUI_MENU_CALLBACK(doodle_file_name_callback);
 static TUI_MENU_CALLBACK(write_doodle_screenshot_callback);
+
+static TUI_MENU_CALLBACK(doodle_compressed_file_name_callback);
+static TUI_MENU_CALLBACK(write_doodle_compressed_screenshot_callback);
+
+static TUI_MENU_CALLBACK(koala_file_name_callback);
+static TUI_MENU_CALLBACK(write_koala_screenshot_callback);
+
+static TUI_MENU_CALLBACK(koala_compressed_file_name_callback);
+static TUI_MENU_CALLBACK(write_koala_compressed_screenshot_callback);
 
 static TUI_MENU_CALLBACK(pcx_file_name_callback);
 static TUI_MENU_CALLBACK(write_pcx_screenshot_callback);
@@ -57,6 +77,9 @@ static TUI_MENU_CALLBACK(write_ppm_screenshot_callback);
 
 static TUI_MENU_CALLBACK(iff_file_name_callback);
 static TUI_MENU_CALLBACK(write_iff_screenshot_callback);
+
+static TUI_MENU_CALLBACK(godot_file_name_callback);
+static TUI_MENU_CALLBACK(write_godot_screenshot_callback);
 
 #ifdef HAVE_GIF
 static TUI_MENU_CALLBACK(write_gif_screenshot_callback);
@@ -99,6 +122,42 @@ static tui_menu_item_def_t write_doodle_screenshot_menu_def[] = {
     { NULL }
 };
 
+static tui_menu_item_def_t write_doodle_compressed_screenshot_menu_def[] = {
+    { "_File name:",
+      "Specify compressed DOODLE screenshot file name",
+      doodle_compressed_file_name_callback, NULL, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "_Do it!",
+      "Save compressed DOODLE screenshot with the specified name",
+      write_doodle_compressed_screenshot_callback, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
+static tui_menu_item_def_t write_koala_screenshot_menu_def[] = {
+    { "_File name:",
+      "Specify KOALA screenshot file name",
+      koala_file_name_callback, NULL, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "_Do it!",
+      "Save KOALA screenshot with the specified name",
+      write_koala_screenshot_callback, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
+static tui_menu_item_def_t write_koala_compressed_screenshot_menu_def[] = {
+    { "_File name:",
+      "Specify compressed KOALA screenshot file name",
+      koala_compressed_file_name_callback, NULL, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "_Do it!",
+      "Save compressed KOALA screenshot with the specified name",
+      write_koala_compressed_screenshot_callback, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
 static tui_menu_item_def_t write_pcx_screenshot_menu_def[] = {
     { "_File name:",
       "Specify PCX screenshot file name",
@@ -131,6 +190,18 @@ static tui_menu_item_def_t write_iff_screenshot_menu_def[] = {
     { "_Do it!",
       "Save IFF screenshot with the specified name",
       write_iff_screenshot_callback, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
+
+static tui_menu_item_def_t write_godot_screenshot_menu_def[] = {
+    { "_File name:",
+      "Specify godot screenshot file name",
+      godot_file_name_callback, NULL, 30,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "_Do it!",
+      "Save godot screenshot with the specified name",
+      write_godot_screenshot_callback, NULL, 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { NULL }
 };
@@ -177,7 +248,7 @@ static tui_menu_item_def_t write_png_screenshot_menu_def[] = {
 };
 #endif
 
-tui_menu_item_def_t ui_screenshot_menu_def[] = {
+static tui_menu_item_def_t ui_write_screenshot_menu_def[] = {
     { "_Write BMP Screenshot",
       "Write a BMP screenshot file",
       NULL, NULL, 0,
@@ -186,6 +257,18 @@ tui_menu_item_def_t ui_screenshot_menu_def[] = {
       "Write a DOODLE screenshot file",
       NULL, NULL, 0,
       TUI_MENU_BEH_CONTINUE, write_doodle_screenshot_menu_def, NULL },
+    { "_Write compressed DOODLE Screenshot",
+      "Write a compressed DOODLE screenshot file",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, write_doodle_compressed_screenshot_menu_def, NULL },
+    { "_Write KOALA Screenshot",
+      "Write a KOALA screenshot file",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, write_koala_screenshot_menu_def, NULL },
+    { "_Write compressed KOALA Screenshot",
+      "Write a compressed KOALA screenshot file",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, write_koala_compressed_screenshot_menu_def, NULL },
 #ifdef HAVE_GIF
     { "W_rite GIF Screenshot",
       "Write a GIF screenshot file",
@@ -216,6 +299,493 @@ tui_menu_item_def_t ui_screenshot_menu_def[] = {
       "Write a PPM screenshot file",
       NULL, NULL, 0,
       TUI_MENU_BEH_CONTINUE, write_ppm_screenshot_menu_def, NULL },
+    { "Wri_te godot Screenshot",
+      "Write a godot screenshot file",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, write_godot_screenshot_menu_def, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(doodle_oversize_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("DoodleOversizeHandling", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_OVERSIZE_SCALE:
+            s = "Scale";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_LEFT_TOP:
+            s = "Crop left top";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_CENTER_TOP:
+            s = "Crop middle top";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_RIGHT_TOP:
+            s = "Crop right top";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_LEFT_CENTER:
+            s = "Crop left center";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_CENTER:
+            s = "Crop middle center";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_RIGHT_CENTER:
+            s = "Crop right center";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_LEFT_BOTTOM:
+            s = "Crop left bottom";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_CENTER_BOTTOM:
+            s = "Crop middle bottom";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_RIGHT_BOTTOM:
+            s = "Crop right bottom";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t doodle_oversize_submenu[] = {
+    { "Scale", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_SCALE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop left top", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_LEFT_TOP, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop middle top", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_CENTER_TOP, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop right top", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_RIGHT_TOP, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop left center", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_LEFT_CENTER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop middle center", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_CENTER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop right center", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_RIGHT_CENTER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop left bottom", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_LEFT_BOTTOM, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop middle bottom", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_CENTER_BOTTOM, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop right bottom", NULL, radio_DoodleOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_RIGHT_BOTTOM, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(doodle_undersize_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("DoodleUndersizeHandling", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_UNDERSIZE_SCALE:
+            s = "Scale";
+            break;
+        case NATIVE_SS_UNDERSIZE_BORDERIZE:
+            s = "Borderize";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t doodle_undersize_submenu[] = {
+    { "Scale", NULL, radio_DoodleUndersizeHandling_callback,
+      (void *)NATIVE_SS_UNDERSIZE_SCALE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Borderize", NULL, radio_DoodleUndersizeHandling_callback,
+      (void *)NATIVE_SS_UNDERSIZE_BORDERIZE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(doodle_multicolor_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("DoodleMultiColorHandling", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_MC2HR_BLACK_WHITE:
+            s = "Black & white";
+            break;
+        case NATIVE_SS_MC2HR_2_COLORS:
+            s = "2 colors";
+            break;
+        case NATIVE_SS_MC2HR_4_COLORS:
+            s = "4 colors";
+            break;
+        case NATIVE_SS_MC2HR_GRAY:
+            s = "Gray scale";
+            break;
+        case NATIVE_SS_MC2HR_DITHER:
+            s = "Dither";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t doodle_multicolor_submenu[] = {
+    { "Black & white", NULL, radio_DoodleMultiColorHandling_callback,
+      (void *)NATIVE_SS_MC2HR_BLACK_WHITE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "2 colors", NULL, radio_DoodleMultiColorHandling_callback,
+      (void *)NATIVE_SS_MC2HR_2_COLORS, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "4 colors", NULL, radio_DoodleMultiColorHandling_callback,
+      (void *)NATIVE_SS_MC2HR_4_COLORS, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Gray scale", NULL, radio_DoodleMultiColorHandling_callback,
+      (void *)NATIVE_SS_MC2HR_GRAY, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Dither", NULL, radio_DoodleMultiColorHandling_callback,
+      (void *)NATIVE_SS_MC2HR_DITHER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(doodle_tedlum_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("DoodleTEDLumHandling", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_TED_LUM_IGNORE:
+            s = "Ignore";
+            break;
+        case NATIVE_SS_TED_LUM_DITHER:
+            s = "Dither";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t doodle_tedlum_submenu[] = {
+    { "Ignore", NULL, radio_DoodleTEDLumHandling_callback,
+      (void *)NATIVE_SS_TED_LUM_IGNORE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Dither", NULL, radio_DoodleTEDLumHandling_callback,
+      (void *)NATIVE_SS_TED_LUM_DITHER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(doodle_crtctextcolor_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("DoodleCRTCTextColor", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_CRTC_WHITE:
+            s = "White";
+            break;
+        case NATIVE_SS_CRTC_AMBER:
+            s = "Amber";
+            break;
+        case NATIVE_SS_CRTC_GREEN:
+            s = "Green";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t doodle_crtctextcolor_submenu[] = {
+    { "White", NULL, radio_DoodleCRTCTextColor_callback,
+      (void *)NATIVE_SS_CRTC_WHITE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Amber", NULL, radio_DoodleCRTCTextColor_callback,
+      (void *)NATIVE_SS_CRTC_AMBER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Green", NULL, radio_DoodleCRTCTextColor_callback,
+      (void *)NATIVE_SS_CRTC_GREEN, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static tui_menu_item_def_t ui_doodle_screenshot_menu_def_vic_vicii_vdc[] = {
+    { "Oversize handling:", "Oversize handling",
+      doodle_oversize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_oversize_submenu,
+      "Oversize handling" },
+    { "Undersize handling:", "Undersize handling",
+      doodle_undersize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_undersize_submenu,
+      "Undersize handling" },
+    { "Multicolor handling:", "Multicolor handling",
+      doodle_multicolor_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_multicolor_submenu,
+      "Multicolor handling" },
+    { NULL }
+};
+
+static tui_menu_item_def_t ui_doodle_screenshot_menu_def_ted[] = {
+    { "Oversize handling:", "Oversize handling",
+      doodle_oversize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_oversize_submenu,
+      "Oversize handling" },
+    { "Undersize handling:", "Undersize handling",
+      doodle_undersize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_undersize_submenu,
+      "Undersize handling" },
+    { "Multicolor handling:", "Multicolor handling",
+      doodle_multicolor_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_multicolor_submenu,
+      "Multicolor handling" },
+    { "TED luminosity handling:", "TED luminosity handling",
+      doodle_tedlum_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_tedlum_submenu,
+      "TED luminosity handling" },
+    { NULL }
+};
+
+static tui_menu_item_def_t ui_doodle_screenshot_menu_def_crtc[] = {
+    { "Oversize handling:", "Oversize handling",
+      doodle_oversize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_oversize_submenu,
+      "Oversize handling" },
+    { "Undersize handling:", "Undersize handling",
+      doodle_undersize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_undersize_submenu,
+      "Undersize handling" },
+    { "CRTC text color:", "CRTC text color",
+      doodle_crtctextcolor_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, doodle_crtctextcolor_submenu,
+      "CRTC text color" },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(koala_oversize_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("KoalaOversizeHandling", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_OVERSIZE_SCALE:
+            s = "Scale";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_LEFT_TOP:
+            s = "Crop left top";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_CENTER_TOP:
+            s = "Crop middle top";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_RIGHT_TOP:
+            s = "Crop right top";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_LEFT_CENTER:
+            s = "Crop left center";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_CENTER:
+            s = "Crop middle center";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_RIGHT_CENTER:
+            s = "Crop right center";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_LEFT_BOTTOM:
+            s = "Crop left bottom";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_CENTER_BOTTOM:
+            s = "Crop middle bottom";
+            break;
+        case NATIVE_SS_OVERSIZE_CROP_RIGHT_BOTTOM:
+            s = "Crop right bottom";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t koala_oversize_submenu[] = {
+    { "Scale", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_SCALE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop left top", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_LEFT_TOP, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop middle top", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_CENTER_TOP, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop right top", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_RIGHT_TOP, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop left center", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_LEFT_CENTER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop middle center", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_CENTER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop right center", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_RIGHT_CENTER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop left bottom", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_LEFT_BOTTOM, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop middle bottom", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_CENTER_BOTTOM, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Crop right bottom", NULL, radio_KoalaOversizeHandling_callback,
+      (void *)NATIVE_SS_OVERSIZE_CROP_RIGHT_BOTTOM, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(koala_undersize_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("KoalaUndersizeHandling", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_UNDERSIZE_SCALE:
+            s = "Scale";
+            break;
+        case NATIVE_SS_UNDERSIZE_BORDERIZE:
+            s = "Borderize";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t koala_undersize_submenu[] = {
+    { "Scale", NULL, radio_KoalaUndersizeHandling_callback,
+      (void *)NATIVE_SS_UNDERSIZE_SCALE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Borderize", NULL, radio_KoalaUndersizeHandling_callback,
+      (void *)NATIVE_SS_UNDERSIZE_BORDERIZE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(koala_tedlum_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("KoalaTEDLumHandling", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_TED_LUM_IGNORE:
+            s = "Ignore";
+            break;
+        case NATIVE_SS_TED_LUM_DITHER:
+            s = "Dither";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t koala_tedlum_submenu[] = {
+    { "Ignore", NULL, radio_KoalaTEDLumHandling_callback,
+      (void *)NATIVE_SS_TED_LUM_IGNORE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Dither", NULL, radio_KoalaTEDLumHandling_callback,
+      (void *)NATIVE_SS_TED_LUM_DITHER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static TUI_MENU_CALLBACK(koala_crtctextcolor_submenu_callback)
+{
+    int value;
+    char *s;
+
+    resources_get_int("KoalaCRTCTextColor", &value);
+    switch (value) {
+        default:
+        case NATIVE_SS_CRTC_WHITE:
+            s = "White";
+            break;
+        case NATIVE_SS_CRTC_AMBER:
+            s = "Amber";
+            break;
+        case NATIVE_SS_CRTC_GREEN:
+            s = "Green";
+            break;
+    }
+    return s;
+}
+
+static tui_menu_item_def_t koala_crtctextcolor_submenu[] = {
+    { "White", NULL, radio_KoalaCRTCTextColor_callback,
+      (void *)NATIVE_SS_CRTC_WHITE, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Amber", NULL, radio_KoalaCRTCTextColor_callback,
+      (void *)NATIVE_SS_CRTC_AMBER, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "Green", NULL, radio_KoalaCRTCTextColor_callback,
+      (void *)NATIVE_SS_CRTC_GREEN, 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+static tui_menu_item_def_t ui_koala_screenshot_menu_def_vic_vicii_vdc[] = {
+    { "Oversize handling:", "Oversize handling",
+      koala_oversize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_oversize_submenu,
+      "Oversize handling" },
+    { "Undersize handling:", "Undersize handling",
+      koala_undersize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_undersize_submenu,
+      "Undersize handling" },
+    { NULL }
+};
+
+static tui_menu_item_def_t ui_koala_screenshot_menu_def_ted[] = {
+    { "Oversize handling:", "Oversize handling",
+      koala_oversize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_oversize_submenu,
+      "Oversize handling" },
+    { "Undersize handling:", "Undersize handling",
+      koala_undersize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_undersize_submenu,
+      "Undersize handling" },
+    { "TED luminosity handling:", "TED luminosity handling",
+      koala_tedlum_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_tedlum_submenu,
+      "TED luminosity handling" },
+    { NULL }
+};
+
+static tui_menu_item_def_t ui_koala_screenshot_menu_def_crtc[] = {
+    { "Oversize handling:", "Oversize handling",
+      koala_oversize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_oversize_submenu,
+      "Oversize handling" },
+    { "Undersize handling:", "Undersize handling",
+      koala_undersize_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_undersize_submenu,
+      "Undersize handling" },
+    { "CRTC text color:", "CRTC text color",
+      koala_crtctextcolor_submenu_callback, NULL, 7,
+      TUI_MENU_BEH_CONTINUE, koala_crtctextcolor_submenu,
+      "CRTC text color" },
+    { NULL }
+};
+
+tui_menu_item_def_t ui_screenshot_menu_def_vic_vicii_vdc[] = {
+    { "Doodle screenshot settings",
+      "Doodle screenshot settings",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_doodle_screenshot_menu_def_vic_vicii_vdc, NULL },
+    { "Koala screenshot settings",
+      "Koala screenshot settings",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_koala_screenshot_menu_def_vic_vicii_vdc, NULL },
+    { "_Write Screenshot",
+      "Write a screenshot file",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_write_screenshot_menu_def, NULL },
+    { NULL }
+};
+
+tui_menu_item_def_t ui_screenshot_menu_def_ted[] = {
+    { "Doodle screenshot settings",
+      "Doodle screenshot settings",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_doodle_screenshot_menu_def_ted, NULL },
+    { "Koala screenshot settings",
+      "Koala screenshot settings",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_koala_screenshot_menu_def_ted, NULL },
+    { "_Write Screenshot",
+      "Write a screenshot file",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_write_screenshot_menu_def, NULL },
+    { NULL }
+};
+
+tui_menu_item_def_t ui_screenshot_menu_def_crtc[] = {
+    { "Doodle screenshot settings",
+      "Doodle screenshot settings",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_doodle_screenshot_menu_def_crtc, NULL },
+    { "Koala screenshot settings",
+      "Koala screenshot settings",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_koala_screenshot_menu_def_crtc, NULL },
+    { "_Write Screenshot",
+      "Write a screenshot file",
+      NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, ui_write_screenshot_menu_def, NULL },
     { NULL }
 };
 
@@ -304,6 +874,30 @@ static TUI_MENU_CALLBACK(doodle_file_name_callback)
     return file_name;
 }
 
+static TUI_MENU_CALLBACK(doodle_compressed_file_name_callback)
+{
+    if (been_activated) {
+        return screenshot_filename("Save compressed DOODLE screenshot", "Save compressed DOODLE screenshot file", "*.jj", "jj");
+    }
+    return file_name;
+}
+
+static TUI_MENU_CALLBACK(koala_file_name_callback)
+{
+    if (been_activated) {
+        return screenshot_filename("Save KOALA screenshot", "Save KOALA screenshot file", "*.koa", "koa");
+    }
+    return file_name;
+}
+
+static TUI_MENU_CALLBACK(koala_compressed_file_name_callback)
+{
+    if (been_activated) {
+        return screenshot_filename("Save compressed KOALA screenshot", "Save compressed KOALA screenshot file", "*.gg", "gg");
+    }
+    return file_name;
+}
+
 static TUI_MENU_CALLBACK(pcx_file_name_callback)
 {
     if (been_activated) {
@@ -324,6 +918,14 @@ static TUI_MENU_CALLBACK(iff_file_name_callback)
 {
     if (been_activated) {
         return screenshot_filename("Save IFF screenshot", "Save IFF screenshot file", "*.iff", "iff");
+    }
+    return file_name;
+}
+
+static TUI_MENU_CALLBACK(godot_file_name_callback)
+{
+    if (been_activated) {
+        return screenshot_filename("Save godot screenshot", "Save godot screenshot file", "*.4bt", "4bt");
     }
     return file_name;
 }
@@ -391,6 +993,30 @@ static TUI_MENU_CALLBACK(write_doodle_screenshot_callback)
     return NULL;
 }
 
+static TUI_MENU_CALLBACK(write_doodle_compressed_screenshot_callback)
+{
+    if (been_activated) {
+        return screenshot_save_file("DOODLE_COMPRESSED", "Cannot save compressed DOODLE screenshot.", "Compressed DOODLE screenshot save successfully.");
+    }
+    return NULL;
+}
+
+static TUI_MENU_CALLBACK(write_koala_screenshot_callback)
+{
+    if (been_activated) {
+        return screenshot_save_file("KOALA", "Cannot save KOALA screenshot.", "KOALA screenshot save successfully.");
+    }
+    return NULL;
+}
+
+static TUI_MENU_CALLBACK(write_koala_compressed_screenshot_callback)
+{
+    if (been_activated) {
+        return screenshot_save_file("KOALA_COMPRESSED", "Cannot save compressed KOALA screenshot.", "Compressed KOALA screenshot save successfully.");
+    }
+    return NULL;
+}
+
 static TUI_MENU_CALLBACK(write_pcx_screenshot_callback)
 {
     if (been_activated) {
@@ -411,6 +1037,14 @@ static TUI_MENU_CALLBACK(write_iff_screenshot_callback)
 {
     if (been_activated) {
         return screenshot_save_file("IFF", "Cannot save IFF screenshot.", "IFF screenshot save successfully.");
+    }
+    return NULL;
+}
+
+static TUI_MENU_CALLBACK(write_godot_screenshot_callback)
+{
+    if (been_activated) {
+        return screenshot_save_file("4BT", "Cannot save godot screenshot.", "godot screenshot save successfully.");
     }
     return NULL;
 }

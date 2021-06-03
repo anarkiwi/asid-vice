@@ -1,10 +1,32 @@
 #!/bin/sh
-# make-bindist.sh for the windows ports
+
 #
-# written by Marco van den Heuvel <blackystardust68@yahoo.com>
+# make-bindist.sh - make binary distribution for the Windows port
 #
-# make-bindist.sh <strip> <vice-version> <--enable-arch> <zip|nozip> <x64sc-included> <top-srcdir> <cpu> <owcc>
-#                 $1      $2             $3              $4          $5               $6           $7    $8
+# Written by
+#  Marco van den Heuvel <blackystardust68@yahoo.com>
+#
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
+# Usage: make-bindist.sh <strip> <vice-version> <--enable-arch> <zip|nozip> <x64sc-included> <top-srcdir> <cpu> <owcc>
+#                         $1      $2             $3              $4          $5               $6           $7    $8
+# 
 
 STRIP=$1
 VICEVERSION=$2
@@ -27,7 +49,7 @@ else
   SCFILE=""
 fi
 
-EMULATORS="vsid x64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic"
+EMULATORS="vsid x64 xscpu64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic"
 CONSOLE_TOOLS="c1541 cartconv petcat"
 EXECUTABLES="$EMULATORS $CONSOLE_TOOLS"
 
@@ -78,19 +100,24 @@ do
 done
 cp -a $TOPSRCDIR/data/C128 $TOPSRCDIR/data/C64 $TOPSRCDIR/data/C64DTV $WINVICE
 cp -a $TOPSRCDIR/data/CBM-II $TOPSRCDIR/data/DRIVES $TOPSRCDIR/data/PET $WINVICE
-cp -a $TOPSRCDIR/data/PLUS4 $TOPSRCDIR/data/PRINTER $WINVICE
+cp -a $TOPSRCDIR/data/PLUS4 $TOPSRCDIR/data/SCPU64 $TOPSRCDIR/data/PRINTER $WINVICE
 cp -a $TOPSRCDIR/data/VIC20 $TOPSRCDIR/data/fonts $TOPSRCDIR/doc/html $WINVICE
-cp $TOPSRCDIR/FEEDBACK $TOPSRCDIR/README $WINVICE
+cp $TOPSRCDIR/FEEDBACK $TOPSRCDIR/README $TOPSRCDIR/COPYING $WINVICE
+cp $TOPSRCDIR/NEWS $WINVICE
 rm -f `find $WINVICE -name "Makefile*"`
 rm `find $WINVICE -name "amiga_*.vkm"`
 rm `find $WINVICE -name "dos_*.vkm"`
-rm `find $WINVICE -name "gp2x*.vkm"`
 rm `find $WINVICE -name "os2*.vkm"`
 rm `find $WINVICE -name "osx*.vkm"`
 rm `find $WINVICE -name "beos_*.vkm"`
 rm `find $WINVICE -name "sdl*.vkm"`
 rm `find $WINVICE -name "x11_*.vkm"`
 rm $WINVICE/html/texi2html
+rm $WINVICE/html/checklinks.sh
+mkdir $WINVICE/doc
+cp $TOPSRCDIR/doc/vice.chm $WINVICE/doc
+cp $TOPSRCDIR/doc/vice.hlp $WINVICE/doc
+cp $TOPSRCDIR/doc/vice.pdf $WINVICE/doc
 if test x"$ZIPKIND" = "xzip"; then
   if test x"$ZIP" = "x"; then
     zip -r -9 -q $WINVICE.zip $WINVICE

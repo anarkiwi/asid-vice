@@ -30,14 +30,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "c64export.h"
 #include "cartio.h"
 #include "cartridge.h"
 #include "cmdline.h"
+#include "export.h"
 #include "lib.h"
+#include "log.h"
+#include "machine-video.h"
 #include "machine.h"
 #include "maincpu.h"
 #include "resources.h"
+#include "sampler.h"
 #include "sfx_soundsampler.h"
 #include "sid.h"
 #include "snapshot.h"
@@ -47,28 +50,50 @@
 
 /* ------------------------------------------------------------------------- */
 
+static BYTE current_sample = 0x80;
+
+/* ------------------------------------------------------------------------- */
+
 /* some prototypes are needed */
 static void sfx_soundsampler_sound_store(WORD addr, BYTE value);
+static BYTE sfx_soundsampler_sample_read(WORD addr);
+static void sfx_soundsampler_latch_sample(WORD addr, BYTE value);
 
-static io_source_t sfx_soundsampler_device = {
+static io_source_t sfx_soundsampler_io1_device = {
     CARTRIDGE_NAME_SFX_SOUND_SAMPLER,
     IO_DETACH_RESOURCE,
     "SFXSoundSampler",
     0xde00, 0xdeff, 0x01,
     0,
-    sfx_soundsampler_sound_store,
+    sfx_soundsampler_latch_sample,
     NULL,
     NULL, /* TODO: peek */
-    NULL, /* TODO: dump */
+    NULL, /* nothing to dump */
     CARTRIDGE_SFX_SOUND_SAMPLER,
     0,
     0
 };
 
-static io_source_list_t *sfx_soundsampler_list_item = NULL;
+static io_source_t sfx_soundsampler_io2_device = {
+    CARTRIDGE_NAME_SFX_SOUND_SAMPLER,
+    IO_DETACH_RESOURCE,
+    "SFXSoundSampler",
+    0xdf00, 0xdfff, 0x01,
+    1,
+    sfx_soundsampler_sound_store,
+    sfx_soundsampler_sample_read,
+    NULL, /* TODO: peek */
+    NULL, /* nothing to dump */
+    CARTRIDGE_SFX_SOUND_SAMPLER,
+    0,
+    0
+};
 
-static const c64export_resource_t export_res= {
-    CARTRIDGE_NAME_SFX_SOUND_SAMPLER, 0, 0, &sfx_soundsampler_device, NULL, CARTRIDGE_SFX_SOUND_SAMPLER
+static io_source_list_t *sfx_soundsampler_io1_list_item = NULL;
+static io_source_list_t *sfx_soundsampler_io2_list_item = NULL;
+
+static const export_resource_t export_res = {
+    CARTRIDGE_NAME_SFX_SOUND_SAMPLER, 0, 0, &sfx_soundsampler_io1_device, &sfx_soundsampler_io2_device, CARTRIDGE_SFX_SOUND_SAMPLER
 };
 
 /* ------------------------------------------------------------------------- */
@@ -82,12 +107,12 @@ static void sfx_soundsampler_sound_reset(sound_t *psid, CLOCK cpu_clk);
 
 static int sfx_soundsampler_sound_machine_cycle_based(void)
 {
-	return 0;
+    return 0;
 }
 
 static int sfx_soundsampler_sound_machine_channels(void)
 {
-	return 1;
+    return 1;
 }
 
 static sound_chip_t sfx_soundsampler_sound_chip = {
@@ -104,6 +129,7 @@ static sound_chip_t sfx_soundsampler_sound_chip = {
 };
 
 static WORD sfx_soundsampler_sound_chip_offset = 0;
+static sound_dac_t sfx_soundsampler_dac;
 
 void sfx_soundsampler_sound_chip_init(void)
 {
@@ -119,36 +145,49 @@ int sfx_soundsampler_cart_enabled(void)
     return sfx_soundsampler_sound_chip.chip_enabled;
 }
 
-static int set_sfx_soundsampler_enabled(int val, void *param)
+static int set_sfx_soundsampler_enabled(int value, void *param)
 {
+    int val = value ? 1 : 0;
+
     if (sfx_soundsampler_sound_chip.chip_enabled != val) {
         if (val) {
-            if (c64export_add(&export_res) < 0) {
+            if (export_add(&export_res) < 0) {
                 return -1;
             }
             if (machine_class == VICE_MACHINE_VIC20) {
                 if (sfx_soundsampler_io_swap) {
-                    sfx_soundsampler_device.start_address = 0x9c00;
-                    sfx_soundsampler_device.end_address = 0x9fff;
+                    sfx_soundsampler_io1_device.start_address = 0x9800;
+                    sfx_soundsampler_io1_device.end_address = 0x9bff;
+                    sfx_soundsampler_io2_device.start_address = 0x9c00;
+                    sfx_soundsampler_io2_device.end_address = 0x9fff;
                 } else {
-                    sfx_soundsampler_device.start_address = 0x9800;
-                    sfx_soundsampler_device.end_address = 0x9bff;
+                    sfx_soundsampler_io1_device.start_address = 0x9c00;
+                    sfx_soundsampler_io1_device.end_address = 0x9fff;
+                    sfx_soundsampler_io2_device.start_address = 0x9800;
+                    sfx_soundsampler_io2_device.end_address = 0x9bff;
                 }
             }
-            sfx_soundsampler_list_item = io_source_register(&sfx_soundsampler_device);
+            sfx_soundsampler_io1_list_item = io_source_register(&sfx_soundsampler_io1_device);
+            sfx_soundsampler_io2_list_item = io_source_register(&sfx_soundsampler_io2_device);
             sfx_soundsampler_sound_chip.chip_enabled = 1;
+            sampler_start(SAMPLER_OPEN_MONO, "SFX Sound Sampler");
         } else {
-            c64export_remove(&export_res);
-            io_source_unregister(sfx_soundsampler_list_item);
-            sfx_soundsampler_list_item = NULL;
+            export_remove(&export_res);
+            io_source_unregister(sfx_soundsampler_io1_list_item);
+            io_source_unregister(sfx_soundsampler_io2_list_item);
+            sfx_soundsampler_io1_list_item = NULL;
+            sfx_soundsampler_io2_list_item = NULL;
             sfx_soundsampler_sound_chip.chip_enabled = 0;
+            sampler_stop();
         }
     }
     return 0;
 }
 
-static int set_sfx_soundsampler_io_swap(int val, void *param)
+static int set_sfx_soundsampler_io_swap(int value, void *param)
 {
+    int val = value ? 1 : 0;
+
     if (val == sfx_soundsampler_io_swap) {
         return 0;
     }
@@ -248,6 +287,18 @@ int sfx_soundsampler_cmdline_options_init(void)
 
 /* ---------------------------------------------------------------------*/
 
+static void sfx_soundsampler_latch_sample(WORD addr, BYTE value)
+{
+    current_sample = sampler_get_sample(SAMPLER_CHANNEL_DEFAULT);
+}
+
+static BYTE sfx_soundsampler_sample_read(WORD addr)
+{
+    return current_sample;
+}
+
+/* ---------------------------------------------------------------------*/
+
 static BYTE sfx_soundsampler_sound_data;
 
 static void sfx_soundsampler_sound_store(WORD addr, BYTE value)
@@ -256,8 +307,7 @@ static void sfx_soundsampler_sound_store(WORD addr, BYTE value)
     sound_store(sfx_soundsampler_sound_chip_offset, value, 0);
 }
 
-struct sfx_soundsampler_sound_s
-{
+struct sfx_soundsampler_sound_s {
     BYTE voice0;
 };
 
@@ -265,19 +315,12 @@ static struct sfx_soundsampler_sound_s snd;
 
 static int sfx_soundsampler_sound_machine_calculate_samples(sound_t **psid, SWORD *pbuf, int nr, int soc, int scc, int *delta_t)
 {
-    int i;
-
-    for (i = 0; i < nr; i++) {
-        pbuf[i * soc] = sound_audio_mix(pbuf[i * soc], snd.voice0 << 8);
-        if (soc > 1) {
-            pbuf[(i * soc) + 1] = sound_audio_mix(pbuf[(i * soc) + 1], snd.voice0 << 8);
-        }
-    }
-    return nr;
+    return sound_dac_calculate_samples(&sfx_soundsampler_dac, pbuf, (int)snd.voice0 * 128, nr, soc, (soc > 1) ? 3 : 1);
 }
 
 static int sfx_soundsampler_sound_machine_init(sound_t *psid, int speed, int cycles_per_sec)
 {
+    sound_dac_init(&sfx_soundsampler_dac, speed);
     snd.voice0 = 0;
 
     return 1;
@@ -302,26 +345,36 @@ static void sfx_soundsampler_sound_reset(sound_t *psid, CLOCK cpu_clk)
 /* ---------------------------------------------------------------------*/
 /*    snapshot support functions                                             */
 
-#define CART_DUMP_VER_MAJOR   0
-#define CART_DUMP_VER_MINOR   0
-#define SNAP_MODULE_NAME  "CARTSFXSS"
+/* CARTSFXSS snapshot module format:
+
+   type  | name       | version | description
+   ------------------------------------------
+   BYTE  | IO swap    |   0.1   | VIC20 I/O swap flag
+   BYTE  | sound data |   0.0+  | sound data
+ */
+
+static char snap_module_name[] = "CARTSFXSS";
+#define SNAP_MAJOR   0
+#define SNAP_MINOR   1
 
 int sfx_soundsampler_snapshot_write_module(snapshot_t *s)
 {
     snapshot_module_t *m;
 
-    m = snapshot_module_create(s, SNAP_MODULE_NAME, CART_DUMP_VER_MAJOR, CART_DUMP_VER_MINOR);
+    m = snapshot_module_create(s, snap_module_name, SNAP_MAJOR, SNAP_MINOR);
+
     if (m == NULL) {
         return -1;
     }
 
-    if (0 || (SMW_B(m, (BYTE)sfx_soundsampler_sound_data) < 0)) {
+    if (0
+        || SMW_B(m, (BYTE)sfx_soundsampler_io_swap) < 0
+        || SMW_B(m, (BYTE)sfx_soundsampler_sound_data) < 0) {
         snapshot_module_close(m);
         return -1;
     }
 
-    snapshot_module_close(m);
-    return 0;
+    return snapshot_module_close(m);
 }
 
 int sfx_soundsampler_snapshot_read_module(snapshot_t *s)
@@ -329,19 +382,29 @@ int sfx_soundsampler_snapshot_read_module(snapshot_t *s)
     BYTE vmajor, vminor;
     snapshot_module_t *m;
 
-    m = snapshot_module_open(s, SNAP_MODULE_NAME, &vmajor, &vminor);
+    m = snapshot_module_open(s, snap_module_name, &vmajor, &vminor);
+
     if (m == NULL) {
         return -1;
     }
 
-    if ((vmajor != CART_DUMP_VER_MAJOR) || (vminor != CART_DUMP_VER_MINOR)) {
-        snapshot_module_close(m);
-        return -1;
+    /* Do not accept versions higher than current */
+    if (vmajor > SNAP_MAJOR || vminor > SNAP_MINOR) {
+        snapshot_set_error(SNAPSHOT_MODULE_HIGHER_VERSION);
+        goto fail;
     }
 
-    if (0 || (SMR_B(m, &sfx_soundsampler_sound_data) < 0)) {
-        snapshot_module_close(m);
-        return -1;
+    /* new in 0.1 */
+    if (SNAPVAL(vmajor, vminor, 0, 1)) {
+        if (SMR_B_INT(m, &sfx_soundsampler_io_swap) < 0) {
+            goto fail;
+        }
+    } else {
+        sfx_soundsampler_io_swap = 0;
+    }
+
+    if (SMR_B(m, &sfx_soundsampler_sound_data) < 0) {
+        goto fail;
     }
 
     if (!sfx_soundsampler_sound_chip.chip_enabled) {
@@ -349,6 +412,9 @@ int sfx_soundsampler_snapshot_read_module(snapshot_t *s)
     }
     sound_store(sfx_soundsampler_sound_chip_offset, sfx_soundsampler_sound_data, 0);
 
+    return snapshot_module_close(m);
+
+fail:
     snapshot_module_close(m);
-    return 0;
+    return -1;
 }

@@ -4,7 +4,7 @@
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -40,6 +40,46 @@
 #include "translate.h"
 #include "vic20-cmdline-options.h"
 #include "vic20mem.h"
+#include "vic20model.h"
+
+struct model_s {
+    const char *name;
+    int model;
+};
+
+static struct model_s model_match[] = {
+    { "vic20", VIC20MODEL_VIC20_PAL },
+    { "vic20pal", VIC20MODEL_VIC20_PAL },
+    { "vic20ntsc", VIC20MODEL_VIC20_NTSC },
+    { "vic21", VIC20MODEL_VIC21 },
+    { NULL, VIC20MODEL_UNKNOWN }
+};
+
+static int set_vic20_model(const char *param, void *extra_param)
+{
+    int model = VIC20MODEL_UNKNOWN;
+    int i = 0;
+
+    if (!param) {
+        return -1;
+    }
+
+    do {
+        if (strcmp(model_match[i].name, param) == 0) {
+            model = model_match[i].model;
+        }
+        i++;
+    } while ((model == VIC20MODEL_UNKNOWN) && (model_match[i].name != NULL));
+
+    if (model == VIC20MODEL_UNKNOWN) {
+        return -1;
+    }
+
+    vic20model_set(model);
+
+    return 0;
+}
+
 
 /* This function parses the mem config string given as `-memory' and returns
  * the appropriate values or'ed together.
@@ -82,7 +122,8 @@ static int cmdline_memory(const char *param, void *extra_param)
 
         opt = lib_malloc(strlen(param) + 1);
         while (*memstring) {
-            for (optend = memstring; *optend && *optend != ','; optend++);
+            for (optend = memstring; *optend && *optend != ','; optend++) {
+            }
 
             strncpy(opt, memstring, optend - memstring);
             opt[optend - memstring] = '\0';
@@ -98,7 +139,7 @@ static int cmdline_memory(const char *param, void *extra_param)
             } else if (strcmp(opt, "16k") == 0) {
                 memconf |= VIC_BLK1 | VIC_BLK2;
             } else if (strcmp(opt, "24k") == 0) {
-                memconf |= VIC_BLK1 | VIC_BLK2 | VIC_BLK3;;
+                memconf |= VIC_BLK1 | VIC_BLK2 | VIC_BLK3;
             } else if (strcmp(opt, "0") == 0 || strcmp(opt, "04") == 0) {
                 memconf |= VIC_BLK0;
             } else if (strcmp(opt, "1") == 0 || strcmp(opt, "20") == 0) {
@@ -117,8 +158,9 @@ static int cmdline_memory(const char *param, void *extra_param)
                 return -1;
             }
             memstring = optend;
-            if (*memstring)
+            if (*memstring) {
                 memstring++;    /* skip ',' */
+            }
         }
         lib_free(opt);
     }
@@ -156,8 +198,9 @@ static int cmdline_memory(const char *param, void *extra_param)
     } else {
         resources_set_int("RAMBlock5", 0);
     }
-    if (memconf == 0)
+    if (memconf == 0) {
         log_message(LOG_DEFAULT, "none");
+    }
 
     return 0;
 }
@@ -189,38 +232,38 @@ static cmdline_option_t const cmdline_options[] =
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_SPECIFY_CHARGEN_ROM_NAME,
       NULL, NULL },
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
+    { "-acia1", SET_RESOURCE, 0,
+      NULL, NULL, "Acia1Enable", (void *)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_ENABLE_DEXX_ACIA_RS232_EMU,
+      NULL, NULL },
+    { "+acia1", SET_RESOURCE, 0,
+      NULL, NULL, "Acia1Enable", (void *)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDCLS_DISABLE_DEXX_ACIA_RS232_EMU,
+      NULL, NULL },
+#endif
     { "-memory", CALL_FUNCTION, 1,
       cmdline_memory, NULL, NULL, NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_SPEC, IDCLS_SPECIFY_MEMORY_CONFIG,
       NULL, NULL },
-    { "-OEMjoy", SET_RESOURCE, 0,
-      NULL, NULL, "OEMJoy", (resource_value_t)1,
+    { "-model", CALL_FUNCTION, 1,
+      set_vic20_model, NULL, NULL, NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_MODEL, IDCLS_SET_VIC20_MODEL,
+      NULL, NULL },
+    { "-vflimod", SET_RESOURCE, 0,
+      NULL, NULL, "VFLImod", (resource_value_t)1,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_ENABLE_OEM_JOY,
+      IDCLS_UNUSED, IDCLS_ENABLE_VFLI_MOD,
       NULL, NULL },
-    { "+OEMjoy", SET_RESOURCE, 0,
-      NULL, NULL, "OEMJoy", (resource_value_t)0,
+    { "+vflimod", SET_RESOURCE, 0,
+      NULL, NULL, "VFLImod", (resource_value_t)0,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_DISABLE_OEM_JOY,
+      IDCLS_UNUSED, IDCLS_DISABLE_VFLI_MOD,
       NULL, NULL },
-#ifdef COMMON_KBD
-    { "-keymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapIndex", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NUMBER, IDCLS_SPECIFY_KEYMAP_FILE_INDEX,
-      NULL, NULL },
-    { "-symkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapSymFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_SYM_KEYMAP_FILE_NAME,
-      NULL, NULL },
-    { "-poskeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapPosFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_POS_KEYMAP_FILE_NAME,
-      NULL, NULL },
-#endif
     { NULL}
 };
 

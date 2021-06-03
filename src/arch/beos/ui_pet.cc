@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -39,28 +40,12 @@ extern "C" {
 #include "vsync.h"
 }
 
-static char* pet_model_name[] = {
-    "2001",
-    "3008",
-    "3016",
-    "3032",
-    "3032B",
-    "4016",
-    "4032",
-    "4032B",
-    "8032",
-    "8096",
-    "8296",
-    "SuperPET",
-    NULL
-};
-
 static int pet_memory[] = { 4, 8, 16, 32, 96, 128, 0 };
-static char *video_text[] = { "Auto", "40 columns", "80 columns", NULL };
+static const char *video_text[] = { "Auto", "40 columns", "80 columns", NULL };
 static int video_res[] = { 0, 40, 80 };
-static char *iosize_text[] = { "256 Byte", "2 KByte", NULL };
+static const char *iosize_text[] = { "256 Byte", "2 KByte", NULL };
 static int iosize_res[] = { 0x100, 0x800 };
-static char *keyboard_text[] = { "Graphics", "Business (UK)", NULL };
+static const char *keyboard_text[] = { "Graphics", "Business (UK)", NULL };
 static int keyboard_res[] = { 2, 0 };
 
 class PetWindow : public BWindow {
@@ -83,35 +68,19 @@ PetWindow::PetWindow()
     BCheckBox *checkbox;
     BMessage *msg;
     int res, i;
-    char str[255];
+    char str[8];
 
     r = Bounds();
     background = new BView(r, "backview", B_FOLLOW_NONE, B_WILL_DRAW);
     background->SetViewColor(220, 220, 220, 0);
     AddChild(background);
 
-    /* PET models */
-    r = Bounds();
-    r.InsetBy(10, 5);
-    r.right = r.left + 90;
-    box = new BBox(r, "Machine");
-    box->SetViewColor(220, 220, 220, 0);
-    box->SetLabel("Machine");
-    background->AddChild(box);				    
-
-    for (i = 0; pet_model_name[i]; i++) {
-        msg = new BMessage(MESSAGE_PET_MODEL);
-        msg->AddInt32("model", i);
-        button = new BButton(BRect(10, 15 + i * 25, 70, 30 + i * 25), pet_model_name[i], pet_model_name[i], msg);
-        box->AddChild(button);
-    }
-
     /* memory */
-    r = BRect(110, 5, 190, 170);
+    r = BRect(10, 5, 140, 170);
     box = new BBox(r, "Memory");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("Memory");
-    background->AddChild(box);				    
+    background->AddChild(box);
 
     resources_get_int("RamSize", &res);
     for (i = 0; pet_memory[i]; i++) {
@@ -124,11 +93,11 @@ PetWindow::PetWindow()
     }
 
     /* video */
-    r = BRect(110, 180, 190, 270);
+    r = BRect(10, 180, 140, 270);
     box = new BBox(r, "Video");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("Video");
-    background->AddChild(box);				    
+    background->AddChild(box);
 
     resources_get_int("VideoSize", &res);
     for (i = 0; video_text[i]; i++) {
@@ -140,11 +109,11 @@ PetWindow::PetWindow()
     }
 
     /* io size */
-    r = BRect(110, 280, 190, 345);
+    r = BRect(10, 280, 140, 345);
     box = new BBox(r, "IO Size");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("IO Size");
-    background->AddChild(box);				    
+    background->AddChild(box);
 
     resources_get_int("IOSize", &res);
     for (i = 0; iosize_text[i]; i++) {
@@ -156,11 +125,11 @@ PetWindow::PetWindow()
     }
 
     /* keyboard */
-    r = BRect(200, 5, 360, 70);
+    r = BRect(150, 5, 360, 70);
     box = new BBox(r, "Keyboard");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("Keyboard");
-    background->AddChild(box);				    
+    background->AddChild(box);
 
     resources_get_int("KeymapIndex", &res);
     for (i = 0; keyboard_text[i]; i++) {
@@ -172,11 +141,11 @@ PetWindow::PetWindow()
     }
 
     /* crtc */
-    r = BRect(200, 80, 360, 120);
+    r = BRect(150, 80, 360, 120);
     box = new BBox(r, "CRTC");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("CRTC");
-    background->AddChild(box);				    
+    background->AddChild(box);
 
     resources_get_int("Crtc", &res);
     checkbox = new BCheckBox(BRect(10, 15, 140, 25), "CRTC chip enabled", "CRTC chip enabled", new BMessage(MESSAGE_PET_CRTC));
@@ -184,11 +153,11 @@ PetWindow::PetWindow()
     box->AddChild(checkbox);
 
     /* superpet */
-    r = BRect(200, 130, 360, 170);
+    r = BRect(150, 130, 360, 170);
     box = new BBox(r, "SuperPET");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("SuperPET");
-    background->AddChild(box);				    
+    background->AddChild(box);
 
     resources_get_int("SuperPET", &res);
     checkbox = new BCheckBox(BRect(10, 15, 155, 25), "IO enable (disables 8x96)", "IO enable (disables 8x96)", new BMessage(MESSAGE_PET_SUPERPET));
@@ -196,11 +165,11 @@ PetWindow::PetWindow()
     box->AddChild(checkbox);
 
     /* 8296 PET */
-    r = BRect(200, 180, 360, 245);
+    r = BRect(150, 180, 360, 245);
     box = new BBox(r, "8296 PET");
     box->SetViewColor(220, 220, 220, 0);
     box->SetLabel("8296 PET");
-    background->AddChild(box);				    
+    background->AddChild(box);
 
     resources_get_int("Ram9", &res);
     checkbox = new BCheckBox(BRect(10, 15, 155, 25), "$9*** as RAM", "$9*** as RAM", new BMessage(MESSAGE_PET_RAM9));
@@ -217,7 +186,7 @@ PetWindow::PetWindow()
 
 PetWindow::~PetWindow() 
 {
-    petwindow = NULL;	
+    petwindow = NULL;
 }
 
 void PetWindow::MessageReceived(BMessage *msg)
@@ -225,10 +194,6 @@ void PetWindow::MessageReceived(BMessage *msg)
     int32 res_value;
 
     switch (msg->what) {
-        case MESSAGE_PET_MODEL:
-            msg->FindInt32("model", &res_value);
-            pet_set_model(pet_model_name[res_value], NULL);
-            break;
         case MESSAGE_PET_MEMORY:
             msg->FindInt32("memory", &res_value);
             resources_set_int("RamSize", pet_memory[res_value]);

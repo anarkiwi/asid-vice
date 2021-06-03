@@ -1,13 +1,32 @@
 #!/bin/sh
-# fixdox.sh - This script will fix up the texi file for proper
-#             generation of the final document.
+
 #
-# input is stdin and output is stdout.
+# fixdox.sh - fix up the texi file for proper generation of the final document.
 #
-# written by Marco van den Heuvel <blackystardust68@yahoo.com>
+# Written by
+#  Marco van den Heuvel <blackystardust68@yahoo.com>
 #
-# fixdox.sh <format-to-fix-for>
-#           $1
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
+# Usage: fixdox.sh <format-to-fix-for>
+#                   $1
+#
 
 FORMAT=$1
 
@@ -65,7 +84,15 @@ fixchm()
   while read data
   do
     case x"${data}" in
-	"x@multitable"*)  table4chm;;
+      "x@multitable"*)
+        table4chm
+        ;;
+      "x@ifset"*)
+        outputok=no
+        ;;
+      "x@ifclear"*)
+        outputok=no
+        ;;
     esac
 
     if test x"$data" = "x@ifinfo"; then
@@ -76,7 +103,19 @@ fixchm()
       echo $data
     fi
 
+    if test x"$data" = "x@ifset platformwindows"; then
+      outputok=yes
+    fi
+
     if test x"$data" = "x@end ifinfo"; then
+      outputok=yes
+    fi
+
+    if test x"$data" = "x@end ifset"; then
+      outputok=yes
+    fi
+
+    if test x"$data" = "x@end ifclear"; then
       outputok=yes
     fi
   done
@@ -84,13 +123,13 @@ fixchm()
 
 fixhlp()
 {
-  sed <tmp.texi >vicetmp.texi -e 's/@firstparagraphindent none//g' -e 's/@exampleindent 0//g'
+  sed <tmp.texi >vicetmp.texi -e 's/@firstparagraphindent none//g' -e 's/@exampleindent 0//g' -e 's/@verbatim/@smallexample/g' -e 's/@end verbatim/@end smallexample/g'
   rm -f -r tmp.texi
 }
 
 fixguide()
 {
-  echo not implemented yet
+  sed <tmp.texi >vicetmp.texi -e 's/@ifinfo//g' -e 's/@end ifinfo//g' -e 's/@format//g' -e 's/@end format//g' -e 's/@firstparagraphindent none//g' -e 's/@exampleindent 0//g'
 }
 
 fixpdf()
@@ -100,7 +139,8 @@ fixpdf()
 
 fixipf()
 {
-  echo not implemented yet
+  sed <tmp.texi >vicetmp.texi -e 's/@firstparagraphindent//g' -e 's/@paragraphindent//g' -e 's/@exampleindent//g' -e 's/@ifcommanddefined//g' -e 's/@end ifcommanddefined//g'
+  rm -f -r tmp.texi
 }
 
 if test x"$FORMAT" = "xtxt"; then

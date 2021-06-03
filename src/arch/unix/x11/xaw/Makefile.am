@@ -1,6 +1,6 @@
 SUBDIRS = widgets
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -14,6 +14,8 @@ INCLUDES = \
 	-I$(top_srcdir)/src/cbm2 \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/arch/unix/gui \
 	-I$(top_srcdir)/src/arch/unix/x11
 
@@ -29,14 +31,25 @@ libxawui_a_SOURCES = \
 	uiarch.h \
 	uicartridge.c \
 	uicolor.c \
+	uicontents.c \
+	uicontents.h \
+	uidrivestatus.h \
+	uidrivestatus.c \
 	uiedisk.c \
 	uiedit.c \
+	uijoystatus.c \
+	uijoystatus.h \
 	uimenu.c \
 	uimenu.h \
+	uinetplay.c \
 	uipalcontrol.c \
 	uipalcontrol.h \
 	uiscreenshot.c \
 	uisnapshot.c \
+	uistatusbar.c \
+	uistatusbar.h \
+	uitapestatus.c \
+	uitapestatus.h \
 	uivsidcontrol.c \
 	videoarch.h \
 	x11video.c \

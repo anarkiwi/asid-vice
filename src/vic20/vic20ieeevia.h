@@ -2,7 +2,7 @@
  * vic20ieeevia.h - IEEE488 interface VIA emulation.
  *
  * Written by
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -33,15 +33,15 @@
 struct machine_context_s;
 struct via_context_s;
 
-extern void vic20ieeevia1_setup_context(struct machine_context_s
-                                        *machine_context);
+extern int ieeevia1_dump(void);
+extern void vic20ieeevia1_setup_context(struct machine_context_s *machine_context);
 extern void ieeevia1_init(struct via_context_s *via_context);
 extern void ieeevia1_store(WORD addr, BYTE byte);
 extern BYTE ieeevia1_read(WORD addr);
 extern BYTE ieeevia1_peek(WORD addr);
 
-extern void vic20ieeevia2_setup_context(struct machine_context_s
-                                        *machine_context);
+extern int ieeevia2_dump(void);
+extern void vic20ieeevia2_setup_context(struct machine_context_s *machine_context);
 extern void ieeevia2_init(struct via_context_s *via_context);
 extern void ieeevia2_store(WORD addr, BYTE byte);
 extern BYTE ieeevia2_read(WORD addr);
@@ -50,4 +50,3 @@ extern BYTE ieeevia2_peek(WORD addr);
 extern void ieeevia2_set_tape_sense(int v);
 
 #endif
-

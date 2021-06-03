@@ -3,7 +3,7 @@
  *
  * Written by
  *  Marco van den Heuvel <blackystardust68@yahoo.com>
- * 
+ *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -30,9 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "c64_256k.h"
 #include "c64cart.h"
-#include "c64export.h"
 #include "c64mem.h"
 #include "cartio.h"
 #include "cartridge.h"
@@ -43,7 +41,6 @@
 #include "mem.h"
 #include "monitor.h"
 #include "plus256k.h"
-#include "plus60k.h"
 #include "resources.h"
 #include "reu.h"
 #include "snapshot.h"
@@ -145,8 +142,10 @@ static io_source_t vicii_d100_device = {
 static io_source_list_t *vicii_d000_list_item = NULL;
 static io_source_list_t *vicii_d100_list_item = NULL;
 
-static int set_plus256k_enabled(int val, void *param)
+int set_plus256k_enabled(int value, int disable_reset)
 {
+    int val = value ? 1 : 0;
+
     if (val == plus256k_enabled) {
         return 0;
     }
@@ -155,19 +154,18 @@ static int set_plus256k_enabled(int val, void *param)
         if (plus256k_deactivate() < 0) {
             return -1;
         }
-        machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        if (!disable_reset) {
+            machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        }
         plus256k_enabled = 0;
         return 0;
     } else {
-        if (get_cpu_lines_lock() != 0) {
-            ui_error(translate_text(IDGS_RESOURCE_S_BLOCKED_BY_S), "CPU-LINES", get_cpu_lines_lock_name());
+        if (plus256k_activate() < 0) {
             return -1;
-        } else {
-            if (plus256k_activate() < 0) {
-                return -1;
-            }
         }
-        machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        if (!disable_reset) {
+            machine_trigger_reset(MACHINE_RESET_MODE_HARD);
+        }
         plus256k_enabled = 1;
         return 0;
     }
@@ -176,7 +174,7 @@ static int set_plus256k_enabled(int val, void *param)
 static int set_plus256k_filename(const char *name, void *param)
 {
     if (plus256k_filename != NULL && name != NULL && strcmp(name, plus256k_filename) == 0) {
-       return 0;
+        return 0;
     }
 
     if (name != NULL && *name != '\0') {
@@ -202,19 +200,9 @@ static const resource_string_t resources_string[] = {
     { NULL }
 };
 
-static const resource_int_t resources_int[] = {
-    { "PLUS256K", 0, RES_EVENT_SAME, NULL,
-      &plus256k_enabled, set_plus256k_enabled, NULL },
-    { NULL }
-};
-
 int plus256k_resources_init(void)
 {
-    if (resources_register_string(resources_string) < 0) {
-        return -1;
-    }
-
-    return resources_register_int(resources_int);
+    return resources_register_string(resources_string);
 }
 
 void plus256k_resources_shutdown(void)
@@ -226,16 +214,6 @@ void plus256k_resources_shutdown(void)
 
 static const cmdline_option_t cmdline_options[] =
 {
-    { "-plus256k", SET_RESOURCE, 0,
-      NULL, NULL, "PLUS256K", (resource_value_t)1,
-      USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_ENABLE_PLUS256K_EXPANSION,
-      NULL, NULL },
-    { "+plus256k", SET_RESOURCE, 0,
-      NULL, NULL, "PLUS256K", (resource_value_t)0,
-      USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_DISABLE_PLUS256K_EXPANSION,
-      NULL, NULL },
     { "-plus256kimage", SET_RESOURCE, 1,
       NULL, NULL, "PLUS256Kfilename", NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
@@ -287,7 +265,6 @@ static int plus256k_activate(void)
         log_message(plus256k_log, "Reading PLUS256K image %s.", plus256k_filename);
     }
     plus256k_reset();
-    set_cpu_lines_lock(CPU_LINES_PLUS256K, "PLUS256K");
     c64io_vicii_deinit();
     vicii_d000_list_item = io_source_register(&vicii_d000_device);
     vicii_d100_list_item = io_source_register(&vicii_d100_device);
@@ -306,7 +283,6 @@ static int plus256k_deactivate(void)
     vicii_set_ram_base(mem_ram);
     lib_free(plus256k_ram);
     plus256k_ram = NULL;
-    remove_cpu_lines_lock();
 
     if (vicii_d000_list_item != NULL) {
         io_source_unregister(vicii_d000_list_item);
@@ -351,4 +327,92 @@ BYTE plus256k_ram_low_read(WORD addr)
 BYTE plus256k_ram_high_read(WORD addr)
 {
     return plus256k_ram[(plus256k_high_bank * 0x10000) + addr];
+}
+
+/* ------------------------------------------------------------------------- */
+
+/* PLUS256K snapshot module format:
+
+   type  | name          | description
+   -----------------------------------
+   BYTE  | register      | register
+   BYTE  | video bank    | current video bank
+   BYTE  | low bank      | current low bank
+   BYTE  | high bank     | current high bank
+   BYTE  | write protect | write protect flag
+   ARRAY | RAM           | 262144 BYTES of RAM data
+
+   Note: for some reason this snapshot module revision started at 0.1, so there never was a 0.0
+ */
+
+static char snap_module_name[] = "PLUS256K";
+#define SNAP_MAJOR   0
+#define SNAP_MINOR   1
+
+int plus256k_snapshot_write(struct snapshot_s *s)
+{
+    snapshot_module_t *m;
+
+    m = snapshot_module_create(s, snap_module_name, SNAP_MAJOR, SNAP_MINOR);
+
+    if (m == NULL) {
+        return -1;
+    }
+
+    if (0
+        || SMW_B (m, plus256k_reg) < 0
+        || SMW_B (m, (BYTE)plus256k_video_bank) < 0
+        || SMW_B (m, (BYTE)plus256k_low_bank) < 0
+        || SMW_B (m, (BYTE)plus256k_high_bank) < 0
+        || SMW_B (m, (BYTE)plus256k_protected) < 0
+        || SMW_BA(m, plus256k_ram, 0x40000) < 0) {
+        snapshot_module_close(m);
+        return -1;
+    }
+
+    return snapshot_module_close(m);
+}
+
+int plus256k_snapshot_read(struct snapshot_s *s)
+{
+    snapshot_module_t *m;
+    BYTE vmajor, vminor;
+
+    m = snapshot_module_open(s, snap_module_name, &vmajor, &vminor);
+
+    if (m == NULL) {
+        return -1;
+    }
+
+    /* Do not accept versions higher than current */
+    if (vmajor > SNAP_MAJOR || vminor > SNAP_MINOR) {
+        snapshot_set_error(SNAPSHOT_MODULE_HIGHER_VERSION);
+        goto fail;
+    }
+
+    /* enable plus256k, without reset */
+    set_plus256k_enabled(1, 1);
+
+    /* overwrite registers */
+    if (0
+        || SMR_B(m, &plus256k_reg) < 0
+        || SMR_B_INT(m, &plus256k_video_bank) < 0
+        || SMR_B_INT(m, &plus256k_low_bank) < 0
+        || SMR_B_INT(m, &plus256k_high_bank) < 0
+        || SMR_B_INT(m, &plus256k_protected) < 0
+        || SMR_BA(m, plus256k_ram, 0x40000) < 0) {
+        goto fail;
+    }
+
+    return snapshot_module_close(m);
+    
+fail:
+    if (m != NULL) {
+        snapshot_module_close(m);
+    }
+
+    /* disable plus256k, without reset */
+    set_plus256k_enabled(0, 1);
+
+    return -1;
 }

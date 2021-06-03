@@ -27,6 +27,8 @@
 
 #include "vice.h"
 
+#ifdef HAVE_OPENCBM
+
 #include <stdio.h>
 
 #include "log.h"
@@ -51,8 +53,7 @@ static CBM_FILE realdevice_fd;
 static opencbmlib_t opencbmlib;
 
 
-void realdevice_open(unsigned int device, BYTE secondary,
-                     void(*st_func)(BYTE))
+void realdevice_open(unsigned int device, BYTE secondary, void (*st_func)(BYTE))
 {
     vsync_suspend_speed_eval();
 
@@ -65,8 +66,7 @@ void realdevice_open(unsigned int device, BYTE secondary,
 #endif
 }
 
-void realdevice_close(unsigned int device, BYTE secondary,
-                      void(*st_func)(BYTE))
+void realdevice_close(unsigned int device, BYTE secondary, void (*st_func)(BYTE))
 {
     vsync_suspend_speed_eval();
 
@@ -78,8 +78,7 @@ void realdevice_close(unsigned int device, BYTE secondary,
 #endif
 }
 
-void realdevice_listen(unsigned int device, BYTE secondary,
-                       void(*st_func)(BYTE))
+void realdevice_listen(unsigned int device, BYTE secondary, void (*st_func)(BYTE))
 {
     vsync_suspend_speed_eval();
 
@@ -91,7 +90,7 @@ void realdevice_listen(unsigned int device, BYTE secondary,
 #endif
 }
 
-void realdevice_talk(unsigned int device, BYTE secondary, void(*st_func)(BYTE))
+void realdevice_talk(unsigned int device, BYTE secondary, void (*st_func)(BYTE))
 {
     vsync_suspend_speed_eval();
 
@@ -103,7 +102,7 @@ void realdevice_talk(unsigned int device, BYTE secondary, void(*st_func)(BYTE))
 #endif
 }
 
-void realdevice_unlisten(void(*st_func)(BYTE))
+void realdevice_unlisten(void (*st_func)(BYTE))
 {
     vsync_suspend_speed_eval();
 
@@ -113,7 +112,7 @@ void realdevice_unlisten(void(*st_func)(BYTE))
 #endif
 }
 
-void realdevice_untalk(void(*st_func)(BYTE))
+void realdevice_untalk(void (*st_func)(BYTE))
 {
     vsync_suspend_speed_eval();
 
@@ -123,7 +122,7 @@ void realdevice_untalk(void(*st_func)(BYTE))
 #endif
 }
 
-void realdevice_write(BYTE data, void(*st_func)(BYTE))
+void realdevice_write(BYTE data, void (*st_func)(BYTE))
 {
     BYTE st;
 
@@ -143,7 +142,7 @@ void realdevice_write(BYTE data, void(*st_func)(BYTE))
     st_func(st);
 }
 
-BYTE realdevice_read(void(*st_func)(BYTE))
+BYTE realdevice_read(void (*st_func)(BYTE))
 {
     BYTE st, data;
 
@@ -155,8 +154,9 @@ BYTE realdevice_read(void(*st_func)(BYTE))
     log_debug("READ %02x ST %02x", data, st);
 #endif
 
-    if ((*opencbmlib.p_cbm_get_eoi)(realdevice_fd))
+    if ((*opencbmlib.p_cbm_get_eoi)(realdevice_fd)) {
         st |= 0x40;
+    }
 
 #ifdef DEBUG_RD
     log_debug("READ NEWST %02x", st);
@@ -170,28 +170,44 @@ BYTE realdevice_read(void(*st_func)(BYTE))
 void realdevice_init(void)
 {
     realdevice_log = log_open("Real Device");
+#ifdef DEBUG_RD
+    log_debug("realdevice_init()");
+#endif
 
-    if (opencbmlib_open(&opencbmlib) >= 0)
+    if (opencbmlib_open(&opencbmlib) >= 0) {
         realdevice_available = 1;
+    }
 }
 
 void realdevice_reset(void)
 {
-    if (realdevice_enabled)
+#ifdef DEBUG_RD
+    log_debug("realdevice_reset()");
+#endif
+    if (realdevice_enabled) {
         (*opencbmlib.p_cbm_reset)(realdevice_fd);
+    }
 }
 
 int realdevice_enable(void)
 {
-    if (opencbmlib_open(&opencbmlib) >= 0)
+#ifdef DEBUG_RD
+    log_debug("realdevice_enable()");
+#endif
+    if (realdevice_available == 0 &&
+            opencbmlib_open(&opencbmlib) >= 0) {
         realdevice_available = 1;
+    }
 
     if (realdevice_available == 0) {
-        log_message(realdevice_log, "Real device emulation is not available!");
+        log_message(realdevice_log, "Real device access is not available!");
         return -1;
     }
 
-    if (!realdevice_enabled) {
+    if (realdevice_enabled == 0) {
+#ifdef DEBUG_RD
+        log_debug("realdevice_enable: calling cbm_driver_open");
+#endif
         if ((*opencbmlib.p_cbm_driver_open)(&realdevice_fd, 0) != 0) {
             log_message(realdevice_log,
                         "Cannot open %s, realdevice not available!",
@@ -199,27 +215,35 @@ int realdevice_enable(void)
             return -1;
         }
 
-        realdevice_enabled = 1;
-
         log_message(realdevice_log, "%s opened.",
                     (*opencbmlib.p_cbm_get_driver_name)(0));
     }
+
+#ifdef DEBUG_RD
+    log_debug("realdevice_enable: realdevice_enabled++");
+#endif
+    realdevice_enabled++;
 
     return 0;
 }
 
 void realdevice_disable(void)
 {
-    if (realdevice_enabled) {
-        (*opencbmlib.p_cbm_driver_close)(realdevice_fd);
+#ifdef DEBUG_RD
+    log_debug("realdevice_disable()");
+#endif
+    if (realdevice_enabled > 0) {
+        realdevice_enabled--;
 
-        realdevice_enabled = 0;
+        if (realdevice_enabled == 0) {
+            (*opencbmlib.p_cbm_driver_close)(realdevice_fd);
 
-        log_message(realdevice_log, "%s closed.",
-                    (*opencbmlib.p_cbm_get_driver_name)(0));
+            log_message(realdevice_log, "%s closed.",
+                        (*opencbmlib.p_cbm_get_driver_name)(0));
+
+            opencbmlib_close();
+            realdevice_available = 0;
+        }
     }
-
-    opencbmlib_close();
-    realdevice_available = 0;
 }
-
+#endif

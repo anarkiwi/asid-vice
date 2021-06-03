@@ -25,6 +25,8 @@
  *
  */
 
+#define _CRT_SECURE_NO_DEPRECATE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +37,7 @@
 
 static char line_buffer[512];
 
-int getline(FILE *file)
+int vice_getline(FILE *file)
 {
     char c = 0;
     int counter = 0;
@@ -111,6 +113,8 @@ void generate_translate_h(char *in_filename, char *out_filename)
     fprintf(outfile, "\n");
     fprintf(outfile, "#define USE_PARAM_STRING   0\n");
     fprintf(outfile, "#define USE_PARAM_ID       1\n");
+    fprintf(outfile, "#define USE_DESCRIPTION_COMBO    2\n");
+    fprintf(outfile, "#define USE_DESCRIPTION_DYN      3\n");
     fprintf(outfile, "\n");
     fprintf(outfile, "#define USE_DESCRIPTION_STRING   0\n");
     fprintf(outfile, "#define USE_DESCRIPTION_ID       1\n");
@@ -126,7 +130,7 @@ void generate_translate_h(char *in_filename, char *out_filename)
     fprintf(outfile, "\n");
 
     while (!feof(infile)) {
-        found = getline(infile);
+        found = vice_getline(infile);
         if (found == FOUND_ID) {
             fprintf(outfile, "%s,\n", line_buffer);
             fprintf(outfile, "%s_DA,\n", line_buffer);
@@ -206,7 +210,7 @@ void generate_translate_table_h(char *in_filename, char *out_filename)
     fprintf(outfile, "static int translate_text_table[][countof(language_table)] = {\n");
 
     while (!feof(infile)) {
-        found = getline(infile);
+        found = vice_getline(infile);
         if (found == FOUND_ID) {
             fprintf(outfile, "/* en */ {%s,\n", line_buffer);
             fprintf(outfile, "/* da */  %s_DA,\n", line_buffer);

@@ -40,12 +40,13 @@
 #include "util.h"
 #include "vsync.h"
 
+static char *last_dir = NULL;
+
 static UI_CALLBACK(attach_cartridge)
 {
     int type = vice_ptr_to_int(UI_MENU_CB_PARAM);
     char *filename;
     ui_button_t button;
-    static char *last_dir;
     uilib_file_filter_enum_t filter[] = { UILIB_FILTER_CARTRIDGE, UILIB_FILTER_ALL };
 
     vsync_suspend_speed_eval();
@@ -128,11 +129,6 @@ static ui_menu_entry_t attach_cartridge_image_submenu[] = {
     { N_("Unload Cart $6-7***"), UI_MENU_TYPE_NORMAL,
       (ui_callback_t)detach_cartridge,
       (ui_callback_data_t)CARTRIDGE_CBM2_16KB_6000, NULL },
-/*
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Set cartridge as default"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)default_cartridge, NULL, NULL },
-*/
     { NULL }
 };
 
@@ -141,9 +137,23 @@ ui_menu_entry_t ui_cbm2cart_commands_menu[] = {
       NULL, NULL, attach_cartridge_image_submenu },
     { N_("Detach cartridge image(s)"), UI_MENU_TYPE_NORMAL,
       (ui_callback_t)detach_cartridge, NULL, NULL },
-/*
-    { N_("Cartridge freeze"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)freeze_cartridge, NULL, NULL, KEYSYM_z, UI_HOTMOD_META },
-*/
     { NULL }
 };
+
+
+/** \brief  For symmetry, doesn't do anything (yet)
+ */
+void uicbm2cart_menu_create(void)
+{
+    /* NOP */
+}
+
+/** \brief  Clean up memory used by the UI
+ */
+void uicbm2cart_menu_shutdown(void)
+{
+    if (last_dir != NULL) {
+        lib_free(last_dir);
+    }
+}
+

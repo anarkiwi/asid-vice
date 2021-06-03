@@ -33,8 +33,11 @@
 
 #include "c64cart.h"
 #include "cartridge.h"
+#include "cartio.h"
+#include "clockport.h"
 #include "keyboard.h"
 #include "lib.h"
+#include "machine.h"
 #include "menu_common.h"
 #include "menu_c64_common_expansions.h"
 #include "menu_c64cart.h"
@@ -59,213 +62,64 @@ static UI_MENU_CALLBACK(attach_c64_cart_callback)
     return NULL;
 }
 
-static const ui_menu_entry_t attach_raw_cart_menu[] = {
-    { "Attach generic 8kB image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_GENERIC_8KB },
-    { "Attach generic 16kB image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_GENERIC_16KB },
-    { "Attach Ultimax image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ULTIMAX },
-    { "Attach " CARTRIDGE_NAME_ACTION_REPLAY " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ACTION_REPLAY },
-    { "Attach " CARTRIDGE_NAME_ACTION_REPLAY2 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ACTION_REPLAY2 },
-    { "Attach " CARTRIDGE_NAME_ACTION_REPLAY3 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ACTION_REPLAY3 },
-    { "Attach " CARTRIDGE_NAME_ACTION_REPLAY4 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ACTION_REPLAY4 },
-    { "Attach " CARTRIDGE_NAME_ATOMIC_POWER " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ATOMIC_POWER },
-    { "Attach " CARTRIDGE_NAME_CAPTURE " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_CAPTURE },
-    { "Attach " CARTRIDGE_NAME_COMAL80 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_COMAL80 },
-    { "Attach " CARTRIDGE_NAME_DIASHOW_MAKER " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_DIASHOW_MAKER },
-    { "Attach " CARTRIDGE_NAME_DINAMIC " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_DINAMIC },
-    { "Attach " CARTRIDGE_NAME_EASYFLASH " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_EASYFLASH },
-    { "Attach " CARTRIDGE_NAME_EPYX_FASTLOAD " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_EPYX_FASTLOAD },
-    { "Attach " CARTRIDGE_NAME_EXOS " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_EXOS },
-    { "Attach " CARTRIDGE_NAME_EXPERT " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_EXPERT },
-    { "Attach " CARTRIDGE_NAME_FINAL_I " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_FINAL_I },
-    { "Attach " CARTRIDGE_NAME_FINAL_III " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_FINAL_III },
-    { "Attach " CARTRIDGE_NAME_FINAL_PLUS " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_FINAL_PLUS },
-    { "Attach " CARTRIDGE_NAME_FREEZE_FRAME " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_FREEZE_FRAME },
-    { "Attach " CARTRIDGE_NAME_FREEZE_MACHINE " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_FREEZE_MACHINE },
-    { "Attach " CARTRIDGE_NAME_FUNPLAY " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_FUNPLAY },
-    { "Attach " CARTRIDGE_NAME_GAME_KILLER " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_GAME_KILLER },
-    { "Attach " CARTRIDGE_NAME_GS " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_GS },
-    { "Attach " CARTRIDGE_NAME_IDE64 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_IDE64 },
-    { "Attach " CARTRIDGE_NAME_IEEE488 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_IEEE488 },
-    { "Attach " CARTRIDGE_NAME_KCS_POWER " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_KCS_POWER },
-    { "Attach " CARTRIDGE_NAME_MACH5 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_MACH5 },
-    { "Attach " CARTRIDGE_NAME_MAGIC_DESK " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_MAGIC_DESK },
-    { "Attach " CARTRIDGE_NAME_MAGIC_FORMEL " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_MAGIC_FORMEL },
-    { "Attach " CARTRIDGE_NAME_MAGIC_VOICE " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_MAGIC_VOICE },
-    { "Attach " CARTRIDGE_NAME_MIKRO_ASSEMBLER " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_MIKRO_ASSEMBLER },
-    { "Attach " CARTRIDGE_NAME_MMC64 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_MMC64 },
-    { "Attach " CARTRIDGE_NAME_MMC_REPLAY " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_MMC_REPLAY },
-    { "Attach " CARTRIDGE_NAME_OCEAN " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_OCEAN },
-    { "Attach " CARTRIDGE_NAME_P64 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_P64 },
-    { "Attach " CARTRIDGE_NAME_RETRO_REPLAY " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_RETRO_REPLAY },
-    { "Attach " CARTRIDGE_NAME_REX " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_REX },
-    { "Attach " CARTRIDGE_NAME_ROSS " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ROSS },
-    { "Attach " CARTRIDGE_NAME_SILVERROCK_128 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_SILVERROCK_128 },
-    { "Attach " CARTRIDGE_NAME_SIMONS_BASIC " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_SIMONS_BASIC },
-    { "Attach " CARTRIDGE_NAME_SNAPSHOT64 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_SNAPSHOT64 },
-    { "Attach " CARTRIDGE_NAME_STARDOS " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_STARDOS },
-    { "Attach " CARTRIDGE_NAME_STRUCTURED_BASIC " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_STRUCTURED_BASIC },
-    { "Attach " CARTRIDGE_NAME_SUPER_EXPLODE_V5 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_SUPER_EXPLODE_V5 },
-    { "Attach " CARTRIDGE_NAME_SUPER_GAMES " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_SUPER_GAMES },
-    { "Attach " CARTRIDGE_NAME_SUPER_SNAPSHOT " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_SUPER_SNAPSHOT },
-    { "Attach " CARTRIDGE_NAME_SUPER_SNAPSHOT_V5 " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_SUPER_SNAPSHOT_V5 },
-    { "Attach " CARTRIDGE_NAME_WARPSPEED " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_WARPSPEED },
-    { "Attach " CARTRIDGE_NAME_WESTERMANN " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_WESTERMANN },
-    { "Attach " CARTRIDGE_NAME_ZAXXON " image",
-      MENU_ENTRY_DIALOG,
-      attach_c64_cart_callback,
-      (ui_callback_data_t)CARTRIDGE_ZAXXON },
-    SDL_MENU_LIST_END
+ui_menu_entry_t ui_c64cart_entry = {
+    NULL, MENU_ENTRY_DIALOG, (ui_callback_t)attach_c64_cart_callback,
+    (ui_callback_data_t)0
 };
+
+static int countgroup(cartridge_info_t *cartlist, int flags)
+{
+    int num = 0;
+    while(cartlist->name) {
+        if (cartlist->flags & flags) {
+            num++;
+        }
+        cartlist++;
+    }
+    return num;
+}
+
+static void makegroup(cartridge_info_t *cartlist, ui_menu_entry_t *entry, int flags)
+{
+    while(cartlist->name) {
+        if (cartlist->flags & flags) {
+            ui_c64cart_entry.string = cartlist->name;
+            ui_c64cart_entry.data = (ui_callback_data_t)(unsigned long)cartlist->crtid;
+            memcpy(entry, &ui_c64cart_entry, sizeof(ui_menu_entry_t));
+            entry++;
+        }
+        cartlist++;
+    }
+    memset(entry, 0, sizeof(ui_menu_entry_t));
+}
+
+static ui_menu_entry_t *attach_raw_cart_menu = NULL;
+
+void uicart_menu_create(void)
+{
+    int num;
+    cartridge_info_t *cartlist = cartridge_get_info_list();
+
+    num = countgroup(cartlist, CARTRIDGE_GROUP_GENERIC | CARTRIDGE_GROUP_FREEZER | CARTRIDGE_GROUP_GAME | CARTRIDGE_GROUP_UTIL);
+    attach_raw_cart_menu = lib_malloc(sizeof(ui_menu_entry_t) * (num + 1));
+    makegroup(cartlist, attach_raw_cart_menu, CARTRIDGE_GROUP_GENERIC | CARTRIDGE_GROUP_FREEZER | CARTRIDGE_GROUP_GAME | CARTRIDGE_GROUP_UTIL);
+    if (machine_class == VICE_MACHINE_SCPU64) {
+        scpu64cart_menu[1].data = attach_raw_cart_menu;
+    } else if (machine_class == VICE_MACHINE_C128) {
+        c128cart_menu[1].data = attach_raw_cart_menu;
+    } else {
+        c64cart_menu[1].data = attach_raw_cart_menu;
+    }
+}
+
+
+void uicart_menu_shutdown(void)
+{
+    if (attach_raw_cart_menu != NULL) {
+        lib_free(attach_raw_cart_menu);
+    }
+}
+
 
 static UI_MENU_CALLBACK(detach_c64_cart_callback)
 {
@@ -310,6 +164,7 @@ static c64_cart_flush_t carts[] = {
     { CARTRIDGE_GEORAM, "GEORAM", "GEORAMfilename" },
     { CARTRIDGE_MMC64, "MMC64", "MMC64BIOSfilename" },
     { CARTRIDGE_MMC_REPLAY, NULL, "MMCREEPROMImage" },
+    { CARTRIDGE_GMOD2, NULL, "GMod2EEPROMImage" },
     { CARTRIDGE_RETRO_REPLAY, NULL, NULL },
     { 0, NULL, NULL }
 };
@@ -325,7 +180,6 @@ static UI_MENU_CALLBACK(c64_cart_flush_callback)
         int cartid = vice_ptr_to_int(param);
 
         if (cartridge_flush_image(cartid) < 0) {
-
             /* find cartid in carts */
             for (i = 0; carts[i].cartid != 0 && !found; i++) {
                 if (carts[i].cartid == cartid) {
@@ -376,11 +230,9 @@ static UI_MENU_CALLBACK(c64_cart_save_callback)
             }
             lib_free(name);
         }
-
     }
     return NULL;
 }
-
 
 /* RAMCART */
 
@@ -461,7 +313,6 @@ static const ui_menu_entry_t reu_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_REUsize_callback,
       (ui_callback_data_t)1024 },
-#ifndef DINGOO_NATIVE
     { "2048kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_REUsize_callback,
@@ -478,7 +329,6 @@ static const ui_menu_entry_t reu_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_REUsize_callback,
       (ui_callback_data_t)16384 },
-#endif
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("RAM image"),
     { "Image file",
@@ -624,6 +474,7 @@ static const ui_menu_entry_t isepic_cart_menu[] = {
 
 UI_MENU_DEFINE_TOGGLE(EasyFlashJumper)
 UI_MENU_DEFINE_TOGGLE(EasyFlashWriteCRT)
+UI_MENU_DEFINE_TOGGLE(EasyFlashOptimizeCRT)
 
 
 static const ui_menu_entry_t easyflash_cart_menu[] = {
@@ -634,6 +485,10 @@ static const ui_menu_entry_t easyflash_cart_menu[] = {
     { "Save image on detach",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_EasyFlashWriteCRT_callback,
+      NULL },
+    { "Optimize image on write",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_EasyFlashOptimizeCRT_callback,
       NULL },
     { "Save image now",
       MENU_ENTRY_OTHER,
@@ -681,7 +536,6 @@ static const ui_menu_entry_t georam_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)1024 },
-#ifndef DINGOO_NATIVE
     { "2048kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
@@ -690,7 +544,6 @@ static const ui_menu_entry_t georam_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)4096 },
-#endif
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("RAM image"),
     { "Image file",
@@ -714,6 +567,10 @@ static const ui_menu_entry_t georam_menu[] = {
 
 
 /* MMC64 */
+
+UI_MENU_DEFINE_RADIO(MMC64ClockPort)
+
+static ui_menu_entry_t mmc64_clockport_device_menu[CLOCKPORT_MAX_ENTRIES + 1];
 
 UI_MENU_DEFINE_RADIO(MMC64_sd_type)
 
@@ -797,11 +654,20 @@ static const ui_menu_entry_t mmc64_cart_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_radio_callback,
       (ui_callback_data_t)mmc64_sd_type_menu },
+    SDL_MENU_ITEM_SEPARATOR,
+    { "Clockport device",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mmc64_clockport_device_menu },
     SDL_MENU_LIST_END
 };
 
 
 /* MMC Replay */
+
+UI_MENU_DEFINE_RADIO(MMCRClockPort)
+
+static ui_menu_entry_t mmcreplay_clockport_device_menu[CLOCKPORT_MAX_ENTRIES + 1];
 
 UI_MENU_DEFINE_RADIO(MMCRSDType)
 
@@ -875,11 +741,20 @@ static const ui_menu_entry_t mmcreplay_cart_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_radio_callback,
       (ui_callback_data_t)mmcreplay_sd_type_menu },
+    SDL_MENU_ITEM_SEPARATOR,
+    { "Clockport device",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mmcreplay_clockport_device_menu },
     SDL_MENU_LIST_END
 };
 
 
 /* Retro Replay */
+
+UI_MENU_DEFINE_RADIO(RRClockPort)
+
+static ui_menu_entry_t retroreplay_clockport_device_menu[CLOCKPORT_MAX_ENTRIES + 1];
 
 UI_MENU_DEFINE_TOGGLE(RRBankJumper)
 UI_MENU_DEFINE_RADIO(RRRevision)
@@ -923,6 +798,61 @@ static const ui_menu_entry_t retroreplay_cart_menu[] = {
       MENU_ENTRY_OTHER,
       c64_cart_save_callback,
       (ui_callback_data_t)CARTRIDGE_RETRO_REPLAY },
+    SDL_MENU_ITEM_SEPARATOR,
+    { "Clockport device",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)retroreplay_clockport_device_menu },
+    SDL_MENU_LIST_END
+};
+
+
+/* GMod2 */
+
+UI_MENU_DEFINE_FILE_STRING(GMod2EEPROMImage)
+UI_MENU_DEFINE_TOGGLE(GMOD2EEPROMRW)
+UI_MENU_DEFINE_TOGGLE(GMod2FlashWrite)
+
+static const ui_menu_entry_t gmod2_cart_menu[] = {
+    SDL_MENU_ITEM_TITLE("EEPROM image"),
+    { "EEPROM image file",
+      MENU_ENTRY_DIALOG,
+      file_string_GMod2EEPROMImage_callback,
+      (ui_callback_data_t)"Select " CARTRIDGE_NAME_GMOD2 " EEPROM image" },
+    { "Enable writes to EEPROM image",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_GMOD2EEPROMRW_callback,
+      NULL },
+    SDL_MENU_ITEM_SEPARATOR,
+    SDL_MENU_ITEM_TITLE("Flash image"),
+    { "Enable writes to flash image",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_GMod2FlashWrite_callback,
+      NULL },
+    SDL_MENU_LIST_END
+};
+
+/* RRNET MK3 */
+UI_MENU_DEFINE_TOGGLE(RRNETMK3_flashjumper)
+UI_MENU_DEFINE_TOGGLE(RRNETMK3_bios_write)
+
+static const ui_menu_entry_t rrnet_mk3_cart_menu[] = {
+    { "BIOS flash jumper",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_RRNETMK3_flashjumper_callback,
+      NULL },
+    { "Save image on detach",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_RRNETMK3_bios_write_callback,
+      NULL },
+    { "Save image now",
+      MENU_ENTRY_OTHER,
+      c64_cart_flush_callback,
+      (ui_callback_data_t)CARTRIDGE_RRNETMK3 },
+    { "Save image as",
+      MENU_ENTRY_OTHER,
+      c64_cart_save_callback,
+      (ui_callback_data_t)CARTRIDGE_RRNETMK3 },
     SDL_MENU_LIST_END
 };
 
@@ -968,21 +898,60 @@ static const ui_menu_entry_t soundexpander_menu[] = {
     SDL_MENU_LIST_END
 };
 
+UI_MENU_DEFINE_RADIO(IOCollisionHandling)
+
+static const ui_menu_entry_t iocollision_menu[] = {
+    { "Detach all",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_IOCollisionHandling_callback,
+      (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_ALL },
+    { "Detach last",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_IOCollisionHandling_callback,
+      (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_LAST },
+    { "AND values",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_IOCollisionHandling_callback,
+      (ui_callback_data_t)IO_COLLISION_METHOD_AND_WIRES },
+    SDL_MENU_LIST_END
+};
+
+static UI_MENU_CALLBACK(iocollision_show_type_callback)
+{
+    int type;
+
+    resources_get_int("IOCollisionHandling", &type);
+    switch (type) {
+        case IO_COLLISION_METHOD_DETACH_ALL:
+            return "-> detach all";
+            break;
+        case IO_COLLISION_METHOD_DETACH_LAST:
+            return "-> detach last";
+            break;
+        case IO_COLLISION_METHOD_AND_WIRES:
+            return "-> AND values";
+            break;
+    }
+    return "n/a";
+}
 
 /* Cartridge menu */
 
 UI_MENU_DEFINE_TOGGLE(CartridgeReset)
 UI_MENU_DEFINE_TOGGLE(SFXSoundSampler)
+UI_MENU_DEFINE_TOGGLE(CPMCart)
+UI_MENU_DEFINE_TOGGLE(SSRamExpansion)
 
-const ui_menu_entry_t c64cart_menu[] = {
+ui_menu_entry_t c64cart_menu[] = {
     { "Attach CRT image",
       MENU_ENTRY_DIALOG,
       attach_c64_cart_callback,
       (ui_callback_data_t)CARTRIDGE_CRT },
+    /* CAUTION: the position of this item is hardcoded above */
     { "Attach raw image",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
-      (ui_callback_data_t)attach_raw_cart_menu },
+      NULL },
     { "Detach cartridge image",
       MENU_ENTRY_OTHER,
       detach_c64_cart_callback,
@@ -996,6 +965,10 @@ const ui_menu_entry_t c64cart_menu[] = {
       MENU_ENTRY_OTHER,
       set_c64_cart_default_callback,
       NULL },
+    { "I/O collision handling ($D000-$DFFF)",
+      MENU_ENTRY_SUBMENU,
+      iocollision_show_type_callback,
+      (ui_callback_data_t)iocollision_menu },
     { "Reset on cartridge change",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_CartridgeReset_callback,
@@ -1046,6 +1019,118 @@ const ui_menu_entry_t c64cart_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)retroreplay_cart_menu },
+    { CARTRIDGE_NAME_GMOD2,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)gmod2_cart_menu },
+    { CARTRIDGE_NAME_RRNETMK3,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)rrnet_mk3_cart_menu },
+    { CARTRIDGE_NAME_MAGIC_VOICE,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)magicvoice_cart_menu },
+    { CARTRIDGE_NAME_SFX_SOUND_EXPANDER " settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)soundexpander_menu },
+    { CARTRIDGE_NAME_SFX_SOUND_SAMPLER,
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_SFXSoundSampler_callback,
+      NULL },
+    { "CP/M Cartridge",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_CPMCart_callback,
+      NULL },
+    { "Super Snapshot 32k RAM",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_SSRamExpansion_callback,
+      NULL },
+    SDL_MENU_LIST_END
+};
+
+ui_menu_entry_t c128cart_menu[] = {
+    { "Attach CRT image",
+      MENU_ENTRY_DIALOG,
+      attach_c64_cart_callback,
+      (ui_callback_data_t)CARTRIDGE_CRT },
+    /* CAUTION: the position of this item is hardcoded above */
+    { "Attach raw image",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      NULL },
+    { "Detach cartridge image",
+      MENU_ENTRY_OTHER,
+      detach_c64_cart_callback,
+      NULL },
+    SDL_MENU_ITEM_SEPARATOR,
+    { "Cartridge freeze",
+      MENU_ENTRY_OTHER,
+      c64_cart_freeze_callback,
+      NULL },
+    { "Set current cartridge as default",
+      MENU_ENTRY_OTHER,
+      set_c64_cart_default_callback,
+      NULL },
+    { "I/O collision handling ($D000-$DFFF)",
+      MENU_ENTRY_SUBMENU,
+      iocollision_show_type_callback,
+      (ui_callback_data_t)iocollision_menu },
+    { "Reset on cartridge change",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_CartridgeReset_callback,
+      NULL },
+    SDL_MENU_ITEM_SEPARATOR,
+    SDL_MENU_ITEM_TITLE("Cartridge specific settings"),
+    { CARTRIDGE_NAME_RAMCART,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)ramcart_menu },
+    { CARTRIDGE_NAME_REU,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)reu_menu },
+    { CARTRIDGE_NAME_GEORAM,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)georam_menu },
+    { CARTRIDGE_NAME_IDE64,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)ide64_menu },
+    { CARTRIDGE_NAME_EXPERT,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)expert_cart_menu },
+    { CARTRIDGE_NAME_ISEPIC,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)isepic_cart_menu },
+    { CARTRIDGE_NAME_DQBB,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)dqbb_cart_menu },
+    { CARTRIDGE_NAME_EASYFLASH,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)easyflash_cart_menu },
+    { CARTRIDGE_NAME_MMC64,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mmc64_cart_menu },
+    { CARTRIDGE_NAME_MMC_REPLAY,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mmcreplay_cart_menu },
+    { CARTRIDGE_NAME_RETRO_REPLAY,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)retroreplay_cart_menu },
+    { CARTRIDGE_NAME_GMOD2,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)gmod2_cart_menu },
     { CARTRIDGE_NAME_MAGIC_VOICE,
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -1060,3 +1145,132 @@ const ui_menu_entry_t c64cart_menu[] = {
       NULL },
     SDL_MENU_LIST_END
 };
+
+ui_menu_entry_t scpu64cart_menu[] = {
+    { "Attach CRT image",
+      MENU_ENTRY_DIALOG,
+      attach_c64_cart_callback,
+      (ui_callback_data_t)CARTRIDGE_CRT },
+    /* CAUTION: the position of this item is hardcoded above */
+    { "Attach raw image",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      NULL },
+    { "Detach cartridge image",
+      MENU_ENTRY_OTHER,
+      detach_c64_cart_callback,
+      NULL },
+    SDL_MENU_ITEM_SEPARATOR,
+    { "Set current cartridge as default",
+      MENU_ENTRY_OTHER,
+      set_c64_cart_default_callback,
+      NULL },
+    { "I/O collision handling ($D000-$DFFF)",
+      MENU_ENTRY_SUBMENU,
+      iocollision_show_type_callback,
+      (ui_callback_data_t)iocollision_menu },
+    { "Reset on cartridge change",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_CartridgeReset_callback,
+      NULL },
+    SDL_MENU_ITEM_SEPARATOR,
+    SDL_MENU_ITEM_TITLE("Cartridge specific settings"),
+    { CARTRIDGE_NAME_RAMCART,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)ramcart_menu },
+    { CARTRIDGE_NAME_REU,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)reu_menu },
+    { CARTRIDGE_NAME_GEORAM,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)georam_menu },
+    { CARTRIDGE_NAME_IDE64,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)ide64_menu },
+    { CARTRIDGE_NAME_EXPERT,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)expert_cart_menu },
+    { CARTRIDGE_NAME_ISEPIC,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)isepic_cart_menu },
+    { CARTRIDGE_NAME_DQBB,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)dqbb_cart_menu },
+    { CARTRIDGE_NAME_EASYFLASH,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)easyflash_cart_menu },
+    { CARTRIDGE_NAME_MMC64,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mmc64_cart_menu },
+    { CARTRIDGE_NAME_MMC_REPLAY,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mmcreplay_cart_menu },
+    { CARTRIDGE_NAME_RETRO_REPLAY,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)retroreplay_cart_menu },
+    { CARTRIDGE_NAME_GMOD2,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)gmod2_cart_menu },
+    { CARTRIDGE_NAME_MAGIC_VOICE,
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)magicvoice_cart_menu },
+    { CARTRIDGE_NAME_SFX_SOUND_EXPANDER " settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)soundexpander_menu },
+    { CARTRIDGE_NAME_SFX_SOUND_SAMPLER,
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_SFXSoundSampler_callback,
+      NULL },
+    SDL_MENU_LIST_END
+};
+
+void uiclockport_rr_mmc_menu_create(void)
+{
+    int i;
+
+    for (i = 0; clockport_supported_devices[i].name; ++i) {
+        mmc64_clockport_device_menu[i].string = clockport_supported_devices[i].name;
+        mmc64_clockport_device_menu[i].type = MENU_ENTRY_RESOURCE_RADIO;
+        mmc64_clockport_device_menu[i].callback = radio_MMC64ClockPort_callback;
+        mmc64_clockport_device_menu[i].data = (ui_callback_data_t)int_to_void_ptr(clockport_supported_devices[i].id);
+
+        mmcreplay_clockport_device_menu[i].string = clockport_supported_devices[i].name;
+        mmcreplay_clockport_device_menu[i].type = MENU_ENTRY_RESOURCE_RADIO;
+        mmcreplay_clockport_device_menu[i].callback = radio_MMCRClockPort_callback;
+        mmcreplay_clockport_device_menu[i].data = (ui_callback_data_t)int_to_void_ptr(clockport_supported_devices[i].id);
+
+        retroreplay_clockport_device_menu[i].string = clockport_supported_devices[i].name;
+        retroreplay_clockport_device_menu[i].type = MENU_ENTRY_RESOURCE_RADIO;
+        retroreplay_clockport_device_menu[i].callback = radio_RRClockPort_callback;
+        retroreplay_clockport_device_menu[i].data = (ui_callback_data_t)int_to_void_ptr(clockport_supported_devices[i].id);
+    }
+
+    mmc64_clockport_device_menu[i].string = NULL;
+    mmc64_clockport_device_menu[i].type = MENU_ENTRY_TEXT;
+    mmc64_clockport_device_menu[i].callback = NULL;
+    mmc64_clockport_device_menu[i].data = NULL;
+
+    mmcreplay_clockport_device_menu[i].string = NULL;
+    mmcreplay_clockport_device_menu[i].type = MENU_ENTRY_TEXT;
+    mmcreplay_clockport_device_menu[i].callback = NULL;
+    mmcreplay_clockport_device_menu[i].data = NULL;
+
+    retroreplay_clockport_device_menu[i].string = NULL;
+    retroreplay_clockport_device_menu[i].type = MENU_ENTRY_TEXT;
+    retroreplay_clockport_device_menu[i].callback = NULL;
+    retroreplay_clockport_device_menu[i].data = NULL;
+}

@@ -1,4 +1,4 @@
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -13,7 +13,10 @@ INCLUDES = \
 	-I$(top_srcdir)/src/video \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/vdc \
-	-I$(top_srcdir)/src/rtc
+	-I$(top_srcdir)/src/rtc \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv \
+	-I$(top_srcdir)/src/tapeport
 
 noinst_LIBRARIES = libc128.a
 
@@ -50,13 +53,9 @@ libc128_a_SOURCES = \
 	c128rom.h \
 	c128romset.c \
 	c128video.c \
-	daa.c \
-	daa.h \
 	functionrom.c \
 	functionrom.h \
 	z80.c \
 	z80.h \
 	z80mem.c \
 	z80mem.h
-
-EXTRA_DIST = z80vms.c

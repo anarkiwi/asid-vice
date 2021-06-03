@@ -18,27 +18,36 @@ romsets = \
 	rom256h.vrs
 
 palettes = \
-	amber.vpl \
 	c64hq.vpl \
 	c64s.vpl \
 	ccs64.vpl \
-	default.vpl \
 	frodo.vpl \
 	godot.vpl \
-	green.vpl \
 	pc64.vpl \
+	pepto-ntsc-sony.vpl \
+	pepto-ntsc.vpl \
+	pepto-pal.vpl \
+	pepto-palold.vpl \
+	community-colors.vpl \
+	ptoing.vpl \
+	deekay.vpl \
+	rgb.vpl \
+	vice.vpl \
+	\
+	amber.vpl \
+	green.vpl \
 	white.vpl
 
 x11_keymaps = \
-	x11_buks.vkm \
-	x11_buks_de.vkm
+	x11_sym.vkm \
+	x11_sym_de.vkm
 
 sdl_keymaps = \
-	sdl_buks.vkm
+	sdl_sym.vkm
 
 extra_keymaps = \
-	amiga_bukp.vkm \
-	amiga_buks.vkm \
+	amiga_pos.vkm \
+	amiga_sym.vkm \
 	beos_bukp.vkm \
 	beos_buks.vkm \
 	dos_bukp.vkm \
@@ -46,6 +55,7 @@ extra_keymaps = \
 	os2.vkm \
 	osx_pos_uk.vkm \
 	osx_sym_uk.vkm \
+	win_sym.vkm \
 	win_pos_uk.vkm \
 	win_sym_uk.vkm
 

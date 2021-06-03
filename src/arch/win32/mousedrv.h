@@ -29,7 +29,9 @@
 
 #include "types.h"
 
-extern int mousedrv_resources_init(void);
+#include "mouse.h"
+
+extern int mousedrv_resources_init(mouse_func_t *funcs);
 extern int mousedrv_cmdline_options_init(void);
 extern void mousedrv_init(void);
 
@@ -39,12 +41,14 @@ extern int mousedrv_get_x(void);
 extern int mousedrv_get_y(void);
 extern unsigned long mousedrv_get_timestamp(void);
 
-extern void mouse_set_format(void);
 extern void mouse_update_mouse(void);
 extern void mouse_update_mouse_acquire(void);
-extern void mouse_set_cooperative_level(void);
 
 extern int _mouse_x, _mouse_y;
 extern unsigned long _mouse_timestamp;
+
+extern void mousedrv_button_left(int pressed);
+extern void mousedrv_button_right(int pressed);
+extern void mousedrv_button_middle(int pressed);
 
 #endif

@@ -34,43 +34,49 @@
 // mouse.c
 extern int _mouse_enabled;
 
+static mouse_func_t mouse_funcs;
 static BOOL firstMove;
-static float pointerX;
-static float pointerY;
-static float lastX;
-static float lastY;
+static float last_x;
+static float last_y;
+static float mouse_x;
+static float mouse_y;
 static unsigned long mouse_timestamp = 0;
 
-static int  scaleX;
-static int  scaleY;
+static int scale_x;
+static int scale_y;
 
 static int set_scale_x(int val, void *param)
 {
-    if((val > 0)&&(val <= 64)) {
-        scaleX = val;
+    if ((val > 0) && (val <= 64)) {
+        scale_x = val;
     }
     return 0;
 }
 
 static int set_scale_y(int val, void *param)
 {
-    if((val > 0)&&(val <= 64)) {
-        scaleY = val;
+    if ((val > 0) && (val <= 64)) {
+        scale_y = val;
     }
     return 0;
 }
 
 static resource_int_t resources_int[] =
 {
-    { "MouseScaleX", 2, RES_EVENT_NO, NULL,
-       &scaleX, set_scale_x, NULL },
-    { "MouseScaleY", 2, RES_EVENT_NO, NULL,
-       &scaleY, set_scale_y, NULL },
+    { "MouseScaleX", 1, RES_EVENT_NO, NULL,
+       &scale_x, set_scale_x, NULL },
+    { "MouseScaleY", 1, RES_EVENT_NO, NULL,
+       &scale_y, set_scale_y, NULL },
     { NULL }
  };
 
-int mousedrv_resources_init(void)
+int mousedrv_resources_init(mouse_func_t *funcs)
 {
+    mouse_funcs.mbl = funcs->mbl;
+    mouse_funcs.mbr = funcs->mbr;
+    mouse_funcs.mbm = funcs->mbm;
+    mouse_funcs.mbu = funcs->mbu;
+    mouse_funcs.mbd = funcs->mbd;
     return resources_register_int(resources_int);
 }
 
@@ -103,64 +109,79 @@ void mousedrv_mouse_changed(void)
 
     if(_mouse_enabled) {
         firstMove = YES;
-    }
-}
-
-#define MOUSE_MAX_DIFF  16
-
-static void domove(void)
-{
-    float dx, dy, ax, ay;
-    float f;
-
-    dx = pointerX - lastX;
-    dy = pointerY - lastY;
-    ax = fabs(dx); ay = fabs(dy);
-
-    if ((ax > MOUSE_MAX_DIFF) || (ay > MOUSE_MAX_DIFF)) {
-        if (ay > ax) {
-            /* do big step in Y */
-            f = ay / MOUSE_MAX_DIFF;
-        } else {
-            /* do big step in X */
-            f = ax / MOUSE_MAX_DIFF;
-        }
-        lastX += (dx / f);
-        lastY += (dy / f);
-    } else {
-        lastX = pointerX;
-        lastY = pointerY;
+        mouse_x = 0.0f;
+        mouse_y = 0.0f;
     }
 }
 
 // the HW polls the position
 int mousedrv_get_x(void)
 {
-    domove();
-    int x = (int)(lastX + 0.5f);
-    return ((x * scaleX)  & 0x7e);
+    return (int)(mouse_x) & 0xffff;
 }
 
 int mousedrv_get_y(void)
 {
-    domove();
-    int y = (int)(lastY + 0.5f);
-    return ((y * scaleY) & 0x7e);
+    return (int)(mouse_y) & 0xffff;
 }
 
+// this call receives absolute mouse pos on canvas
 void mouse_move_f(float x, float y)
 {
-    pointerX = x;
-    pointerY = y;
     mouse_timestamp = vsyncarch_gettime();
+
     if(firstMove) {
+        // ignore first move
         firstMove = NO;
-        lastX = x;
-        lastY = y;
+    } else {
+        // calc delta movement
+        float dx = x - last_x;
+        float dy = y - last_y;
+    
+        // apply (optional) scale on movement
+        dx *= scale_x;
+        dy *= scale_y;
+    
+        // add onto current mouse pos
+        mouse_x += dx;
+        mouse_y += dy;
+        
+        // map to 0 .. 0xffff range
+        while (mouse_x < 0.0) {
+            mouse_x += 65536.0;
+        }
+        while (mouse_x >= 65536.0) {
+            mouse_x -= 65536.0;
+        }
+        while (mouse_y < 0.0) {
+            mouse_y += 65536.0;
+        }
+        while (mouse_y >= 65536.0) {
+            mouse_y -= 65536.0;
+        }
     }
+    
+    // store last pos
+    last_x = x;
+    last_y = y;
 }
 
 unsigned long mousedrv_get_timestamp(void)
 {
     return mouse_timestamp;
+}
+
+void mousedrv_button_left(int pressed)
+{
+    mouse_funcs.mbl(pressed);
+}
+
+void mousedrv_button_right(int pressed)
+{
+    mouse_funcs.mbr(pressed);
+}
+
+void mousedrv_button_middle(int pressed)
+{
+    mouse_funcs.mbm(pressed);
 }

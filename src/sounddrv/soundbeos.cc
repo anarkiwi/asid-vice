@@ -26,6 +26,12 @@
 
 #include "vice.h"
 
+#ifdef BEOS_COMPILE
+
+#ifdef __HAIKU__
+/* Workaround an issue in the Haiku headers. */
+#include <List.h>
+#endif
 #include <PushGameSound.h>
 #include <SoundPlayer.h>
 #include <stdio.h>
@@ -170,3 +176,4 @@ int sound_init_beos_device(void)
 {
     return sound_register_device(&beos_device);
 }
+#endif

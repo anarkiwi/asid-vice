@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -28,8 +29,11 @@
 #define VICE_C64MEMLIMIT_H
 #include "types.h"
 
-extern void mem_limit_init(DWORD mem_read_limit_tab[32][0x101]);
-extern void mem_limit_plus60k_init(DWORD mem_read_limit_tab[32][0x101]);
-extern void mem_limit_256k_init(DWORD mem_read_limit_tab[32][0x101]);
+#define NUM_CONFIGS 32
+
+extern void mem_limit_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101]);
+extern void mem_limit_plus60k_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101]);
+extern void mem_limit_256k_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101]);
+extern void mem_limit_max_init(DWORD mem_read_limit_tab[NUM_CONFIGS][0x101]);
 
 #endif

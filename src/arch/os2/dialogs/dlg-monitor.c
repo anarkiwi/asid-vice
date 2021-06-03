@@ -38,10 +38,7 @@
 #include "vice.h"
 
 #include <os2.h>
-
-#ifdef WATCOM_COMPILE
 #include <process.h>
-#endif
 
 #include "dialogs.h"
 #include "dlg-monitor.h"
@@ -221,6 +218,8 @@ static void UpdateMemory(HWND hwnd)
 
 static void UpdateRegisters(HWND hwnd)
 {
+/* FIXME */
+#if 0
     const MEMSPACE mem = (MEMSPACE)WinQueryWindowPtr(hwnd, QWL_USER);
     const HWND lbox = WinWindowFromID(hwnd, LB_MONDIS);
 
@@ -235,7 +234,7 @@ static void UpdateRegisters(HWND hwnd)
     while (list) {
         char *txt;
 
-        if (list->flags) {
+        if (list->flags & MON_REGISTER_IS_FLAGS) {
             char str[9] = "00000000";
             char val[33];
 
@@ -262,6 +261,7 @@ static void UpdateRegisters(HWND hwnd)
 
         list = list->next;
     }
+#endif
 }
 
 // --------------------------------------------------------------------------

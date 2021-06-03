@@ -1,6 +1,6 @@
 # Makefile.am for `libsounddrv.a'.
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src
@@ -14,20 +14,21 @@ EXTRA_libsounddrv_a_SOURCES = \
 	soundallegro.c \
 	soundalsa.c \
 	soundarts.c \
-	soundasid.cc \
 	soundbeos.cc \
+	soundbsp.cc \
 	soundcoreaudio.c \
 	sounddart.c \
 	sounddx.c \
+	soundflac.c \
 	soundhpux.c \
 	soundmidas.c \
-	soundmmos2.c \
 	soundmp3.c \
 	soundpulse.c \
 	soundsdl.c \
 	soundsgi.c \
 	soundsun.c \
 	sounduss.c \
+	soundvorbis.c \
 	soundwmm.c \
 	lamelib.c
 
@@ -38,9 +39,9 @@ libsounddrv_a_SOURCES = \
 	sounddump.c \
 	soundfs.c \
 	soundiff.c \
+	soundmovie.c \
 	soundvoc.c \
-	soundwav.c \
-	soundmovie.c
+	soundwav.c
 
 noinst_HEADERS = \
   soundmovie.h

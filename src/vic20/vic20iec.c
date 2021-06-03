@@ -4,7 +4,7 @@
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
  *  Daniel Sladic <sladic@eecg.toronto.edu>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -32,7 +32,6 @@
 
 #include "cia.h"
 #include "drive.h"
-#include "drivecpu.h"
 #include "drivetypes.h"
 #include "iecbus.h"
 #include "iecdrive.h"
@@ -43,7 +42,7 @@
 #include "vic20iec.h"
 
 
-#define NOT(x) ((x)^1)
+#define NOT(x) ((x) ^ 1)
 
 
 static BYTE cpu_data, cpu_clock, cpu_atn;
@@ -83,7 +82,6 @@ void vic20iec_init(void)
 
 void iec_update_cpu_bus(BYTE data)
 {
-
 }
 
 void iec_update_ports_embedded(void)
@@ -94,13 +92,13 @@ void iec_update_ports_embedded(void)
 static void iec_calculate_data_modifier(unsigned int dnr)
 {
     switch (drive_context[dnr]->drive->type) {
-    case DRIVE_TYPE_1581:
-    case DRIVE_TYPE_2000:
-    case DRIVE_TYPE_4000:
-        drive_data_modifier[dnr] = (cpu_atn & drive_atna[dnr]);
-        break;
-    default:
-        drive_data_modifier[dnr] = (NOT(cpu_atn) ^ NOT(drive_atna[dnr]));
+        case DRIVE_TYPE_1581:
+        case DRIVE_TYPE_2000:
+        case DRIVE_TYPE_4000:
+            drive_data_modifier[dnr] = (cpu_atn & drive_atna[dnr]);
+            break;
+        default:
+            drive_data_modifier[dnr] = (NOT(cpu_atn) ^ NOT(drive_atna[dnr]));
     }
 }
 
@@ -139,7 +137,7 @@ BYTE iec_drive_read(unsigned int dnr)
 
 BYTE iec_pa_read(void)
 {
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     cpu_bus_val = (bus_data << 1) | bus_clock | (NOT(bus_atn) << 7);
 
@@ -151,7 +149,7 @@ void iec_pa_write(BYTE data)
     drive_t *drive;
     unsigned int i;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     /* Signal ATN interrupt to the drives.  */
     if ((cpu_atn == 0) && (data & 128)) {
@@ -160,17 +158,15 @@ void iec_pa_write(BYTE data)
 
             if (drive->enable) {
                 switch (drive->type) {
-                case DRIVE_TYPE_1581:
-                    ciacore_set_flag(drive_context[i]->cia1581);
-                    break;
-                case DRIVE_TYPE_2000:
-                case DRIVE_TYPE_4000:
-                    viacore_signal(drive_context[i]->via4000, VIA_SIG_CA2,
-                                   VIA_SIG_RISE);
-                    break;
-                default:
-                    viacore_signal(drive_context[i]->via1d1541, VIA_SIG_CA1,
-                                   VIA_SIG_RISE);
+                    case DRIVE_TYPE_1581:
+                        ciacore_set_flag(drive_context[i]->cia1581);
+                        break;
+                    case DRIVE_TYPE_2000:
+                    case DRIVE_TYPE_4000:
+                        viacore_signal(drive_context[i]->via4000, VIA_SIG_CA2, VIA_SIG_RISE);
+                        break;
+                    default:
+                        viacore_signal(drive_context[i]->via1d1541, VIA_SIG_CA1, VIA_SIG_RISE);
                 }
             }
         }
@@ -183,14 +179,14 @@ void iec_pa_write(BYTE data)
 
             if (drive->enable) {
                 switch (drive->type) {
-                case DRIVE_TYPE_1581:
-                    break;
-                case DRIVE_TYPE_2000:
-                case DRIVE_TYPE_4000:
-                    viacore_signal(drive_context[i]->via4000, VIA_SIG_CA1, 0);
-                    break;
-                default:
-                    viacore_signal(drive_context[i]->via1d1541, VIA_SIG_CA1, 0);
+                    case DRIVE_TYPE_1581:
+                        break;
+                    case DRIVE_TYPE_2000:
+                    case DRIVE_TYPE_4000:
+                        viacore_signal(drive_context[i]->via4000, VIA_SIG_CA2, 0);
+                        break;
+                    default:
+                        viacore_signal(drive_context[i]->via1d1541, VIA_SIG_CA1, 0);
                 }
             }
         }
@@ -198,8 +194,9 @@ void iec_pa_write(BYTE data)
 
     cpu_atn = ((data & 128) >> 7);
 
-    for (i = 0; i < DRIVE_NUM; i++)
+    for (i = 0; i < DRIVE_NUM; i++) {
         iec_calculate_data_modifier(i);
+    }
 
     resolve_bus_signals();
 }
@@ -214,13 +211,14 @@ void iec_pcr_write(BYTE data)
 {
     unsigned int i;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     cpu_data = ((data & 32) >> 5);
     cpu_clock = ((data & 2) >> 1);
 
-    for (i = 0; i < DRIVE_NUM; i++)
+    for (i = 0; i < DRIVE_NUM; i++) {
         iec_calculate_data_modifier(i);
+    }
 
     resolve_bus_signals();
 }
@@ -255,5 +253,17 @@ int iec_available_busses(void)
     resources_get_int("IEEE488", &ieee488_enabled);
 
     return IEC_BUS_IEC | (ieee488_enabled ? IEC_BUS_IEEE : 0);
+}
+
+/* KLUDGES: dummy to satisfy linker, unused */
+BYTE plus4tcbm_outputa[2], plus4tcbm_outputb[2], plus4tcbm_outputc[2];
+void plus4tcbm_update_pa(BYTE byte, unsigned int dnr)
+{
+}
+void plus4tcbm_update_pb(BYTE byte, unsigned int dnr)
+{
+}
+void plus4tcbm_update_pc(BYTE byte, unsigned int dnr)
+{
 }
 

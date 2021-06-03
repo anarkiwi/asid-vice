@@ -2,7 +2,7 @@
  * cbm5x0mem.c - CBM-5x0 memory handling.
  *
  * Written by
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -30,11 +30,12 @@
 #include <string.h>
 
 #include "archdep.h"
-#include "cbm2cart.h"
+#include "cartio.h"
 #include "cartridge.h"
 #include "cbm2-resources.h"
 #include "cbm2.h"
 #include "cbm2acia.h"
+#include "cbm2cart.h"
 #include "cbm2cia.h"
 #include "cbm2mem.h"
 #include "cbm2model.h"
@@ -58,7 +59,6 @@
 
 void cia1_set_extended_keyboard_rows_mask(BYTE foo)
 {
-
 }
 
 /* ------------------------------------------------------------------------- */
@@ -117,8 +117,9 @@ static int c500_vicdotsel = 1;
 
 void c500_set_phi2_bank(int b)
 {
-    if (b == c500_statvid)
+    if (b == c500_statvid) {
         return;
+    }
 
     if (b) {    /* bank 15 */
         /* video memory at $c000/d000 depending on d818 */
@@ -143,8 +144,9 @@ void c500_set_phi2_bank(int b)
 
 void c500_set_phi1_bank(int b)
 {
-    if (b == c500_vicdotsel)
+    if (b == c500_vicdotsel) {
         return;
+    }
 
     if (b) {    /* bank 15 */
         /* video memory at $c000/c800 depending on d818 */
@@ -198,19 +200,18 @@ void cbm2mem_set_bank_exec(int val)
 
     val &= 0x0f;
     if (val != cbm2mem_bank_exec) {
-
         cbm2mem_bank_exec = val;
 
         _mem_read_tab_ptr = _mem_read_tab[cbm2mem_bank_exec];
         _mem_write_tab_ptr = _mem_write_tab[cbm2mem_bank_exec];
         _mem_read_base_tab_ptr = _mem_read_base_tab[cbm2mem_bank_exec];
         mem_read_limit_tab_ptr = mem_read_limit_tab[(cbm2mem_bank_exec < 15)
-                                 ? 0 : 1];
+                                                    ? 0 : 1];
         if (!_mem_read_base_tab_ptr[0]) {
-                /* disable fast opcode fetch when bank_base is null, i.e.
-                   set all limits to 0 when no RAM available.
-                   This might also happen when jumping to open mem in
-                   bank 15, though. */
+            /* disable fast opcode fetch when bank_base is null, i.e.
+               set all limits to 0 when no RAM available.
+               This might also happen when jumping to open mem in
+               bank 15, though. */
             mem_read_limit_tab_ptr = mem_read_limit_tab[2];
         }
 
@@ -226,10 +227,12 @@ void cbm2mem_set_bank_exec(int val)
 
         /* This sets the pointers to otherwise non-mapped memory, to
            avoid that the CPU code uses illegal memory and segfaults. */
-        if (!mem_page_zero)
+        if (!mem_page_zero) {
             mem_page_zero = mem_ram + 0xf0000;
-        if (!mem_page_one)
+        }
+        if (!mem_page_one) {
             mem_page_one = mem_ram + 0xf0100;
+        }
     }
 }
 
@@ -250,49 +253,62 @@ void cbm2mem_set_bank_ind(int val)
 }
 
 /* ------------------------------------------------------------------------- */
+BYTE zero_read(WORD addr)
+{
+    addr &= 0xff;
+
+    switch ((BYTE)addr) {
+        case 0:
+            return cbm2mem_bank_exec;
+        case 1:
+            return cbm2mem_bank_ind;
+    }
+
+    return mem_page_zero[addr & 0xff];
+}
 
 void zero_store(WORD addr, BYTE value)
 {
-    if (addr == 0)
+    if (addr == 0) {
         cbm2mem_set_bank_exec(value);
-    else
-      if (addr == 1)
-          cbm2mem_set_bank_ind(value);
+    } else
+    if (addr == 1) {
+        cbm2mem_set_bank_ind(value);
+    }
 
     _mem_write_tab_ptr[0]((WORD)(addr & 0xff), value);
 }
 
-#define STORE_ZERO(bank)                                          \
+#define STORE_ZERO(bank)                                 \
     static void store_zero_##bank(WORD addr, BYTE value) \
-    {                                                             \
-        addr &= 0xff;                                             \
-                                                                  \
-        if (addr == 0)                                            \
-            cbm2mem_set_bank_exec(value);                         \
-        else                                                      \
-        if (addr == 1)                                            \
-            cbm2mem_set_bank_ind(value);                          \
-                                                                  \
-        mem_ram[(0x##bank << 16) | addr] = value;                 \
+    {                                                    \
+        addr &= 0xff;                                    \
+                                                         \
+        if (addr == 0) {                                 \
+            cbm2mem_set_bank_exec(value);                \
+        } else if (addr == 1) {                          \
+            cbm2mem_set_bank_ind(value);                 \
+        }                                                \
+                                                         \
+        mem_ram[(0x##bank << 16) | addr] = value;        \
     }
 
-
-#define READ_ZERO(bank)                                     \
-    static BYTE read_zero_##bank(WORD addr)        \
-    {                                                       \
-        return mem_ram[(0x##bank << 16) | (addr & 0xff)];   \
+#define READ_ZERO(bank)                                   \
+    static BYTE read_zero_##bank(WORD addr)               \
+    {                                                     \
+        return mem_ram[(0x##bank << 16) | (addr & 0xff)]; \
     }
 
-#define READ_RAM(bank)                                      \
-    static BYTE read_ram_##bank(WORD addr)         \
-    {                                                       \
-        return mem_ram[(0x##bank << 16) | addr];            \
+#define READ_RAM(bank)                           \
+    static BYTE read_ram_##bank(WORD addr)       \
+    {                                            \
+        return mem_ram[(0x##bank << 16) | addr]; \
     }
 
-#define STORE_RAM(bank)                                         \
+#define STORE_RAM(bank)                                \
     static void store_ram_##bank(WORD addr, BYTE byte) \
-    {                                                           \
-        mem_ram[(0x##bank << 16) | addr] = byte;                \
+    {                                                  \
+        mem_ram[(0x##bank << 16) | addr] = byte;       \
     }
 
 STORE_ZERO(0)
@@ -364,41 +380,41 @@ READ_RAM(E)
 READ_RAM(F)
 
 static store_func_ptr_t store_zero_tab[16] = {
-        store_zero_0, store_zero_1, store_zero_2, store_zero_3,
-        store_zero_4, store_zero_5, store_zero_6, store_zero_7,
-        store_zero_8, store_zero_9, store_zero_A, store_zero_B,
-        store_zero_C, store_zero_D, store_zero_E, store_zero_F
+    store_zero_0, store_zero_1, store_zero_2, store_zero_3,
+    store_zero_4, store_zero_5, store_zero_6, store_zero_7,
+    store_zero_8, store_zero_9, store_zero_A, store_zero_B,
+    store_zero_C, store_zero_D, store_zero_E, store_zero_F
 };
 
 static store_func_ptr_t store_ram_tab[16] = {
-        store_ram_0, store_ram_1, store_ram_2, store_ram_3,
-        store_ram_4, store_ram_5, store_ram_6, store_ram_7,
-        store_ram_8, store_ram_9, store_ram_A, store_ram_B,
-        store_ram_C, store_ram_D, store_ram_E, store_ram_F
+    store_ram_0, store_ram_1, store_ram_2, store_ram_3,
+    store_ram_4, store_ram_5, store_ram_6, store_ram_7,
+    store_ram_8, store_ram_9, store_ram_A, store_ram_B,
+    store_ram_C, store_ram_D, store_ram_E, store_ram_F
 };
 
 static read_func_ptr_t read_ram_tab[16] = {
-        read_ram_0, read_ram_1, read_ram_2, read_ram_3,
-        read_ram_4, read_ram_5, read_ram_6, read_ram_7,
-        read_ram_8, read_ram_9, read_ram_A, read_ram_B,
-        read_ram_C, read_ram_D, read_ram_E, read_ram_F
+    read_ram_0, read_ram_1, read_ram_2, read_ram_3,
+    read_ram_4, read_ram_5, read_ram_6, read_ram_7,
+    read_ram_8, read_ram_9, read_ram_A, read_ram_B,
+    read_ram_C, read_ram_D, read_ram_E, read_ram_F
 };
 
 static read_func_ptr_t read_zero_tab[16] = {
-        read_zero_0, read_zero_1, read_zero_2, read_zero_3,
-        read_zero_4, read_zero_5, read_zero_6, read_zero_7,
-        read_zero_8, read_zero_9, read_zero_A, read_zero_B,
-        read_zero_C, read_zero_D, read_zero_E, read_zero_F
+    read_zero_0, read_zero_1, read_zero_2, read_zero_3,
+    read_zero_4, read_zero_5, read_zero_6, read_zero_7,
+    read_zero_8, read_zero_9, read_zero_A, read_zero_B,
+    read_zero_C, read_zero_D, read_zero_E, read_zero_F
 };
 
 
 void store_zeroX(WORD addr, BYTE value)
 {
-    if (addr == 0)
+    if (addr == 0) {
         cbm2mem_set_bank_exec(value);
-    else
-        if (addr == 1)
-            cbm2mem_set_bank_ind(value);
+    } else if (addr == 1) {
+        cbm2mem_set_bank_ind(value);
+    }
 }
 
 BYTE rom_read(WORD addr)
@@ -416,9 +432,9 @@ void rom_store(WORD addr, BYTE value)
     mem_rom[addr] = value;
 }
 
-static BYTE read_unused(WORD addr)
+BYTE read_unused(WORD addr)
 {
-    return 0xff; /* (addr >> 8) & 0xff; */
+    return vicii_read_phi1();
 }
 
 static void store_dummy(WORD addr, BYTE value)
@@ -429,6 +445,20 @@ static void store_dummy(WORD addr, BYTE value)
 /* ------------------------------------------------------------------------- */
 
 /* Functions for watchpoint memory access.  */
+
+static BYTE zero_read_watch(WORD addr)
+{
+    addr &= 0xff;
+    monitor_watch_push_load_addr(addr, e_comp_space);
+    return _mem_read_tab[cbm2mem_bank_exec][0](addr);
+}
+
+static void zero_store_watch(WORD addr, BYTE value)
+{
+    addr &= 0xff;
+    monitor_watch_push_store_addr(addr, e_comp_space);
+    _mem_write_tab[cbm2mem_bank_exec][0](addr, value);
+}
 
 BYTE read_watch(WORD addr)
 {
@@ -473,68 +503,67 @@ BYTE mem_read(WORD addr)
 void store_io(WORD addr, BYTE value)
 {
     switch (addr & 0xf800) {
-      case 0xd000:
-        rom_store(addr, value);         /* video RAM mapped here... */
-        if (addr >= 0xd400) {
-            colorram_store(addr, value);
-        }
-        return;
-      case 0xd800:
-        switch(addr & 0xff00) {
-          case 0xd800:
-            vicii_store(addr, value);
+        case 0xd000:
+            rom_store(addr, value);     /* video RAM mapped here... */
+            if (addr >= 0xd400) {
+                colorram_store(addr, value);
+            }
             return;
-          case 0xd900:
-            return;                     /* disk units */
-          case 0xda00:
-            sid_store((WORD)(addr & 0xff), value);
-            return;
-          case 0xdb00:
-            return;                     /* coprocessor */
-          case 0xdc00:
-            cia1_store((WORD)(addr & 0x0f), value);
-            return;
-          case 0xdd00:
-            acia1_store((WORD)(addr & 0x03), value);
-            return;
-          case 0xde00:
-            tpi1_store((WORD)(addr & 0x07), value);
-            return;
-          case 0xdf00:
-            tpi2_store((WORD)(addr & 0x07), value);
-            return;
-        }
+        case 0xd800:
+            switch (addr & 0xff00) {
+                case 0xd800:
+                    cbm2io_d800_store(addr, value);
+                    return;
+                case 0xd900:
+                    cbm2io_d900_store(addr, value);
+                    return;
+                case 0xda00:
+                    cbm2io_da00_store(addr, value);
+                    return;
+                case 0xdb00:
+                    cbm2io_db00_store(addr, value);
+                    return;
+                case 0xdc00:
+                    cbm2io_dc00_store(addr, value);
+                    return;
+                case 0xdd00:
+                    cbm2io_dd00_store(addr, value);
+                    return;
+                case 0xde00:
+                    cbm2io_de00_store(addr, value);
+                    return;
+                case 0xdf00:
+                    cbm2io_df00_store(addr, value);
+                    return;
+            }
     }
 }
 
 BYTE read_io(WORD addr)
 {
     switch (addr & 0xf800) {
-      case 0xd000:
-        return rom_read(addr);
-      case 0xd800:
-        switch (addr & 0xff00) {
-          case 0xd800:
-            return vicii_read(addr);
-          case 0xd900:
-            return read_unused(addr);
-          case 0xda00:
-            return sid_read(addr);
-          case 0xdb00:
-            return read_unused(addr);
-          case 0xdc00:
-            return cia1_read((WORD)(addr & 0x0f));
-          case 0xdd00:
-            return acia1_read((WORD)(addr & 0x03));
-          case 0xde00:
-            /* FIXME: VIC-II irq? */
-            /* if ((machine_class == VICE_MACHINE_CBM5x0) && ((addr & 7) == 2)) {
-                   return tpi1_read(addr&7)|1; }   */
-            return tpi1_read((WORD)(addr & 0x07));
-          case 0xdf00:
-            return tpi2_read((WORD)(addr & 0x07));
-        }
-    }
+        case 0xd000:
+            return rom_read(addr);
+        case 0xd800:
+            switch (addr & 0xff00) {
+                case 0xd800:
+                    return cbm2io_d800_read(addr);
+                case 0xd900:
+                    return cbm2io_d900_read(addr);
+                case 0xda00:
+                    return cbm2io_da00_read(addr);
+                case 0xdb00:
+                    return cbm2io_db00_read(addr);
+                case 0xdc00:
+                    return cbm2io_dc00_read(addr);
+                case 0xdd00:
+                    return cbm2io_dd00_read(addr);
+                case 0xde00:
+                    return cbm2io_de00_read(addr);
+                case 0xdf00:
+                    return cbm2io_df00_read(addr);
+            }
+	}
     return read_unused(addr);
 }
 
@@ -556,7 +585,8 @@ void mem_toggle_watchpoints(int flag, void *context)
 /* ------------------------------------------------------------------------- */
 /* handle CPU reset */
 
-void mem_reset(void) {
+void mem_reset(void)
+{
     cbm2mem_set_bank_exec(15);
     cbm2mem_set_bank_ind(15);
 
@@ -592,7 +622,7 @@ void mem_initialize_memory(void)
     }
 
     /* set bank limit tables for optimized opcode fetch */
-    for (i=256;i>=0;i--) {
+    for (i = 256; i >= 0; i--) {
         mem_read_limit_tab[0][i] = 0xfffd;      /* all RAM banks go here */
         mem_read_limit_tab[2][i] = 0;           /* all empty banks go here */
 
@@ -620,7 +650,7 @@ void mem_initialize_memory(void)
         if (i < 0xc0) { /* ROM 8000-BFFF */
             mem_read_limit_tab[1][i] = 0xbffd;
         } else
-        if (i <0xd0) {  /* C000-CFFF */
+        if (i < 0xd0) {  /* C000-CFFF */
             mem_read_limit_tab[1][i] = 0xcffd;
         } else
         if (i < 0xe0) { /* I/O D000-DFFF */
@@ -631,12 +661,15 @@ void mem_initialize_memory(void)
     }
 
     /* set watchpoint tables */
-    for (i = 256; i >= 0; i--) {
+    for (i = 0; i <= 0x100; i++) {
         _mem_read_tab_watch[i] = read_watch;
         _mem_read_ind_tab_watch[i] = read_ind_watch;
         _mem_write_tab_watch[i] = store_watch;
         _mem_write_ind_tab_watch[i] = store_ind_watch;
     }
+    /* FIXME: what about _ind_tab_watch ? */
+    _mem_read_tab_watch[0] = zero_read_watch;
+    _mem_write_tab_watch[0] = zero_store_watch;
 
     vicii_set_chargen_addr_options(0x7000, 0x1000);
 }
@@ -646,26 +679,7 @@ void mem_initialize_memory_bank(int i)
     int j;
 
     switch (i) {
-      case 0:
-        for (j = 255; j >= 0; j--) {
-            _mem_read_tab[i][j] = read_ram_tab[i];
-            _mem_write_tab[i][j] = store_ram_tab[i];
-            _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
-        }
-        _mem_write_tab[i][0] = store_zero_tab[i];
-        _mem_read_tab[i][0] = read_zero_tab[i];
-        break;
-      case 1:
-        for (j = 255; j >= 0; j--) {
-            _mem_read_tab[i][j] = read_ram_tab[i];
-            _mem_write_tab[i][j] = store_ram_tab[i];
-            _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
-        }
-        _mem_write_tab[i][0] = store_zero_tab[i];
-        _mem_read_tab[i][0] = read_zero_tab[i];
-        break;
-      case 2:
-        if (ramsize >= 128) {
+        case 0:
             for (j = 255; j >= 0; j--) {
                 _mem_read_tab[i][j] = read_ram_tab[i];
                 _mem_write_tab[i][j] = store_ram_tab[i];
@@ -674,10 +688,7 @@ void mem_initialize_memory_bank(int i)
             _mem_write_tab[i][0] = store_zero_tab[i];
             _mem_read_tab[i][0] = read_zero_tab[i];
             break;
-        }
-      case 3:
-      case 4:
-        if (ramsize >= 256) {
+        case 1:
             for (j = 255; j >= 0; j--) {
                 _mem_read_tab[i][j] = read_ram_tab[i];
                 _mem_write_tab[i][j] = store_ram_tab[i];
@@ -686,126 +697,149 @@ void mem_initialize_memory_bank(int i)
             _mem_write_tab[i][0] = store_zero_tab[i];
             _mem_read_tab[i][0] = read_zero_tab[i];
             break;
-        }
-      case 5:
-      case 6:
-      case 7:
-        if (ramsize >= 512) {
-            for (j = 255; j >= 0; j--) {
-                _mem_read_tab[i][j] = read_ram_tab[i];
-                _mem_write_tab[i][j] = store_ram_tab[i];
-                _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+        case 2:
+            if (ramsize >= 128) {
+                for (j = 255; j >= 0; j--) {
+                    _mem_read_tab[i][j] = read_ram_tab[i];
+                    _mem_write_tab[i][j] = store_ram_tab[i];
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
+                _mem_write_tab[i][0] = store_zero_tab[i];
+                _mem_read_tab[i][0] = read_zero_tab[i];
+                break;
             }
-            _mem_write_tab[i][0] = store_zero_tab[i];
-            _mem_read_tab[i][0] = read_zero_tab[i];
+        case 3:
+        case 4:
+            if (ramsize >= 256) {
+                for (j = 255; j >= 0; j--) {
+                    _mem_read_tab[i][j] = read_ram_tab[i];
+                    _mem_write_tab[i][j] = store_ram_tab[i];
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
+                _mem_write_tab[i][0] = store_zero_tab[i];
+                _mem_read_tab[i][0] = read_zero_tab[i];
+                break;
+            }
+        case 5:
+        case 6:
+        case 7:
+            if (ramsize >= 512) {
+                for (j = 255; j >= 0; j--) {
+                    _mem_read_tab[i][j] = read_ram_tab[i];
+                    _mem_write_tab[i][j] = store_ram_tab[i];
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
+                _mem_write_tab[i][0] = store_zero_tab[i];
+                _mem_read_tab[i][0] = read_zero_tab[i];
+                break;
+            }
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+            if (ramsize >= 1024) {
+                for (j = 255; j >= 0; j--) {
+                    _mem_read_tab[i][j] = read_ram_tab[i];
+                    _mem_write_tab[i][j] = store_ram_tab[i];
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
+                _mem_write_tab[i][0] = store_zero_tab[i];
+                _mem_read_tab[i][0] = read_zero_tab[i];
+                break;
+            }
+            /* fallback for ramsize < some_value */
+            for (j = 255; j >= 0; j--) {
+                _mem_read_tab[i][j] = read_unused;
+                _mem_write_tab[i][j] = store_dummy;
+                _mem_read_base_tab[i][j] = NULL;
+            }
+            _mem_write_tab[i][0] = store_zeroX;
             break;
-        }
-      case 8:
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-      case 13:
-      case 14:
-        if (ramsize >= 1024) {
-            for (j = 255; j >= 0; j--) {
-                _mem_read_tab[i][j] = read_ram_tab[i];
-                _mem_write_tab[i][j] = store_ram_tab[i];
+        case 15:
+            for (j = 0; j < 0x08; j++) {
+                _mem_read_tab[i][j] = read_ram_F;
+                _mem_write_tab[i][j] = store_ram_F;
                 _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
             }
-           _mem_write_tab[i][0] = store_zero_tab[i];
-           _mem_read_tab[i][0] = read_zero_tab[i];
-           break;
-        }
-        /* fallback for ramsize < some_value */
-        for (j = 255; j >= 0; j--) {
-            _mem_read_tab[i][j] = read_unused;
-            _mem_write_tab[i][j] = store_dummy;
-            _mem_read_base_tab[i][j] = NULL;
-        }
-        _mem_write_tab[i][0] = store_zeroX;
-        break;
-      case 15:
-        for (j = 0; j < 0x08; j++) {
-            _mem_read_tab[i][j] = read_ram_F;
-            _mem_write_tab[i][j] = store_ram_F;
-            _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
-        }
-        for (; j < 0xc0; j++) { /* 0800-BFFF */
-            _mem_read_tab[i][j] = rom_read;
-            _mem_write_tab[i][j] = store_dummy;
-            _mem_read_base_tab[i][j] = mem_rom + (j << 8);
-        }
-        for (; j < 0xd0; j++) { /* C000-CFFF */
-            _mem_read_tab[i][j] = read_chargen;
-            _mem_write_tab[i][j] = store_dummy;
-            _mem_read_base_tab[i][j] = mem_chargen_rom + ((j << 8) & 0x0f);
-        }
-        for (; j < 0xe0; j++) { /* D000-DFFF */
-            _mem_read_tab[i][j] = read_io;
-            _mem_write_tab[i][j] = store_io;
-            _mem_read_base_tab[i][j] = NULL;
-        }
-        for (; j < 0x100; j++) {
-            _mem_read_tab[i][j] = rom_read;
-            _mem_write_tab[i][j] = store_dummy;
-            _mem_read_base_tab[i][j] = mem_rom + (j << 8);
-        }
+            for (; j < 0xc0; j++) { /* 0800-BFFF */
+                _mem_read_tab[i][j] = rom_read;
+                _mem_write_tab[i][j] = store_dummy;
+                _mem_read_base_tab[i][j] = mem_rom + (j << 8);
+            }
+            for (; j < 0xd0; j++) { /* C000-CFFF */
+                _mem_read_tab[i][j] = read_chargen;
+                _mem_write_tab[i][j] = store_dummy;
+                _mem_read_base_tab[i][j] = mem_chargen_rom + ((j << 8) & 0x0f);
+            }
+            for (; j < 0xe0; j++) { /* D000-DFFF */
+                _mem_read_tab[i][j] = read_io;
+                _mem_write_tab[i][j] = store_io;
+                _mem_read_base_tab[i][j] = NULL;
+            }
+            for (; j < 0x100; j++) {
+                _mem_read_tab[i][j] = rom_read;
+                _mem_write_tab[i][j] = store_dummy;
+                _mem_read_base_tab[i][j] = mem_rom + (j << 8);
+            }
 
-        if (cart08_ram) {
-            for (j = 0x08; j < 0x10; j++) {
-                _mem_read_tab[i][j] = read_ram_F;
-                _mem_write_tab[i][j] = store_ram_F;
-                _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+            if (cart08_ram) {
+                for (j = 0x08; j < 0x10; j++) {
+                    _mem_read_tab[i][j] = read_ram_F;
+                    _mem_write_tab[i][j] = store_ram_F;
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
             }
-        }
-        if (cart1_ram) {
-            for (j=0x10;j<0x20;j++) {
-                _mem_read_tab[i][j] = read_ram_F;
-                _mem_write_tab[i][j] = store_ram_F;
-                _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+            if (cart1_ram) {
+                for (j = 0x10; j < 0x20; j++) {
+                    _mem_read_tab[i][j] = read_ram_F;
+                    _mem_write_tab[i][j] = store_ram_F;
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
             }
-        }
-        if (cart2_ram) {
-            for (j = 0x20; j < 0x40; j++) {
-                _mem_read_tab[i][j] = read_ram_F;
-                _mem_write_tab[i][j] = store_ram_F;
-                _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+            if (cart2_ram) {
+                for (j = 0x20; j < 0x40; j++) {
+                    _mem_read_tab[i][j] = read_ram_F;
+                    _mem_write_tab[i][j] = store_ram_F;
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
             }
-        }
-        if (cart4_ram) {
-            for (j = 0x40; j < 0x60; j++) {
-                _mem_read_tab[i][j] = read_ram_F;
-                _mem_write_tab[i][j] = store_ram_F;
-                _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+            if (cart4_ram) {
+                for (j = 0x40; j < 0x60; j++) {
+                    _mem_read_tab[i][j] = read_ram_F;
+                    _mem_write_tab[i][j] = store_ram_F;
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
             }
-        }
-        if (cart6_ram) {
-            for (j = 0x60; j < 0x80; j++) {
-                _mem_read_tab[i][j] = read_ram_F;
-                _mem_write_tab[i][j] = store_ram_F;
-                _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+            if (cart6_ram) {
+                for (j = 0x60; j < 0x80; j++) {
+                    _mem_read_tab[i][j] = read_ram_F;
+                    _mem_write_tab[i][j] = store_ram_F;
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
             }
-        }
-        if (cartC_ram) {
-            for (j = 0xc0; j < 0xd0; j++) {
-                _mem_read_tab[i][j] = read_ram_F;
-                _mem_write_tab[i][j] = store_ram_F;
-                _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+            if (cartC_ram) {
+                for (j = 0xc0; j < 0xd0; j++) {
+                    _mem_read_tab[i][j] = read_ram_F;
+                    _mem_write_tab[i][j] = store_ram_F;
+                    _mem_read_base_tab[i][j] = mem_ram + (i << 16) + (j << 8);
+                }
             }
-        }
 
-        _mem_write_tab[i][0] = store_zero_F;
-        _mem_read_tab[i][0] = read_zero_F;
-        _mem_read_base_tab[i][0] = mem_ram + 0xf0000;
-        break;
+            _mem_write_tab[i][0] = store_zero_F;
+            _mem_read_tab[i][0] = read_zero_F;
+            _mem_read_base_tab[i][0] = mem_ram + 0xf0000;
+            break;
     }
     _mem_read_tab[i][0x100] = _mem_read_tab[i][0];
     _mem_write_tab[i][0x100] = _mem_write_tab[i][0];
     _mem_read_base_tab[i][0x100] = _mem_read_base_tab[i][0];
 }
 
-void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit) {
+void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
+{
     BYTE *p = _mem_read_base_tab_ptr[addr >> 8];
 
     *base = (p == NULL) ? NULL : (p - (addr & 0xff00));
@@ -872,30 +906,30 @@ void mem_set_tape_sense(int value)
 static BYTE peek_bank_io(WORD addr)
 {
     switch (addr & 0xf800) {
-      case 0xc000:
-      case 0xc800:
-        return read_unused(addr);
-      case 0xd000:
-        return rom_read(addr);
-      case 0xd800:
-        switch (addr & 0xff00) {
-          case 0xd800:
-            return vicii_peek(addr);
-          case 0xd900:
+        case 0xc000:
+        case 0xc800:
             return read_unused(addr);
-          case 0xda00:
-            return sid_read(addr);
-          case 0xdb00:
-            return read_unused(addr);
-          case 0xdc00:
-            return cia1_peek(addr);
-          case 0xdd00:
-            return acia1_peek(addr);
-          case 0xde00:
-            return tpi1_peek((WORD)(addr & 0x07));
-          case 0xdf00:
-            return tpi2_peek((WORD)(addr & 0x07));
-        }
+        case 0xd000:
+            return rom_read(addr);
+        case 0xd800:
+            switch (addr & 0xff00) {
+                case 0xd800:
+                    return cbm2io_d800_peek(addr);
+                case 0xd900:
+                    return cbm2io_d900_peek(addr);
+                case 0xda00:
+                    return cbm2io_da00_peek(addr);
+                case 0xdb00:
+                    return cbm2io_db00_peek(addr);
+                case 0xdc00:
+                    return cbm2io_dc00_peek(addr);
+                case 0xdd00:
+                    return cbm2io_dd00_peek(addr);
+                case 0xde00:
+                    return cbm2io_de00_peek(addr);
+                case 0xdf00:
+                    return cbm2io_df00_peek(addr);
+            }
     }
     return read_unused(addr);
 }
@@ -910,7 +944,8 @@ static const char *banknames[] = {
 };
 
 static const int banknums[] = {
-    17, 17, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16 };
+    17, 17, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16
+};
 
 const char **mem_bank_list(void)
 {
@@ -933,16 +968,17 @@ int mem_bank_from_name(const char *name)
 BYTE mem_bank_read(int bank, WORD addr, void *context)
 {
     switch (bank) {
-      case 17:                  /* current */
-        return mem_read(addr);
-      case 16:                   /* romio */
-        if (addr >= 0xd000 && addr < 0xe000)
-            return read_io(addr);
-        return _mem_read_tab[15][addr >> 8](addr);
-      default:
-        if (bank >=0 && bank <15) {
-            return read_ram_tab[bank](addr);
-        }
+        case 17:                /* current */
+            return mem_read(addr);
+        case 16:                 /* romio */
+            if (addr >= 0xd000 && addr < 0xe000) {
+                return read_io(addr);
+            }
+            return _mem_read_tab[15][addr >> 8](addr);
+        default:
+            if (bank >= 0 && bank < 15) {
+                return read_ram_tab[bank](addr);
+            }
     }
     return read_unused(addr);
 }
@@ -960,57 +996,34 @@ BYTE mem_bank_peek(int bank, WORD addr, void *context)
 void mem_bank_write(int bank, WORD addr, BYTE byte, void *context)
 {
     switch (bank) {
-      case 17:                   /* current */
-        mem_store(addr, byte);
-        return;
-      case 16:
-        if (addr >= 0xd000 && addr <=0xdfff) {
-            store_io(addr, byte);
+        case 17:                 /* current */
+            mem_store(addr, byte);
             return;
-        }
-        _mem_write_tab[15][addr >> 8](addr, byte);
-        return;
-      default:
-        if (bank >=0 && bank < 16) {
-            if (addr & 0xff00) {
-                store_ram_tab[bank](addr, byte);
-            } else {
-                store_zero_tab[bank](addr, byte);
+        case 16:
+            if (addr >= 0xd000 && addr <= 0xdfff) {
+                store_io(addr, byte);
+                return;
             }
+            _mem_write_tab[15][addr >> 8](addr, byte);
             return;
-        }
+        default:
+            if (bank >= 0 && bank < 16) {
+                if (addr & 0xff00) {
+                    store_ram_tab[bank](addr, byte);
+                } else {
+                    store_zero_tab[bank](addr, byte);
+                }
+                return;
+            }
     }
     store_dummy(addr, byte);
-}
-
-static int mem_dump_io(WORD addr)
-{
-    if ((addr >= 0xd800) && (addr <= 0xd82e)) {
-        return vicii_dump();
-    } else if ((addr >= 0xda00) && (addr <= 0xda1f)) {
-        /* return sidcore_dump(machine_context.sid); */ /* FIXME */
-    } else if ((addr >= 0xdc00) && (addr <= 0xdc0f)) {
-        return ciacore_dump(machine_context.cia1);
-    } else if ((addr >= 0xdd00) && (addr <= 0xdd03)) {
-        /* return acia_dump(machine_context.acia); */ /* FIXME */
-    } else if ((addr >= 0xde00) && (addr <= 0xde07)) {
-        return tpicore_dump(machine_context.tpi1);
-    } else if ((addr >= 0xdf00) && (addr <= 0xdf07)) {
-        return tpicore_dump(machine_context.tpi2);
-    }
-    return -1;
 }
 
 mem_ioreg_list_t *mem_ioreg_list_get(void *context)
 {
     mem_ioreg_list_t *mem_ioreg_list = NULL;
 
-    mon_ioreg_add_list(&mem_ioreg_list, "VIC-II", 0xd800, 0xd82e, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "SID", 0xda00, 0xda1f, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "CIA1", 0xdc00, 0xdc0f, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "ACIA1", 0xdd00, 0xdd03, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "TPI1", 0xde00, 0xde07, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "TPI2", 0xdf00, 0xdf07, mem_dump_io);
+    io_source_ioreg_add_list(&mem_ioreg_list);
 
     return mem_ioreg_list;
 }
@@ -1033,3 +1046,139 @@ void mem_color_ram_from_snapshot(BYTE *color_ram)
     memcpy(mem_color_ram, color_ram, 0x400);
 }
 
+void mem_handle_pending_alarms_external(int cycles)
+{
+    vicii_handle_pending_alarms_external(cycles);
+}
+
+void mem_handle_pending_alarms_external_write(void)
+{
+    vicii_handle_pending_alarms_external_write();
+}
+
+/* ------------------------------------------------------------------------- */
+
+static int cia1_dump(void)
+{
+    return ciacore_dump(machine_context.cia1);
+}
+
+static int tpi1_dump(void)
+{
+    return tpicore_dump(machine_context.tpi1);
+}
+
+static int tpi2_dump(void)
+{
+    return tpicore_dump(machine_context.tpi2);
+}
+
+/* ------------------------------------------------------------------------- */
+
+static io_source_t vicii_device = {
+    "VICII",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xd800, 0xd8ff, 0x3f,
+    1, /* read is always valid */
+    vicii_store,
+    vicii_read,
+    vicii_peek,
+    vicii_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_t sid_device = {
+    "SID",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xda00, 0xdaff, 0x1f,
+    1, /* read is always valid */
+    sid_store,
+    sid_read,
+    sid_peek,
+    sid_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_t cia_device = {
+    "CIA",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xdc00, 0xdcff, 0xf,
+    1, /* read is always valid */
+    cia1_store,
+    cia1_read,
+    cia1_peek,
+    cia1_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_t acia_device = {
+    "ACIA",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xdd00, 0xddff, 3,
+    1, /* read is always valid */
+    acia1_store,
+    acia1_read,
+    acia1_peek,
+    NULL, /* TODO: dump */
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_t tpi1_device = {
+    "TPI1",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xde00, 0xdeff, 7,
+    1, /* read is always valid */
+    tpi1_store,
+    tpi1_read,
+    tpi1_peek,
+    tpi1_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_t tpi2_device = {
+    "TPI2",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xdf00, 0xdfff, 7,
+    1, /* read is always valid */
+    tpi2_store,
+    tpi2_read,
+    tpi2_peek,
+    tpi2_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_HIGH, /* priority, device and mirrors never involved in collisions */
+    0
+};
+
+static io_source_list_t *vicii_list_item = NULL;
+static io_source_list_t *sid_list_item = NULL;
+static io_source_list_t *cia_list_item = NULL;
+static io_source_list_t *acia_list_item = NULL;
+static io_source_list_t *tpi1_list_item = NULL;
+static io_source_list_t *tpi2_list_item = NULL;
+
+/* CBM5x0-specific I/O initialization. */
+void cbm5x0io_init(void)
+{
+    vicii_list_item = io_source_register(&vicii_device);
+    sid_list_item = io_source_register(&sid_device);
+    cia_list_item = io_source_register(&cia_device);
+    acia_list_item = io_source_register(&acia_device);
+    tpi1_list_item = io_source_register(&tpi1_device);
+    tpi2_list_item = io_source_register(&tpi2_device);
+}

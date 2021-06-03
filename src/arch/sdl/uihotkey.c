@@ -77,6 +77,10 @@ ui_menu_entry_t *sdl_ui_hotkey_action(char *path)
     ui_menu_entry_t *menupos = sdl_ui_get_main_menu();
     char *p;
 
+    if (menupos == NULL) {
+        return NULL;
+    }
+
     p = strtok(path, SDL_UI_HOTKEY_DELIM);
 
     if (p == NULL) {
@@ -115,12 +119,12 @@ int sdl_ui_hotkey_map(ui_menu_entry_t *item)
         item = NULL;
     }
 
-    e = sdl_ui_poll_event("hotkey", item?item->string:"(unmap hotkey)", SDL_POLL_JOYSTICK | SDL_POLL_KEYBOARD, 5);
+    e = sdl_ui_poll_event("hotkey", item ? item->string : "(unmap hotkey)", SDL_POLL_JOYSTICK | SDL_POLL_KEYBOARD, 5);
 
     /* TODO check if key/event is suitable */
     switch (e.type) {
         case SDL_KEYDOWN:
-            sdlkbd_set_hotkey(e.key.keysym.sym, e.key.keysym.mod, item);
+            sdlkbd_set_hotkey(SDL2x_to_SDL1x_Keys(e.key.keysym.sym), e.key.keysym.mod, item);
             break;
 #ifdef HAVE_SDL_NUMJOYSTICKS
         case SDL_JOYAXISMOTION:

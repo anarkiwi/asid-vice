@@ -73,14 +73,10 @@ int supercard_load(const char *name)
     }
 
     if (util_file_load(name, supercard_rom,
-        SUPERCARD_ROM_SIZE, UTIL_FILE_LOAD_SKIP_ADDRESS) < 0) {
+                       SUPERCARD_ROM_SIZE, UTIL_FILE_LOAD_SKIP_ADDRESS) < 0) {
         return -1;
     }
     return 0;
-}
-
-static void supercard_store(drive_context_t *drv, WORD addr, BYTE byte)
-{
 }
 
 static BYTE supercard_read(drive_context_t *drv, WORD addr)
@@ -91,15 +87,26 @@ static BYTE supercard_read(drive_context_t *drv, WORD addr)
 
 void supercard_mem_init(struct drive_context_s *drv, unsigned int type)
 {
-    drivecpud_context_t *cpud;
-
-    cpud = drv->cpud;
+    drivecpud_context_t *cpud = drv->cpud;
 
     DBG(("supercard_mem_init <type:%d> <sc:%d>\n", type, drv->drive->supercard));
 
+    if (!drv->drive->supercard) {
+        return;
+    }
+
     /* Setup additional supercard rom */
-    if (drv->drive->supercard) {
-        drivemem_set_func(cpud, 0x10, 0x18, supercard_read, supercard_store);
+    switch (type) {
+    case DRIVE_TYPE_1540:
+    case DRIVE_TYPE_1541:
+    case DRIVE_TYPE_1541II:
+    case DRIVE_TYPE_1570:
+    case DRIVE_TYPE_1571:
+    case DRIVE_TYPE_1571CR:
+        drivemem_set_func(cpud, 0x10, 0x18, supercard_read, NULL, NULL, supercard_rom, 0x100017fd);
+        break;
+    default:
+        break;
     }
 }
 

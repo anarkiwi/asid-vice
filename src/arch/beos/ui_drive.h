@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -27,18 +28,27 @@
 #ifndef VICE__UI_DRIVE_H__
 #define VICE__UI_DRIVE_H__
 
-#define DRIVE_EXPANSION_2000(type) (((type) == DRIVE_TYPE_1541) || ((type) == DRIVE_TYPE_1541II))
-#define DRIVE_EXPANSION_4000(type) (((type) == DRIVE_TYPE_1541) || ((type) == DRIVE_TYPE_1541II))
-#define DRIVE_EXPANSION_6000(type) (((type) == DRIVE_TYPE_1541) || ((type) == DRIVE_TYPE_1541II))
-#define DRIVE_EXPANSION_8000(type) (((type) == DRIVE_TYPE_1541) || ((type) == DRIVE_TYPE_1541II))
-#define DRIVE_EXPANSION_A000(type) (((type) == DRIVE_TYPE_1541) || ((type) == DRIVE_TYPE_1541II))
+#include "drive.h"
+
+typedef struct ui_drive_type_s {
+    const char *name;
+    int id;
+} ui_drive_type_t;
+
+enum ui_drive_caps {
+    HAS_NO_CAPS = 0,
+    HAS_PARA_CABLE = (1 << 0),
+    HAS_PROFDOS = (1 << 1)     /* Implies SuperCard+ as well. */
+};
 
 const uint32 MESSAGE_DRIVE_TYPE              = 'MD01';
 const uint32 MESSAGE_DRIVE_EXTENDIMAGEPOLICY = 'MD02';
 const uint32 MESSAGE_DRIVE_IDLEMETHOD        = 'MD03';
 const uint32 MESSAGE_DRIVE_EXPANSION         = 'MD04';
 const uint32 MESSAGE_DRIVE_PARALLELCABLE     = 'MD05';
+const uint32 MESSAGE_DRIVE_RPM               = 'MD06';
+const uint32 MESSAGE_DRIVE_WOBBLE            = 'MD07';
 
-extern void ui_drive(void);
+extern void ui_drive(ui_drive_type_t *drive_types, int caps);
 
 #endif

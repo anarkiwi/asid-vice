@@ -30,6 +30,10 @@
 #include "pets.h"
 #include "6809.h"
 
+#ifdef FEATURE_CPUMEMHISTORY
+#include "monitor.h"
+#endif
+
 /* ------------------------------------------------------------------------- */
 
 /* MACHINE_STUFF should define/undef
@@ -50,16 +54,36 @@
 
 #define DMA_FUNC h6809_mainloop(CPU_INT_STATUS, ALARM_CONTEXT)
 
-#define DMA_ON_RESET                       \
-    while (petres.superpet &&              \
-        petres.superpet_cpu_switch == SUPERPET_CPU_6809) {  \
-        EXPORT_REGISTERS();                \
-        cpu6809_reset();                   \
-        DMA_FUNC;                          \
-        interrupt_ack_dma(CPU_INT_STATUS); \
-        IMPORT_REGISTERS();                \
+#define DMA_ON_RESET                                                             \
+    while (petres.superpet && petres.superpet_cpu_switch == SUPERPET_CPU_6809) { \
+        EXPORT_REGISTERS();                                                      \
+        cpu6809_reset();                                                         \
+        DMA_FUNC;                                                                \
+        interrupt_ack_dma(CPU_INT_STATUS);                                       \
+        IMPORT_REGISTERS();                                                      \
     }
 
 #define HAVE_6809_REGS
+
+#ifdef FEATURE_CPUMEMHISTORY
+#warning "CPUMEMHISTORY implementation for xpet is incomplete"
+void memmap_mem_store(unsigned int addr, unsigned int value)
+{
+    monitor_memmap_store(addr, MEMMAP_RAM_W);
+    (*_mem_write_tab_ptr[(addr) >> 8])((WORD)(addr), (BYTE)(value));
+}
+
+void memmap_mark_read(unsigned int addr)
+{
+    monitor_memmap_store(addr, (memmap_state & MEMMAP_STATE_OPCODE) ? MEMMAP_RAM_X : (memmap_state & MEMMAP_STATE_INSTR) ? 0 : MEMMAP_RAM_R);
+    memmap_state &= ~(MEMMAP_STATE_OPCODE);
+}
+
+BYTE memmap_mem_read(unsigned int addr)
+{
+    memmap_mark_read(addr);
+    return (*_mem_read_tab_ptr[(addr) >> 8])((WORD)(addr));
+}
+#endif
 
 #include "../maincpu.c"

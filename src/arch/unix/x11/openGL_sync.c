@@ -40,6 +40,7 @@
 #include "videoarch.h"
 #include "x11ui.h"
 #include "log.h"
+#include "machine.h"
 #include "openGL_sync.h"
 #include "resources.h"
 #include "uiapi.h"
@@ -48,8 +49,8 @@
 
 static log_t openGL_log = LOG_ERR;
 static int no_sync = 0;		/* extension available */
-static int openGL_sync;		/* enabled/disable synchronization */
-static int openGL_initialized;
+static int openGL_sync = 0;		/* enabled/disable synchronization */
+static int openGL_initialized = 0;
 static GLXContext cx = (GLXContext) NULL;     
 
 static int set_openGL_sync(int val, void *param);
@@ -198,16 +199,18 @@ static int check_openGL(Display *dpy)
 
 static int set_openGL_sync(int val, void *param)
 {
-    if (no_sync) {
+    int oldval;
+    if ((no_sync) || (machine_class == VICE_MACHINE_VSID)) {
         return 0;
     }
-
-    openGL_sync = val;
+    oldval = openGL_sync;
+    openGL_sync = val ? 1 : 0;
     if (openGL_sync && openGL_initialized) {
         init_openGL();
     }
-
-    log_message(openGL_log, "%s openGL_sync", openGL_sync? "enabling" : "disabling");
+    if (oldval != openGL_sync) {
+        log_message(openGL_log, "%s openGL_sync", openGL_sync? "enabling" : "disabling");
+    }
     ui_update_menus();
     return 0;
 }

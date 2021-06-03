@@ -31,16 +31,23 @@
 #include "types.h"
 
 #include "menu_common.h"
+#include "menu_joyport.h"
 #include "menu_joystick.h"
 #include "menu_ram.h"
 #include "menu_rom.h"
+#include "plus4memhacks.h"
 #include "plus4model.h"
 
-#ifdef HAVE_RS232
+#ifdef HAVE_MOUSE
+#include "menu_mouse.h"
+#endif
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "menu_rs232.h"
 #endif
 
 #include "menu_sid.h"
+#include "menu_tape.h"
 #include "uimenu.h"
 
 /* PLUS4 MODEL SELECTION */
@@ -107,9 +114,19 @@ static const ui_menu_entry_t v364speech_menu[] = {
     SDL_MENU_LIST_END
 };
 
+UI_MENU_DEFINE_TOGGLE(UserportDAC)
+
+static const ui_menu_entry_t userport_menu[] = {
+    SDL_MENU_ITEM_TITLE("Userport devices"),
+    { "8 bit DAC enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportDAC_callback,
+      NULL },
+    SDL_MENU_LIST_END
+};
+
+UI_MENU_DEFINE_RADIO(MemoryHack)
 UI_MENU_DEFINE_RADIO(RamSize)
-UI_MENU_DEFINE_TOGGLE(CS256K)
-UI_MENU_DEFINE_RADIO(H256K)
 UI_MENU_DEFINE_TOGGLE(Acia1Enable)
 
 const ui_menu_entry_t plus4_hardware_menu[] = {
@@ -117,10 +134,20 @@ const ui_menu_entry_t plus4_hardware_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)plus4_model_submenu },
+    { "Joyport settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)joyport_menu },
     { "Joystick settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)joystick_plus4_menu },
+#ifdef HAVE_MOUSE
+    { "Mouse emulation",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mouse_menu },
+#endif
     { "SID cart settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -141,12 +168,20 @@ const ui_menu_entry_t plus4_hardware_menu[] = {
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_Acia1Enable_callback,
       NULL },
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     { "RS232 settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)rs232_nouser_menu },
 #endif
+    { "Userport devices",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)userport_menu },
+    { "Tape port devices",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)tapeport_devices_menu },
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("Memory"),
     { "16kB",
@@ -161,21 +196,26 @@ const ui_menu_entry_t plus4_hardware_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_RamSize_callback,
       (ui_callback_data_t)64 },
+    SDL_MENU_ITEM_TITLE("Memory expansion hack"),
+    { "None",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_MemoryHack_callback,
+      (ui_callback_data_t)MEMORY_HACK_NONE},
     { "256kB (CSORY)",
-      MENU_ENTRY_RESOURCE_TOGGLE,
-      toggle_CS256K_callback,
-      NULL },
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_MemoryHack_callback,
+      (ui_callback_data_t)MEMORY_HACK_C256K},
     { "256kB (HANNES)",
       MENU_ENTRY_RESOURCE_RADIO,
-      radio_H256K_callback,
-      (ui_callback_data_t)1 },
+      radio_MemoryHack_callback,
+      (ui_callback_data_t)MEMORY_HACK_H256K },
     { "1024kB (HANNES)",
       MENU_ENTRY_RESOURCE_RADIO,
-      radio_H256K_callback,
-      (ui_callback_data_t)2 },
+      radio_MemoryHack_callback,
+      (ui_callback_data_t)MEMORY_HACK_H1024K },
     { "4096kB (HANNES)",
       MENU_ENTRY_RESOURCE_RADIO,
-      radio_H256K_callback,
-      (ui_callback_data_t)3 },
+      radio_MemoryHack_callback,
+      (ui_callback_data_t)MEMORY_HACK_H4096K },
     SDL_MENU_LIST_END
 };

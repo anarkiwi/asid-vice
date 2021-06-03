@@ -1,5 +1,5 @@
 /*
- * cbm2cpu.c - Emulation of the main 6510 processor.
+ * cbm2cpu.c - Emulation of the main 6509 processor.
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
@@ -31,6 +31,10 @@
 #include "mem.h"
 #include "types.h"
 
+#ifdef FEATURE_CPUMEMHISTORY
+#include "monitor.h"
+#endif
+
 /* MACHINE_STUFF should define/undef
 
  - NEED_REG_PC
@@ -60,5 +64,25 @@
 #define LOAD_IND(addr) \
     (*_mem_read_ind_tab_ptr[(addr) >> 8])((WORD)(addr))
 
-#include "../maincpu.c"
+#ifdef FEATURE_CPUMEMHISTORY
+#warning "CPUMEMHISTORY implementation for xcbm2 is incomplete"
+void memmap_mem_store(unsigned int addr, unsigned int value)
+{
+    monitor_memmap_store(addr, MEMMAP_RAM_W);
+    (*_mem_write_tab_ptr[(addr) >> 8])((WORD)(addr), (BYTE)(value));
+}
 
+void memmap_mark_read(unsigned int addr)
+{
+    monitor_memmap_store(addr, (memmap_state & MEMMAP_STATE_OPCODE) ? MEMMAP_RAM_X : (memmap_state & MEMMAP_STATE_INSTR) ? 0 : MEMMAP_RAM_R);
+    memmap_state &= ~(MEMMAP_STATE_OPCODE);
+}
+
+BYTE memmap_mem_read(unsigned int addr)
+{
+    memmap_mark_read(addr);
+    return (*_mem_read_tab_ptr[(addr) >> 8])((WORD)(addr));
+}
+#endif
+    
+#include "../maincpu.c"

@@ -3,7 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -48,20 +48,19 @@ typedef struct modtab_s modtab_t;
 
 /* FIXME: add more/all models */
 static modtab_t modtab[] = {
-    { "510",  VICE_MACHINE_CBM5x0, CBM2MODEL_510_PAL },
-    { "610",  VICE_MACHINE_CBM6x0, CBM2MODEL_610_PAL },
-    { "620",  VICE_MACHINE_CBM6x0, CBM2MODEL_620_PAL },
+    { "510", VICE_MACHINE_CBM5x0, CBM2MODEL_510_PAL },
+    { "610", VICE_MACHINE_CBM6x0, CBM2MODEL_610_PAL },
+    { "620", VICE_MACHINE_CBM6x0, CBM2MODEL_620_PAL },
     { "620+", VICE_MACHINE_CBM6x0, CBM2MODEL_620PLUS_PAL },
-    { "710",  VICE_MACHINE_CBM6x0, CBM2MODEL_710_NTSC },
-    { "720",  VICE_MACHINE_CBM6x0, CBM2MODEL_720_NTSC },
+    { "710", VICE_MACHINE_CBM6x0, CBM2MODEL_710_NTSC },
+    { "720", VICE_MACHINE_CBM6x0, CBM2MODEL_720_NTSC },
     { "720+", VICE_MACHINE_CBM6x0, CBM2MODEL_720PLUS_NTSC },
     { NULL }
 };
 
 static int cbm2_model = 1;
 
-/* FIXME: make static (currently still used directly by some ports) */
-int cbm2_set_model(const char *model, void *extra)
+static int cbm2_set_model(const char *model, void *extra)
 {
     int i;
 
@@ -79,8 +78,9 @@ int cbm2_set_model(const char *model, void *extra)
         cbm2_model = i;
 
         /* we have to wait until we did enough initialization */
-        if (!cbm2_init_ok)
-            return 0; 
+        if (!cbm2_init_ok) {
+            return 0;
+        }
 
         mem_powerup();
         mem_load();
@@ -102,16 +102,6 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "MachineVideoStandard", (void *)MACHINE_SYNC_NTSC,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDCLS_USE_NTSC_SYNC_FACTOR,
-      NULL, NULL },
-    { "-model", CALL_FUNCTION, 1,
-     cbm2_set_model, NULL, NULL, NULL,
-     USE_PARAM_ID, USE_DESCRIPTION_ID,
-     IDCLS_P_MODELNUMBER, IDCLS_SPECIFY_CBM2_MODEL,
-     NULL, NULL },
-    { "-ramsize", SET_RESOURCE, 1,
-      NULL, NULL, "RamSize", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_RAMSIZE, IDCLS_SPECIFY_SIZE_OF_RAM,
       NULL, NULL },
     { "-kernal", SET_RESOURCE, 1,
       NULL, NULL, "KernalName", NULL,
@@ -188,43 +178,6 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDCLS_DISABLE_RAM_MAPPING_IN_C000,
       NULL, NULL },
-#ifdef COMMON_KBD
-    { "-keymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapIndex", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NUMBER, IDCLS_SPECIFY_KEYMAP_INDEX,
-      NULL, NULL },
-    { "-grsymkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapGraphicsSymFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_GFX_SYM_KEYMAP_NAME,
-      NULL, NULL },
-    { "-grposkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapGraphicsPosFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_GFX_POS_KEYMAP_NAME,
-      NULL, NULL },
-    { "-buksymkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapBusinessUKSymFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_BUK_SYM_KEYMAP_NAME,
-      NULL, NULL },
-    { "-bukposkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapBusinessUKPosFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_BUK_POS_KEYMAP_NAME,
-      NULL, NULL },
-    { "-bdesymkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapBusinessDESymFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_BDE_SYM_KEYMAP_NAME,
-      NULL, NULL },
-    { "-bdeposkeymap", SET_RESOURCE, 1,
-      NULL, NULL, "KeymapBusinessDEPosFile", NULL,
-      USE_PARAM_ID, USE_DESCRIPTION_ID,
-      IDCLS_P_NAME, IDCLS_SPECIFY_BDE_POS_KEYMAP_NAME,
-      NULL, NULL },
-#endif
     { "-cia1model", SET_RESOURCE, 1,
       NULL, NULL, "CIA1Model", NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
@@ -233,7 +186,44 @@ static const cmdline_option_t cmdline_options[] = {
     { NULL }
 };
 
+static const cmdline_option_t cbm2_cmdline_options[] = {
+    { "-model", CALL_FUNCTION, 1,
+      cbm2_set_model, NULL, NULL, NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_MODELNUMBER, IDCLS_SPECIFY_CBM2_MODEL,
+      NULL, NULL },
+    { "-ramsize", SET_RESOURCE, 1,
+      NULL, NULL, "RamSize", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_RAMSIZE, IDCLS_SPECIFY_SIZE_OF_RAM_CBM2,
+      NULL, NULL },
+    { NULL }
+};
+
+static const cmdline_option_t cbm5x0_cmdline_options[] = {
+    { "-model", CALL_FUNCTION, 1,
+      cbm2_set_model, NULL, NULL, NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_MODELNUMBER, IDCLS_SPECIFY_CBM5X0_MODEL,
+      NULL, NULL },
+    { "-ramsize", SET_RESOURCE, 1,
+      NULL, NULL, "RamSize", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_RAMSIZE, IDCLS_SPECIFY_SIZE_OF_RAM,
+      NULL, NULL },
+    { NULL }
+};
+
 int cbm2_cmdline_options_init(void)
 {
+    if (machine_class == VICE_MACHINE_CBM5x0) {
+        if (cmdline_register_options(cbm5x0_cmdline_options) < 0) {
+            return -1;
+        }
+    } else {
+        if (cmdline_register_options(cbm2_cmdline_options) < 0) {
+            return -1;
+        }
+    }
     return cmdline_register_options(cmdline_options);
 }

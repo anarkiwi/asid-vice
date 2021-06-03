@@ -1,10 +1,11 @@
 /*
- * x11ui.c - Simple Xaw-based graphical user interface.  It uses widgets
+ * x11ui.c - Simple Xaw(3d)-based graphical user interface.  It uses widgets
  * from the Free Widget Foundation and Robert W. McMullen.
  *
  * Written by
+ *  Olaf Seibert <rhialto@falu.nl>
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * Support for multiple visuals and depths by
@@ -49,6 +50,19 @@
 #include <X11/Xlib.h>
 #include <X11/Intrinsic.h>
 #include <X11/Shell.h>
+
+/* Xaw or Xaw3d */
+#ifdef USE_XAW3D
+#include <X11/Xaw3d/SimpleMenu.h>
+#include <X11/Xaw3d/SmeBSB.h>
+#include <X11/Xaw3d/SmeLine.h>
+#include <X11/Xaw3d/Command.h>
+#include <X11/Xaw3d/Form.h>
+#include <X11/Xaw3d/Paned.h>
+#include <X11/Xaw3d/Box.h>
+#include <X11/Xaw3d/AsciiText.h>
+#include <X11/Xaw3d/Tip.h>
+#else
 #include <X11/Xaw/SimpleMenu.h>
 #include <X11/Xaw/SmeBSB.h>
 #include <X11/Xaw/SmeLine.h>
@@ -57,6 +71,8 @@
 #include <X11/Xaw/Paned.h>
 #include <X11/Xaw/Box.h>
 #include <X11/Xaw/AsciiText.h>
+#include <X11/Xaw/Tip.h>
+#endif
 
 #include <X11/keysym.h>
 
@@ -73,7 +89,6 @@
 #endif
 #endif
 
-#include "drive.h"
 #include "fullscreenarch.h"
 #include "ioutil.h"
 #include "lib.h"
@@ -87,7 +102,7 @@
 #include "ui.h"
 #include "uiapi.h"
 #include "uicolor.h"
-#include "uifliplist.h"
+#include "uidrivestatus.h"
 #include "uihotkey.h"
 #include "uilib.h"
 #include "uimenu.h"
@@ -101,12 +116,14 @@
 #include "video.h"
 #include "videoarch.h"
 #include "vsiduiunix.h"
-#include "screenshot.h"
 #include "vice-event.h"
 #include "x11ui.h"
 #include "lightpen.h"
 #include "lightpendrv.h"
 #include "uipalcontrol.h"
+#include "uistatusbar.h"
+#include "focus.h"
+#include "kbd.h"
 
 /* #define DEBUG_X11UI */
 /* #define DEBUGMOUSECURSOR */
@@ -119,6 +136,7 @@
 
 /* FIXME: We want these to be static.  */
 Visual *visual;
+XFontStruct *cbm_font_struct;
 static int have_truecolor;
 
 static Display *display;
@@ -126,14 +144,13 @@ int screen;
 static int depth;
 
 /* UI logging goes here.  */
-static log_t ui_log = LOG_ERR;
+log_t ui_log = LOG_ERR;
 extern log_t vsid_log;
 
 Cursor blankCursor;
 static video_canvas_t *ui_cached_video_canvas;
 static Widget last_visited_canvas;
 
-static void ui_display_drive_current_image2(void);
 static Widget get_last_visited_app_shell(void);
 
 /* ------------------------------------------------------------------------- */
@@ -147,62 +164,27 @@ static Widget left_menu, right_menu;
 static XtTranslations left_menu_translations, right_menu_translations;
 static XtTranslations left_menu_disabled_translations, right_menu_disabled_translations;
 
-static Widget drive_menu[NUM_DRIVES];
-static XtTranslations drive_menu_translations[NUM_DRIVES];
-
 /* Application context. */
 static XtAppContext app_context;
 
 /* This is needed to catch the `Close' command from the Window Manager. */
-static Atom wm_delete_window;
+Atom wm_delete_window;
+Atom wm_protocols;
 
 /* Toplevel widget. */
 Widget _ui_top_level = NULL;
-Widget status_bar = NULL;
-Widget rec_button = NULL;
-static Widget event_recording_button = NULL;
-static int statustext_display_time = 0;
-
 /* Our colormap. */
 Colormap colormap;
 
 /* Application icon.  */
 static Pixmap icon_pixmap;
 
-/* Enabled drives.  */
-ui_drive_enable_t enabled_drives;
-
-/* Color of the drive active LED.  */
-static int *drive_active_led;
-
 /* This allows us to pop up the transient shells centered to the last visited
    shell. */
 static Widget last_visited_app_shell = NULL;
 
-#define MAX_APP_SHELLS 10
-typedef struct {
-    String title;
-    Widget shell;
-    Widget canvas;
-    Widget speed_label;
-    Widget statustext_label;
-    struct {
-        Widget track_label;
-        Widget driveled;
-        Widget current_image;
-        /* those two replace the single LED widget when SFD1001 is selected */
-        Widget driveled1;
-        Widget driveled2;
-    } drive_widgets[NUM_DRIVES];
-    int drive_mapping[NUM_DRIVES];
-    int drive_nleds[NUM_DRIVES];
-} app_shell_type;
-
-static app_shell_type app_shells[MAX_APP_SHELLS];
+app_shell_type app_shells[MAX_APP_SHELLS];
 static int num_app_shells = 0;
-
-#define ATT_IMG_SIZE 256
-char last_attached_images[NUM_DRIVES][ATT_IMG_SIZE];
 
 /* Pixels for updating the drive LED's state.  */
 Pixel drive_led_on_red_pixel, drive_led_on_green_pixel, drive_led_off_pixel;
@@ -228,305 +210,9 @@ void ui_set_drop_callback(void *cb)
     drop_cb = cb;
 }
 
-/*
- * Wait for the window to de-iconify, and optionally handle events in the mean
- * time, so that it is safe to call XSetInputFocus() on it.
- *
- * Use another approach than the Gnome UI: looking at a window property
- * depends on the window manager maintaining it, so just ask X.
- * When the window is in another workspace, a window is typically not mapped
- * (due to the way window managers typically implement workspaces), and it will
- * never get mapped.
- *
- * Therefore, if the window is not our own, loop a limited number of times with
- * a small delay. As long as the delay isn't ridiculously long, it doesn't
- * matter, since the user doesn't see the target window anyway.
- *
- * If the window is our own, we can wait indefinitely, since the user
- * interacting with the window will keep generating new events, one of which
- * must be the result of the de-iconification.
- * This needs to have MapNotify (StructureNotifyMask) events selected
- * or there is no sensible event to wait for.
- */
-static int wait_for_deiconify(Window w, int dispatch, int *width, int *height)
-{
-    int loop = 0;
-
-    for (;;) {
-        XWindowAttributes wa;
-
-        XGetWindowAttributes(display, w, &wa);
-        if (width) {
-            *width = wa.width;
-        }
-        if (height) {
-            *height = wa.height;
-        }
-        if (wa.map_state == IsUnviewable) {
-            DBG(("wait_for_deiconify: IsUnviewable, %d loops", loop));
-            return 0;
-        }
-        if (wa.map_state == IsViewable) {
-            DBG(("wait_for_deiconify: IsViewable, %d loops", loop));
-            return 1;
-        }
-        if (dispatch) {
-            ui_dispatch_next_event();
-        } else {
-            if (loop > 10) {
-                DBG(("wait_for_deiconify: IsUnmapped, %d loops", loop));
-                return 0;
-            }
-            usleep(30 * 1000);
-        }
-        loop++;
-    }
-}
-
-/* ------------------------------------------------------------------------- */
-
-/*
-    transfer focus to the monitor ui window
-
-    note: the respective code in gnome/x11ui.c can probably be shared between
-          xaw and gtk (it is plain X11 code anyway).
-    This version has been generalised somewhat compared to the gtk version
-    though.
-*/
-
-#if defined(sun) || defined(__sun)
-#  if defined(__SVR4) || defined(__svr4__)
-#    define IS_SOL
-#  endif
-#endif
-
-/* TODO: put this properly in configure */
-#if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFlyBSD__) || defined(IS_SOL)
-# define PROCFS_STATUS          "status"
-# define PROCFS_STATUS_PPID     3               /* 3rd field */
-#else
-# define PROCFS_STATUS          "stat"          /* 4th field */
-# define PROCFS_STATUS_PPID     4
-#endif
-
-#define PROCSTATLEN     0x200
-static pid_t get_ppid_from_pid(pid_t pid) 
-{
-    pid_t ppid = 0;
-    FILE *f;
-    char *p;
-    char pscmd[0x40];
-    char status[PROCSTATLEN + 1];
-    int ret;
-    char *saveptr;
-    int i;
-
-    sprintf(pscmd, "/proc/%d/"PROCFS_STATUS, (int)pid);
-
-    f = fopen(pscmd, "r");
-    if (f == NULL) {
-        return 0;
-    }
-    memset(status, 0, PROCSTATLEN + 1);
-    ret = fread(status, 1, PROCSTATLEN, f);
-    fclose(f);
-    if (ret < 1) {
-        return 0;
-    }
-
-    /* Get the PROCFS_STATUS_PPID'th field */
-    p = strtok_r(status, " ", &saveptr);
-    for (i = 1; i < PROCFS_STATUS_PPID; i++) {
-        p = strtok_r(NULL, " ", &saveptr);
-    }
-
-    if (p) {
-        ppid = strtoul(p, NULL, 10);
-        return ppid;
-    }
-    return 0;
-}
-
-/* check if winpid is an ancestor of pid, returns distance if found or 0 if not */
-#define NUM_PARENT_PIDS         20
-static int num_parent_pids;
-static pid_t parent_pids[NUM_PARENT_PIDS];
-
-static void initialize_parent_pids(pid_t pid)
-{
-    pid_t ppid;
-    int i;
-
-    if (num_parent_pids > 0) {
-        return;
-    }
-
-    for (i = 0; i < NUM_PARENT_PIDS && pid > 1; i++) {
-        ppid = get_ppid_from_pid(pid);
-        DBG(("initialize_parent_pids: [%d] = %ld", i, (long)ppid));
-        parent_pids[i] = ppid;
-        pid = ppid;
-    }
-    num_parent_pids = i;
-}
-
-static int check_ancestor(pid_t winpid)
-{
-    int i;
-    pid_t pid = winpid;
-
-    for (i = 0; i < num_parent_pids && pid > 1; i++) {
-        pid = parent_pids[i];
-        if (pid == winpid) {
-            return i;
-        }
-    }
-
-    return 0;
-}
-
-//#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-/* get list of client windows for given display */
-static Window *getwinlist (Display *disp, unsigned long *len) 
-{
-    Atom type;
-    Atom net_client_list = XInternAtom(disp, "_NET_CLIENT_LIST", False);
-    int form;
-    unsigned long remain;
-    unsigned char *list;
-
-    if (XGetWindowProperty(disp, XDefaultRootWindow(disp), net_client_list,
-                0, 1024, False, AnyPropertyType, &type, &form,
-                len, &remain, &list) != Success) {
-        log_error(ui_log, "getwinlist: XGetWindowProperty");
-        return 0;
-    }
-    if (*len == 0) {
-        Atom win_client_list = XInternAtom(disp, "_WIN_CLIENT_LIST", False);
-
-        if (XGetWindowProperty(disp, XDefaultRootWindow(disp), win_client_list,
-                    0, 1024, False, AnyPropertyType, &type, &form,
-                    len, &remain, &list) != Success) {
-            log_error(ui_log, "getwinlist: XGetWindowProperty");
-            return NULL;
-        }
-    }
-
-    if (type == XA_WINDOW || type == XA_CARDINAL) {
-        return (Window *)list;
-    }
-
-    XFree(list);
-
-    return NULL;
-}
-
-int getprop_failed = 0;
-
-static int getprop_handler(Display *display, XErrorEvent *err)
-{
-    getprop_failed = 1;
-
-    return 0;
-}
-
-/*
- * Get the pid associated with a given window.
- * Since it might have gone away by now (race condition!)
- * we trap errors.
- * This is actually not even very unlikely in case the user just clicked
- * "monitor" in the "JAM" pop-up.
- */
-static pid_t getwinpid (Display *disp, Window win)
-{
-    Atom prop = XInternAtom(disp, "_NET_WM_PID", False), type;
-    int form;
-    unsigned long remain, len;
-    unsigned char *pid_p = NULL;
-    pid_t pid;
-    int (*olderrorhandler)(Display *, XErrorEvent *);
-
-    getprop_failed = 0;
-    olderrorhandler = XSetErrorHandler(getprop_handler);
-    if (XGetWindowProperty(disp, win, prop, 0, 1024, False, XA_CARDINAL,
-        &type, &form, &len, &remain, &pid_p) != Success || len < 1 ||
-            getprop_failed) {
-        /* log_error(ui_log, "getwinpid: XGetWindowProperty; win=%lx, len=%ld", (long)win, len); */
-        XSetErrorHandler(olderrorhandler);
-        return 0;
-    }
-    XSetErrorHandler(olderrorhandler);
-
-    pid = *(pid_t *)pid_p;
-    XFree(pid_p);
-    return pid;
-}
-
 int ui_focus_monitor(void) 
 {
-    int i;
-    unsigned long len;
-    Window *list;
-    Window foundwin;
-    pid_t winpid, mypid;
-    int num, maxnum;
-
-    DBG(("uimon_focus_monitor"));
-
-    mypid = getpid();
-    maxnum = INT_MAX;
-    foundwin = 0;
-
-    /* get a list of our parent process ids */
-    initialize_parent_pids(mypid);
-
-    /* get list of all client windows on current display */
-    list = (Window*)getwinlist(display, &len);
-    DBG(("getwinlist: %ld windows\n", len));
-
-    /* for every window, check if it is an ancestor of the current process. the
-       one which is the closest ancestor will be the one we are interested in */
-    for (i = 0; i < (int)len; i++) {
-        winpid = getwinpid(display, list[i]);
-        num = check_ancestor(winpid);
-        if (num > 0) {
-            DBG(("found: n:%d win:%lx pid:%ld", num, (long)list[i], (long)winpid));
-            if ((num < maxnum) ||
-                /*
-                 * Skip hidden Gnome client leader windows; they have the
-                 * PID set on them anyway.
-                 */
-                (num == maxnum && list[i] > foundwin)) {
-                maxnum = num;
-                foundwin = list[i];
-            }
-        }
-    }
-
-    XFree(list);
-
-    /* if a matching window was found, raise it and transfer focus to it */
-    if (foundwin) {
-        int width, height;
-
-        DBG(("using win: %lx\n", (long)foundwin));
-        XMapRaised(display, foundwin);
-        XSync(display, False);
-        /* The window manager may ignore the request to raise the window (for
-           example because it is in a different workspace). We have to check if
-           the window is actually visible, because a call to XSetInputFocus()
-           will crash if it is not.
-        */
-        if (wait_for_deiconify(foundwin, 0, &width, &height)) {
-            XSetInputFocus(display, foundwin, RevertToParent, CurrentTime);
-            XWarpPointer(display, 0, foundwin,  0, 0, 0, 0,  width/2, height/2);
-            XSync(display, False);
-        }
-    }
-
-
-    return 0;
+    return ui_focus_terminal(display, ui_log);
 }
 
 /*
@@ -552,16 +238,9 @@ void ui_restore_focus(void)
     s = get_last_visited_app_shell();
     if (s) {
         Window w = XtWindow(s);
-        int width, height;
-
-        XMapRaised(display, w);                 /* raise and de-iconify */
-        /* TODO? move into view if needed */
-        if (wait_for_deiconify(w, 1, &width, &height)) {
-            XSetInputFocus(display, w, RevertToParent, CurrentTime);
-            /* Move the pointer to the middle of the window. */
-            XWarpPointer(display, 0, w,  0, 0, 0, 0,  width/2, height/2);
-        }
+        ui_focus_window(display, w);                 /* raise and de-iconify */
     }
+    x11kbd_focus_change();
 }
 
 /* ------------------------------------------------------------------------- */
@@ -573,7 +252,11 @@ void ui_restore_mouse(void)
 
 static void initBlankCursor(Widget canvas)
 {
+#ifdef DEBUGMOUSECURSOR1
+    static char no_data[] = { 255, 129, 129, 129, 129, 129, 129, 255 };
+#else
     static char no_data[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+#endif
     static Pixmap blank;
     XColor trash, dummy;
 
@@ -619,26 +302,23 @@ static void mouse_handler_canvas(Widget w, XtPointer client_data, XEvent *report
         case MotionNotify:
             /* handle pointer motion events for mouse emulation */
 #ifdef HAVE_FULLSCREEN
-            if ((canvas->fullscreenconfig) && (canvas->fullscreenconfig->enable)) {
-                fullscreen_mouse_moved(canvas, (int)report->xmotion.x, (int)report->xmotion.y, 0);
+            if (canvas->fullscreenconfig && canvas->fullscreenconfig->enable) {
+                fullscreen_mouse_moved(canvas,
+                        (int)report->xmotion.x, (int)report->xmotion.y, 0);
             }
 #endif
             if (_mouse_enabled) {
                 if (mouse_warped) {
                     /* ignore this event, its the result of us having moved the pointer */
                     mouse_warped = 0;
-                    /* printf("warped!\n"); */
                 } else {
                     int x=0, y=0, w=0, h=0, warp=0;
                     int ptrx, ptry;
                     /* float taspect; */
 
                     /* get cursor position */
-                    x = (int)report->xmotion.x;
-                    y = (int)report->xmotion.y;
-
-                    ptrx = (int)report->xmotion.x;
-                    ptry = (int)report->xmotion.y;
+                    ptrx = x = (int)report->xmotion.x;
+                    ptry = y = (int)report->xmotion.y;
 
 #ifdef HAVE_XVIDEO
                     if (canvas->videoconfig->hwscale && canvas->xv_image) {
@@ -692,8 +372,8 @@ static void mouse_handler_canvas(Widget w, XtPointer client_data, XEvent *report
                         } else
 #endif
                         {
-                            mouse_dx /= (float)(canvas->videoconfig->doublesizex + 1);
-                            mouse_dy /= (float)(canvas->videoconfig->doublesizey + 1);
+                            mouse_dx /= (float)canvas->videoconfig->scalex;
+                            mouse_dy /= (float)canvas->videoconfig->scaley;
                         }
                         mouse_move(mouse_dx, mouse_dy);
                         mouse_lasteventx = ptrx;
@@ -739,6 +419,33 @@ static void disable_mouse_menus(void)
     }
 }
 
+static void enable_mouse_callback(void)
+{
+    int i;
+
+    for (i = 0; i < num_app_shells; i++) {
+        XtAddEventHandler(app_shells[i].canvas,
+                PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
+                False,
+                (XtEventHandler)mouse_handler_canvas,
+                (XtPointer)app_shells[i].video_canvas);
+    }
+}
+
+static void disable_mouse_callback(void)
+{
+    int i;
+
+    for (i = 0; i < num_app_shells; i++) {
+        XtRemoveEventHandler(app_shells[i].canvas,
+                PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
+                False,
+                (XtEventHandler)mouse_handler_canvas,
+                (XtPointer)app_shells[i].video_canvas);
+    }
+}
+
+
 /*
     grab pointer and keyboard, set mouse pointer shape
 
@@ -754,32 +461,37 @@ static void mouse_cursor_grab(int grab, Cursor cursor)
         mouse_grabbed = 0;
     }
     if (grab) {
-        XGrabKeyboard(display, XtWindow(last_visited_canvas), 1, GrabModeAsync, GrabModeAsync,  CurrentTime);
-#ifdef DEBUGMOUSECURSOR
-        XGrabPointer(display, XtWindow(last_visited_canvas), 0, PointerMotionMask | ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync, XtWindow(last_visited_canvas), None, CurrentTime);
-#else
-        XGrabPointer(display, XtWindow(last_visited_canvas), 0, PointerMotionMask | ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync, XtWindow(last_visited_canvas), cursor, CurrentTime);
-#endif
+        XGrabKeyboard(display, XtWindow(last_visited_canvas), 1,
+                GrabModeAsync, GrabModeAsync,  CurrentTime);
+
+        XGrabPointer(display, XtWindow(last_visited_canvas), 0,
+                PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
+                GrabModeAsync,
+                GrabModeAsync,
+                XtWindow(last_visited_canvas),
+                cursor,
+                CurrentTime);
         mouse_grabbed = 1;
     }
 }
 
 void ui_check_mouse_cursor(void)
 {
+    int callbacks_wanted = 0;
+    if (!ui_cached_video_canvas) {
+        return;
+    }
+
 #ifdef HAVE_FULLSCREEN
-    if (fullscreen_is_enabled) {
+    if (ui_cached_video_canvas->fullscreenconfig->enable) {
         if (_mouse_enabled) {
             mouse_cursor_grab(1, blankCursor);
         } else {
             mouse_cursor_grab(1, None);
         }
-        return;
-    }
+        callbacks_wanted = 1;
+    } else
 #endif
-
-    if (!ui_cached_video_canvas) {
-        return;
-    }
 
     if (_mouse_enabled) {
         mouse_cursor_grab(1, blankCursor);
@@ -789,8 +501,15 @@ void ui_check_mouse_cursor(void)
 
     if (_mouse_enabled || lightpen_enabled) {
         disable_mouse_menus();
+        callbacks_wanted = 1;
     } else {
         enable_mouse_menus();
+    }
+
+    if (callbacks_wanted) {
+        enable_mouse_callback();
+    } else {
+        disable_mouse_callback();
     }
 }
 
@@ -804,24 +523,25 @@ static Widget build_show_text(Widget parent, ui_button_t *button_return, const S
 static Widget build_confirm_dialog(Widget parent, ui_button_t *button_return, Widget *ConfirmDialogMessage);
 static void close_action(Widget w, XEvent *event, String *params, Cardinal *num_params);
 
-UI_CALLBACK(enter_window_callback_shell);
-UI_CALLBACK(structure_callback_shell);
-UI_CALLBACK(exposure_callback_canvas);
-UI_CALLBACK(structure_callback_canvas);
-
-static UI_CALLBACK(rec_button_callback)
-{
-    screenshot_stop_recording();
-    XtUnmapWidget(rec_button);
-}
-
-static UI_CALLBACK(event_recording_button_callback)
-{
-    event_record_stop();
-    XtUnmapWidget(event_recording_button);
-}
+static UI_CALLBACK(enter_window_callback_shell);
+static UI_CALLBACK(structure_callback_shell);
+static UI_CALLBACK(exposure_callback_canvas);
+static UI_CALLBACK(structure_callback_canvas);
 
 /* ------------------------------------------------------------------------- */
+
+/*
+ * Original unscaled:
+ * "-freetype-vice cbm-medium-r-normal-medium-12-120-100-72-m-104-symbol-0"
+ *  -foundry -font family      -set width     -pixels-xdpi-spacing
+ *                    -weight-slant   -???      -10*points   -average width (10*pixels)
+ *                                                      -ydpi    -characterset
+ *
+ * First try the scaled version, if unavailable fall back to the original size,
+ * which is a bit small for most current screen resolutions.
+ */
+static String cbm_fontspec1 = "-freetype-vice cbm-medium-r-normal-medium-24-*-*-*-m-*-symbol-0";
+static String cbm_fontspec2 = "-freetype-vice cbm-medium-r-normal-medium-12-*-*-*-m-*-symbol-0";
 
 /*
  * Reminder to the user: you can specify additional resource strings
@@ -880,17 +600,34 @@ static String fallback_resources[] = {
     "*yesButton.label:				     Yes",
     "*resetButton.label:			     Reset",
     "*hardResetButton.label:                         Hard Reset",
-    "*monButton.label:			   	     Monitor",
-    "*noneButton.label:			   	     Continue",
-    "*debugButton.label:		   	     XDebugger",
+    "*monButton.label:				     Monitor",
+    "*noneButton.label:				     Continue",
+    "*debugButton.label:			     XDebugger",
     "*noButton.label:				     No",
     "*licenseButton.label:			     License...",
     "*noWarrantyButton.label:			     No warranty!",
     "*contribButton.label:			     Contributors...",
     "*Text.translations:			     #override \\n"
-    "                                                <Key>Return: no-op()\\n"
-    "						     <Key>Linefeed: no-op()\\n"
-    "						     Ctrl<Key>J: no-op() \\n",
+                                                    "<Key>Return: no-op()\\n"
+                                                    "<Key>Linefeed: no-op()\\n"
+                                                    "Ctrl<Key>J: no-op() \\n",
+
+    /* These fonts will be overridden later if the VICE-CBM font is available */
+    "*rightDrive8Menu*SmeBSB.international:          False",
+    "*rightDrive8Menu*SmeBSB.vertSpace:              25",
+    "*rightDrive8Menu*SmeBSB.font:       -*-lucidatypewriter-medium-r-*-*-12-*",
+    "*rightDrive9Menu*SmeBSB.international:          False",
+    "*rightDrive9Menu*SmeBSB.vertSpace:              25",
+    "*rightDrive9Menu*SmeBSB.font:       -*-lucidatypewriter-medium-r-*-*-12-*",
+    "*rightDrive10Menu*SmeBSB.international:         False",
+    "*rightDrive10Menu*SmeBSB.font:      -*-lucidatypewriter-medium-r-*-*-12-*",
+    "*rightDrive10Menu*SmeBSB.vertSpace:              25",
+    "*rightDrive11Menu*SmeBSB.international:         False",
+    "*rightDrive11Menu*SmeBSB.font:      -*-lucidatypewriter-medium-r-*-*-12-*",
+    "*rightDrive11Menu*SmeBSB.vertSpace:              25",
+    "*rightTapeMenu*SmeBSB.international:         False",
+    "*rightTapeMenu*SmeBSB.font:      -*-lucidatypewriter-medium-r-*-*-12-*",
+    "*rightTapeMenu*SmeBSB.vertSpace:              25",
 
     /* Default color settings (suggestions are welcome...) */
     "*foreground:				     black",
@@ -908,27 +645,36 @@ static String fallback_resources[] = {
     "*Form.background:				     gray80",
     "*Label.background:				     gray80",
     "*Canvas.background:                             black",
+    "*Tip.background:                                rgb:f/f/8",
+/*
+    "*Tip.borderWidth:                               0",
+    "*Tip.displayList: foreground rgb:8/8/4; lines 1,-1,-1,-1,-1,1; foreground rgb:f/f/c; lines -1,0,0,0,0,-1",
+ */
+    "*driveTrack1.cursorName:                  hand1",
     "*driveTrack1.font:                        -*-helvetica-medium-r-*-*-12-*",
     "*driveTrack1.fontSet:                     -*-helvetica-medium-r-*-*-12-*",
+    "*driveTrack2.cursorName:                  hand1",
     "*driveTrack2.font:                        -*-helvetica-medium-r-*-*-12-*",
     "*driveTrack2.fontSet:                     -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage1.font:                 -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage1.fontSet:              -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage2.font:                 -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage2.fontSet:              -*-helvetica-medium-r-*-*-12-*",
+    "*driveTrack3.cursorName:                  hand1",
     "*driveTrack3.font:                        -*-helvetica-medium-r-*-*-12-*",
     "*driveTrack3.fontSet:                     -*-helvetica-medium-r-*-*-12-*",
+    "*driveTrack4.cursorName:                  hand1",
     "*driveTrack4.font:                        -*-helvetica-medium-r-*-*-12-*",
     "*driveTrack4.fontSet:                     -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage3.font:                 -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage3.fontSet:              -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage4.font:                 -*-helvetica-medium-r-*-*-12-*",
-    "*driveCurrentImage4.fontSet:              -*-helvetica-medium-r-*-*-12-*",
+    "*speedStatus.cursorName:                  hand1",
     "*speedStatus.font:                        -*-helvetica-medium-r-*-*-12-*",
     "*speedStatus.fontSet:                     -*-helvetica-medium-r-*-*-12-*",
-    "*statustext.font:                         -*-helvetica-medium-r-*-*-8-*",
-    "*statustext.fontSet:                      -*-helvetica-medium-r-*-*-8-*",
-
+    "*statustext.font:                         -*-helvetica-medium-r-*-*-12-*",
+    "*statustext.fontSet:                      -*-helvetica-medium-r-*-*-12-*",
+    "*tapeCounter1.cursorName:                 hand1",
+    "*tapeCounter1.font:                       -*-helvetica-medium-r-*-*-12-*",
+    "*tapeCounter1.fontSet:                    -*-helvetica-medium-r-*-*-12-*",
+    "*tapeButtons1.translations:               #override\\n~Shift ~Ctrl ~Meta<BtnDown>: TapePlayStop()\\n"
+                                              "Ctrl<BtnDown>: TapePlayStop(rew)\\n"
+                                              "Meta<BtnDown>: TapePlayStop(ffwd)\\n"
+                                              "Shift<BtnDown>(2): TapePlayStop(rec)\\n",
+    /* ~Shift -> Shift not pressed */
     NULL
 };
 
@@ -979,6 +725,9 @@ int ui_init(int *argc, char **argv)
 {
     static XtActionsRec actions[] = {
         { "Close", close_action },
+        { "RebuildTapeMenu", rebuild_tape_menu_action },
+        { "TapePlayStop", tape_play_stop_action },
+        { "RebuildDiskMenu", rebuild_disk_menu_action },
     };
     int skip_resources = 0;
 
@@ -994,8 +743,14 @@ int ui_init(int *argc, char **argv)
     prepare_wm_command_data(*argc, argv);
 
     /* Create the toplevel. */
-    _ui_top_level = XtAppInitialize(&app_context, "VICE", NULL, 0, argc, argv,
-            fallback_resources + skip_resources, NULL, 0);
+    /* Using `sessionShellWidgetClass` in this call works with some WM's, but
+     * causes the UI init to hang later on other WM's
+     *
+     * Xfce4, Mate and Cinnamon on Debian 8.6 failed, OpenBox worked. -- BW
+     */
+    _ui_top_level = XtOpenApplication(&app_context, "VICE", NULL, 0,
+            argc, argv, fallback_resources + skip_resources,
+            applicationShellWidgetClass, NULL, 0);
     if (!_ui_top_level) {
         return -1;
     }
@@ -1004,12 +759,23 @@ int ui_init(int *argc, char **argv)
     screen = XDefaultScreen(display);
     atexit(ui_autorepeat_on);
 
+    /*
+     * Check if we can use the VICE-CBM font.
+     */
+    cbm_font_struct = XLoadQueryFont(display, cbm_fontspec1);
+    if (cbm_font_struct == NULL) {
+        cbm_font_struct = XLoadQueryFont(display, cbm_fontspec2);
+    }
+    if (cbm_font_struct == NULL) {
+        log_warning(ui_log, "The VICE-CBM font is not available.");
+    }
+
     wm_delete_window = XInternAtom(display, "WM_DELETE_WINDOW", False);
+    wm_protocols = XInternAtom(display, "WM_PROTOCOLS", False);
+
     XtAppAddActions(app_context, actions, XtNumber(actions));
 
     ui_common_init();
-
-    enabled_drives = UI_DRIVE_ENABLE_NONE;
 
     finish_prepare_wm_command();
 
@@ -1020,16 +786,40 @@ void ui_shutdown(void)
 {
     int i;
 
+    /* Shuts down various ui subparts, including menus */
+    ui_common_shutdown();
+
     for (i = 0; i < num_app_shells; i++) {
         lib_free(app_shells[i].title);
     }
+    /*
+     * This recursively deletes all its (remaining) children, including
+     * all app_shells[i].shell, but also all menus that have not been
+     * cleaned up yet. If they are separately destroyed after this
+     * point, that leads to accessing freed memory.
+     *
+     * At least that would happen if app_context->dispatch_level == 0,
+     * which is not true when quitting from a keyboard or menu action,
+     * but can be true when exiting because of control-C.
+     */
+    XtDestroyWidget(_ui_top_level);
 
     lib_free(wm_command_data);
     lib_free(filesel_dir);
 
-    ui_common_shutdown();
-
+    /*
+     * Frees extra menu resources, such as still needed when destroying
+     * tickmark menu items.
+     */
     uimenu_shutdown();
+
+    if (cbm_font_struct) {
+        XFreeFont(display, cbm_font_struct);
+    }
+
+    XtCloseDisplay(display);
+    XtDestroyApplicationContext(app_context);
+    /* Definitely no X access after this point! */
 }
 
 typedef struct {
@@ -1106,7 +896,7 @@ int ui_init_finish(void)
 
     /* Create the new `_ui_top_level'.  */
     _ui_top_level = XtVaAppCreateShell(machine_name, "VICE",
-                                       applicationShellWidgetClass, display,
+                                       sessionShellWidgetClass, display,
                                        XtNvisual, visual,
                                        XtNdepth, depth,
                                        XtNcolormap, colormap,
@@ -1148,20 +938,41 @@ Window x11ui_get_X11_window()
     return XtWindow(_ui_top_level);
 }
 
-/* Create a shell with a canvas widget in it.  */
+#if DEBUG_X11UI
+void printxywh(char *name, Widget widget)
+{
+    Dimension x = -1, y = -1, w = -1, h = -1;
+
+    XtVaGetValues(widget,
+                    XtNx, &x,
+                    XtNy, &y,
+                    XtNwidth, &w,
+                    XtNheight, &h,
+                    NULL);
+    printf("%s: x=%d y=%d w=%d h=%d\n", name, x, y, w, h);
+}
+#endif /* DEBUG_X11UI */
+
+/*
+ * Create a shell with a canvas widget in it.
+ * +-----------------------------------------------------------------------+
+ * |+---------------------------------------------------------------------+|
+ * ||                                                                     ||
+ * ...                           video canvas                            ...
+ * ||                                                                     ||
+ * |+---------------------------------------------------------------------+|
+ * |100%, 50fps            |    9: Track 18,0   XX |    8: Track 18,0   XX |
+ * |    CRT Controls       |   11: Track 18,0   XX |   10: Track 18,0   XX |
+ * |(statustext)           |recording..|event reco |   Tape #1: 000     [] |
+ * +-----------------------------------------------------------------------+
+ */
 int ui_open_canvas_window(video_canvas_t *c, const char *title, int width, int height, int no_autorepeat)
 {
     /* Note: this is correct because we never destroy CanvasWindows.  */
-    Widget shell, speed_label, statustext_label;
-    Widget drive_track_label[NUM_DRIVES], drive_led[NUM_DRIVES];
-    Widget drive_current_image[NUM_DRIVES];
-    Widget drive_led1[NUM_DRIVES], drive_led2[NUM_DRIVES];
+    Widget shell;
     Widget pane;
     Widget canvas;
-    Widget pal_ctrl_widget = 0;
     XSetWindowAttributes attr;
-    int i;
-    char *button_title;
 
     if (machine_class != VICE_MACHINE_VSID) {
         if (uicolor_alloc_colors(c) < 0) {
@@ -1177,7 +988,12 @@ int ui_open_canvas_window(video_canvas_t *c, const char *title, int width, int h
         return -1;
     }
 
-    shell = XtVaCreatePopupShell(title, applicationShellWidgetClass, _ui_top_level, XtNinput, True, XtNtitle, title, XtNiconName, title, NULL);
+    /* This creates a new window; in principle the initial _ui_top_level
+     * is already a SessionShell or a "main top-level window". But for
+     * two-screen use (such as with the 128) having one screen be a
+     * child Widget of the other is somewhat asymmetric.
+     */
+    shell = XtVaCreatePopupShell(title, topLevelShellWidgetClass, _ui_top_level, XtNinput, True, XtNtitle, title, XtNiconName, title, NULL);
 
     /* Xt only allows you to change the visual of a shell widget, so the
        visual and colormap must be created before the shell widget is
@@ -1188,9 +1004,11 @@ int ui_open_canvas_window(video_canvas_t *c, const char *title, int width, int h
        popup dialogs and menus are also shells. */
     XtVaSetValues(shell, XtNvisual, visual, XtNdepth, depth, XtNcolormap, colormap, NULL);
 
+#define DD      2               /* default distance */
+
     pane = XtVaCreateManagedWidget("Form",
                                    formWidgetClass, shell,
-                                   XtNdefaultDistance, 2,
+                                   XtNdefaultDistance, DD,
                                    NULL);
 
     if (machine_class != VICE_MACHINE_VSID) {
@@ -1198,13 +1016,14 @@ int ui_open_canvas_window(video_canvas_t *c, const char *title, int width, int h
                                         xfwfcanvasWidgetClass, pane,
                                         XtNwidth, width,
                                         XtNheight, height,
+                                        XtNborderWidth, 0,
+                                        XtNbackground, BlackPixel(display, screen),
+                                        /* Constraints: */
                                         XtNresizable, True,
                                         XtNbottom, XawChainBottom,
                                         XtNtop, XawChainTop,
                                         XtNleft, XawChainLeft,
                                         XtNright, XawChainRight,
-                                        XtNborderWidth, 0,
-                                        XtNbackground, BlackPixel(display, screen),
                                         NULL);
     } else {
         vsid_ctrl_widget_set_parent(pane);
@@ -1213,190 +1032,17 @@ int ui_open_canvas_window(video_canvas_t *c, const char *title, int width, int h
 
     last_visited_canvas = canvas;
 
-    XtAddEventHandler(shell, EnterWindowMask, False, (XtEventHandler)enter_window_callback_shell, (XtPointer)c);
-
     /* XVideo must be refreshed when the shell window is moved. */
     if (machine_class != VICE_MACHINE_VSID) {
         XtAddEventHandler(shell, StructureNotifyMask, False, (XtEventHandler)structure_callback_shell, (XtPointer)c);
+        XtAddEventHandler(shell, EnterWindowMask, False, (XtEventHandler)enter_window_callback_shell, (XtPointer)c);
 
         XtAddEventHandler(canvas, ExposureMask, False, (XtEventHandler)exposure_callback_canvas, (XtPointer)c);
         XtAddEventHandler(canvas, StructureNotifyMask, False, (XtEventHandler)structure_callback_canvas, (XtPointer)c);
-        XtAddEventHandler(canvas, PointerMotionMask | ButtonPressMask | ButtonReleaseMask, False, (XtEventHandler)mouse_handler_canvas, (XtPointer)c);
     }
 
     /* Create the status bar on the bottom.  */
-    {
-        Dimension height;
-        Dimension led_width = 14, led_height = 5;
-        Dimension led_dist = 8;
-        Widget fromvert;
-
-        speed_label = XtVaCreateManagedWidget("speedStatus",
-                                              labelWidgetClass, pane,
-                                              XtNlabel, "",
-                                              XtNwidth, width / 3,
-                                              XtNfromVert, canvas,
-                                              XtNtop, XawChainBottom,
-                                              XtNbottom, XawChainBottom,
-                                              XtNjustify, XtJustifyLeft,
-                                              XtNborderWidth, 0,
-                                              NULL);
-
-        fromvert = speed_label;
-
-        XtVaGetValues(speed_label, XtNheight, &height, NULL);
-
-        if (machine_class != VICE_MACHINE_VSID) {
-            Widget drivefromvert;
-
-            Arg args[] = {
-                { XtNlabel, (XtArgVal)_("CRT Controls") },
-                { XtNwidth, width / 3 - 2 },
-                { XtNfromVert, (XtArgVal)fromvert },
-                { XtNvertDistance, 2 + 2 * 1 }, /* 2 + 2*border of drive_current_image */
-                { XtNtop, XawChainBottom },
-                { XtNbottom, XawChainBottom },
-            };
-            pal_ctrl_widget = build_pal_ctrl_widget(c, pane,
-                                        args, util_arraysize(args));
-
-            fromvert = pal_ctrl_widget;
-            drivefromvert = canvas;
-
-            for (i = 0; i < NUM_DRIVES; i++) {
-                char *name;
-
-                name = lib_msprintf("driveCurrentImage%d", i + 1);
-                drive_current_image[i] = XtVaCreateManagedWidget(name,
-                                    commandWidgetClass, pane,
-                                    XtNmappedWhenManaged, False,
-                                    XtNlabel, "",
-                                    XtNwidth, (width / 3) - 2,
-                                    XtNfromVert, drivefromvert,
-                                    XtNfromHoriz, speed_label,
-                                    XtNhorizDistance, 0,
-                                    XtNtop, XawChainBottom,
-                                    XtNbottom, XawChainBottom,
-                                    XtNjustify, XtJustifyLeft,
-                                    NULL);
-                lib_free(name);
-
-                name = lib_msprintf("driveTrack%d", i + 1);
-                drive_track_label[i] = XtVaCreateManagedWidget(name,
-                                    labelWidgetClass, pane,
-                                    XtNmappedWhenManaged, False,
-                                    XtNlabel, "",
-                                    XtNwidth, (width / 3) - led_width - 2 * led_dist - 2,
-                                    XtNfromVert, drivefromvert,
-                                    XtNfromHoriz, drive_current_image[i],
-                                    XtNhorizDistance, 0,
-                                    XtNtop, XawChainBottom,
-                                    XtNbottom, XawChainBottom,
-                                    XtNright, XawChainRight,
-                                    XtNjustify, XtJustifyRight,
-                                    XtNborderWidth, 0,
-                                    NULL);
-                lib_free(name);
-
-                name = lib_msprintf("driveLed%d", i + 1);
-                drive_led[i] = XtVaCreateManagedWidget(name,
-                                    xfwfcanvasWidgetClass, pane,
-                                    XtNmappedWhenManaged, False,
-                                    XtNwidth, led_width,
-                                    XtNheight, led_height,
-                                    XtNfromVert, drivefromvert,
-                                    XtNfromHoriz, drive_track_label[i],
-                                    XtNhorizDistance, led_dist,
-                                    XtNvertDistance, (height-led_height)/2 + 1,
-                                    XtNtop, XawChainBottom,
-                                    XtNbottom, XawChainBottom,
-                                    XtNleft, XawChainRight,
-                                    XtNright, XawChainRight,
-                                    XtNborderWidth, 0,
-                                    NULL);
-                lib_free(name);
-
-                /* double LEDs */
-
-                name = lib_msprintf("driveLedA%d", i + 1);
-                drive_led1[i] = XtVaCreateManagedWidget(name,
-                                    xfwfcanvasWidgetClass, pane,
-                                    XtNmappedWhenManaged, False,
-                                    XtNwidth, led_width / 2 - 1,
-                                    XtNheight, led_height,
-                                    XtNfromVert, drivefromvert,
-                                    XtNfromHoriz, drive_track_label[i],
-                                    XtNhorizDistance, led_dist,
-                                    XtNvertDistance, (height-led_height)/2 + 1,
-                                    XtNtop, XawChainBottom,
-                                    XtNbottom, XawChainBottom,
-                                    XtNleft, XawChainRight,
-                                    XtNright, XawChainRight,
-                                    XtNborderWidth, 1,
-                                    NULL);
-                lib_free(name);
-
-                name = lib_msprintf("driveLedB%d", i + 1);
-                drive_led2[i] = XtVaCreateManagedWidget(name,
-                                    xfwfcanvasWidgetClass, pane,
-                                    XtNmappedWhenManaged, False,
-                                    XtNwidth, led_width / 2 - 1,
-                                    XtNheight, led_height,
-                                    XtNfromVert, drivefromvert,
-                                    XtNfromHoriz, drive_led1[i],
-                                    XtNhorizDistance, led_dist,
-                                    XtNvertDistance, (height-led_height)/2 + 1,
-                                    XtNtop, XawChainBottom,
-                                    XtNbottom, XawChainBottom,
-                                    XtNleft, XawChainRight,
-                                    XtNright, XawChainRight,
-                                    XtNborderWidth, 1,
-                                    NULL);
-                lib_free(name);
-                drivefromvert = drive_current_image[i];
-            }
-        }
-
-        statustext_label = XtVaCreateManagedWidget("statustext",
-                                                   labelWidgetClass, pane,
-                                                   XtNwidth, width / 3 - 2,
-                                                   XtNfromVert, fromvert,
-                                                   XtNtop, XawChainBottom,
-                                                   XtNbottom, XawChainBottom,
-                                                   XtNjustify, XtJustifyLeft,
-                                                   XtNlabel, "",
-                                                   XtNborderWidth, 0,
-                                                   NULL);
-
-        button_title = util_concat(_("recording"), "...", NULL);
-        rec_button = XtVaCreateManagedWidget("recButton",
-                                             commandWidgetClass, pane,
-                                             XtNmappedWhenManaged, False,
-                                             XtNwidth, width / 3 - 2,
-                                             XtNfromVert, statustext_label,
-                                             XtNtop, XawChainBottom,
-                                             XtNbottom, XawChainBottom,
-                                             XtNjustify, XtJustifyLeft,
-                                             XtNlabel, button_title,
-                                             NULL);
-        lib_free(button_title);
-
-        XtAddCallback(rec_button, XtNcallback, rec_button_callback, NULL);
-
-        button_title = util_concat(_("event recording"), "...", NULL);
-        event_recording_button = XtVaCreateManagedWidget("eventRecButton",
-                                            commandWidgetClass, pane,
-                                            XtNmappedWhenManaged, False,
-                                            XtNwidth, width / 3 - 2,
-                                            XtNfromVert, rec_button,
-                                            XtNtop, XawChainBottom,
-                                            XtNbottom, XawChainBottom,
-                                            XtNjustify, XtJustifyLeft,
-                                            XtNlabel, button_title,
-                                            NULL);
-        lib_free(button_title);
-        XtAddCallback(event_recording_button, XtNcallback, event_recording_button_callback, NULL);
-    }
+    ui_create_status_bar(pane, width, canvas, c, num_app_shells - 1);
 
     /* Assign proper translations to open the menus, if already
        defined.  */
@@ -1431,35 +1077,13 @@ int ui_open_canvas_window(video_canvas_t *c, const char *title, int width, int h
     app_shells[num_app_shells - 1].shell = shell;
     app_shells[num_app_shells - 1].canvas = canvas;
     app_shells[num_app_shells - 1].title = lib_stralloc(title);
-    app_shells[num_app_shells - 1].speed_label = speed_label;
-    app_shells[num_app_shells - 1].statustext_label = statustext_label;
-    status_bar = speed_label;
-
-    if (machine_class != VICE_MACHINE_VSID) {
-        for (i = 0; i < NUM_DRIVES; i++) {
-            app_shells[num_app_shells - 1].drive_widgets[i].track_label = drive_track_label[i];
-            app_shells[num_app_shells - 1].drive_widgets[i].driveled = drive_led[i];
-            XtUnmapWidget(drive_led[i]);
-            app_shells[num_app_shells - 1].drive_widgets[i].driveled1 = drive_led1[i];
-            app_shells[num_app_shells - 1].drive_widgets[i].driveled2 = drive_led2[i];
-            XtUnmapWidget(drive_led1[i]);
-            XtUnmapWidget(drive_led2[i]);
-            app_shells[num_app_shells - 1].drive_widgets[i].current_image = drive_current_image[i];
-            strcpy(&(last_attached_images[i][0]), ""); 
-            XtMapWidget(app_shells[num_app_shells - 1].drive_widgets[i].current_image);
-
-        }
-    }
-    XtUnmapWidget(rec_button);
-    XtUnmapWidget(event_recording_button);
+    app_shells[num_app_shells - 1].video_canvas = c;
 
     XSetWMProtocols(display, XtWindow(shell), &wm_delete_window, 1);
     XtOverrideTranslations(shell, XtParseTranslationTable("<Message>WM_PROTOCOLS: Close()"));
 
     if (machine_class != VICE_MACHINE_VSID) {
-        /* This is necessary because the status might have been set before we
-        actually open the canvas window.  */
-        ui_enable_drive_status(enabled_drives, drive_active_led);
+        ui_init_drive_status_widget();
     }
 
     initBlankCursor(canvas);
@@ -1479,7 +1103,7 @@ int ui_open_canvas_window(video_canvas_t *c, const char *title, int width, int h
 /* Attach `w' as the left menu of all the current open windows.  */
 void ui_set_left_menu(ui_menu_entry_t *menu)
 {
-    Widget w = ui_menu_create("LeftMenu", menu, NULL);
+    Widget w = ui_menu_create("leftMenu", menu, NULL);
     char *translation_table;
     char *name = XtName(w);
     int i;
@@ -1507,7 +1131,7 @@ void ui_set_left_menu(ui_menu_entry_t *menu)
     }
 
     if (left_menu != NULL) {
-        XtDestroyWidget(left_menu);
+        ui_menu_delete(left_menu);
     }
     left_menu = w;
 }
@@ -1515,7 +1139,7 @@ void ui_set_left_menu(ui_menu_entry_t *menu)
 /* Attach `w' as the right menu of all the current open windows.  */
 void ui_set_right_menu(ui_menu_entry_t *menu)
 {
-    Widget w = ui_menu_create("RightMenu", menu, NULL);
+    Widget w = ui_menu_create("rightMenu", menu, NULL);
     char *translation_table;
     char *name = XtName(w);
     int i;
@@ -1538,61 +1162,9 @@ void ui_set_right_menu(ui_menu_entry_t *menu)
     }
 
     if (right_menu != NULL) {
-        XtDestroyWidget(right_menu);
+        ui_menu_delete(right_menu);
     }
     right_menu = w;
-}
-
-void ui_destroy_drive_menu(int drive)
-{
-    if (drive >= 0 && drive < NUM_DRIVES) {
-        if (drive_menu[drive]) {
-            /* pop down the menu if it is still up */
-            XtPopdown(drive_menu[drive]);
-            XtDestroyWidget(drive_menu[drive]);
-            drive_menu[drive] = 0;
-        }
-    }
-}
-
-void ui_set_drive_menu(int drive, ui_menu_entry_t *flipmenu)
-{
-    char *menuname;
-    int i;
-    Widget w;
-
-    if (drive < 0 || drive >= NUM_DRIVES) {
-        return;
-    }
-
-    menuname = lib_msprintf("LeftDrive%iMenu", drive + 8);
-    if (flipmenu != NULL) {
-        w = ui_menu_create(menuname, flipmenu, NULL);
-        drive_menu[drive] = w;
-    }
-
-    if (!drive_menu_translations[drive]) {
-        char *translation_table;
-
-        translation_table = util_concat("<Btn1Down>: XawPositionSimpleMenu(",
-                                                        menuname, ") "
-                                                    "XtMenuPopup(",
-                                                        menuname, ")\n",
-                                        NULL);
-        drive_menu_translations[drive] =
-                                XtParseTranslationTable(translation_table);
-        lib_free(translation_table);
-    }
-    lib_free(menuname);
-
-    for (i = 0; i < num_app_shells; i++) {
-        int n = app_shells[i].drive_mapping[drive];
-        if (n >= 0) {
-            XtOverrideTranslations(app_shells[i].
-                                        drive_widgets[n].current_image,
-                                   drive_menu_translations[drive]);
-        }
-    }
 }
 
 void ui_set_topmenu(ui_menu_entry_t *menu)
@@ -1601,10 +1173,27 @@ void ui_set_topmenu(ui_menu_entry_t *menu)
 
 void ui_set_speedmenu(ui_menu_entry_t *menu)
 {
-}
+    Widget w = ui_menu_create("SpeedMenu", menu, NULL);
+    int i;
+    static XtTranslations speed_menu_translations;
+    static Widget speed_menu;
 
-void ui_set_tape_menu(ui_menu_entry_t *menu)
-{
+    XtRealizeWidget(w);
+    if (speed_menu_translations == 0) {
+        char *translation_table;
+        translation_table = "<BtnDown>: XawPositionSimpleMenu(SpeedMenu) XtMenuPopup(SpeedMenu)\n"
+                           "Meta Shift <KeyDown>z: FakeButton(1) XawPositionSimpleMenu(SpeedMenu) XtMenuPopup(SpeedMenu)\n";
+        speed_menu_translations = XtParseTranslationTable(translation_table);
+    }
+
+    for (i = 0; i < num_app_shells; i++) {
+        XtOverrideTranslations(app_shells[i].speed_label, speed_menu_translations);
+    }
+
+    if (speed_menu != NULL) {
+        ui_menu_delete(speed_menu);
+    }
+    speed_menu = w;
 }
 
 void ui_set_application_icon(const char *icon_data[])
@@ -1620,6 +1209,13 @@ void ui_set_application_icon(const char *icon_data[])
         XtVaSetValues(app_shells[i].shell, XtNiconPixmap, icon_pixmap, NULL);
     }
 #endif
+}
+
+/* ------------------------------------------------------------------------- */
+
+int get_num_shells(void)
+{
+    return num_app_shells;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1689,300 +1285,17 @@ static int alloc_colormap(void)
     return 0;
 }
 
-static void statusbar_setstatustext(const char *t)
-{
-    int i;
-    for (i = 0; i < num_app_shells; i++) {
-        XtVaSetValues(app_shells[i].statustext_label, XtNlabel, t, NULL);
-    }
-}
-
 /* ------------------------------------------------------------------------- */
-
-/* Show the speed index to the user.  */
-void ui_display_speed(float percent, float framerate, int warp_flag)
-{
-    int i;
-    int percent_int = (int)(percent + 0.5);
-    int framerate_int = (int)(framerate + 0.5);
-
-    for (i = 0; i < num_app_shells; i++) {
-        if (!percent) {
-            XtVaSetValues(app_shells[i].speed_label, XtNlabel, warp_flag ? _("(warp)") : "", NULL);
-        } else {
-            char *str;
-            str = lib_msprintf("%d%%, %dfps %s", percent_int, framerate_int, warp_flag ? _("(warp)") : "");
-            XtVaSetValues(app_shells[i].speed_label, XtNlabel, str, NULL);
-            lib_free(str);
-        }
-    }
-    if (statustext_display_time > 0) {
-        statustext_display_time--;
-        if (statustext_display_time == 0) {
-            statusbar_setstatustext("");
-        }
-    }
-
-    if (!screenshot_is_recording()) {
-        XtUnmapWidget(rec_button);
-    }
-}
-
-void ui_enable_drive_status(ui_drive_enable_t enable, int *drive_led_color)
-{
-    int i, j, num, k, true_emu;
-    int drive_mapping[NUM_DRIVES];
-
-    num = 0;
-
-    enabled_drives = enable;
-    drive_active_led = drive_led_color;
-
-    /* -1 should be safe, otherwise the display code in `ui_display_*'
-       was wrong before. */
-    memset(drive_mapping, -1, sizeof(drive_mapping));
-
-    resources_get_int("DriveTrueEmulation", &true_emu);
-
-    if (true_emu) {
-        /* num == number of drives which are active;
-           drive_mapping[i] stores the widget number into which the i'th drive
-           things should be displayed */
-        for (i = 0, j = 1; i < NUM_DRIVES; i++, j <<= 1) {
-            if (enabled_drives & j) {
-                drive_mapping[i] = num++;
-            }
-        }
-    } else {
-        for (i = 0; i < NUM_DRIVES; i++) {
-            if (strcmp(&(last_attached_images[i][0]), "") != 0) {
-                drive_mapping[i] = num++;
-            }
-        }
-    }
-
-    for (i = 0; i < num_app_shells; i++) {
-        /* now show `num' widgets ... */
-        for (j = 0; j < num; j++) {
-            XtMapWidget(app_shells[i].drive_widgets[j].current_image);
-        }
-        for (; j < NUM_DRIVES; j++) {
-            XtUnmapWidget(app_shells[i].drive_widgets[j].current_image);
-        }
-        /* Show label+led widgets in true drive emulation mode */
-        for (j = 0; j < num && true_emu > 0; j++) {
-            XtMapWidget(app_shells[i].drive_widgets[j].track_label);
-
-            for (k = 0; k < NUM_DRIVES; k++) {
-                if (drive_mapping[k] == j) {
-                    break;
-                }
-            }
-            app_shells[i].drive_nleds[j] = drive_num_leds(k);
-            if (app_shells[i].drive_nleds[j] == 1) {
-                XtMapWidget(app_shells[i].drive_widgets[j].driveled);
-                XtUnmapWidget(app_shells[i].drive_widgets[j].driveled1);
-                XtUnmapWidget(app_shells[i].drive_widgets[j].driveled2);
-            } else {
-                XtUnmapWidget(app_shells[i].drive_widgets[j].driveled);
-                XtMapWidget(app_shells[i].drive_widgets[j].driveled1);
-                XtMapWidget(app_shells[i].drive_widgets[j].driveled2);
-            }
-        }
-
-        /* ...and hide the rest until `NUM_DRIVES' */
-        for (; j < NUM_DRIVES; j++) {
-            XtUnmapWidget(app_shells[i].drive_widgets[j].track_label);
-            XtUnmapWidget(app_shells[i].drive_widgets[j].driveled);
-            XtUnmapWidget(app_shells[i].drive_widgets[j].driveled1);
-            XtUnmapWidget(app_shells[i].drive_widgets[j].driveled2);
-        }
-        for (j = 0; j < NUM_DRIVES; j++) {
-            app_shells[i].drive_mapping[j] = drive_mapping[j];
-        }
-    }
-    /* now update all image names from the cached names */
-    ui_display_drive_current_image2();
-}
-
-void ui_display_drive_track(unsigned int drive_number, unsigned int drive_base, unsigned int half_track_number)
-{
-    int i;
-    /* FIXME: Fixed length.  */
-    char str[256];
-    double track_number = (double)half_track_number / 2.0;
-    int d = drive_base ? (drive_base + drive_number) : (drive_number & 1);
-
-    sprintf(str, _("%d: Track %.1f"), d, (double)track_number);
-    for (i = 0; i < num_app_shells; i++) {
-        int n = app_shells[i].drive_mapping[drive_number];
-        Widget w;
-
-        if (n < 0) {
-            return;             /* bad mapping */
-        }
-        w = app_shells[i].drive_widgets[n].track_label;
-
-        XtVaSetValues(w, XtNlabel, str, NULL);
-    }
-}
-
-void ui_display_drive_led(int drive_number, unsigned int led_pwm1, unsigned int led_pwm2)
-{
-    Pixel pixel;
-    int status = 0;
-    int i;
-
-    if (led_pwm1 > 100) {
-        status |= 1;
-    }
-    if (led_pwm2 > 100) {
-        status |= 2;
-    }
-
-    for (i = 0; i < num_app_shells; i++) {
-        int n = app_shells[i].drive_mapping[drive_number];
-        Widget w;
-        Pixel on_pixel;
-
-        if (n < 0) {
-            return;             /* bad mapping */
-        }
-
-        on_pixel = drive_active_led[drive_number] ? drive_led_on_green_pixel
-                                                  : drive_led_on_red_pixel;
-        pixel = status ? on_pixel : drive_led_off_pixel;
-        w = app_shells[i].drive_widgets[n].driveled;
-        XtVaSetValues(w, XtNbackground, pixel, NULL);
-
-        pixel = (status & 1) ? on_pixel : drive_led_off_pixel;
-        w = app_shells[i].drive_widgets[n].driveled1;
-        XtVaSetValues(w, XtNbackground, pixel, NULL);
-
-        pixel = (status & 2) ? on_pixel : drive_led_off_pixel;
-        w = app_shells[i].drive_widgets[n].driveled2;
-        XtVaSetValues(w, XtNbackground, pixel, NULL);
-    }
-}
-
-void ui_display_drive_current_image(unsigned int drive_number, const char *image)
-{
-    if (console_mode) {
-        return;
-    }
-
-    if (drive_number >= NUM_DRIVES) {
-        return;
-    }
-
-    /*if (strcmp(image, "") == 0) {
-        image = "<detached>";
-    }*/
-    strncpy(&(last_attached_images[drive_number][0]), image, ATT_IMG_SIZE);
-
-    /* update drive mapping */
-    ui_enable_drive_status(enabled_drives, drive_active_led);
-    uifliplist_update_menus(drive_number + 8, drive_number + 8);
-}
-
-static void ui_display_drive_current_image2 (void)
-{
-    int i, j;
-    char *name;
-
-    /* Now update all fields according to drive_mapping */
-    for (i = 0; i < num_app_shells; i++) {
-        for (j = 0; j < NUM_DRIVES; j++) {
-            int n = app_shells[i].drive_mapping[j];
-            Widget w;
-
-            /* It is assumed that the j-1'th widget is not touched anymore.
-               -> the drive mapping code fills the widgets up from 0 */
-
-            /* first clear the j'th widget */
-            w = app_shells[i].drive_widgets[j].current_image;
-            XtVaSetValues(w, XtNlabel, "", NULL);
-
-            if (n < 0) {
-                continue;       /* j'th is drive not mapped */
-            }
-
-            /* now fill the j'th widget */
-            w = app_shells[i].drive_widgets[n].current_image;
-
-            util_fname_split(&(last_attached_images[j][0]), NULL, &name);
-            XtVaSetValues(w, XtNlabel, name, NULL);
-            lib_free(name);
-
-            /* Also update drive menu; will call ui_set_drive_menu() */
-            if (i == 0) {
-                uifliplist_update_menus(8 + j, 8 + j);
-            }
-        }
-    }
-}
-
-
-/* tape-related ui, dummies so far */
-void ui_set_tape_status(int tape_status)
-{
-}
-
-void ui_display_tape_motor_status(int motor)
-{
-}
-
-void ui_display_tape_control_status(int control)
-{
-}
-
-void ui_display_tape_counter(int counter)
-{
-}
-
-void ui_display_tape_current_image(const char *image)
-{
-}
-
-void ui_display_recording(int recording_status)
-{
-    if (recording_status) {
-        XtMapWidget(event_recording_button);
-    } else {
-        XtUnmapWidget(event_recording_button);
-    }
-}
-
-void ui_display_playback(int playback_status, char *version)
-{
-}
-
-/* Display a message in the title bar indicating that the emulation is
-   paused.  */
-void ui_display_paused(int flag)
-{
-    int i;
-
-    for (i = 0; i < num_app_shells; i++) {
-        if (flag) {
-            char *str;
-
-            str = lib_msprintf(_("%s (paused)"), app_shells[i].title);
-            XtVaSetValues(app_shells[i].shell, XtNtitle, str, NULL);
-            lib_free(str);
-        } else {
-            XtVaSetValues(app_shells[i].shell, XtNtitle, app_shells[i].title, NULL);
-        }
-    }
-}
 
 /* Dispatch the next Xt event.  If not pending, wait for it. */
 void ui_dispatch_next_event(void)
 {
     XEvent report;
 
-    XtAppNextEvent(app_context, &report);
-    XtDispatchEvent(&report);
+    if (app_context) {
+        XtAppNextEvent(app_context, &report);
+        XtDispatchEvent(&report);
+    }
 }
 
 /* Dispatch all the pending Xt events. */
@@ -1992,18 +1305,20 @@ void ui_dispatch_events(void)
         return;
     }
 
-    while (XtAppPending(app_context)) {
-        ui_dispatch_next_event();
+    if (app_context) {
+        while (XtAppPending(app_context)) {
+            ui_dispatch_next_event();
+        }
     }
 }
 
-void x11ui_fullscreen(int i)
+int x11ui_fullscreen(int enable)
 {
     static Atom _net_wm_state = None;
     static Atom _net_wm_state_fullscreen = None;
     XEvent xev;
     int mode;
-    
+
     if (strcmp(machine_name, "C128") == 0) {
         /* mode == 1 -> VICII, mode == 0 VDC */
         resources_get_int("40/80ColumnKey", &mode); 
@@ -2020,15 +1335,18 @@ void x11ui_fullscreen(int i)
     xev.xclient.window = XtWindow(app_shells[mode].shell); /* hardwired use of resource `40/80ColumnKey' */
     xev.xclient.message_type = _net_wm_state;
     xev.xclient.format = 32;
-    xev.xclient.data.l[0] = i;
+    xev.xclient.data.l[0] = enable;
     xev.xclient.data.l[1] = _net_wm_state_fullscreen;
-  
-    XSendEvent(display, DefaultRootWindow(display), False, SubstructureRedirectMask, &xev);
-}
 
-int ui_fullscreen_statusbar(struct video_canvas_s *canvas, int enable)
-{
-    log_message(ui_log, "Toggling of Statusbar/Menu in Xaw is not supported.");
+    XSendEvent(display, DefaultRootWindow(display), False, SubstructureRedirectMask, &xev);
+
+    ui_dispatch_events();
+    /*
+     * calling ui_check_mouse_cursor() would be useful here, except that
+     * the field it checks for full-screen isn't updated yet.
+     */
+    mouse_cursor_grab(enable, None);
+
     return 0;
 }
 
@@ -2041,7 +1359,9 @@ void x11ui_resize_canvas_window(ui_window_t w, int width, int height)
     /* Ok, form widgets are stupid animals; in a perfect world, I should be
        allowed to resize the canvas and let the Form do the rest.  Unluckily,
        this does not happen, so let's do things the dirty way then.  This
-       sucks badly.  */
+       sucks badly.
+       Even setting the "resizable" constraint property to True does not help.
+     */
 
     XtVaGetValues((Widget)w,
                   XtNwidth, &canvas_width,
@@ -2292,7 +1612,7 @@ int ui_extend_image_dialog(void)
     ui_button_t b;
 
     vsync_suspend_speed_eval();
-    b = ui_ask_confirmation(_("Extend disk image"), ("Do you want to extend the disk image to 40 tracks?"));
+    b = ui_ask_confirmation(_("Extend disk image"), ("Do you want to extend the disk image?"));
     return (b == UI_BUTTON_YES) ? 1 : 0;
 }
 
@@ -2301,10 +1621,10 @@ static const char* file_filters[] = {
 /* all */ "*",
 /* palette */ "*.vpl",
 /* snapshot */ "*.vsf",
-/* disk */ "*.[gdpxGDPX]*",
-/* tape */ "*.[tT][aA6][pP4]",
-/* cartridge */ "*.[cCbB][rRiI][tTnN]",
-/* crt filter */ "*.[cC][rR][tT]",
+/* disk */ "*.{[gpx]64,d{6[47],71,8[012],[124]m},g41}",
+/* tape */ "*.{t64,tap}",
+/* cartridge */ "*.{crt,bin}",
+/* crt filter */ "*.crt",
 /* flip_list */ "*.vfl",
 /* romset */ "*.vrs",
 /* romset archive */ "*.vra",
@@ -2315,11 +1635,16 @@ static const char* file_filters[] = {
 /* iff */ "*.iff",
 /* aiff */ "*.aiff",
 /* mp3 */ "*.mp3",
+/* flac */ "*.flac",
+/* ogg/vorbis */ "*.ogg",
 /* serial */ "ttyS*",
-/* vic20cart */ "*.prg",
-/* sid */ "*.[psPS]*",
-/* dtvrom */ "*.[bB][iI][nN]",
-/* compressed */ "*"
+/* vic20cart */ "*.{prg,bin}",
+/* sid */ "*.{psid,sid}",
+/* dtvrom */ "*.bin",
+/* compressed */ "*.*z*",
+/* eth */ "eth*",
+/* midi */ "mi*",
+/* hd_image */ "*.{[hf]dd,iso,cfa}",
 };
 
 /* File browser. */
@@ -2332,6 +1657,7 @@ char *ui_select_file(const char *title, read_contents_func_type read_contents_fu
     Widget file_selector = NULL;
     XfwfFileSelectorStatusStruct fs_status;
     char *current_dir;
+    const char *pattern;
     int is_ok = 0;
 
     /* we preserve the current directory over the invocations */
@@ -2351,9 +1677,15 @@ char *ui_select_file(const char *title, read_contents_func_type read_contents_fu
     if (action == UI_FC_DIRECTORY) {
         XtVaSetValues(file_selector, XtNSelectDirectory, True, NULL);
     }
+    if (patterns[0] < util_arraysize(file_filters)) {
+        pattern = file_filters[patterns[0]];
+    } else {
+        pattern = file_filters[UILIB_FILTER_ALL];
+    }
     XtVaSetValues(file_selector, XtNshowAutostartButton, allow_autostart,
                                  XtNshowContentsButton, read_contents_func ? 1 : 0,
-                                 XtNpattern, file_filters[patterns[0]], NULL);
+                                 XtNpattern, pattern,
+                                 NULL);
     if (attach_wp) {
         XtVaSetValues(file_selector, XtNshowReadOnlyToggle, True, NULL);
     }
@@ -2549,6 +1881,12 @@ ui_button_t ui_ask_confirmation(const char *title, const char *text)
     } while (button == UI_BUTTON_NONE);
     ui_popdown(XtParent(confirm_dialog));
     return button;
+}
+
+/* FIXME: make dialog with just "yes" and "no" buttons */
+ui_button_t ui_ask_yesno(const char *title, const char *text)
+{
+    return ui_ask_confirmation(title, text);
 }
 
 /* Update the menu items with a checkmark according to the current resource
@@ -2850,16 +2188,15 @@ static Widget build_confirm_dialog(Widget parent, ui_button_t *button_return, Wi
 
 /* Miscellaneous callbacks.  */
 
+static
 UI_CALLBACK(enter_window_callback_shell)
 {
     video_canvas_t *video_canvas = (video_canvas_t *)client_data;
 
     last_visited_app_shell = w;
-    if (machine_class != VICE_MACHINE_VSID) {
-        last_visited_canvas = video_canvas->emuwindow;   /* keep global up to date */
-        ui_cached_video_canvas = video_canvas;
-        xaw_lightpen_update_canvas(video_canvas, TRUE);
-    }
+    last_visited_canvas = video_canvas->emuwindow;   /* keep global up to date */
+    ui_cached_video_canvas = video_canvas;
+    xaw_lightpen_update_canvas(video_canvas, TRUE);
 }
 
 /*
@@ -2867,6 +2204,7 @@ UI_CALLBACK(enter_window_callback_shell)
  * This callback appears to do nothing, but the mapping events are wanted
  * in wait_for_deiconify().
  */
+static
 UI_CALLBACK(structure_callback_shell)
 {
 #if defined(HAVE_XVIDEO)
@@ -2891,6 +2229,7 @@ UI_CALLBACK(structure_callback_shell)
  * except that the canvas isn't a top-level window and therefore doesn't
  * get the (un)mapping notifications.
  */
+static
 UI_CALLBACK(exposure_callback_canvas)
 {
     XEvent *event = (XEvent *)call_data;
@@ -2905,6 +2244,7 @@ UI_CALLBACK(exposure_callback_canvas)
     }
 }
 
+static
 UI_CALLBACK(structure_callback_canvas)
 {
     XEvent *event = (XEvent *)call_data;
@@ -2947,16 +2287,5 @@ static void close_action(Widget w, XEvent *event, String *params, Cardinal *num_
     vsync_suspend_speed_eval();
 
     ui_exit();
-}
-
-void ui_display_statustext(const char *text, int fade_out)
-{
-    log_message(LOG_DEFAULT, "%s", text);
-    statusbar_setstatustext(text);
-    if (fade_out) {
-        statustext_display_time = 5;
-    } else {
-        statustext_display_time = 0;
-    }
 }
 

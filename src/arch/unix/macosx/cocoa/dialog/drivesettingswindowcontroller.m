@@ -38,16 +38,17 @@
 {
     self = [super initWithWindowNibName:@"DriveSettings"];
     [self registerForResourceUpdate:@selector(updateResources:)];
-    
-    int map[14] = {
-        DRIVE_TYPE_1541, DRIVE_TYPE_1541II, DRIVE_TYPE_1551,
-        DRIVE_TYPE_1570, DRIVE_TYPE_1571,   DRIVE_TYPE_1571CR,
-        DRIVE_TYPE_1581, DRIVE_TYPE_2031,   DRIVE_TYPE_2040,
-        DRIVE_TYPE_3040, DRIVE_TYPE_4040,   DRIVE_TYPE_1001,
-        DRIVE_TYPE_8050, DRIVE_TYPE_8250
+
+    int map[DRIVE_TYPE_NUM] = {
+        DRIVE_TYPE_1540,   DRIVE_TYPE_1541,   DRIVE_TYPE_1541II,
+        DRIVE_TYPE_1551,   DRIVE_TYPE_1570,   DRIVE_TYPE_1571,
+        DRIVE_TYPE_1571CR, DRIVE_TYPE_1581,   DRIVE_TYPE_2031,
+        DRIVE_TYPE_2040,   DRIVE_TYPE_3040,   DRIVE_TYPE_4040,
+        DRIVE_TYPE_1001,   DRIVE_TYPE_8050,   DRIVE_TYPE_8250,
+        DRIVE_TYPE_2000,   DRIVE_TYPE_4000
     };
     int i;
-    numDriveTypes = 14;
+    numDriveTypes = DRIVE_TYPE_NUM;
     for (i = 0; i < numDriveTypes; i++) {
         driveTypeMap[i] = map[i];
     }
@@ -182,7 +183,22 @@
             int canParallel = drive_check_parallel_cable(driveTypeVal);
             [parallelCable setEnabled:canParallel];
             int parallelCableVal = [self getIntResource:@"Drive%dParallelCable" withNumber:driveNum];
-            [parallelCable setState:parallelCableVal];
+            [parallelCable selectCellAtRow:parallelCableVal column:0];
+        }
+
+        int hasRPM = (driveTypeVal!=DRIVE_TYPE_NONE);
+
+        if (hasRPM) {
+            RPM.enabled = true;
+            wobble.enabled = true;
+            RPM.floatValue = [self getIntResource:@"Drive%dRPM" withNumber:driveNum]/100.0f;
+            wobble.floatValue = [self getIntResource:@"Drive%dWobble" withNumber:driveNum]/100.0f;
+        }
+        else {
+            RPM.enabled = false;
+            wobble.enabled = false;
+            RPM.stringValue = @"";
+            wobble.stringValue = @"";
         }
 
     } else {
@@ -202,6 +218,10 @@
         if(hasParallel) {
             [parallelCable setEnabled:false];
         }
+        RPM.selectable = RPM.editable = false;
+        wobble.selectable = wobble.editable = false;
+        RPM.stringValue = @"";
+        wobble.stringValue = @"";
     }
 }
 
@@ -324,11 +344,40 @@
 -(void)toggledParallelCable:(id)sender
 {
     int driveNum = [driveChooser selectedSegment] + driveOffset;
-    int on = [sender state];
+    id cell = [sender selectedCell];
+    int type = [cell tag];
 
     [self setIntResource:@"Drive%dParallelCable"
               withNumber:driveNum
-                 toValue:on];
+                 toValue:type];
+}
+
+-(void)changedRPM:(NSTextField*)sender
+{
+    int driveNum = [driveChooser selectedSegment] + driveOffset;
+    float _RPM = [(NSTextField*)sender floatValue];
+    _RPM = (_RPM<  30.0f)?  30.0f:
+           (_RPM>3000.0f)?3000.0f:
+            _RPM;
+
+    [self setIntResource:@"Drive%dRPM"
+              withNumber:driveNum
+                 toValue: (int)((_RPM*100.0f)+0.5f)];
+    RPM.floatValue = [self getIntResource:@"Drive%dRPM" withNumber:driveNum]/100.0f;
+}
+
+-(void)changedWobble:(NSTextField*)sender
+{
+    int driveNum = [driveChooser selectedSegment] + driveOffset;
+    float _wobble = [(NSTextField*)sender floatValue];
+    _wobble = (_wobble<   0.0f)?   0.0f:
+              (_wobble>1000.0f)?1000.0f:
+               _wobble;
+
+    [self setIntResource:@"Drive%dWobble"
+              withNumber:driveNum
+                 toValue: (int)((_wobble*100.0f)+0.5f)];
+    wobble.floatValue = [self getIntResource:@"Drive%dWobble" withNumber:driveNum]/100.0f;
 }
 
 @end

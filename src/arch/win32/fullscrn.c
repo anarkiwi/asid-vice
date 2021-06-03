@@ -29,13 +29,16 @@
 
 #include <windows.h>
 #include <prsht.h>
+#include <tchar.h>
 
 #include "fullscrn.h"
 #include "lib.h"
 #include "log.h"
+#include "machine.h"
 #include "res.h"
 #include "resources.h"
 #include "statusbar.h"
+#include "system.h"
 #include "translate.h"
 #include "ui.h"
 #include "uilib.h"
@@ -48,6 +51,7 @@
 
 static int fullscreen_nesting_level = 0;
 static int dx_primary;
+static int dx9disable;
 static int keep_aspect_ratio, true_aspect_ratio, aspect_ratio;
 static int ui_setup_finished = 0;
 
@@ -97,30 +101,26 @@ int fullscreen_get_nesting_level(void)
 static void fullscreen_set_res_from_current_display(void)
 {
 #ifdef HAVE_D3D9_H
-    int bitdepth, width, height, refreshrate;
+    int width, height, refreshrate;
 
     if (video_dx9_enabled()) {
         D3DDISPLAYMODE mode;
 
         if (S_OK == IDirect3D9_GetAdapterDisplayMode(d3d, D3DADAPTER_DEFAULT , &mode)) {
-            bitdepth = 32;
             width = mode.Width;
             height = mode.Height;
             refreshrate = mode.RefreshRate;
         } else {
             /* provide defaults if GetDisplayMode fails for some reason */
             log_debug("fullscreen_get_current_display_dx9 failed to get mode!");
-            bitdepth = 32;
             width = 640;
             height = 480;
             refreshrate = 0;
         }
+        resources_set_int("FullscreenWidth", width);
+        resources_set_int("FullscreenHeight", height);
+        resources_set_int("FullscreenRefreshRate", refreshrate);
     }
-
-    resources_set_int("FullscreenBitdepth", bitdepth);
-    resources_set_int("FullscreenWidth", width);
-    resources_set_int("FullscreenHeight", height);
-    resources_set_int("FullscreenRefreshRate", refreshrate);
 #endif
 }
 
@@ -129,8 +129,8 @@ static int fullscrn_res_valid(void)
 {
     int device, width, height, bitdepth, refreshrate;
 
-    GetCurrentModeParameters(&device, &width, &height, &bitdepth,&refreshrate);
-    
+    GetCurrentModeParameters(&device, &width, &height, &bitdepth, &refreshrate);
+
     /* FIXME: May use modelist to check if combination is valid */
     if (device < 0 || width <= 0 || height <= 0 || bitdepth <= 0 || refreshrate < 0) {
         return -1;
@@ -204,12 +204,44 @@ void fullscreen_getmodes(void)
         }
     }
 #endif
-    
+
     /* Use current display parameters if resources are not valid */
     if (fullscrn_res_valid() < 0) {
         fullscreen_set_res_from_current_display();
     }
 }
+
+#ifdef HAVE_D3D9_H
+int fullscreen_get_devices_amount(void)
+{
+    DirectDrawDeviceList *dev;
+    int amount = 0;
+
+    fullscreen_getmodes();
+    dev = devices;
+    while (dev != NULL) {
+        amount++;
+        dev = dev->next;
+    }
+    return amount;
+}
+
+char *fullscreen_get_device(int num)
+{
+    DirectDrawDeviceList *dev;
+    int i = 0;
+
+    dev = devices;
+    while (dev != NULL) {
+        if (i == num) {
+            return dev->desc;
+        }
+        dev = dev->next;
+        i++;
+    }
+    return NULL;
+}
+#endif
 
 void ui_fullscreen_init(void)
 {
@@ -253,26 +285,38 @@ void ui_fullscreen_shutdown(void)
 
 void GetCurrentModeParameters(int *device, int *width, int *height, int *bitdepth, int *refreshrate)
 {
-    resources_get_int("FullscreenDevice", device);
-    resources_get_int("FullscreenBitdepth", bitdepth);
-    resources_get_int("FullscreenWidth", width);
-    resources_get_int("FullscreenHeight", height);
-    resources_get_int("FullscreenRefreshRate", refreshrate);
+#ifdef HAVE_D3D9_H
+    if (machine_class != VICE_MACHINE_VSID) {
+        resources_get_int("FullscreenDevice", device);
+        *bitdepth = 32;
+        resources_get_int("FullscreenWidth", width);
+        resources_get_int("FullscreenHeight", height);
+        resources_get_int("FullscreenRefreshRate", refreshrate);
+    }
+#endif
 }
 
 int IsFullscreenEnabled(void)
 {
+#ifdef HAVE_D3D9_H
     int b;
 
+    if (machine_class == VICE_MACHINE_VSID) {
+        return 0;
+    }
     resources_get_int("FullscreenEnabled", &b);
 
     return (ui_setup_finished && b);
+#else
+    return 0;
+#endif
 }
 
 void SwitchToFullscreenMode(HWND hwnd)
 {
-    if (!ui_setup_finished)
+    if (!ui_setup_finished) {
         return;
+    }
 
     /* Check for valid fullscreen params */
     if (fullscrn_res_valid() < 0) {
@@ -299,7 +343,7 @@ void SwitchToFullscreenMode(HWND hwnd)
         video_device_release_dx9(c);
         ui_set_render_window(c, 1);
         video_device_create_dx9(c, 1);
-		video_canvas_reset_dx9(c);
+        video_canvas_reset_dx9(c);
         video_canvas_refresh_all(c);
     }
 #endif
@@ -334,7 +378,7 @@ void SwitchToWindowedMode(HWND hwnd)
         LockWindowUpdate(NULL);
 
         video_device_create_dx9(c, 0);
-		video_canvas_reset_dx9(c);
+        video_canvas_reset_dx9(c);
         video_canvas_refresh_all(c);
 
         c->refreshrate = old_refreshrate;
@@ -346,47 +390,58 @@ void SwitchToWindowedMode(HWND hwnd)
 
 void StartFullscreenMode(HWND hwnd)
 {
+#ifdef HAVE_D3D9_H
     SwitchToFullscreenMode(hwnd);
     resources_set_int("FullScreenEnabled", 1);
+#endif
 }
 
 void EndFullscreenMode(HWND hwnd)
 {
+#ifdef HAVE_D3D9_H
     SwitchToWindowedMode(hwnd);
     resources_set_int("FullScreenEnabled", 0);
+#endif
 }
 
 void SwitchFullscreenMode(HWND hwnd)
 {
+#ifdef HAVE_D3D9_H
     if (IsFullscreenEnabled()) {
         EndFullscreenMode(hwnd);
     } else {
         StartFullscreenMode(hwnd);
     }
+#endif
 }
 
 void SuspendFullscreenMode(HWND hwnd)
 {
+#ifdef HAVE_D3D9_H
     if (IsFullscreenEnabled()) {
         if (fullscreen_nesting_level == 0) {
             SwitchToWindowedMode(hwnd);
         }
         fullscreen_nesting_level++;
     }
+#endif
 }
 
 void ResumeFullscreenMode(HWND hwnd)
 {
+#ifdef HAVE_D3D9_H
     if (IsFullscreenEnabled()) {
         fullscreen_nesting_level--;
         if (fullscreen_nesting_level == 0) {
             SwitchToFullscreenMode(hwnd);
         }
     }
+#endif
 }
 
 void SuspendFullscreenModeKeep(HWND hwnd)
 {
+#ifdef HAVE_D3D9_H
     int device, width, height, bitdepth, rate;
 
     GetCurrentModeParameters(&device, &width, &height, &bitdepth, &rate);
@@ -399,10 +454,12 @@ void SuspendFullscreenModeKeep(HWND hwnd)
             }
         }
     }
+#endif
 }
 
 void ResumeFullscreenModeKeep(HWND hwnd)
 {
+#ifdef HAVE_D3D9_H
     int device, width, height, bitdepth, rate;
 
     GetCurrentModeParameters(&device, &width, &height, &bitdepth, &rate);
@@ -415,6 +472,7 @@ void ResumeFullscreenModeKeep(HWND hwnd)
             }
         }
     }
+#endif
 }
 
 /*---------------------------------------------------------------------------*/
@@ -669,6 +727,7 @@ static uilib_localize_dialog_param fullscreen_dialog_trans[] = {
     {IDC_FULLSCREEN_DRIVER_REFRESHRATE, IDS_FULLSCREEN_DRVR_REFRESHRATE, 0},
     {IDC_TOGGLE_VIDEO_VBLANK_SYNC, IDS_TOGGLE_VIDEO_VBLANK_SYNC, 0},
     {IDC_TOGGLE_VIDEO_DX_PRIMARY, IDS_TOGGLE_VIDEO_DX_PRIMARY, 0},
+    {IDC_TOGGLE_DX9DISABLE, IDS_MI_TOGGLE_DX9DISABLE, 0},
     {IDC_TOGGLE_KEEP_ASPECT_RATIO, IDS_TOGGLE_KEEP_ASPECT_RATIO, 0},
     {IDC_TOGGLE_TRUE_ASPECT_RATIO, IDS_TOGGLE_TRUE_ASPECT_RATIO, 0},
     {0, 0, 0}
@@ -696,6 +755,7 @@ static uilib_dialog_group fullscreen_rest_group[] = {
     {IDC_FULLSCREEN_DRIVER, 0},
     {IDC_TOGGLE_VIDEO_VBLANK_SYNC, 1},
     {IDC_TOGGLE_VIDEO_DX_PRIMARY, 1},
+    {IDC_TOGGLE_DX9DISABLE, 1},
     {0, 0}
 };
 
@@ -720,7 +780,7 @@ static void init_fullscreen_dialog(HWND hwnd)
     int distance;
     int size;
     double fval;
-    TCHAR newval[64];
+    TCHAR st_text[64];
     video_canvas_t *canvas;
 
     canvas = video_canvas_for_hwnd(GetParent(GetParent(hwnd)));
@@ -767,7 +827,8 @@ static void init_fullscreen_dialog(HWND hwnd)
     SendMessage(setting_hwnd, CB_RESETCONTENT, 0, 0);
     dev = devices;
     while (dev != NULL) {
-        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)dev->desc);
+        system_mbstowcs(st_text, dev->desc, 64);
+        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)st_text);
         dev = dev->next;
     }
     SendMessage(setting_hwnd, CB_SETCURSEL, (WPARAM)fullscreen_device, 0);
@@ -777,7 +838,8 @@ static void init_fullscreen_dialog(HWND hwnd)
     SendMessage(setting_hwnd, CB_RESETCONTENT, 0, 0);
     value = bitdepthlist;
     while (value != NULL) {
-        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)value->text);
+        system_mbstowcs(st_text, value->text, 64);
+        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)st_text);
         value = value->next;
     }
     SendMessage(setting_hwnd, CB_SETCURSEL, (WPARAM)GetIndexFromList(bitdepthlist, fullscreen_bitdepth), 0);
@@ -787,7 +849,8 @@ static void init_fullscreen_dialog(HWND hwnd)
     SendMessage(setting_hwnd, CB_RESETCONTENT, 0, 0);
     value = resolutionlist;
     while (value != NULL) {
-        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)value->text);
+        system_mbstowcs(st_text, value->text, 64);
+        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)st_text);
         value = value->next;
     }
     SendMessage(setting_hwnd, CB_SETCURSEL, (WPARAM)GetIndexFromList(resolutionlist, (fullscreen_width << 16) + fullscreen_height), 0);
@@ -797,60 +860,68 @@ static void init_fullscreen_dialog(HWND hwnd)
     SendMessage(setting_hwnd, CB_RESETCONTENT, 0, 0);
     value = refresh_rates;
     while (value != NULL) {
-        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)value->text);
+        system_mbstowcs(st_text, value->text, 64);
+        SendMessage(setting_hwnd, CB_ADDSTRING, 0, (LPARAM)st_text);
         value = value->next;
     }
     SendMessage(setting_hwnd, CB_SETCURSEL, (WPARAM)GetIndexFromList(refresh_rates, fullscreen_refreshrate), 0);
 #endif
+
     EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_VIDEO_VBLANK_SYNC), !video_dx9_enabled());
     CheckDlgButton(hwnd, IDC_TOGGLE_VIDEO_VBLANK_SYNC, vblank_sync ? BST_CHECKED : BST_UNCHECKED);
     CheckDlgButton(hwnd, IDC_TOGGLE_VIDEO_DX_PRIMARY, dx_primary ? BST_CHECKED : BST_UNCHECKED);
+    CheckDlgButton(hwnd, IDC_TOGGLE_DX9DISABLE, dx9disable ? BST_CHECKED : BST_UNCHECKED);
     EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_KEEP_ASPECT_RATIO), video_dx9_enabled());
+    CheckDlgButton(hwnd, IDC_TOGGLE_KEEP_ASPECT_RATIO, keep_aspect_ratio ? BST_CHECKED : BST_UNCHECKED);
+    CheckDlgButton(hwnd, IDC_TOGGLE_TRUE_ASPECT_RATIO, true_aspect_ratio ? BST_CHECKED : BST_UNCHECKED);
     if (video_dx9_enabled()) {
-        CheckDlgButton(hwnd, IDC_TOGGLE_KEEP_ASPECT_RATIO, keep_aspect_ratio ? BST_CHECKED : BST_UNCHECKED);
-        CheckDlgButton(hwnd, IDC_TOGGLE_TRUE_ASPECT_RATIO, true_aspect_ratio ? BST_CHECKED : BST_UNCHECKED);
         enable_aspect_ratio(hwnd);
 
         fval = ((double)aspect_ratio) / 1000.0;
-        _stprintf(newval, TEXT("%.3f"), (float)fval);
-        SetDlgItemText(hwnd, IDC_ASPECT_RATIO, newval);
+        lib_sntprintf(st_text, 64, TEXT("%.3f"), (float)fval);
+        SetDlgItemText(hwnd, IDC_ASPECT_RATIO, st_text);
 
         fval = canvas->geometry->pixel_aspect_ratio;
-        _stprintf(newval, TEXT("%.3f"), (float)fval);
-        SetDlgItemText(hwnd, IDC_GEOMETRY_ASPECT_RATIO, newval);
+        lib_sntprintf(st_text, 64, TEXT("%.3f"), (float)fval);
+        SetDlgItemText(hwnd, IDC_GEOMETRY_ASPECT_RATIO, st_text);
     }
 }
 
 static void fullscreen_dialog_end(void)
 {
-    resources_set_int("FullScreenDevice", fullscreen_device);
-    resources_set_int("FullScreenBitdepth", fullscreen_bitdepth);
-    resources_set_int("FullScreenWidth", fullscreen_width);
-    resources_set_int("FullScreenHeight", fullscreen_height);
-    resources_set_int("FullScreenRefreshRate", fullscreen_refreshrate);
-    resources_set_int("VBLANKSync", vblank_sync);
-    resources_set_int("DXPrimarySurfaceRendering", dx_primary);
-    if (video_dx9_enabled()) {
-        resources_set_int("TrueAspectRatio", true_aspect_ratio);
-        resources_set_int("KeepAspectRatio", keep_aspect_ratio);
-        resources_set_int("AspectRatio", aspect_ratio);
+#ifdef HAVE_D3D9_H
+    if (machine_class != VICE_MACHINE_VSID) {
+        resources_set_int("FullScreenDevice", fullscreen_device);
+        resources_set_int("FullScreenWidth", fullscreen_width);
+        resources_set_int("FullScreenHeight", fullscreen_height);
+        resources_set_int("FullScreenRefreshRate", fullscreen_refreshrate);
+        resources_set_int("DXPrimarySurfaceRendering", dx_primary);
+        resources_set_int("DX9Disable", dx9disable);
     }
+#endif
+    resources_set_int("VBLANKSync", vblank_sync);
+    resources_set_int("TrueAspectRatio", true_aspect_ratio);
+    resources_set_int("KeepAspectRatio", keep_aspect_ratio);
+    resources_set_int("AspectRatio", aspect_ratio);
 }
 
 static void fullscreen_dialog_init(HWND hwnd)
 {
-    resources_get_int("FullscreenDevice", &fullscreen_device);
-    resources_get_int("FullscreenBitdepth", &fullscreen_bitdepth);
-    resources_get_int("FullscreenWidth", &fullscreen_width);
-    resources_get_int("FullscreenHeight", &fullscreen_height);
-    resources_get_int("FullscreenRefreshRate", &fullscreen_refreshrate);
-    resources_get_int("VBLANKSync", &vblank_sync);
-    resources_get_int("DXPrimarySurfaceRendering", &dx_primary);
-    if (video_dx9_enabled()) {
-        resources_get_int("KeepAspectRatio", &keep_aspect_ratio);
-        resources_get_int("TrueAspectRatio", &true_aspect_ratio);
-        resources_get_int("AspectRatio", &aspect_ratio);
+#ifdef HAVE_D3D9_H
+    if (machine_class != VICE_MACHINE_VSID) {
+        resources_get_int("FullscreenDevice", &fullscreen_device);
+        fullscreen_bitdepth = 32;
+        resources_get_int("FullscreenWidth", &fullscreen_width);
+        resources_get_int("FullscreenHeight", &fullscreen_height);
+        resources_get_int("FullscreenRefreshRate", &fullscreen_refreshrate);
+        resources_get_int("DXPrimarySurfaceRendering", &dx_primary);
+        resources_get_int("DX9Disable", &dx9disable);
     }
+#endif
+    resources_get_int("VBLANKSync", &vblank_sync);
+    resources_get_int("KeepAspectRatio", &keep_aspect_ratio);
+    resources_get_int("TrueAspectRatio", &true_aspect_ratio);
+    resources_get_int("AspectRatio", &aspect_ratio);
     init_fullscreen_dialog(hwnd);
 }
 
@@ -918,6 +989,11 @@ INT_PTR CALLBACK dialog_fullscreen_proc(HWND hwnd, UINT msg, WPARAM wparam, LPAR
                     case IDC_TOGGLE_VIDEO_DX_PRIMARY:
                         dx_primary ^= 1;
                         return FALSE;
+#ifdef HAVE_D3D9_H
+                    case IDC_TOGGLE_DX9DISABLE:
+                        dx9disable ^= 1;
+                        return FALSE;
+#endif
                     case IDC_TOGGLE_KEEP_ASPECT_RATIO:
                         keep_aspect_ratio ^= 1;
                         enable_aspect_ratio(hwnd);

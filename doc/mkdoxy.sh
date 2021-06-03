@@ -1,4 +1,29 @@
-#! /bin/bash
+#!/bin/bash
+
+#
+# mkdoxy.sh - Generate doxygen documentation
+#
+# Written by
+#  groepaz <groepaz@gmx.net>
+#
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
 
 ################################################################################
 #
@@ -84,11 +109,6 @@ ARCH_RISCOS_INPUT+=" ../src/arch/riscos/binfiles"
 ARCH_UNIX_INPUT=" ../src/arch/unix"
 ARCH_UNIX_INPUT+=" ../src/arch/unix/gui"
 ARCH_UNIX_INPUT+=" ../src/arch/unix/readline"
-
-#../src/arch/unix/gp2x
-#../src/arch/unix/gp2x/gpe-files
-#../src/arch/unix/gp2x/minimal
-#../src/arch/unix/gp2x/wiz
 
 #../src/arch/unix/hpux
 
@@ -197,7 +217,6 @@ VICII_INPUT=" ../src/vicii"
 VICIISC_INPUT=" ../src/viciisc"
 
 SID_INPUT=" ../src/resid"
-SID_INPUT+=" ../src/resid-fp"
 SID_INPUT+=" ../src/sid"
 
 DTVSID_INPUT=" ../src/resid-dtv"
@@ -288,6 +307,10 @@ case "$1" in
 "xvic")
     INPUT+="$VIC20_INPUT"
     INPUT+="$VIC_INPUT"
+   ;;
+"xscpu64")
+    INPUT+="$C64_INPUT"
+    INPUT+="$SID_INPUT $VICII_INPUT"
    ;;
 *)
    ;;
@@ -534,6 +557,13 @@ case "$1" in
     GUI_COCOA_EXCLUDE+="$XVIC_GUI_COCOA_EXCLUDE"
     GUI_SDL_EXCLUDE+="$XVIC_GUI_SDL_EXCLUDE"
    ;;
+"xscpu64")
+    MACHINE_EXCLUDE="$XSCPU64EXCLUDE"
+    GUI_GTK_EXCLUDE+="$XSCPU64_GUI_GTK_EXCLUDE"
+    GUI_WIN32_EXCLUDE+="$XSCPU64_GUI_WIN32_EXCLUDE"
+    GUI_COCOA_EXCLUDE+="$XSCPU64_GUI_COCOA_EXCLUDE"
+    GUI_SDL_EXCLUDE+="$XSCPU64_GUI_SDL_EXCLUDE"
+   ;;
 *)
    ;;
 esac
@@ -586,6 +616,8 @@ function makedocs
 {
     echo "making docs for "$1" source ("$2", "$3") ["$VERSION"]" 
     OUTPUT="./doxy/"$1"/"
+    rm -rf $OUTPUT
+    mkdir -p $OUTPUT
     getinputs $1 $2 $3
     getexcludes $1 $2 $3
     echo "INPUT="$INPUT
@@ -604,6 +636,29 @@ function makedocs
 }
 
 ################################################################################
+# this function creates and index.html entry page in ./doxy
+################################################################################
+
+function makeindex
+{
+    echo "making index.html"
+    OUTPUT="./doxy/index.html"
+
+    echo "<html><head>" > $OUTPUT
+    echo "<title>VICE doxy</title></head><body>" >> $OUTPUT
+    echo "<h1>VICE doxy</h1>" >> $OUTPUT
+
+    for I in x64 x64sc x64dtv xscpu64 x128 xcbm2 xcbm5x0 xpet xplus4 xvic vsid; do \
+        if [ -a ./doxy/$I ]; then \
+            echo $I; \
+            echo "<a href=\""$I"/html/index.html\">"$I"</a>" >> $OUTPUT; \
+        fi; \
+    done
+
+    echo "</body></html>" >> $OUTPUT
+}
+
+################################################################################
 # handle commandline arguments
 ################################################################################
 
@@ -612,7 +667,7 @@ function makedocs
 # TODO: optionally enable source browser
 
 # defaults
-MACHINE="x64sc"
+MACHINE="all"
 PORT="linux"
 GUI="gtk"
 
@@ -637,7 +692,7 @@ case "$1" in
    MACHINE="x64sc"
    ;;
 "xcbm2")
-   MACHINE="x64sc"
+   MACHINE="xcbm2"
    ;;
 "xcbm5x0")
    MACHINE="xcbm5x0"
@@ -650,6 +705,9 @@ case "$1" in
    ;;
 "xvic")
    MACHINE="xvic"
+   ;;
+"xscpu64")
+   MACHINE="xscpu64"
    ;;
 *)
    ;;
@@ -706,6 +764,9 @@ if [ "$MACHINE" = "all" ]; then
     makedocs "xpet" $PORT $GUI
     makedocs "xplus4" $PORT $GUI
     makedocs "xvic" $PORT $GUI
+    makedocs "xscpu64" $PORT $GUI
 else
     makedocs $MACHINE $PORT $GUI
 fi
+
+makeindex

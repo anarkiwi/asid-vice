@@ -42,6 +42,12 @@ log_t video_log = LOG_ERR;
 // video parameter struct
 static video_param_t video_param;
 
+// dummy
+int video_arch_cmdline_options_init(void)
+{
+    return 0;
+}
+
 // ---------- VICE Video Resources ----------
 
 /* tell all canvases to reconfigure after setting new video_param resources */
@@ -68,10 +74,16 @@ static void video_reconfigure(int sizeAffected)
 
 static int set_sync_draw_mode(int val, void *param)
 {
-    if((val < 0) || (val > SYNC_DRAW_LAST))
-        return 0;
+    switch (val) {
+        case SYNC_DRAW_OFF:
+        case SYNC_DRAW_NEAREST:
+        case SYNC_DRAW_BLEND:
+            break;
+        default:
+            return -1;
+    }
     
-    if(val != video_param.sync_draw_mode) {
+    if (val != video_param.sync_draw_mode) {
         video_param.sync_draw_mode = val;
         video_reconfigure(0);
     }
@@ -80,24 +92,22 @@ static int set_sync_draw_mode(int val, void *param)
 
 static int set_sync_draw_buffers(int val, void *param)
 {
-    if(val < 1)
+    if (val < 1) {
         val = 0;
-    else if(val > 16)
+    } else if (val > 16) {
         val = 16;
+    }
 
-    if(val != video_param.sync_draw_buffers) {            
+    if (val != video_param.sync_draw_buffers) {            
         video_param.sync_draw_buffers = val;
         video_reconfigure(0);
     }
     return 0;
 }
 
-static int set_sync_draw_flicker_fix(int val, void *param)
+static int set_sync_draw_flicker_fix(int value, void *param)
 {
-    if(val)
-        val = 1;
-    else
-        val = 0;
+    int val = value ? 1 : 0;
 
     if(val != video_param.sync_draw_flicker_fix) {            
         video_param.sync_draw_flicker_fix = val;
@@ -106,12 +116,9 @@ static int set_sync_draw_flicker_fix(int val, void *param)
     return 0;
 }
 
-static int set_true_pixel_aspect(int val, void *param)
+static int set_true_pixel_aspect(int value, void *param)
 {
-    if(val)
-        val = 1;
-    else
-        val = 0;
+    int val = value ? 1 : 0;
 
     if(val != video_param.true_pixel_aspect) {            
         video_param.true_pixel_aspect = val;
@@ -120,22 +127,20 @@ static int set_true_pixel_aspect(int val, void *param)
     return 0;
 }
 
-static int set_show_key_codes(int val, void *param)
+static int set_show_key_codes(int value, void *param)
 {
-    if(val)
-        val = 1;
-    else
-        val = 0;
+    int val = value ? 1 : 0;
     
     if(val != video_param.show_key_codes) {
         video_param.show_key_codes = val;
         video_reconfigure(0);
     }
+    return 0;
 }
 
 static resource_int_t resources_int[] =
 {
-    { "SyncDrawMode", 0, RES_EVENT_NO, NULL,
+    { "SyncDrawMode", SYNC_DRAW_OFF, RES_EVENT_NO, NULL,
        &video_param.sync_draw_mode, set_sync_draw_mode, NULL },
     { "SyncDrawBuffers", 0, RES_EVENT_NO, NULL,
        &video_param.sync_draw_buffers, set_sync_draw_buffers, NULL },
@@ -146,7 +151,7 @@ static resource_int_t resources_int[] =
     { "ShowKeyCodes", 0, RES_EVENT_NO, NULL,
        &video_param.show_key_codes, set_show_key_codes, NULL },
     { NULL }
- };
+};
 
 int video_arch_resources_init(void)
 {
@@ -164,7 +169,7 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "SyncDrawMode", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      "<0-3>", N_("Enable draw synchronization to vertical blank") },
+      "<0-2>", N_("Enable draw synchronization to vertical blank") },
     { "-syncdrawbuffers", SET_RESOURCE, 1,
       NULL, NULL, "SyncDrawBuffers", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
@@ -179,7 +184,7 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "SyncDrawFlickerFix", (resource_value_t)0,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      NULL, N_("Enable flicker fixing in sync draw") },
+      NULL, N_("Disable flicker fixing in sync draw") },
     { "-trueaspect", SET_RESOURCE, 0,
       NULL, NULL, "TrueAspectRatio", (resource_value_t)1,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
@@ -202,14 +207,17 @@ int video_init_cmdline_options(void)
 
 int video_init(void)
 {
-    if (video_log == LOG_ERR)
-  	    video_log = log_open("MacVideo");
+    if (video_log == LOG_ERR) {
+        video_log = log_open("MacVideo");
+    }
+    return 0;
 }
 
 void video_shutdown(void)
 {
-    if (video_log != LOG_ERR)
+    if (video_log != LOG_ERR) {
         log_close(video_log);
+    }
 }
 
 void video_arch_canvas_init(struct video_canvas_s *canvas)
@@ -234,12 +242,9 @@ video_canvas_t *video_canvas_create(struct video_canvas_s *canvas,
 	struct draw_buffer_s *db = canvas->draw_buffer;
     int w = db->visible_width;
     int h = db->visible_height;
-    if (canvas->videoconfig->doublesizex) {
-        w *= (canvas->videoconfig->doublesizex + 1);
-    }
-    if (canvas->videoconfig->doublesizey) {
-        h *= (canvas->videoconfig->doublesizey + 1);
-    }
+
+    w *= canvas->videoconfig->scalex;
+    h *= canvas->videoconfig->scaley;
 
 	// this actually sets the canvas_physical_width/height in canvas->draw_buffer (?!)
 	*width = w;
@@ -287,12 +292,10 @@ void video_canvas_resize(video_canvas_t * canvas, char resize_canvas)
 	struct draw_buffer_s *db = canvas->draw_buffer;	
     int width = db->visible_width;
     int height = db->visible_height;
-    if (canvas->videoconfig->doublesizex) {
-        width *= (canvas->videoconfig->doublesizex + 1);
-    }
-    if (canvas->videoconfig->doublesizey) {
-        height *= (canvas->videoconfig->doublesizey + 1);
-    }
+
+    width *= canvas->videoconfig->scalex;
+    height *= canvas->videoconfig->scaley;
+
 	canvas->width = width;
 	canvas->height = height;
 
@@ -311,15 +314,11 @@ void video_canvas_refresh(video_canvas_t *canvas,
                           unsigned int xi, unsigned int yi,
                           unsigned int w, unsigned int h)
 {
-    if (canvas->videoconfig->doublesizex) {
-        xi *= (canvas->videoconfig->doublesizex + 1);
-        w *= (canvas->videoconfig->doublesizex + 1);
-    }
+    xi *= canvas->videoconfig->scalex;
+    w *= canvas->videoconfig->scalex;
 
-    if (canvas->videoconfig->doublesizey) {
-        yi *= (canvas->videoconfig->doublesizey + 1);
-        h *= (canvas->videoconfig->doublesizey + 1);
-    }
+    yi *= canvas->videoconfig->scaley;
+    h *= canvas->videoconfig->scaley;
 
     w = MIN(w, canvas->width - xi);
     h = MIN(h, canvas->height - yi);

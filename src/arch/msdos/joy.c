@@ -3,6 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,8 +35,8 @@
 #include "cmdline.h"
 #include "keyboard.h"
 #include "joy.h"
+#include "joyport.h"
 #include "joystick.h"
-#include "machine.h"
 #include "resources.h"
 #include "translate.h"
 #include "tui.h"
@@ -45,50 +46,24 @@
 /* ------------------------------------------------------------------------- */
 
 /* Joystick devices.  */
-static int set_joystick_device_1(int val, void *param)
+int joy_arch_set_device(int port_idx, int new_dev)
 {
-    joystick_device_t dev = (joystick_device_t)val;
-    joystick_device_t old_joystick_device_1 = joystick_port_map[0];
+    int old_dev = joystick_port_map[port_idx];
 
-    joystick_port_map[0] = dev;
-    if (dev == JOYDEV_NONE && old_joystick_device_1 != JOYDEV_NONE) {
-        joystick_set_value_absolute(1, 0);
+    switch (new_dev) {
+        case JOYDEV_NONE:
+        case JOYDEV_NUMPAD:
+        case JOYDEV_KEYSET1:
+        case JOYDEV_KEYSET2:
+        case JOYDEV_HW1:
+        case JOYDEV_HW2:
+            break;
+        default:
+            return -1;
     }
-    return 0;
-}
 
-static int set_joystick_device_2(int val, void *param)
-{
-    joystick_device_t dev = (joystick_device_t)val;
-    joystick_device_t old_joystick_device_2 = joystick_port_map[1];
-
-    joystick_port_map[1] = dev;
-    if (dev == JOYDEV_NONE && old_joystick_device_2 != JOYDEV_NONE) {
-        joystick_set_value_absolute(2, 0);
-    }
-    return 0;
-}
-
-static int set_joystick_device_3(int val, void *param)
-{
-    joystick_device_t dev = (joystick_device_t)val;
-    joystick_device_t old_joystick_device_3 = joystick_port_map[2];
-
-    joystick_port_map[2] = dev;
-    if (dev == JOYDEV_NONE && old_joystick_device_3 != JOYDEV_NONE) {
-        joystick_set_value_absolute(3, 0);
-    }
-    return 0;
-}
-
-static int set_joystick_device_4(int val, void *param)
-{
-    joystick_device_t dev = (joystick_device_t)val;
-    joystick_device_t old_joystick_device_4 = joystick_port_map[3];
-
-    joystick_port_map[3] = dev;
-    if (dev == JOYDEV_NONE && old_joystick_device_4 != JOYDEV_NONE) {
-        joystick_set_value_absolute(4, 0);
+    if (new_dev == JOYDEV_NONE && old_dev != JOYDEV_NONE) {
+        joystick_set_value_absolute(port_idx + 1, 0);
     }
     return 0;
 }
@@ -120,6 +95,9 @@ static int set_joystick_hw_type(int val, void *param)
                 if (joystick_port_map[3] == JOYDEV_HW2) {
                     joystick_set_value_absolute(4, 0);
                 }
+                if (joystick_port_map[4] == JOYDEV_HW2) {
+                    joystick_set_value_absolute(5, 0);
+                }
             }
         }
         if (joystick_hw_type == 0 && old_joystick_hw_type != 0) {
@@ -135,39 +113,111 @@ static int set_joystick_hw_type(int val, void *param)
             if (joystick_port_map[3] == JOYDEV_HW1 || joystick_port_map[3] == JOYDEV_HW2) {
                 joystick_set_value_absolute(4, 0);
             }
+            if (joystick_port_map[4] == JOYDEV_HW1 || joystick_port_map[4] == JOYDEV_HW2) {
+                joystick_set_value_absolute(5, 0);
+            }
         }
     }
     
     return 0;
 }
 
-static const resource_int_t resources_int[] = {
-    { "JoyDevice1", JOYDEV_NONE, RES_EVENT_NO, NULL,
-      &joystick_port_map[0], set_joystick_device_1, NULL },
-    { "JoyDevice2", JOYDEV_NONE, RES_EVENT_NO, NULL,
-      &joystick_port_map[1], set_joystick_device_2, NULL },
-    { "JoyDevice3", JOYDEV_NONE, RES_EVENT_NO, NULL,
-      &joystick_port_map[2], set_joystick_device_3, NULL },
-    { "JoyDevice4", JOYDEV_NONE, RES_EVENT_NO, NULL,
-      &joystick_port_map[3], set_joystick_device_4, NULL },
+static const resource_int_t hwtype_resources_int[] = {
     { "HwJoyType", 0, RES_EVENT_NO, NULL,
       &joystick_hw_type, set_joystick_hw_type, NULL },
     { NULL }
 };
 
-int joystick_arch_init_resources(void)
+int joy_arch_resources_init(void)
 {
-    return resources_register_int(resources_int);
+    return resources_register_int(hwtype_resources_int);
 }
 
 /* ------------------------------------------------------------------------- */
+
+typedef struct joymodel_s {
+    const char *name;
+    unsigned int joymodel;
+} joymodel_t;
+
+static joymodel_t joyhwtypes[] = {
+    { "auto", JOY_TYPE_AUTODETECT },
+    { "none", JOY_TYPE_NONE },
+    { "standard", JOY_TYPE_STANDARD },
+    { "dual", JOY_TYPE_2PADS },
+    { "4button", JOY_TYPE_4BUTTON },
+    { "6button", JOY_TYPE_6BUTTON },
+    { "8button", JOY_TYPE_8BUTTON },
+    { "fspro", JOY_TYPE_FSPRO },
+    { "wingex", JOY_TYPE_WINGEX },
+    { "sidewinderag", JOY_TYPE_SIDEWINDER_AG },
+    { "sidewinderpp", JOY_TYPE_SIDEWINDER_PP },
+    { "sidewinder", JOY_TYPE_SIDEWINDER },
+    { "gamepadpro", JOY_TYPE_GAMEPAD_PRO },
+    { "grip4", JOY_TYPE_GRIP4 },
+    { "grip", JOY_TYPE_GRIP },
+    { "sneslpt1", JOY_TYPE_SNESPAD_LPT1 },
+    { "sneslpt2", JOY_TYPE_SNESPAD_LPT2 },
+    { "sneslpt3", JOY_TYPE_SNESPAD_LPT3 },
+    { "psxlpt1", JOY_TYPE_PSXPAD_LPT1 },
+    { "psxlpt2", JOY_TYPE_PSXPAD_LPT2 },
+    { "psxlpt3", JOY_TYPE_PSXPAD_LPT3 },
+    { "n64lpt1", JOY_TYPE_N64PAD_LPT1 },
+    { "n64lpt2", JOY_TYPE_N64PAD_LPT2 },
+    { "n64lpt3", JOY_TYPE_N64PAD_LPT3 },
+    { "db9lpt1", JOY_TYPE_DB9_LPT1 },
+    { "db9lpt2", JOY_TYPE_DB9_LPT2 },
+    { "db9lpt3", JOY_TYPE_DB9_LPT3 },
+    { "tgxlpt1", JOY_TYPE_TURBOGRAFX_LPT1 },
+    { "tgxlpt2", JOY_TYPE_TURBOGRAFX_LPT2 },
+    { "tgxlpt3", JOY_TYPE_TURBOGRAFX_LPT3 },
+    { "wingwar", JOY_TYPE_WINGWARRIOR },
+    { "ifsegaisa", JOY_TYPE_IFSEGA_ISA },
+    { "ifsegapcifast", JOY_TYPE_IFSEGA_PCI_FAST },
+    { "ifsegapci", JOY_TYPE_IFSEGA_PCI },
+    { NULL, 0 }
+};
+
+#define JOY_TYPE_UNKNOWN -2
+
+static int set_hw_joy_type(const char *param, void *extra_param)
+{
+    int joymodel = JOY_TYPE_UNKNOWN;
+    int i = 0;
+
+    if (!param) {
+        return -1;
+    }
+
+    do {
+        if (strcmp(joyhwtypes[i].name, param) == 0) {
+            joymodel = joyhwtypes[i].joymodel;
+        }
+        i++;
+    } while ((joymodel == JOY_TYPE_UNKNOWN) && (joyhwtypes[i].name != NULL));
+
+    if (joymodel == JOY_TYPE_UNKNOWN) {
+        return -1;
+    }
+
+    return resources_set_int("HwJoyType", joymodel);
+}
+
+static const cmdline_option_t joyhwtypecmdline_options[] = {
+    { "-joyhwtype", CALL_FUNCTION, 1,
+      set_hw_joy_type, NULL, NULL, NULL,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      "<type>", "Set joystick hardware type (auto/none/standard/dual/4button/6button/8button/fspro/wingex/sidewinderag/sidewinderpp/sidewinder/gamepadpro/grip4/grip/sneslpt1/sneslpt2/sneslpt3/psxlpt1/psxlpt2/psxlpt3/n64lpt1/n64lpt2/n64lpt3/db9lpt1/db9lpt2/db9lpt3/tgxlpt1/tgxlpt2/tgxlpt3/wingwar/ifsegaisa/ifsegapcifast/ifsegapci)" },
+    { NULL }
+};
 
 static const cmdline_option_t joydev1cmdline_options[] = {
     { "-joydev1", SET_RESOURCE, 1,
       NULL, NULL, "JoyDevice1", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      "<number>", "Set input device for joystick #1" },
+      "<number>", "Set input device for joystick #1 (0: None, 1: Numpad, 2: Keyset 1, 3: Keyset 2, 4: Joystick 1, 5: Joystick 2)" },
     { NULL }
 };
 
@@ -176,7 +226,7 @@ static const cmdline_option_t joydev2cmdline_options[] = {
       NULL, NULL, "JoyDevice2", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      "<number>", "Set input device for joystick #2" },
+      "<number>", "Set input device for joystick #2 (0: None, 1: Numpad, 2: Keyset 1, 3: Keyset 2, 4: Joystick 1, 5: Joystick 2)" },
     { NULL }
 };
 
@@ -185,7 +235,7 @@ static const cmdline_option_t joydev3cmdline_options[] = {
       NULL, NULL, "JoyDevice3", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      "<number>", "Set input device for extra joystick #1" },
+      "<number>", "Set input device for extra joystick #1 (0: None, 1: Numpad, 2: Keyset 1, 3: Keyset 2, 4: Joystick 1, 5: Joystick 2)" },
     { NULL }
 };
 
@@ -194,60 +244,52 @@ static const cmdline_option_t joydev4cmdline_options[] = {
       NULL, NULL, "JoyDevice4", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      "<number>", "Set input device for extra joystick #2" },
+      "<number>", "Set input device for extra joystick #2 (0: None, 1: Numpad, 2: Keyset 1, 3: Keyset 2, 4: Joystick 1, 5: Joystick 2)" },
     { NULL }
 };
 
-int joystick_init_cmdline_options(void)
+static const cmdline_option_t joydev5cmdline_options[] = {
+    { "-extrajoydev3", SET_RESOURCE, 1,
+      NULL, NULL, "JoyDevice5", NULL,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      "<number>", "Set input device for extra joystick #3 (0: None, 1: Numpad, 2: Keyset 1, 3: Keyset 2, 4: Joystick 1, 5: Joystick 2)" },
+    { NULL }
+};
+
+int joy_arch_cmdline_options_init(void)
 {
-    switch (machine_class) {
-        case VICE_MACHINE_C64:
-        case VICE_MACHINE_C64SC:
-        case VICE_MACHINE_C128:
-        case VICE_MACHINE_C64DTV:
-            if (cmdline_register_options(joydev1cmdline_options) < 0) {
-                return -1;
-            }
-            if (cmdline_register_options(joydev2cmdline_options) < 0) {
-                return -1;
-            }
-            if (cmdline_register_options(joydev3cmdline_options) < 0) {
-                return -1;
-            }
-            return cmdline_register_options(joydev4cmdline_options);
-            break;
-        case VICE_MACHINE_PET:
-        case VICE_MACHINE_CBM6x0:
-            if (cmdline_register_options(joydev3cmdline_options) < 0) {
-                return -1;
-            }
-            return cmdline_register_options(joydev4cmdline_options);
-            break;
-        case VICE_MACHINE_CBM5x0:
-            if (cmdline_register_options(joydev1cmdline_options) < 0) {
-                return -1;
-            }
-            return cmdline_register_options(joydev2cmdline_options);
-            break;
-        case VICE_MACHINE_PLUS4:
-            if (cmdline_register_options(joydev1cmdline_options) < 0) {
-                return -1;
-            }
-            if (cmdline_register_options(joydev2cmdline_options) < 0) {
-                return -1;
-            }
-            return cmdline_register_options(joydev3cmdline_options);
-            break;
-        case VICE_MACHINE_VIC20:
-            if (cmdline_register_options(joydev1cmdline_options) < 0) {
-                return -1;
-            }
-            if (cmdline_register_options(joydev3cmdline_options) < 0) {
-                return -1;
-            }
-            return cmdline_register_options(joydev4cmdline_options);
-            break;
+    if (cmdline_register_options(joyhwtypecmdline_options) < 0) {
+        return -1;
     }
+
+    if (joyport_get_port_name(JOYPORT_1)) {
+        if (cmdline_register_options(joydev1cmdline_options) < 0) {
+            return -1;
+        }
+    }
+    if (joyport_get_port_name(JOYPORT_2)) {
+        if (cmdline_register_options(joydev2cmdline_options) < 0) {
+            return -1;
+        }
+    }
+    if (joyport_get_port_name(JOYPORT_3)) {
+        if (cmdline_register_options(joydev3cmdline_options) < 0) {
+            return -1;
+        }
+    }
+    if (joyport_get_port_name(JOYPORT_4)) {
+        if (cmdline_register_options(joydev4cmdline_options) < 0) {
+            return -1;
+        }
+    }
+    if (joyport_get_port_name(JOYPORT_5)) {
+        if (cmdline_register_options(joydev5cmdline_options) < 0) {
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -268,7 +310,7 @@ void joystick_update(void)
 
     poll_joystick();
 
-    if (joystick_port_map[0] == JOYDEV_HW1 || joystick_port_map[1] == JOYDEV_HW1 || joystick_port_map[2] == JOYDEV_HW1 || joystick_port_map[3] == JOYDEV_HW1) {
+    if (joystick_port_map[0] == JOYDEV_HW1 || joystick_port_map[1] == JOYDEV_HW1 || joystick_port_map[2] == JOYDEV_HW1 || joystick_port_map[3] == JOYDEV_HW1 || joystick_port_map[4] == JOYDEV_HW1) {
         int value = 0;
 
         if (joy_left) {
@@ -298,9 +340,12 @@ void joystick_update(void)
         if (joystick_port_map[3] == JOYDEV_HW1) {
             joystick_set_value_absolute(4, value);
         }
+        if (joystick_port_map[4] == JOYDEV_HW1) {
+            joystick_set_value_absolute(5, value);
+        }
     }
 
-    if (num_joysticks >= 2 && (joystick_port_map[0] == JOYDEV_HW2 || joystick_port_map[1] == JOYDEV_HW2 || joystick_port_map[2] == JOYDEV_HW2 || joystick_port_map[3] == JOYDEV_HW2)) {
+    if (num_joysticks >= 2 && (joystick_port_map[0] == JOYDEV_HW2 || joystick_port_map[1] == JOYDEV_HW2 || joystick_port_map[2] == JOYDEV_HW2 || joystick_port_map[3] == JOYDEV_HW2 || joystick_port_map[4] == JOYDEV_HW2)) {
         int value = 0;
 
         if (joy2_left) {
@@ -329,6 +374,9 @@ void joystick_update(void)
         }
         if (joystick_port_map[3] == JOYDEV_HW2) {
             joystick_set_value_absolute(4, value);
+        }
+        if (joystick_port_map[4] == JOYDEV_HW2) {
+            joystick_set_value_absolute(5, value);
         }
     }
 }

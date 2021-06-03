@@ -1,7 +1,7 @@
 /*
  * magicvoice.h - Speech Cartridge
  *
- * Written by 
+ * Written by
  *  groepaz <groepaz@gmx.net>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -37,7 +37,6 @@
 #include "sound.h"
 
 struct machine_context_s;
-struct export_s;
 
 extern void magicvoice_reset(void);
 extern int magicvoice_cart_enabled(void);
@@ -50,17 +49,19 @@ extern int magicvoice_romh_phi1_read(WORD addr, BYTE *value);
 extern int magicvoice_romh_phi2_read(WORD addr, BYTE *value);
 extern int magicvoice_peek_mem(WORD addr, BYTE *value);
 
-extern void magicvoice_passthrough_changed(struct export_s *export);
+extern void magicvoice_passthrough_changed(export_t *export);
 
 extern void magicvoice_init(void);
 extern void magicvoice_shutdown(void);
 
-extern void magicvoice_config_init(struct export_s *export);
+extern void magicvoice_config_init(export_t *export);
 extern void magicvoice_config_setup(BYTE *rawcart);
 extern void magicvoice_setup_context(struct machine_context_s *machine_context);
 
 extern int magicvoice_resources_init(void);
 extern void magicvoice_resources_shutdown(void);
+
+extern int magicvoice_cmdline_options_init(void);
 
 extern int magicvoice_bin_attach(const char *filename, BYTE *rawcart);
 extern int magicvoice_crt_attach(FILE *fd, BYTE *rawcart);

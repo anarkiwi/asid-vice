@@ -25,13 +25,20 @@
  *
  */
 
-#include <gtk/gtk.h>
-#include <gdk/gdkkeysyms.h>
+#include "vice.h"
+#include "uiarch.h"
+
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_VTE
 #include <vte/vte.h>
+#endif
 #include <dirent.h>
 #include <ctype.h>
+#include <unistd.h>
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
 
 #if (defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__))
 #include <sys/stat.h>
@@ -39,25 +46,19 @@
 
 #include "console.h"
 #include "lib.h"
+#ifdef HAVE_VTE
 #include "linenoise.h"
-#include "uiarch.h"
+#endif
 #include "uimon.h"
 #include "mon_command.h"
 
-/* Work around an incompatible change in GDK header files
- * http://git.gnome.org/browse/gtk+/commit/gdk/gdkkeysyms.h?id=913cdf3be750a1e74c09b20edf55a57f9a919fcc */
-
-#if defined GDK_KEY_0
-#define GDK_KEY(symbol) GDK_KEY_##symbol
-#else
-#define GDK_KEY(symbol) GDK_##symbol
-#endif
+#ifdef HAVE_VTE
 
 struct console_private_s {
     GtkWidget *window;
     GtkWidget *term;
     char *input_buffer;
-} fixed = {NULL,NULL,NULL};
+} fixed = {NULL, NULL, NULL};
 
 static console_t vte_console;
 static linenoiseCompletions command_lc = {0, NULL};
@@ -86,11 +87,6 @@ void write_to_terminal(struct console_private_s *t,
 {
     if(t->term) {
         vte_terminal_feed(VTE_TERMINAL(t->term), data, length);
-        /* this is a horrible hack to work around the fact VTE is not ment to be
-           used like it is used here (no child process at all). flushing stdout
-           here will make the initial prompt show up immediatly and not delay it
-           until a key is pressed */
-        fflush(stdout);
     }
 }
 
@@ -121,7 +117,12 @@ static char* append_string_to_input_buffer(char *old_input_buffer, GtkWidget *te
         char *char_in, *char_out = new_input_buffer + strlen(new_input_buffer);
 
         for (char_in = new_string; *char_in; char_in++) {
+#if CHAR_MIN < 0
             if (*char_in < 0 || *char_in >= 32) {
+#else
+            /* char is unsigned on raspberry Pi 2B with GCC */
+            if (*char_in >= 32) {
+#endif
                 *char_out++ = *char_in;
             }
         }
@@ -171,6 +172,10 @@ static gboolean plain_key_pressed(char **input_buffer, guint keyval)
             return TRUE;
         case GDK_KEY(End):
             *input_buffer = append_char_to_input_buffer(*input_buffer, 5);
+            return TRUE;
+        case GDK_KEY(dead_tilde):
+            *input_buffer =
+                append_char_to_input_buffer(*input_buffer, GDK_KEY(asciitilde));
             return TRUE;
     }
 }
@@ -305,9 +310,27 @@ int get_string(struct console_private_s *t, char* string, int string_len)
     return retval;
 }
 
+static void get_terminal_size_in_chars(VteTerminal *terminal,
+                           glong *width,
+                           glong *height)
+{
+    *width = vte_terminal_get_column_count(terminal);
+    *height = vte_terminal_get_row_count(terminal);
+}
+
+static void screen_resize_window_cb (VteTerminal *terminal,
+                         gpointer* window)
+{
+    glong width, height;
+    get_terminal_size_in_chars(terminal, &width, &height);
+    vte_console.console_xres = (unsigned int)width;
+    vte_console.console_yres = (unsigned int)height;
+}
+
 console_t *uimon_window_open(void)
 {
     GtkWidget *scrollbar, *horizontal_container;
+    GdkGeometry hints;
 
     if (fixed.window == NULL) {
         fixed.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -318,8 +341,39 @@ console_t *uimon_window_open(void)
         fixed.term = vte_terminal_new();
         vte_terminal_set_scrollback_lines (VTE_TERMINAL(fixed.term), 1000);
         vte_terminal_set_scroll_on_output (VTE_TERMINAL(fixed.term), TRUE);
+
+        /* allowed window widths are base_width + width_inc * N
+         * allowed window heights are base_height + height_inc * N
+         */
+        hints.width_inc = vte_terminal_get_char_width (VTE_TERMINAL(fixed.term));
+        hints.height_inc = vte_terminal_get_char_height (VTE_TERMINAL(fixed.term));
+        /* min size should be multiple of .._inc, else we get funky effects */
+        hints.min_width = hints.width_inc;
+        hints.min_height = hints.height_inc;
+        /* base size should be multiple of .._inc, else we get funky effects */
+        hints.base_width = hints.width_inc;
+        hints.base_height = hints.height_inc;
+        gtk_window_set_geometry_hints (GTK_WINDOW (fixed.window),
+                                     fixed.term,
+                                     &hints,
+                                     GDK_HINT_RESIZE_INC |
+                                     GDK_HINT_MIN_SIZE |
+                                     GDK_HINT_BASE_SIZE);
+#if GTK_CHECK_VERSION (2, 91, 1)
+        {
+            glong width, height;
+            get_terminal_size_in_chars(VTE_TERMINAL(fixed.term), &width, &height);
+            gtk_window_resize_to_geometry (GTK_WINDOW (fixed.window), width, height);
+        }
+#endif
+#if GTK_CHECK_VERSION (3, 0, 0)
+        scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL,
+            gtk_scrollable_get_vadjustment (GTK_SCROLLABLE(fixed.term)));
+#else
         scrollbar = gtk_vscrollbar_new(vte_terminal_get_adjustment (VTE_TERMINAL(fixed.term)));
-        horizontal_container = gtk_hbox_new(FALSE, 0);
+#endif
+
+        horizontal_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
         gtk_container_add(GTK_CONTAINER(fixed.window), horizontal_container);
         gtk_container_add(GTK_CONTAINER(horizontal_container), fixed.term);
         gtk_container_add(GTK_CONTAINER(horizontal_container), scrollbar);
@@ -333,8 +387,9 @@ console_t *uimon_window_open(void)
         g_signal_connect(G_OBJECT(fixed.term), "button-press-event", 
             G_CALLBACK(button_press_event), &fixed.input_buffer);
 
-        vte_console.console_xres = vte_terminal_get_column_count(VTE_TERMINAL(fixed.term));
-        vte_console.console_yres = vte_terminal_get_row_count(VTE_TERMINAL(fixed.term));
+        g_signal_connect (fixed.term, "text-modified",
+            G_CALLBACK (screen_resize_window_cb), NULL);
+
         vte_console.console_can_stay_open = 1;
     }
     return uimon_window_resume();
@@ -343,7 +398,8 @@ console_t *uimon_window_open(void)
 console_t *uimon_window_resume(void)
 {
     gtk_widget_show_all(fixed.window);
-    gtk_window_present (GTK_WINDOW(fixed.window));
+    gtk_window_present(GTK_WINDOW(fixed.window));
+    screen_resize_window_cb (VTE_TERMINAL(fixed.term), NULL);
     ui_dispatch_events();
     gdk_flush();
     return &vte_console;
@@ -369,9 +425,13 @@ int uimon_out(const char *buffer)
 
 void uimon_window_close(void)
 {
-    gtk_widget_hide(fixed.window);
-    /* transfer focus to the main emulator window */
-    ui_restore_focus();
+    /* only close window if there is one: this avoids a GTK_CRITICAL warning
+     * when using a remote monitor */
+    if (fixed.window != NULL) {
+        gtk_widget_hide(fixed.window);
+        /* transfer focus to the main emulator window */
+        ui_restore_focus();
+    }
 }
 
 void uimon_notify_change(void)
@@ -412,8 +472,8 @@ static void fill_completions(const char *string_so_far, int initial_chars, int t
 
 static void find_next_token(const char *string_so_far, int start_of_search, int *start_of_token, int *token_len)
 {
-    for(*start_of_token = start_of_search; string_so_far[*start_of_token] && isspace(string_so_far[*start_of_token]); (*start_of_token)++);
-    for(*token_len = 0; string_so_far[*start_of_token + *token_len] && !isspace(string_so_far[*start_of_token + *token_len]); (*token_len)++);
+    for(*start_of_token = start_of_search; string_so_far[*start_of_token] && isspace((int)(string_so_far[*start_of_token])); (*start_of_token)++);
+    for(*token_len = 0; string_so_far[*start_of_token + *token_len] && !isspace((int)(string_so_far[*start_of_token + *token_len])); (*token_len)++);
 }
 
 static gboolean is_token_in(const char *string_so_far, int token_len, const linenoiseCompletions *lc)
@@ -455,7 +515,7 @@ static void monitor_completions(const char *string_so_far, linenoiseCompletions 
         struct linenoiseCompletions files_lc = {0, NULL};
         int i;
 
-        for (start_of_token += token_len; string_so_far[start_of_token] && isspace(string_so_far[start_of_token]); start_of_token++);
+        for (start_of_token += token_len; string_so_far[start_of_token] && isspace((int)(string_so_far[start_of_token])); start_of_token++);
         if (string_so_far[start_of_token] != '"') {
             char *string_to_append = concat_strings(string_so_far, start_of_token, "\"");
             linenoiseAddCompletion(lc, string_to_append);
@@ -554,3 +614,178 @@ int console_close_all(void)
     return 0;
 }
 
+#else
+
+/*******************************************************************************
+ Fallback implementation for when the VTE library is not available
+ ******************************************************************************/
+
+static console_t *console_log_local = NULL;
+
+#if defined(HAVE_READLINE) && defined(HAVE_READLINE_READLINE_H)
+#include <readline/readline.h>
+#include <readline/history.h>
+#else
+static FILE *mon_input, *mon_output;
+#endif
+
+int console_init(void)
+{
+#if defined(HAVE_READLINE) && defined(HAVE_READLINE_READLINE_H) && defined(HAVE_RLNAME)
+    rl_readline_name = "VICE";
+#endif
+
+    return 0;
+}
+
+#if !defined(HAVE_READLINE) || !defined(HAVE_READLINE_READLINE_H)
+int console_out(console_t *log, const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    vfprintf(mon_output, format, ap);
+    va_end(ap);
+
+    return 0;
+}
+#endif
+
+console_t *uimon_window_open(void)
+{
+#ifdef HAVE_SYS_IOCTL_H
+    struct winsize w;
+#endif
+
+    if (!isatty(fileno(stdin))) {
+        log_error(LOG_DEFAULT, "console_open: stdin is not a tty.");
+        console_log_local = NULL;
+        return NULL;
+    }
+    if (!isatty(fileno(stdout))) {
+        log_error(LOG_DEFAULT, "console_open: stdout is not a tty.");
+        console_log_local = NULL;
+        return NULL;
+    }
+    console_log_local = lib_malloc(sizeof(console_t));
+    /* change window title for console identification purposes */
+    if (getenv("WINDOWID") == NULL) {
+        printf("\033]2;VICE monitor console (%d)\007", (int)getpid());
+    }
+
+#if !defined(HAVE_READLINE) || !defined(HAVE_READLINE_READLINE_H)
+    mon_input = stdin;
+    mon_output = stdout;
+#endif
+
+#ifdef HAVE_SYS_IOCTL_H
+    if (ioctl(fileno(stdin), TIOCGWINSZ, &w)) {
+        console_log_local->console_xres = 80;
+        console_log_local->console_yres = 25;
+    } else {
+        console_log_local->console_xres = w.ws_col >= 40 ? w.ws_col : 40;
+        console_log_local->console_yres = w.ws_row >= 22 ? w.ws_row : 22;
+    }
+#else
+    console_log_local->console_xres = 80;
+    console_log_local->console_yres = 25;
+#endif
+    console_log_local->console_can_stay_open = 1;
+    console_log_local->console_cannot_output = 0;
+#ifdef HAVE_MOUSE
+    ui_restore_mouse();
+#endif
+    ui_focus_monitor();
+    return console_log_local;
+}
+
+void uimon_window_close(void)
+{
+    lib_free(console_log_local);
+    console_log_local = NULL;
+
+    uimon_window_suspend();
+}
+
+void uimon_window_suspend( void )
+{
+    ui_restore_focus();
+#ifdef HAVE_MOUSE
+    ui_check_mouse_cursor();
+#endif
+}
+
+console_t *uimon_window_resume(void)
+{
+    if (console_log_local) {
+#ifdef HAVE_MOUSE
+        ui_restore_mouse();
+#endif
+        ui_focus_monitor();
+        return console_log_local;
+    }
+    log_error(LOG_DEFAULT, "uimon_window_resume: log was not opened.");
+    return uimon_window_open();
+}
+
+int uimon_out(const char *buffer)
+{
+    fprintf(stdout, "%s", buffer);
+    return 0;
+}
+
+#if !defined(HAVE_READLINE) || !defined(HAVE_READLINE_READLINE_H)
+static char *readline(const char *prompt)
+{
+    char *p = lib_malloc(1024);
+
+    console_out(NULL, "%s", prompt);
+
+    fflush(mon_output);
+    if (fgets(p, 1024, mon_input) == NULL) {
+        /* FIXME: handle error */
+    }
+
+    /* Remove trailing newlines.  */
+    {
+        int len;
+
+        for (len = strlen(p); len > 0 && (p[len - 1] == '\r' || p[len - 1] == '\n'); len--) {
+            p[len - 1] = '\0';
+        }
+    }
+
+    return p;
+}
+#endif
+
+char *uimon_get_in(char **ppchCommandLine, const char *prompt)
+{
+    char *p, *ret_sting;
+
+    p = readline(prompt);
+#if defined(HAVE_READLINE) && defined(HAVE_READLINE_READLINE_H)
+    if (p && *p) {
+        add_history(p);
+    }
+#endif
+    ret_sting = lib_stralloc(p);
+    free(p);
+
+    return ret_sting;
+}
+
+int console_close_all(void)
+{
+    return 0;
+}
+
+void uimon_notify_change( void )
+{
+}
+
+void uimon_set_interface(struct monitor_interface_s **monitor_interface_init, int count)
+{
+}
+
+#endif

@@ -72,6 +72,7 @@ struct ObjApp {
 
 static const char *image_type_name[] = {
     "d64",
+    "d67",
     "d71",
     "d80",
     "d81",
@@ -87,6 +88,7 @@ static const char *image_type_name[] = {
 
 static const int image_type[] = {
     DISK_IMAGE_TYPE_D64,
+    DISK_IMAGE_TYPE_D67,
     DISK_IMAGE_TYPE_D71,
     DISK_IMAGE_TYPE_D80,
     DISK_IMAGE_TYPE_D81,
@@ -587,7 +589,12 @@ static char *request_file(const char *title, char *initialdir, char *initialfile
     if (FileReq == NULL) {
         return NULL;
     } else {
-        if (AslRequestTags(FileReq, ASLFR_TitleText, title, ASLFR_InitialDrawer, initialdir, ASLFR_InitialFile, initialfile, TAG_END)) {
+        if (AslRequestTags(FileReq,
+                           ASLFR_TitleText, title,
+                           ASLFR_InitialDrawer, initialdir,
+                           ASLFR_InitialFile, initialfile,
+                           ASLFR_Window, canvaslist->os->window,
+                           TAG_END)) {
             strcpy(file_name, FileReq->fr_Drawer);
             AddPart(file_name, FileReq->fr_File, 1024);
         }

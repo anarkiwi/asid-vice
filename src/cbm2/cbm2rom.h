@@ -3,7 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -39,4 +39,3 @@ extern int cbm2rom_load_cart_6(const char *rom_name);
 extern int cbm2rom_checksum(void);
 
 #endif
-

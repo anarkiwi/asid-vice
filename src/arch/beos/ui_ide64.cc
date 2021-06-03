@@ -68,16 +68,31 @@ void IDE64Window::EnableSizeControls(int enable)
 }
 
 IDE64Window::IDE64Window(int img_num) 
-    : BWindow(BRect(50, 50, 230, 235), "IDE64 size settings", B_TITLED_WINDOW_LOOK, B_MODAL_APP_WINDOW_FEEL, B_NOT_ZOOMABLE | B_NOT_RESIZABLE) 
+    : BWindow(BRect(50, 50, 340, 235), "IDE64 size settings", B_TITLED_WINDOW_LOOK, B_MODAL_APP_WINDOW_FEEL, B_NOT_ZOOMABLE | B_NOT_RESIZABLE) 
 {
     int cylinders, heads, sectors, autodetect;
-    char temp_str[32];
+    char temp_str[40];
+    const char *img_str = NULL;
     BView *background;
     BCheckBox *checkbox;
     BMessage *msg;
     BRect r;
 
-    sprintf(temp_str, "IDE64 HD #%d size settings", img_num);
+    switch (img_num) {
+        case 1:
+            img_str = "primary master";
+            break;
+        case 2:
+            img_str = "primary slave";
+            break;
+        case 3:
+            img_str = "secondary master";
+            break;
+        case 4:
+            img_str = "secondary slave";
+            break;
+    }
+    sprintf(temp_str, "IDE64 %s HD size settings", img_str);
     SetTitle(temp_str);
 
     r = Bounds();
@@ -96,6 +111,7 @@ IDE64Window::IDE64Window(int img_num)
 
     r = Bounds();
     r.top = 20;
+    r.right -= 110;
     r.InsetBy(10, 10);
     customsizebox = new BBox(r, "Custom size");
     customsizebox->SetLabel("Custom size");
@@ -156,8 +172,8 @@ void IDE64Window::MessageReceived(BMessage *msg)
             temp = atoi(cylinderstextcontrol->Text());
             if (temp < 1) {
                 cylinders = 1;
-            } else if (temp > 1024) {
-                cylinders = 1024;
+            } else if (temp > 65535) {
+                cylinders = 65535;
             } else {
                 cylinders = temp;
             }
@@ -215,7 +231,6 @@ void ui_ide64(int img_num)
     vsync_suspend_speed_eval();
 
     /* wait until window closed */
-    ide64thread=ide64window->Thread();
+    ide64thread = ide64window->Thread();
     wait_for_thread(ide64thread, &exit_value);
 }
-

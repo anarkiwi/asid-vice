@@ -77,6 +77,7 @@
 #include "funplay.h"
 #include "gamekiller.h"
 #include "georam.h"
+#include "gmod2.h"
 #include "gs.h"
 #include "ide64.h"
 #include "isepic.h"
@@ -97,6 +98,7 @@
 #include "reu.h"
 #include "rexep256.h"
 #include "rexutility.h"
+#include "rrnetmk3.h"
 #include "ross.h"
 #include "simonsbasic.h"
 #include "snapshot64.h"
@@ -117,7 +119,7 @@
 #define USESLOTS /* define to use passthrough code */
 
 #ifdef DEBUGCART
-#define DBG(x)  printf x ; fflush(stdout);
+#define DBG(x)  printf x; fflush(stdout);
 #else
 #define DBG(x)
 #endif
@@ -153,7 +155,11 @@ static void ultimax_memptr_update(void);
   bit 1  0x02   - release freeze (stop asserting NMI)
   bit 0  0x01   - r/w flag
 */
-
+const char *cart_config_string(BYTE mode)
+{
+    const char *modes[4] = {"8k game", "16k game", "Off", "Ultimax"};
+    return modes[mode & 3];
+}
 
 #ifndef USESLOTS
 static void cart_config_changed(int slot, BYTE mode_phi1, BYTE mode_phi2, unsigned int wflag)
@@ -161,7 +167,7 @@ static void cart_config_changed(int slot, BYTE mode_phi1, BYTE mode_phi2, unsign
 #ifdef DEBUGCART
     static int old1 = 0, old2 = 0, old3 = 0;
     if ((mode_phi1 != old1) || (mode_phi2 != old2) || (wflag != old3)) {
-        DBG(("CARTMEM: cart_config_changed slot %d phi1:%d phi2:%d bank: %d flags:%02x\n", slot,mode_phi1 & 3, mode_phi2 & 3, (mode_phi2 >> CMODE_BANK_SHIFT) & CMODE_BANK_MASK, wflag));
+        DBG(("CARTMEM: cart_config_changed slot %d phi1:%d phi2:%d bank: %d flags:%02x\n", slot, mode_phi1 & 3, mode_phi2 & 3, (mode_phi2 >> CMODE_BANK_SHIFT) & CMODE_BANK_MASK, wflag));
     }
     old1 = mode_phi1; old2 = mode_phi2; old3 = wflag;
 #endif
@@ -278,13 +284,13 @@ void cart_passthrough_changed(void)
 
     switch (cart_getid_slot0()) {
         case CARTRIDGE_MMC64:
-            mmc64_passthrough_changed((struct export_s*)&export_passthrough);
+            mmc64_passthrough_changed(&export_passthrough);
             break;
         case CARTRIDGE_MAGIC_VOICE:
-            magicvoice_passthrough_changed((struct export_s*)&export_passthrough);
+            magicvoice_passthrough_changed(&export_passthrough);
             break;
         case CARTRIDGE_IEEE488:
-            tpi_passthrough_changed((struct export_s*)&export_passthrough);
+            tpi_passthrough_changed(&export_passthrough);
             break;
         default:
             /* no slot 0 cartridge */
@@ -330,7 +336,7 @@ void cart_config_changed_slot1(BYTE mode_phi1, BYTE mode_phi2, unsigned int wfla
 #ifdef DEBUGCART
     static int old1 = 0, old2 = 0, old3 = 0;
     if ((mode_phi1 != old1) || (mode_phi2 != old2) || (wflag != old3)) {
-        DBG(("CARTMEM: cart_config_changed_slot1 phi1:%d phi2:%d bank: %d flags:%02x\n",mode_phi1 & 3, mode_phi2 & 3, (mode_phi2 >> CMODE_BANK_SHIFT) & CMODE_BANK_MASK, wflag));
+        DBG(("CARTMEM: cart_config_changed_slot1 phi1:%d phi2:%d bank: %d flags:%02x\n", mode_phi1 & 3, mode_phi2 & 3, (mode_phi2 >> CMODE_BANK_SHIFT) & CMODE_BANK_MASK, wflag));
     }
     old1 = mode_phi1; old2 = mode_phi2; old3 = wflag;
 #endif
@@ -418,7 +424,7 @@ void cart_config_changed_slotmain(BYTE mode_phi1, BYTE mode_phi2, unsigned int w
 #ifdef DEBUGCART
     static int old1 = 0, old2 = 0, old3 = 0;
     if ((mode_phi1 != old1) || (mode_phi2 != old2) || (wflag != old3)) {
-        DBG(("CARTMEM: cart_config_changed_slotmain phi1:%d phi2:%d bank: %d flags:%02x\n",mode_phi1 & 3, mode_phi2 & 3, (mode_phi2 >> CMODE_BANK_SHIFT) & CMODE_BANK_MASK, wflag));
+        DBG(("CARTMEM: cart_config_changed_slotmain phi1:%d phi2:%d bank: %d flags:%02x\n", mode_phi1 & 3, mode_phi2 & 3, (mode_phi2 >> CMODE_BANK_SHIFT) & CMODE_BANK_MASK, wflag));
     }
     old1 = mode_phi1; old2 = mode_phi2; old3 = wflag;
 #endif
@@ -520,7 +526,8 @@ void cart_romlbank_set_slotmain(unsigned int bank)
         reu
         midi
         acia
-        clockport (tfe)
+        clockport
+	ethernetcart
 
               hook                    default
 
@@ -564,8 +571,6 @@ static BYTE roml_read_slotmain(WORD addr)
             return actionreplay2_roml_read(addr);
         case CARTRIDGE_ACTION_REPLAY3:
             return actionreplay3_roml_read(addr);
-        case CARTRIDGE_ACTION_REPLAY4:
-            return actionreplay4_roml_read(addr);
         case CARTRIDGE_ATOMIC_POWER:
             return atomicpower_roml_read(addr);
         case CARTRIDGE_EASYFLASH:
@@ -574,14 +579,14 @@ static BYTE roml_read_slotmain(WORD addr)
             return epyxfastload_roml_read(addr);
         case CARTRIDGE_FINAL_I:
             return final_v1_roml_read(addr);
-        case CARTRIDGE_FINAL_III:
-            return final_v3_roml_read(addr);
         case CARTRIDGE_FINAL_PLUS:
             return final_plus_roml_read(addr);
         case CARTRIDGE_FREEZE_MACHINE:
             return freezemachine_roml_read(addr);
+        case CARTRIDGE_GMOD2:
+            return gmod2_roml_read(addr);
         case CARTRIDGE_IDE64:
-            return ide64_roml_read(addr);
+            return ide64_rom_read(addr);
         case CARTRIDGE_KINGSOFT:
             return kingsoft_roml_read(addr);
         case CARTRIDGE_MMC_REPLAY:
@@ -590,6 +595,10 @@ static BYTE roml_read_slotmain(WORD addr)
             return pagefox_roml_read(addr);
         case CARTRIDGE_RETRO_REPLAY:
             return retroreplay_roml_read(addr);
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            return rrnetmk3_roml_read(addr);
+#endif
         case CARTRIDGE_STARDOS:
             return stardos_roml_read(addr);
         case CARTRIDGE_SNAPSHOT64:
@@ -609,6 +618,8 @@ static BYTE roml_read_slotmain(WORD addr)
         case CARTRIDGE_MAGIC_FORMEL: /* ? */
             /* fake ultimax hack */
             return mem_read_without_ultimax(addr);
+        case CARTRIDGE_ACTION_REPLAY4:
+        case CARTRIDGE_FINAL_III:
         case CARTRIDGE_FREEZE_FRAME:
         default: /* use default cartridge */
             return generic_roml_read(addr);
@@ -683,6 +694,10 @@ void roml_store(WORD addr, BYTE value)
     /* DBG(("ultimax w 8000: %04x %02x\n", addr, value)); */
 
     /* "Slot 0" */
+    if (mmc64_cart_active()) {
+        mmc64_roml_store(addr, value);
+        return;
+    }
     if (magicvoice_cart_enabled()) {
         /* fake ultimax hack */
         mem_store_without_ultimax(addr, value);
@@ -690,13 +705,18 @@ void roml_store(WORD addr, BYTE value)
     }
     /* "Slot 1" */
     if (expert_cart_enabled()) {
-        expert_roml_store(addr,value);
+        expert_roml_store(addr, value);
         return;
     }
     if (ramcart_cart_enabled()) {
-        ramcart_roml_store(addr,value);
+        ramcart_roml_store(addr, value);
         return;
     }
+    if (isepic_cart_active()) {
+        isepic_page_store(addr, value);
+        return;
+    }
+
     /* "Main Slot" */
     switch (mem_cartridge_type) {
         case CARTRIDGE_ACTION_REPLAY:
@@ -720,6 +740,11 @@ void roml_store(WORD addr, BYTE value)
         case CARTRIDGE_RETRO_REPLAY:
             retroreplay_roml_store(addr, value);
             return;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            rrnetmk3_roml_store(addr, value);
+            return;
+#endif
         case CARTRIDGE_CAPTURE:
         case CARTRIDGE_EXOS:
         case CARTRIDGE_FORMEL64:
@@ -767,7 +792,7 @@ static BYTE romh_read_slotmain(WORD addr)
         case CARTRIDGE_FORMEL64:
             return formel64_romh_read(addr);
         case CARTRIDGE_IDE64:
-            return ide64_romh_read(addr);
+            return ide64_rom_read(addr);
         case CARTRIDGE_KINGSOFT:
             return kingsoft_romh_read(addr);
         case CARTRIDGE_MAGIC_FORMEL:
@@ -784,9 +809,12 @@ static BYTE romh_read_slotmain(WORD addr)
             return snapshot64_romh_read(addr);
         case CARTRIDGE_EXOS:
         case CARTRIDGE_STARDOS:
+        case CARTRIDGE_GMOD2:
             /* fake ultimax hack, read from ram */
             return ram_read(addr);
-            /* return mem_read_without_ultimax(addr); */
+        /* return mem_read_without_ultimax(addr); */
+        case CARTRIDGE_ACTION_REPLAY4:
+        case CARTRIDGE_FINAL_III:
         case CARTRIDGE_FREEZE_FRAME:
         case CARTRIDGE_FREEZE_MACHINE:
         default: /* use default cartridge */
@@ -826,7 +854,7 @@ BYTE romh_read(WORD addr)
 
     /* "Slot 0" */
     if (magicvoice_cart_enabled()) {
-        if((res = magicvoice_romh_read(addr, &value)) == CART_READ_VALID) {
+        if ((res = magicvoice_romh_read(addr, &value)) == CART_READ_VALID) {
             return value;
         }
     }
@@ -861,7 +889,7 @@ BYTE ultimax_romh_read_hirom_slotmain(WORD addr)
         case CARTRIDGE_EASYFLASH:
             return easyflash_romh_read(addr);
         case CARTRIDGE_EXOS:
-            return exos_romh_read(addr);
+            return exos_romh_read_hirom(addr);
         case CARTRIDGE_FINAL_I:
             return final_v1_romh_read(addr);
         case CARTRIDGE_FINAL_PLUS:
@@ -869,7 +897,7 @@ BYTE ultimax_romh_read_hirom_slotmain(WORD addr)
         case CARTRIDGE_FORMEL64:
             return formel64_romh_read_hirom(addr);
         case CARTRIDGE_IDE64:
-            return ide64_romh_read(addr);
+            return ide64_rom_read(addr);
         case CARTRIDGE_KINGSOFT:
             return kingsoft_romh_read(addr);
         case CARTRIDGE_MAGIC_FORMEL:
@@ -884,6 +912,11 @@ BYTE ultimax_romh_read_hirom_slotmain(WORD addr)
             return snapshot64_romh_read(addr);
         case CARTRIDGE_STARDOS:
             return stardos_romh_read(addr);
+        case CARTRIDGE_GMOD2:
+            /* ultimax only enabled on writes */
+            return mem_read_without_ultimax(addr);
+        case CARTRIDGE_ACTION_REPLAY4:
+        case CARTRIDGE_FINAL_III:
         case CARTRIDGE_FREEZE_FRAME:
         case CARTRIDGE_FREEZE_MACHINE:
         default: /* use default cartridge */
@@ -924,7 +957,7 @@ BYTE ultimax_romh_read_hirom(WORD addr)
     /* "Slot 0" */
     res = CART_READ_THROUGH;
     if (magicvoice_cart_enabled()) {
-        if((res = magicvoice_romh_read(addr, &value)) == CART_READ_VALID) {
+        if ((res = magicvoice_romh_read(addr, &value)) == CART_READ_VALID) {
             return value;
         }
     }
@@ -964,6 +997,9 @@ void romh_store(WORD addr, BYTE value)
         case CARTRIDGE_EASYFLASH:
             easyflash_romh_store(addr, value);
             return;
+        case CARTRIDGE_GMOD2:
+            gmod2_romh_store(addr, value);
+            return;
         case CARTRIDGE_MMC_REPLAY:
             mmcreplay_romh_store(addr, value);
             return;
@@ -999,7 +1035,7 @@ void romh_no_ultimax_store(WORD addr, BYTE value)
     /* "Slot 1" */
     if (dqbb_cart_enabled()) {
         dqbb_romh_store(addr, value);
-        return;
+        return; /* ? */
     }
 
     /* "Main Slot" */
@@ -1012,6 +1048,9 @@ void romh_no_ultimax_store(WORD addr, BYTE value)
             break;
         case CARTRIDGE_RETRO_REPLAY:
             retroreplay_romh_store(addr, value);
+            break;
+        case CARTRIDGE_IDE64:
+            ide64_rom_store(addr, value);
             break;
         case CARTRIDGE_CRT: /* invalid */
             DBG(("CARTMEM: BUG! invalid type %d for main cart (addr %04x)\n", mem_cartridge_type, addr));
@@ -1031,10 +1070,12 @@ void roml_no_ultimax_store(WORD addr, BYTE value)
 {
     /* DBG(("game rom    w 8000: %04x %02x\n", addr, value)); */
     /* "Slot 0" */
+#if 0
     if (mmc64_cart_active()) {
         mmc64_roml_store(addr, value);
         return; /* ? */
     }
+#endif
     /* "Slot 1" */
     if (expert_cart_enabled()) {
         expert_roml_store(addr, value);
@@ -1057,10 +1098,19 @@ void roml_no_ultimax_store(WORD addr, BYTE value)
             pagefox_roml_store(addr, value);
             break;
         case CARTRIDGE_RETRO_REPLAY:
-            if (retroreplay_roml_no_ultimax_store(addr, value))
-            {
+            if (retroreplay_roml_no_ultimax_store(addr, value)) {
                 return; /* FIXME: this is weird */
             }
+            break;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            if (rrnetmk3_roml_store(addr, value)) {
+                return; /* FAKE ultimax, if EEPROM was being written to, dont write to RAM */
+            }
+            break;
+#endif
+        case CARTRIDGE_IDE64:
+            ide64_rom_store(addr, value);
             break;
         case CARTRIDGE_CRT: /* invalid */
             DBG(("CARTMEM: BUG! invalid type %d for main cart (addr %04x)\n", mem_cartridge_type, addr));
@@ -1084,11 +1134,12 @@ void raml_no_ultimax_store(WORD addr, BYTE value)
 {
     /* DBG(("game ram    w 8000: %04x %02x\n", addr, value)); */
     /* "Slot 0" */
+#if 0
     if (mmc64_cart_active()) {
         mmc64_roml_store(addr, value);
         /* return; */
     }
-
+#endif
     /* "Slot 1" */
     if (expert_cart_enabled()) {
         expert_roml_store(addr, value);
@@ -1103,11 +1154,43 @@ void raml_no_ultimax_store(WORD addr, BYTE value)
         case CARTRIDGE_ATOMIC_POWER:
             atomicpower_roml_store(addr, value);
             break;
+        case CARTRIDGE_PAGEFOX:
+            pagefox_roml_store(addr, value);
+            break;
         case CARTRIDGE_RETRO_REPLAY:
-            if (retroreplay_roml_no_ultimax_store(addr, value))
-            {
+            if (retroreplay_roml_no_ultimax_store(addr, value)) {
                 return; /* FIXME: this is weird */
             }
+            break;
+        case CARTRIDGE_CRT: /* invalid */
+            DBG(("CARTMEM: BUG! invalid type %d for main cart (addr %04x)\n", mem_cartridge_type, addr));
+            break;
+    }
+
+    /* store to c64 ram */
+    /* DBG(("c64 ram    w 8000: %04x %02x\n", addr, value)); */
+    ram_store(addr, value);
+    /* mem_store_without_romlh(addr, value); */
+}
+
+/* RAMH store (ROMH _NOT_ selected) - mapped to A000-Bfff in 16kGame
+
+   WARNING:
+      mem_store_without_ultimax(addr, value)
+      must NOT be called by any functions called here, as this will cause an
+      endless loop
+*/
+void ramh_no_ultimax_store(WORD addr, BYTE value)
+{
+    /* DBG(("game ram    w 8000: %04x %02x\n", addr, value)); */
+
+    /* "Slot 0" */
+    /* "Slot 1" */
+
+    /* "Main Slot" */
+    switch (mem_cartridge_type) {
+        case CARTRIDGE_PAGEFOX:
+            pagefox_romh_store(addr, value);
             break;
         case CARTRIDGE_CRT: /* invalid */
             DBG(("CARTMEM: BUG! invalid type %d for main cart (addr %04x)\n", mem_cartridge_type, addr));
@@ -1137,12 +1220,13 @@ BYTE ultimax_1000_7fff_read_slot1(WORD addr)
         case CARTRIDGE_CAPTURE:
             return capture_1000_7fff_read(addr);
         case CARTRIDGE_IDE64:
-            return ide64_1000_7fff_read(addr);
+            return ide64_ram_read(addr);
         case CARTRIDGE_MMC_REPLAY:
             return mmcreplay_1000_7fff_read(addr);
         case CARTRIDGE_FORMEL64:
         case CARTRIDGE_MAGIC_FORMEL:
         case CARTRIDGE_GAME_KILLER:
+        case CARTRIDGE_GMOD2:
         case CARTRIDGE_KINGSOFT:
         case CARTRIDGE_FINAL_PLUS:
         case CARTRIDGE_EXOS:
@@ -1203,7 +1287,7 @@ void ultimax_1000_7fff_store(WORD addr, BYTE value)
     /* "Main Slot" */
     switch (mem_cartridge_type) {
         case CARTRIDGE_IDE64:
-            ide64_1000_7fff_store(addr, value);
+            ide64_ram_store(addr, value);
             break;
         case CARTRIDGE_MMC_REPLAY:
             mmcreplay_1000_7fff_store(addr, value);
@@ -1214,6 +1298,7 @@ void ultimax_1000_7fff_store(WORD addr, BYTE value)
         case CARTRIDGE_FORMEL64:
         case CARTRIDGE_MAGIC_FORMEL:
         case CARTRIDGE_GAME_KILLER:
+        case CARTRIDGE_GMOD2:
         case CARTRIDGE_FINAL_PLUS:
         case CARTRIDGE_EXOS:
         case CARTRIDGE_STARDOS:
@@ -1243,16 +1328,19 @@ BYTE ultimax_a000_bfff_read_slot1(WORD addr)
 
     /* "Main Slot" */
     switch (mem_cartridge_type) {
-        case CARTRIDGE_IDE64:
-            return ide64_a000_bfff_read(addr);
-        case CARTRIDGE_MMC_REPLAY:
-            return mmcreplay_a000_bfff_read(addr);
         case CARTRIDGE_FINAL_PLUS:
             return final_plus_a000_bfff_read(addr);
+        case CARTRIDGE_IDE64:
+            return ide64_rom_read(addr);
+        case CARTRIDGE_MMC_REPLAY:
+            return mmcreplay_a000_bfff_read(addr);
+        case CARTRIDGE_RETRO_REPLAY:
+            return retroreplay_a000_bfff_read(addr);
         case CARTRIDGE_FORMEL64:
         case CARTRIDGE_MAGIC_FORMEL:
         case CARTRIDGE_CAPTURE:
         case CARTRIDGE_GAME_KILLER:
+        case CARTRIDGE_GMOD2:
         case CARTRIDGE_EXOS:
         case CARTRIDGE_STARDOS:
             /* fake ultimax hack, c64 basic, ram */
@@ -1310,6 +1398,9 @@ void ultimax_a000_bfff_store(WORD addr, BYTE value)
         case CARTRIDGE_MMC_REPLAY:
             mmcreplay_a000_bfff_store(addr, value);
             break;
+        case CARTRIDGE_RETRO_REPLAY:
+            retroreplay_a000_bfff_store(addr, value);
+            break;
         case CARTRIDGE_CAPTURE:
         case CARTRIDGE_MAGIC_FORMEL:
         case CARTRIDGE_GAME_KILLER:
@@ -1342,13 +1433,12 @@ BYTE ultimax_c000_cfff_read_slot1(WORD addr)
 
     /* "Main Slot" */
     switch (mem_cartridge_type) {
-        case CARTRIDGE_IDE64:
-            return ide64_c000_cfff_read(addr);
         case CARTRIDGE_MMC_REPLAY:
             return mmcreplay_c000_cfff_read(addr);
         case CARTRIDGE_MAGIC_FORMEL:
         case CARTRIDGE_CAPTURE:
         case CARTRIDGE_GAME_KILLER:
+        case CARTRIDGE_GMOD2:
         case CARTRIDGE_FINAL_PLUS:
         case CARTRIDGE_FORMEL64:
         case CARTRIDGE_EXOS:
@@ -1408,9 +1498,6 @@ void ultimax_c000_cfff_store(WORD addr, BYTE value)
 
     /* "Main Slot" */
     switch (mem_cartridge_type) {
-        case CARTRIDGE_IDE64:
-            ide64_c000_cfff_store(addr, value);
-            break;
         case CARTRIDGE_MMC_REPLAY:
             mmcreplay_c000_cfff_store(addr, value);
             break;
@@ -1850,34 +1937,42 @@ static BYTE cartridge_peek_mem_slotmain(WORD addr)
         case CARTRIDGE_ULTIMAX:
         case CARTRIDGE_GENERIC_8KB:
         case CARTRIDGE_GENERIC_16KB:
-            res = generic_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = generic_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_CAPTURE:
-            res = capture_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = capture_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_EXOS:
-            res = exos_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = exos_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_FINAL_PLUS:
-            res = final_plus_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = final_plus_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_FORMEL64:
-            res = formel64_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = formel64_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_GAME_KILLER:
-            res = gamekiller_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = gamekiller_peek_mem(&export_slotmain, addr, &value);
+            break;
+        case CARTRIDGE_GMOD2:
+            res = gmod2_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_MAGIC_FORMEL:
-            res = magicformel_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = magicformel_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_RETRO_REPLAY:
-            res = retroreplay_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = retroreplay_peek_mem(&export_slotmain, addr, &value);
             break;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            res = rrnetmk3_peek_mem(&export_slotmain, addr, &value);
+            break;
+#endif
         case CARTRIDGE_STARDOS:
-            res = stardos_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = stardos_peek_mem(&export_slotmain, addr, &value);
             break;
         case CARTRIDGE_ZAXXON:
-            res = zaxxon_peek_mem((struct export_s*)&export_slotmain, addr, &value);
+            res = zaxxon_peek_mem(&export_slotmain, addr, &value);
             break;
         default:
             /* generic fallback */

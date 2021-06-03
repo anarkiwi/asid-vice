@@ -22,11 +22,23 @@
  * 	totty@cs.uiuc.edu
  *
  * Small changes by Ettore Perazzoli <ettore@comm2000.it>, search for [EP].
+ * More small changes by  Marco van den Heuvel <blackystardust68@yahoo.com>.
  */ 
 
 #include "vice.h"
 
+#if defined(NEXTSTEP_COMPILE) || defined(OPENSTEP_COMPILE)
+#  ifndef _POSIX_SOURCE
+#    define _POSIX_SOURCE
+#  endif
+#endif
+
+#ifdef RHAPSODY_COMPILE
+#  undef _POSIX_SOURCE
+#endif
+
 #include <unistd.h>		/* [EP] 10/15/96 */
+#include <sys/stat.h>           /* for S_IFMT */
 #include "ioutil.h"
 
 #include "Directory.h"

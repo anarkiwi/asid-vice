@@ -31,6 +31,8 @@
 
 #include "vice_sdl.h"
 
+#include "sound.h"
+
 /* Extra functions for SDL UI */
 extern char *archdep_default_hotkey_file_name(void);
 extern char *archdep_default_joymap_file_name(void);
@@ -49,6 +51,7 @@ extern void archdep_set_current_drive(const char *drive);
 /* Virtual keyboard handling */
 extern int archdep_require_vkbd(void);
 
+#ifndef BEOS_COMPILE
 /* Video chip scaling.  */
 #define ARCHDEP_VICII_DSIZE   1
 #define ARCHDEP_VICII_DSCAN   1
@@ -65,6 +68,7 @@ extern int archdep_require_vkbd(void);
 #define ARCHDEP_TED_DSIZE     1
 #define ARCHDEP_TED_DSCAN     1
 #define ARCHDEP_TED_HWSCALE   1
+#endif
 
 /* Video chip double buffering.  */
 #define ARCHDEP_VICII_DBUF 0
@@ -76,11 +80,21 @@ extern int archdep_require_vkbd(void);
 /* No key symcode.  */
 #define ARCHDEP_KEYBOARD_SYM_NONE SDLK_UNKNOWN
 
+/* Default sound output mode */
+#define ARCHDEP_SOUND_OUTPUT_MODE SOUND_OUTPUT_SYSTEM
+
+/* define if the platform supports the monitor in a seperate window */
+/* #define ARCHDEP_SEPERATE_MONITOR_WINDOW */
+
+#ifdef USE_SDLUI2
+extern char *archdep_sdl2_default_renderers[];
+#endif
+
 #ifdef AMIGA_SUPPORT
 #include "archdep_amiga.h"
 #endif
 
-#ifdef __BEOS__
+#ifdef BEOS_COMPILE
 #include "archdep_beos.h"
 #endif
 
@@ -98,10 +112,6 @@ extern int archdep_require_vkbd(void);
 
 #ifdef CEGCC_COMPILE
 #include "archdep_cegcc.h"
-#endif
-
-#ifdef DINGOO_NATIVE
-#include "archdep_dingoo.h"
 #endif
 
 #endif

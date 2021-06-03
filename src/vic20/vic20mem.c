@@ -3,8 +3,9 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Daniel Kahlin <daniel@kahlin.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * Multiple memory configuration support originally by
  *  Alexander Lehmann <alex@mathematik.th-darmstadt.de>
@@ -57,12 +58,15 @@
 #include "vic20ieeevia.h"
 #include "vic20mem.h"
 #include "vic20memrom.h"
+#include "vic20rom.h"
 #include "vic20via.h"
 
 /* ------------------------------------------------------------------------- */
 
 /* The VIC20 memory. */
 BYTE mem_ram[VIC20_RAM_SIZE];
+
+BYTE vfli_ram[0x4000]; /* for mikes vfli modification */
 
 /* Last data read/write by the cpu, this value lingers on the C(PU)-bus and
    gets used when the CPU reads from unconnected space on the C(PU)-bus */
@@ -141,9 +145,16 @@ static BYTE ram_peek(WORD addr)
 
 /* ------------------------------------------------------------------------- */
 
+extern int vic20_vflihack_userport;
+
 static BYTE colorram_read(WORD addr)
 {
-    vic20_cpu_last_data = mem_ram[addr] | (vic20_v_bus_last_data & 0xf0);
+    if (vflimod_enabled) {
+        addr = (addr & 0x3ff) | (vic20_vflihack_userport << 10);
+        vic20_cpu_last_data = vfli_ram[addr] | (vic20_v_bus_last_data & 0xf0);
+    } else {
+        vic20_cpu_last_data = mem_ram[addr] | (vic20_v_bus_last_data & 0xf0);
+    }
     vic20_v_bus_last_data = vic20_cpu_last_data; /* TODO verify this */
     return vic20_cpu_last_data;
 }
@@ -152,7 +163,12 @@ static void colorram_store(WORD addr, BYTE value)
 {
     vic20_cpu_last_data = value;
     vic20_v_bus_last_data = vic20_cpu_last_data; /* TODO verify this */
-    mem_ram[addr & (VIC20_RAM_SIZE - 1)] = value & 0xf;
+    if (vflimod_enabled) {
+        addr = (addr & 0x3ff) | (vic20_vflihack_userport << 10);
+        vfli_ram[addr] = value & 0xf;
+    } else {
+        mem_ram[addr & (VIC20_RAM_SIZE - 1)] = value & 0xf;
+    }
 }
 
 static BYTE colorram_peek(WORD addr)
@@ -162,91 +178,19 @@ static BYTE colorram_peek(WORD addr)
 
 /* ------------------------------------------------------------------------- */
 
-static void via_store(WORD addr, BYTE value)
-{
-    vic20_cpu_last_data = value;
-
-    if (addr & 0x10) {          /* $911x (VIA2) */
-        via2_store(addr, value);
-    }
-    if (addr & 0x20) {          /* $912x (VIA1) */
-        via1_store(addr, value);
-    }
-    vic20_mem_v_bus_store(addr);
-}
-
-static BYTE via_read(WORD addr)
-{
-    if ( (addr & 0x30) == 0x00 ) {  /* $910x (unconnected V-bus) */
-        vic20_cpu_last_data = vic20_v_bus_last_data;
-    } else {
-        BYTE temp_bus = 0xff;
-
-        if (addr & 0x10) {          /* $911x (VIA2) */
-            temp_bus &= via2_read(addr);
-        }
-        if (addr & 0x20) {          /* $912x (VIA1) */
-            temp_bus &= via1_read(addr);
-        }
-        vic20_cpu_last_data = temp_bus;
-    }
-    vic20_mem_v_bus_read(addr);
-    return vic20_cpu_last_data;
-}
-
-static BYTE via_peek(WORD addr)
-{
-
-    if ((addr & 0x30) == 0x00) {  /* $910x (unconnected V-bus) */
-        return vic20_v_bus_last_data;
-    } else {
-        BYTE temp_bus = 0xff;
-
-        if (addr & 0x10) {          /* $911x (VIA2) */
-            temp_bus &= via2_read(addr);
-        }
-        if (addr & 0x20) {          /* $912x (VIA1) */
-            temp_bus &= via1_read(addr);
-        }
-        return temp_bus;
-    }
-}
-
-/*-------------------------------------------------------------------*/
-
 static BYTE io3_peek(WORD addr)
 {
-#if 0
-    /* TODO */
-    if (sidcart_enabled && sidcart_address==1 && addr>=0x9c00 && addr<=0x9c1f) {
-        return sid_peek(addr);
-    }
-#endif
-
-#ifdef HAVE_MIDI
-#if 0
-    /* TODO */
-    if (midi_enabled && (addr & 0xff00) == 0x9c00) {
-        if (midi_test_peek((WORD)(addr & 0xff))) {
-            return midi_peek((WORD)(addr & 0xff));
-        }
-    }
-#endif
-#endif
-
-    return vic20_v_bus_last_data;
+    return vic20io3_peek(addr);
 }
 
 static BYTE io2_peek(WORD addr)
 {
-#if 0
-    /* TODO */
-    if (sidcart_enabled && sidcart_address==0 && addr>=0x9800 && addr<=0x981f) {
-        return sid_peek(addr);
-    }
-#endif
+    return vic20io2_peek(addr);
+}
 
-    return vic20_v_bus_last_data;
+static BYTE io0_peek(WORD addr)
+{
+    return vic20io0_peek(addr);
 }
 
 /*-------------------------------------------------------------------*/
@@ -300,6 +244,20 @@ static BYTE peek_unconnected_c_bus(WORD addr)
 
 /*-------------------------------------------------------------------*/
 /* Watchpoint functions */
+
+static BYTE zero_read_watch(WORD addr)
+{
+    addr &= 0xff;
+    monitor_watch_push_load_addr(addr, e_comp_space);
+    return _mem_read_tab_nowatch[0](addr);
+}
+
+static void zero_store_watch(WORD addr, BYTE value)
+{
+    addr &= 0xff;
+    monitor_watch_push_store_addr(addr, e_comp_space);
+    _mem_write_tab_nowatch[0](addr, value);
+}
 
 static BYTE read_watch(WORD addr)
 {
@@ -490,14 +448,9 @@ void mem_initialize_memory(void)
             chargen_read, store_dummy_v_bus, chargen_peek,
             NULL, 0);
 
-    /* Setup VIC-I at $9000-$90FF. */
-    set_mem(0x90, 0x90,
-            vic_read, vic_store, vic_peek,
-            NULL, 0);
-
-    /* Setup VIAs at $9100-$93FF. */
-    set_mem(0x91, 0x93,
-            via_read, via_store, via_peek,
+    /* Setup I/O0 */
+    set_mem(0x90, 0x93,
+            vic20io0_read, vic20io0_store, io0_peek,
             NULL, 0);
 
     /* Setup color memory at $9400-$97FF.
@@ -513,7 +466,7 @@ void mem_initialize_memory(void)
             vic20io2_read, vic20io2_store, io2_peek,
             NULL, 0);
 
-    /* Setup I/O3 at the expansion port (includes emulator ID) */
+    /* Setup I/O3 at the expansion port */
     set_mem(0x9c, 0x9f,
             vic20io3_read, vic20io3_store, io3_peek,
             NULL, 0);
@@ -537,7 +490,10 @@ void mem_initialize_memory(void)
     _mem_read_base_tab_ptr = _mem_read_base_tab;
     mem_read_limit_tab_ptr = mem_read_limit_tab;
 
-    for (i = 0; i <= 0x100; i++) {
+    /* setup watchpoint tables */
+    _mem_read_tab_watch[0] = zero_read_watch;
+    _mem_write_tab_watch[0] = zero_store_watch;
+    for (i = 1; i <= 0x100; i++) {
         _mem_read_tab_watch[i] = read_watch;
         _mem_write_tab_watch[i] = store_watch;
     }
@@ -546,7 +502,8 @@ void mem_initialize_memory(void)
     maincpu_resync_limits();
 }
 
-void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit) {
+void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
+{
     BYTE *p = _mem_read_base_tab_ptr[addr >> 8];
 
     *base = (p == NULL) ? NULL : (p - (addr & 0xff00));
@@ -572,6 +529,7 @@ void mem_toggle_watchpoints(int flag, void *context)
 void mem_powerup(void)
 {
     ram_init(mem_ram, 0x8000);
+    ram_init(vfli_ram, 0x4000);
     memset(mem_ram + 0x8000, 0, 0x8000);
 }
 
@@ -653,26 +611,9 @@ void mem_bank_write(int bank, WORD addr, BYTE byte, void *context)
     mem_store(addr, byte);
 }
 
-/* FIXME: add other i/o extensions here */
-static int mem_dump_io(WORD addr)
-{
-    if ((addr >= 0x9000) && (addr <= 0x900f)) {
-        return vic_dump();
-    } else if ((addr >= 0x9120) && (addr <= 0x912f)) {
-        return viacore_dump(machine_context.via1);
-    } else if ((addr >= 0x9110) && (addr <= 0x911f)) {
-        return viacore_dump(machine_context.via2);
-    }
-    return -1;
-}
-
 mem_ioreg_list_t *mem_ioreg_list_get(void *context)
 {
     mem_ioreg_list_t *mem_ioreg_list = NULL;
-
-    mon_ioreg_add_list(&mem_ioreg_list, "VIC", 0x9000, 0x900f, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "VIA1", 0x9120, 0x912f, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "VIA2", 0x9110, 0x911f, mem_dump_io);
 
     io_source_ioreg_add_list(&mem_ioreg_list);
 
@@ -685,75 +626,5 @@ void mem_get_screen_parameter(WORD *base, BYTE *rows, BYTE *columns, int *bank)
     *rows = (vic_peek(0x9003) & 0x7e) >> 1;
     *columns = vic_peek(0x9002) & 0x7f;
     *bank = 0;
-}
-
-/************************************************************************/
-
-/* This is a light version of C64's patchrom to change between PAL and
-   NTSC kernal
-    0: kernal ROM 901486-07 (VIC20 PAL)
-    1: kernal ROM 901486-06 (VIC20 NTSC)
-*/
-#define PATCH_VERSIONS 1
-
-int mem_patch_kernal(void)
-{
-    static unsigned short const patch_bytes[] = {
-        1, 0xE475,
-            0xe8,
-            0x41,
-
-        2, 0xEDE4,
-            0x0c, 0x26,
-            0x05, 0x19,
-
-        6, 0xFE3F,
-            0x26, 0x8d, 0x24, 0x91, 0xa9, 0x48,
-            0x89, 0x8d, 0x24, 0x91, 0xa9, 0x42,
-
-        21, 0xFF5C,
-            0xe6, 0x2a, 0x78, 0x1c, 0x49, 0x13, 0xb1, 0x0f,
-                0x0a, 0x0e, 0xd3, 0x06, 0x38, 0x03, 0x6a, 0x01,
-                0xd0, 0x00, 0x83, 0x00, 0x36,
-            0x92, 0x27, 0x40, 0x1a, 0xc6, 0x11, 0x74, 0x0e,
-                0xee, 0x0c, 0x45, 0x06, 0xf1, 0x02, 0x46, 0x01,
-                0xb8, 0x00, 0x71, 0x00, 0x2a,
-
-        0, 00
-    };
-
-    int rev, video_mode;
-    short bytes, n, i = 0;
-    WORD a;
-
-    resources_get_int("MachineVideoStandard", &video_mode);
-
-    switch (video_mode) {
-      case MACHINE_SYNC_PAL:
-        rev = 0;    /* use kernal 901486-07 */
-        break;
-      case MACHINE_SYNC_NTSC:
-        rev = 1;    /* use kernal 901486-06 */
-        break;
-      default:
-        log_message(LOG_ERR, "VIC20MEM: unknown sync, cannot patch kernal.");
-        return -1;
-    }
-
-    while ((bytes = patch_bytes[i++]) > 0) {
-        a = (WORD)patch_bytes[i++];
-
-        i += (bytes * rev); /* select patch */
-        for (n = bytes; n--;) {
-            vic20memrom_trap_store(a, (BYTE)patch_bytes[i]);
-            rom_store(a++, (BYTE)patch_bytes[i++]);
-        }
-
-        i += (bytes * (PATCH_VERSIONS - rev));  /* skip patch */
-    }
-
-    log_message(LOG_DEFAULT, "VIC20 kernal patched to 901486-0%d.",7-rev);
-
-    return 0;
 }
 

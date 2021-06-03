@@ -29,8 +29,7 @@
 #define VICE_VICII_RESOURCES_H
 
 /* VIC-II resources.  */
-struct vicii_resources_s
-{
+struct vicii_resources_s {
     /* VIC-II border mode, 0..3 */
     int border_mode;
 
@@ -41,7 +40,10 @@ struct vicii_resources_s
        IRQ?  */
     int sprite_background_collisions_enabled;
 
-    /* Flag: New or old luminances? */
+    /* TODO: VIC-II model */
+    int model;
+
+    /* on DTV this controls the hardware fix of the luma DAC */
     int new_luminances;
 };
 typedef struct vicii_resources_s vicii_resources_t;
@@ -51,4 +53,3 @@ extern vicii_resources_t vicii_resources;
 extern int vicii_resources_init(void);
 
 #endif
-

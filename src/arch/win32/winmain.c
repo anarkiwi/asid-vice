@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -41,6 +42,7 @@
 #include <signal.h>
 #endif
 
+#include "lib.h"
 #include "log.h"
 #include "machine.h"
 #include "main.h"
@@ -51,14 +53,20 @@ HINSTANCE winmain_instance;
 HINSTANCE winmain_prev_instance;
 int winmain_cmd_show;
 
-int PASCAL WinMain(HINSTANCE instance, HINSTANCE prev_instance, TCHAR *cmd_line, int cmd_show)
+#ifndef IDE_COMPILE
+#  if !defined(__MSVCRT__) && !defined(_MSC_VER) && !defined(_WIN64) && !defined(__WATCOMC__) && !defined(WATCOM_COMPILE)
+extern void __GetMainArgs(int *, char ***, char ***, int);
+#  endif
+#endif
+
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance, char *cmd_line, int cmd_show)
 {
     winmain_instance = instance;
     winmain_prev_instance = prev_instance;
     winmain_cmd_show = cmd_show;
 
 #if defined(__MSVCRT__) || defined(_MSC_VER) || defined(_WIN64) || defined(__WATCOMC__) || defined(WATCOM_COMPILE)
-#ifdef _DEBUG
+#  ifdef _DEBUG
     {
         int tmpFlag;
 
@@ -72,10 +80,44 @@ int PASCAL WinMain(HINSTANCE instance, HINSTANCE prev_instance, TCHAR *cmd_line,
         // Set flag to the new value
         _CrtSetDbgFlag(tmpFlag);
     }
-#endif
+#  endif
+#  ifndef IDE_COMPILE
+    if (!__argc) {
+        // For now we always pass 8-bit args to main_program()
+        char *vice_cmdline;
+        char *vice_argv[256] ;
+        int vice_argc = 0;
+
+        vice_cmdline = lib_stralloc(GetCommandLineA());
+
+        vice_argv[vice_argc] = strtok(vice_cmdline, " \t");
+        while (vice_argv[vice_argc] != 0) {
+            vice_argc++;
+            vice_argv[vice_argc] = strtok(0, " \t");
+        }
+        main_program(vice_argc, vice_argv);
+        lib_free(vice_cmdline);
+    } else {
+        main_program(__argc, __argv);
+    }
+#  else
     main_program(__argc, __argv);
+#  endif
 #else
+#  ifndef IDE_COMPILE
+    if (_argc) {
+        main_program(_argc, _argv);
+    } else {
+        int vice_argc = 0;
+        char **vice_argv = 0;
+        char **dummy = 0;
+
+        __GetMainArgs(&vice_argc, &vice_argv, &dummy, -1);
+        main_program(vice_argc, vice_argv);
+    }
+#  else
     main_program(_argc, _argv);
+#  endif
 #endif
 
     return 0;

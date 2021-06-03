@@ -37,6 +37,10 @@
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 
+#ifdef HAVE_X11_XKBLIB_H
+#include <X11/XKBlib.h>
+#endif
+
 #include "kbd.h"
 #include "keyboard.h"
 #include "machine.h"
@@ -239,4 +243,51 @@ void kbd_initialize_numpad_joykeys(int* joykeys)
     joykeys[6] = XK_KP_7;
     joykeys[7] = XK_KP_8;
     joykeys[8] = XK_KP_9;
+}
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config */
+
+/* FIXME: add more languages, then copy to gnomekbd.c */
+int kbd_arch_get_host_mapping(void)
+{
+#ifdef HAVE_X11_XKBLIB_H
+    int n;
+    int maps[KBD_MAPPING_NUM] = {
+        KBD_MAPPING_US, KBD_MAPPING_UK, KBD_MAPPING_DE, KBD_MAPPING_DA,
+        KBD_MAPPING_NO, KBD_MAPPING_FI, KBD_MAPPING_IT };
+    char str[KBD_MAPPING_NUM][3] = {
+        "us", "uk", "de", "da", "no", "fi", "it"};
+
+    Display* _display;
+    char* displayName = "";
+
+    XkbDescRec* _kbdDescPtr;
+    Atom symName;
+    char* layoutString;
+
+    char *p;
+
+    _display = XOpenDisplay(displayName);
+
+    _kbdDescPtr = XkbAllocKeyboard();
+    XkbGetNames(_display, XkbSymbolsNameMask, _kbdDescPtr);
+    symName = _kbdDescPtr -> names -> symbols;
+    layoutString = XGetAtomName(_display, symName);
+
+    XCloseDisplay(_display);
+    p = layoutString;
+
+    if (memcmp(p, "pc+", 3) == 0) {
+        p += 3;
+        if (p && (strlen(p) > 1)) {
+            for (n = 1; n < KBD_MAPPING_NUM; n++) {
+                if (memcmp(p, str[n], 2) == 0) {
+                    return maps[n];
+                }
+            }
+        }
+    }
+#endif
+    return KBD_MAPPING_US;
 }

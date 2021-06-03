@@ -31,20 +31,30 @@
 #include "crtc-resources.h"
 #include "video.h"
 
+/*
+    FIXME: instead of defining a green palette, we should output no/max luma
+           here and convert it to proper colors according to what kind of
+           monitor is emulated in the generic video code
+ */
+
 /* base saturation */
-#define CRTC_SATURATION  150.0f
+
+/* must stay below 64 to not result in overflows in the CRT renderer (and maybe
+   elsewhere) */
+#define CRTC_SATURATION   63.0f
 
 /* phase shift of all colors */
-#define CRTC_PHASE         0.5f
+#define CRTC_PHASE        -9.5f
 
 /* chroma angles in UV space */
-#define ANGLE_ORN        -45.0f /* negative orange (orange is at +135.0 degree) */
+#define ANGLE_BLK          0.0f
 #define ANGLE_GRN       -135.0f
 
-static video_cbm_color_t crtc_colors[CRTC_NUM_COLORS]=
+/* FIXME: this is just hand tuned to look somewhat like P1 Phosphor (#41ff00) */
+static video_cbm_color_t crtc_colors[CRTC_NUM_COLORS] =
 {
-    {   0.0f, ANGLE_ORN, -0, "Black"       },
-    { 192.0f, ANGLE_GRN,  1, "Green"       },
+    {   0.0f, ANGLE_BLK, -0, "Black"       },
+    { 128.0f, ANGLE_GRN + 20.0f,  1, "Green"       },
 };
 
 static video_cbm_palette_t crtc_palette =
@@ -52,7 +62,8 @@ static video_cbm_palette_t crtc_palette =
     CRTC_NUM_COLORS,
     crtc_colors,
     CRTC_SATURATION,
-    CRTC_PHASE
+    CRTC_PHASE,
+    CBM_PALETTE_YUV
 };
 
 int crtc_color_update_palette(struct video_canvas_s *canvas)

@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,13 +35,16 @@ extern struct ui_menu_entry_s ui_directory_commands_menu[];
 extern struct ui_menu_entry_s ui_exit_commands_menu[];
 extern struct ui_menu_entry_s ui_help_commands_menu[];
 extern struct ui_menu_entry_s ui_run_commands_menu[];
+extern struct ui_menu_entry_s ui_runmode_commands_menu[];
 extern struct ui_menu_entry_s ui_snapshot_commands_menu[];
 extern struct ui_menu_entry_s ui_snapshot_commands_submenu[];
 extern struct ui_menu_entry_s ui_sound_record_commands_menu[];
+extern struct ui_menu_entry_s ui_sound_record_commands_submenu[];
 extern struct ui_menu_entry_s ui_tool_commands_menu[];
 extern struct ui_menu_entry_s ui_tool_commands_monitor_menu[];
 
 extern void uicommands_shutdown(void);
 extern ui_button_t ui_change_dir(const char *title, const char *prompt, char *buf,unsigned int buflen);
+extern void uicommands_sound_record_stop(void);
 
 #endif

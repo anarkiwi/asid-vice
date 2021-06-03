@@ -35,6 +35,7 @@ const char *machine_romset_resources_list[] = {
     "BasicName",
     "FunctionLowName",
     "FunctionHighName",
+    "DosName1540",
     "DosName1541",
     "DosName1541ii",
     "DosName1570",
@@ -63,8 +64,7 @@ char *machine_romset_file_list(void)
 
 int machine_romset_archive_item_create(const char *romset_name)
 {
-    return romset_archive_item_create(romset_name,
-        machine_romset_resources_list);
+    return romset_archive_item_create(romset_name, machine_romset_resources_list);
 }
 
 void machine_romset_init(void)

@@ -3,8 +3,9 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,19 +35,28 @@
 
 #include "attach.h"
 #include "autostart.h"
+#include "bbrtc.h"
+#include "cartio.h"
 #include "clkguard.h"
 #include "cmdline.h"
 #include "crtc-mem.h"
 #include "crtc.h"
 #include "datasette.h"
 #include "debug.h"
+#include "debugcart.h"
+#include "diskimage.h"
 #include "drive-cmdline-options.h"
 #include "drive-resources.h"
 #include "drive-snapshot.h"
 #include "drive-sound.h"
 #include "drive.h"
-#include "drivecpu.h"
+#include "fliplist.h"
+#include "fsdevice.h"
+#include "gfxoutput.h"
 #include "iecdrive.h"
+#include "init.h"
+#include "joyport.h"
+#include "joystick.h"
 #include "kbdbuf.h"
 #include "keyboard.h"
 #include "log.h"
@@ -57,15 +67,19 @@
 #include "maincpu.h"
 #include "mem.h"
 #include "monitor.h"
+#include "network.h"
+#include "paperclip64.h"
 #include "parallel.h"
 #include "pet-cmdline-options.h"
 #include "pet-resources.h"
 #include "pet-snapshot.h"
 #include "pet.h"
+#include "petcolour.h"
 #include "petiec.h"
 #include "petmem.h"
 #include "petreu.h"
 #include "petdww.h"
+#include "pethre.h"
 #include "pets.h"
 #include "petsound.h"
 #include "petui.h"
@@ -75,6 +89,9 @@
 #include "printer.h"
 #include "resources.h"
 #include "rs232drv.h"
+#include "sampler.h"
+#include "sampler2bit.h"
+#include "sampler4bit.h"
 #include "screenshot.h"
 #include "sid.h"
 #include "sid-cmdline-options.h"
@@ -82,36 +99,27 @@
 #include "sidcart.h"
 #include "sound.h"
 #include "tape.h"
+#include "tapeport.h"
+#include "translate.h"
 #include "traps.h"
 #include "types.h"
+#include "userport.h"
 #include "userport_dac.h"
+#include "userport_joystick.h"
+#include "userport_rtc_58321a.h"
+#include "userport_rtc_ds1307.h"
 #include "util.h"
 #include "via.h"
+#include "vice-event.h"
 #include "video.h"
 #include "video-sound.h"
 #include "vsync.h"
 
-machine_context_t machine_context;
-
-#define NUM_KEYBOARD_MAPPINGS 6
-
-/* beos dummy for the generally used cart function in ui_file.cc */
-#ifdef __BEOS__
-int cartridge_attach_image(int type, const char *filename)
-{
-    return 0;
-}
+#ifdef HAVE_MOUSE
+#include "mouse.h"
 #endif
 
-const char *machine_keymap_res_name_list[NUM_KEYBOARD_MAPPINGS] = {
-    "KeymapBusinessUKSymFile", "KeymapBusinessUKPosFile",
-    "KeymapGraphicsSymFile", "KeymapGraphicsPosFile",
-    "KeymapBusinessDESymFile", "KeymapBusinessDEPosFile"
-};
-
-char *machine_keymap_file_list[NUM_KEYBOARD_MAPPINGS] = {
-    NULL, NULL, NULL, NULL, NULL, NULL
-};
+machine_context_t machine_context;
 
 const char machine_name[] = "PET";
 int machine_class = VICE_MACHINE_PET;
@@ -124,81 +132,441 @@ static double   pet_rfsh_per_sec        = PET_PAL_RFSH_PER_SEC;
 */
 
 static log_t pet_log = LOG_ERR;
-static machine_timing_t machine_timing; 
+static machine_timing_t machine_timing;
+
+int machine_get_keyboard_type(void)
+{
+    int type;
+    if (resources_get_int("KeyboardType", &type) < 0) {
+        return 0;
+    }
+    return type;
+}
+
+char *machine_get_keyboard_type_name(int type)
+{
+    static char names[KBD_TYPE_NUM][5] = { KBD_TYPE_STR_BUSINESS_US, KBD_TYPE_STR_BUSINESS_UK,
+        KBD_TYPE_STR_BUSINESS_DE, KBD_TYPE_STR_BUSINESS_JP, KBD_TYPE_STR_GRAPHICS_US };
+    return names[type]; /* return 0 if no different types exist */
+}
+
+/* return number of available keyboard types for this machine */
+int machine_get_num_keyboard_types(void)
+{
+    return KBD_TYPE_NUM;
+}
+
+/* FIXME: adjust this to reality :) */
+static kbdtype_info_t kbdinfo[KBD_TYPE_NUM + 1] = {
+    { "Business (us)", KBD_TYPE_BUSINESS_US, 0 },
+    { "Business (uk)", KBD_TYPE_BUSINESS_UK, 0 },
+    { "Business (de)", KBD_TYPE_BUSINESS_DE, 0 },
+    { "Business (jp)", KBD_TYPE_BUSINESS_JP, 0 },
+    { "Graphics (us)", KBD_TYPE_GRAPHICS_US, 0 },
+    { NULL, 0, 0 }
+};
+
+kbdtype_info_t *machine_get_keyboard_info_list(void)
+{
+    return &kbdinfo[0];
+}
 
 /* ------------------------------------------------------------------------ */
+
+static joyport_port_props_t userport_joy_control_port_1 = 
+{
+    "Userport joystick adapter port 1",
+    IDGS_USERPORT_JOY_ADAPTER_PORT_1,
+    0,				/* has NO potentiometer connected to this port */
+    0,				/* has NO lightpen support on this port */
+    0					/* port can be switched on/off */
+};
+
+static joyport_port_props_t userport_joy_control_port_2 = 
+{
+    "Userport joystick adapter port 2",
+    IDGS_USERPORT_JOY_ADAPTER_PORT_2,
+    0,				/* has NO potentiometer connected to this port */
+    0,				/* has NO lightpen support on this port */
+    0					/* port can be switched on/off */
+};
+
+static int init_joyport_ports(void)
+{
+    if (joyport_port_register(JOYPORT_3, &userport_joy_control_port_1) < 0) {
+        return -1;
+    }
+    return joyport_port_register(JOYPORT_4, &userport_joy_control_port_2);
+}
 
 /* PET-specific resource initialization.  This is called before initializing
    the machine itself with `machine_init()'.  */
 int machine_resources_init(void)
 {
-    if (traps_resources_init() < 0
-        || vsync_resources_init() < 0
-        || machine_video_resources_init() < 0
-        || pet_resources_init() < 0
-        || petreu_resources_init() < 0
-        || pia1_init_resources() < 0
-        || crtc_resources_init() < 0
-        || petdww_resources_init() < 0
-        || sound_resources_init() < 0
-        || sidcart_resources_init() < 0
-        || userport_dac_resources_init() < 0
-        || drive_resources_init() < 0
-        || datasette_resources_init() < 0
-        || acia1_resources_init() < 0
-        || rs232drv_resources_init() < 0
-        || printer_resources_init() < 0
-#ifndef COMMON_KBD
-        || pet_kbd_resources_init() < 0
-#endif
-        )
+    if (traps_resources_init() < 0) {
+        init_resource_fail("traps");
         return -1;
-
+    }
+    if (pet_resources_init() < 0) {
+        init_resource_fail("pet");
+        return -1;
+    }
+    if (cartio_resources_init() < 0) {
+        init_resource_fail("cartio");
+        return -1;
+    }
+    if (petreu_resources_init() < 0) {
+        init_resource_fail("petreu");
+        return -1;
+    }
+    if (pia1_resources_init() < 0) {
+        init_resource_fail("pia1");
+        return -1;
+    }
+    if (crtc_resources_init() < 0) {
+        init_resource_fail("crtc");
+        return -1;
+    }
+    if (petdww_resources_init() < 0) {
+        init_resource_fail("petdww");
+        return -1;
+    }
+    if (pethre_resources_init() < 0) {
+        init_resource_fail("pethre");
+        return -1;
+    }
+    if (sidcart_resources_init() < 0) {
+        init_resource_fail("sidcart");
+        return -1;
+    }
+    if (drive_resources_init() < 0) {
+        init_resource_fail("drive");
+        return -1;
+    }
+    if (tapeport_resources_init() < 0) {
+        init_resource_fail("tapeport");
+        return -1;
+    }
+    if (datasette_resources_init() < 0) {
+        init_resource_fail("datasette");
+        return -1;
+    }
+    if (acia1_resources_init() < 0) {
+        init_resource_fail("acia1");
+        return -1;
+    }
+    if (rs232drv_resources_init() < 0) {
+        init_resource_fail("rs232drv");
+        return -1;
+    }
+    if (printer_resources_init() < 0) {
+        init_resource_fail("printer");
+        return -1;
+    }
+    if (printer_userport_resources_init() < 0) {
+        init_resource_fail("userport printer");
+        return -1;
+    }
+    if (init_joyport_ports() < 0) {
+        init_resource_fail("joyport ports");
+        return -1;
+    }
+    if (joyport_resources_init() < 0) {
+        init_resource_fail("joyport devices");
+        return -1;
+    }
+    if (joyport_sampler2bit_resources_init() < 0) {
+        init_resource_fail("joyport 2bit sampler");
+        return -1;
+    }
+    if (joyport_sampler4bit_resources_init() < 0) {
+        init_resource_fail("joyport 4bit sampler");
+        return -1;
+    }
+    if (joyport_bbrtc_resources_init() < 0) {
+        init_resource_fail("joyport bbrtc");
+        return -1;
+    }
+    if (joyport_paperclip64_resources_init() < 0) {
+        init_resource_fail("joyport paperclip64 dongle");
+        return -1;
+    }
+    if (joystick_resources_init() < 0) {
+        init_resource_fail("joystick");
+        return -1;
+    }
+    if (userport_resources_init() < 0) {
+        init_resource_fail("userport devices");
+        return -1;
+    }
+    if (gfxoutput_resources_init() < 0) {
+        init_resource_fail("gfxoutput");
+        return -1;
+    }
+    if (sampler_resources_init() < 0) {
+        init_resource_fail("samplerdrv");
+        return -1;
+    }
+    if (fliplist_resources_init() < 0) {
+        init_resource_fail("flip list");
+        return -1;
+    }
+    if (file_system_resources_init() < 0) {
+        init_resource_fail("file system");
+        return -1;
+    }
+    /* Initialize file system device-specific resources.  */
+    if (fsdevice_resources_init() < 0) {
+        init_resource_fail("file system device");
+        return -1;
+    }
+    if (disk_image_resources_init() < 0) {
+        init_resource_fail("disk image");
+        return -1;
+    }
+    if (event_resources_init() < 0) {
+        init_resource_fail("event");
+        return -1;
+    }
+    if (kbdbuf_resources_init() < 0) {
+        init_resource_fail("Keyboard");
+        return -1;
+    }
+    if (autostart_resources_init() < 0) {
+        init_resource_fail("autostart");
+        return -1;
+    }
+#ifdef HAVE_NETWORK
+    if (network_resources_init() < 0) {
+        init_resource_fail("network");
+        return -1;
+    }
+#endif
+#ifdef DEBUG
+    if (debug_resources_init() < 0) {
+        init_resource_fail("debug");
+        return -1;
+    }
+#endif
+#ifdef HAVE_MOUSE
+    if (mouse_resources_init() < 0) {
+        init_resource_fail("mouse");
+        return -1;
+    }
+#endif
+#ifndef COMMON_KBD
+    if (pet_kbd_resources_init() < 0) {
+        init_resource_fail("pet kbd");
+        return -1;
+    }
+#endif
+    if (userport_joystick_resources_init() < 0) {
+        init_resource_fail("userport joystick");
+        return -1;
+    }
+    if (userport_dac_resources_init() < 0) {
+        init_resource_fail("userport dac");
+        return -1;
+    }
+    if (userport_rtc_58321a_resources_init() < 0) {
+        init_resource_fail("userport rtc (58321a)");
+        return -1;
+    }
+    if (userport_rtc_ds1307_resources_init() < 0) {
+        init_resource_fail("userport rtc (ds1307)");
+        return -1;
+    }
+    if (debugcart_resources_init() < 0) {
+        init_resource_fail("debug cart");
+        return -1;
+    }
     return 0;
 }
 
 void machine_resources_shutdown(void)
 {
     petdww_resources_shutdown();
-    video_resources_shutdown();
+    pethre_resources_shutdown();
     pet_resources_shutdown();
     petreu_resources_shutdown();
-    sound_resources_shutdown();
     rs232drv_resources_shutdown();
     printer_resources_shutdown();
     drive_resources_shutdown();
+    fsdevice_resources_shutdown();
+    disk_image_resources_shutdown();
+    sampler_resources_shutdown();
+    cartio_shutdown();
+    userport_rtc_58321a_resources_shutdown();
+    userport_rtc_ds1307_resources_shutdown();
+    userport_resources_shutdown();
+    joyport_bbrtc_resources_shutdown();
+    tapeport_resources_shutdown();
+    debugcart_resources_shutdown();
 }
 
 /* PET-specific command-line option initialization.  */
 int machine_cmdline_options_init(void)
 {
-#if 0
-    if (cmdline_register_options(cmdline_options) < 0)
+    if (traps_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("traps");
         return -1;
+    }
+    if (pet_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("pet");
+        return -1;
+    }
+    if (cartio_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("cartio");
+        return -1;
+    }
+    if (petreu_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("petreu");
+        return -1;
+    }
+    if (crtc_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("crtc");
+        return -1;
+    }
+    if (petdww_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("petdww");
+        return -1;
+    }
+    if (pethre_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("pethre");
+        return -1;
+    }
+    if (pia1_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("pia1");
+        return -1;
+    }
+    if (sidcart_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("sidcart");
+        return -1;
+    }
+    if (drive_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("drive");
+        return -1;
+    }
+    if (tapeport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("tapeport");
+        return -1;
+    }
+    if (datasette_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("datasette");
+        return -1;
+    }
+    if (acia1_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("acia1");
+        return -1;
+    }
+    if (rs232drv_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("rs232drv");
+        return -1;
+    }
+    if (printer_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("printer");
+        return -1;
+    }
+    if (printer_userport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport printer");
+        return -1;
+    }
+    if (joyport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("joyport");
+        return -1;
+    }
+    if (joyport_bbrtc_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("bbrtc");
+        return -1;
+    }
+    if (joystick_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("joystick");
+        return -1;
+    }
+    if (userport_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport");
+        return -1;
+    }
+    if (gfxoutput_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("gfxoutput");
+        return -1;
+    }
+    if (sampler_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("samplerdrv");
+        return -1;
+    }
+    if (fliplist_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("flip list");
+        return -1;
+    }
+    if (file_system_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("attach");
+        return -1;
+    }
+    if (fsdevice_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("file system");
+        return -1;
+    }
+    if (disk_image_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("disk image");
+        return -1;
+    }
+    if (event_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("event");
+        return -1;
+    }
+    if (kbdbuf_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("keyboard");
+        return -1;
+    }
+    if (autostart_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("autostart");
+        return -1;
+    }
+#ifdef HAVE_NETWORK
+    if (network_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("network");
+        return -1;
+    }
 #endif
-
-    if (traps_cmdline_options_init() < 0
-        || vsync_cmdline_options_init() < 0
-        || video_init_cmdline_options() < 0
-        || pet_cmdline_options_init() < 0
-        || petreu_cmdline_options_init() < 0
-        || crtc_cmdline_options_init() < 0
-        || petdww_cmdline_options_init() < 0
-        || pia1_init_cmdline_options() < 0
-        || sound_cmdline_options_init() < 0
-        || sidcart_cmdline_options_init() < 0
-        || userport_dac_cmdline_options_init() < 0
-        || drive_cmdline_options_init() < 0
-        || datasette_cmdline_options_init() < 0
-        || acia1_cmdline_options_init() < 0
-        || rs232drv_cmdline_options_init() < 0
-        || printer_cmdline_options_init() < 0
+#ifdef DEBUG
+    if (debug_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("debug");
+        return -1;
+    }
+#endif
+#ifdef HAVE_MOUSE
+    if (mouse_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("mouse");
+        return -1;
+    }
+#endif
 #ifndef COMMON_KBD
-        || pet_kbd_cmdline_options_init() < 0
-#endif
-        )
+    if (pet_kbd_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("pet kbd");
         return -1;
-
+    }
+#endif
+    if (userport_joystick_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport joystick");
+        return -1;
+    }
+    if (userport_dac_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport dac");
+        return -1;
+    }
+    if (userport_rtc_58321a_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport rtc (58321a)");
+        return -1;
+    }
+    if (userport_rtc_ds1307_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("userport rtc (ds1307)");
+        return -1;
+    }
+    if (debugcart_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("debug cart");
+        return -1;
+    }
     return 0;
 }
 
@@ -208,7 +576,8 @@ int machine_cmdline_options_init(void)
 
 #define SIGNAL_VERT_BLANK_ON    pia1_signal(PIA_SIG_CB1, PIA_SIG_FALL);
 
-static void pet_crtc_signal(unsigned int signal) {
+static void pet_crtc_signal(unsigned int signal)
+{
     if (signal) {
         SIGNAL_VERT_BLANK_ON
     } else {
@@ -230,15 +599,16 @@ static void pet_monitor_init(void)
     monitor_interface_t *drive_interface_init[DRIVE_NUM];
     monitor_cpu_type_t *asmarray[3];
 
-    asmarray[0]=&asm6502;
-    asmarray[1]=&asm6809;
-    asmarray[2]=NULL;
+    asmarray[0] = &asm6502;
+    asmarray[1] = &asm6809;
+    asmarray[2] = NULL;
 
     asm6502_init(&asm6502);
     asm6809_init(&asm6809);
 
-    for (dnr = 0; dnr < DRIVE_NUM; dnr++)
-        drive_interface_init[dnr] = drivecpu_monitor_interface_get(dnr);
+    for (dnr = 0; dnr < DRIVE_NUM; dnr++) {
+        drive_interface_init[dnr] = drive_cpu_monitor_interface_get(dnr);
+    }
 
     /* Initialize the monitor.  */
     monitor_init(maincpu_monitor_interface_get(), drive_interface_init,
@@ -256,13 +626,18 @@ int machine_specific_init(void)
 {
     pet_log = log_open("PET");
 
-    pet_init_ok = 1;    /* used in pet_set_model() */
+    pet_init_ok = 1;    /* used in petmodel_set() */
+
+    event_init();
 
     /* Setup trap handling - must be before mem_load() */
     traps_init();
 
-    if (mem_load() < 0)
+    if (mem_load() < 0) {
         return -1;
+    }
+
+    gfxoutput_init();
 
     log_message(pet_log, "Initializing IEEE488 bus...");
 
@@ -271,18 +646,22 @@ int machine_specific_init(void)
     /* initialize print devices */
     printer_init();
 
-    /* Initialize autostart.  FIXME: We could probably use smaller values.  */
-    /* moved to mem_load() as it is kernal-dependant AF 30jun1998
-    autostart_init(1 * PET_PAL_RFSH_PER_SEC * PET_PAL_CYCLES_PER_RFSH, 0);
-    */
+#ifdef USE_BEOS_UI
+    /* Pre-init PET-specific parts of the menus before crtc_init()
+       creates a canvas window with a menubar at the top. This could
+       also be used by other ports, e.g. GTK+...  */
+    petui_init_early();
+#endif
 
     /* Initialize the CRTC emulation.  */
-    if (crtc_init() == NULL)
+    if (crtc_init() == NULL) {
         return -1;
+    }
 
     crtc_set_retrace_type(petres.crtc);
     crtc_set_retrace_callback(pet_crtc_signal);
     pet_crtc_set_screen();
+    petcolour_init();
 
     via_init(machine_context.via);
     pia1_init();
@@ -291,8 +670,9 @@ int machine_specific_init(void)
 
 #ifndef COMMON_KBD
     /* Initialize the keyboard.  */
-    if (pet_kbd_init() < 0)
+    if (pet_kbd_init() < 0) {
         return -1;
+    }
 #endif
 
     /* Initialize the datasette emulation.  */
@@ -300,6 +680,8 @@ int machine_specific_init(void)
 
     /* Fire up the hardware-level 1541 emulation.  */
     drive_init();
+
+    disk_image_init();
 
     pet_monitor_init();
 
@@ -314,7 +696,7 @@ int machine_specific_init(void)
     /* Initialize native sound chip */
     pet_sound_chip_init();
 
-    /* Initialize cartridge based sound chips */
+    /* Initialize userport based sound chips */
     userport_dac_sound_chip_init();
 
     drive_sound_init();
@@ -330,7 +712,13 @@ int machine_specific_init(void)
     */
 
     /* Initialize the PET-specific part of the UI.  */
-    petui_init();
+    if (!console_mode) {
+        petui_init();
+    }
+
+    if (!video_disabled_mode) {
+        joystick_init();
+    }
 
     /* Initialize the PET Ram and Expansion Unit. */
     petreu_init();
@@ -338,21 +726,35 @@ int machine_specific_init(void)
     /* Initialize the PET Double-W Hi-Res graphics card. */
     petdww_init();
 
+    /* Initialize the PET Hi-Res Emulator graphics card. */
+    pethre_init();
+
     petiec_init();
+
+#ifdef HAVE_MOUSE
+    /* Initialize mouse support (if present).  */
+    mouse_init();
+#endif
 
     machine_drive_stub();
 
-#if defined (USE_XF86_EXTENSIONS) && \
-    (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
+#if defined (USE_XF86_EXTENSIONS) && (defined(USE_XF86_VIDMODE_EXT) || defined (HAVE_XRANDR))
     {
-	/* set fullscreen if user used `-fullscreen' on cmdline */
-	int fs;
-	resources_get_int("UseFullscreen", &fs);
-	if (fs)
-	    resources_set_int("CRTCFullscreen", 1);
+        /* set fullscreen if user used `-fullscreen' on cmdline */
+        int fs;
+        resources_get_int("UseFullscreen", &fs);
+        if (fs) {
+            resources_set_int("CRTCFullscreen", 1);
+        }
     }
 #endif
     return 0;
+}
+
+void machine_specific_powerup(void)
+{
+    petdww_powerup();
+    pethre_powerup();
 }
 
 /* PET-specific initialization.  */
@@ -371,10 +773,8 @@ void machine_specific_reset(void)
     datasette_reset();
     petreu_reset();
     petdww_reset();
-}
-
-void machine_specific_powerup(void)
-{
+    pethre_reset();
+    sampler_reset();
 }
 
 void machine_specific_shutdown(void)
@@ -386,11 +786,18 @@ void machine_specific_shutdown(void)
 
     /* close the video chip(s) */
     petdww_shutdown();
+    pethre_shutdown();
     crtc_shutdown();
 
     petreu_shutdown();
 
-    petui_shutdown();
+#ifdef HAVE_MOUSE
+    mouse_shutdown();
+#endif
+
+    if (!console_mode) {
+        petui_shutdown();
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -410,7 +817,7 @@ static void machine_vsync_hook(void)
 
     /* The drive has to deal both with our overflowing and its own one, so
        it is called even when there is no overflowing in the main CPU.  */
-    drivecpu_prevent_clk_overflow_all(sub);
+    drive_cpu_prevent_clk_overflow_all(sub);
 }
 
 /* Dummy - no restore key.  */
@@ -437,17 +844,15 @@ long machine_get_cycles_per_frame(void)
 
 void machine_get_line_cycle(unsigned int *line, unsigned int *cycle, int *half_cycle)
 {
-    *line = (unsigned int)((maincpu_clk) / machine_timing.cycles_per_line
-            % machine_timing.screen_lines);
+    *line = (unsigned int)((maincpu_clk) / machine_timing.cycles_per_line % machine_timing.screen_lines);
 
     *cycle = (unsigned int)((maincpu_clk) % machine_timing.cycles_per_line);
 
     *half_cycle = (int)-1;
 }
 
-void machine_change_timing(int timeval)
+void machine_change_timing(int timeval, int border_mode)
 {
-
     switch (timeval) {
         case MACHINE_SYNC_PAL:
             machine_timing.cycles_per_sec = PET_PAL_CYCLES_PER_SEC;
@@ -455,6 +860,7 @@ void machine_change_timing(int timeval)
             machine_timing.rfsh_per_sec = PET_PAL_RFSH_PER_SEC;
             machine_timing.cycles_per_line = PET_PAL_CYCLES_PER_LINE;
             machine_timing.screen_lines = PET_PAL_SCREEN_LINES;
+            machine_timing.power_freq = 50;
             break;
         case MACHINE_SYNC_NTSC:
             machine_timing.cycles_per_sec = PET_NTSC_CYCLES_PER_SEC;
@@ -462,6 +868,7 @@ void machine_change_timing(int timeval)
             machine_timing.rfsh_per_sec = PET_NTSC_RFSH_PER_SEC;
             machine_timing.cycles_per_line = PET_NTSC_CYCLES_PER_LINE;
             machine_timing.screen_lines = PET_NTSC_SCREEN_LINES;
+            machine_timing.power_freq = 60;
             break;
         default:
             log_error(pet_log, "Unknown machine timing.");
@@ -521,10 +928,6 @@ int machine_autodetect_psid(const char *name)
     return -1;
 }
 
-void machine_play_psid(int tune)
-{
-}
-
 
 /* ------------------------------------------------------------------------- */
 
@@ -539,16 +942,16 @@ void pet_crtc_set_screen(void)
 
     if (!cols) {
         cols = petres.rom_video;
-        vmask = (cols == 40) ? 0x3ff : 0x7ff;
-    }
-    if (!cols) {
-        cols = PET_COLS;
+        if (!cols) {
+            cols = PET_COLS;
+        }
         vmask = (cols == 40) ? 0x3ff : 0x7ff;
     }
 
     /* when switching 8296 to 40 columns, CRTC ends up at $9000 otherwise...*/
-    if (cols == 40)
+    if (cols == 40) {
         vmask = 0x3ff;
+    }
 /*
     log_message(pet_mem_log, "set_screen(vmask=%04x, cols=%d, crtc=%d)",
                 vmask, cols, petres.crtc);
@@ -592,8 +995,9 @@ void pet_crtc_set_screen(void)
 
 int machine_screenshot(screenshot_t *screenshot, struct video_canvas_s *canvas)
 {
-    if (canvas != crtc_get_canvas())
+    if (canvas != crtc_get_canvas()) {
         return -1;
+    }
 
     crtc_screenshot(screenshot);
     return 0;
@@ -602,16 +1006,12 @@ int machine_screenshot(screenshot_t *screenshot, struct video_canvas_s *canvas)
 int machine_canvas_async_refresh(struct canvas_refresh_s *refresh,
                                  struct video_canvas_s *canvas)
 {
-    if (canvas != crtc_get_canvas())
+    if (canvas != crtc_get_canvas()) {
         return -1;
+    }
 
     crtc_async_refresh(refresh);
     return 0;
-}
-
-int machine_num_keyboard_mappings(void)
-{
-    return NUM_KEYBOARD_MAPPINGS;
 }
 
 struct image_contents_s *machine_diskcontents_bus_read(unsigned int unit)
@@ -624,6 +1024,11 @@ BYTE machine_tape_type_default(void)
     return TAPE_CAS_TYPE_PRG;
 }
 
+BYTE machine_tape_behaviour(void)
+{
+    return TAPE_BEHAVIOUR_NORMAL;
+}
+
 int machine_addr_in_ram(unsigned int addr)
 {
     return addr < 0xb000;
@@ -634,8 +1039,38 @@ const char *machine_get_name(void)
     return machine_name;
 }
 
-#ifdef USE_SDLUI
-/* Kludges for vsid & linking issues */
-const char **csidmodel = NULL;
-void psid_init_driver(void) {}
-#endif
+/* ------------------------------------------------------------------------- */
+/* native screenshot support */
+
+BYTE *crtc_get_active_bitmap(void)
+{
+    BYTE *retval = NULL;
+
+    retval = petdww_crtc_get_active_bitmap();
+
+    /* left open for future expansion of boards with their own ram */
+
+    return retval;
+}
+
+/* ------------------------------------------------------------------------- */
+
+static void pet_userport_set_flag(BYTE b)
+{
+    viacore_signal(machine_context.via, VIA_SIG_CA1, b ? VIA_SIG_RISE : VIA_SIG_FALL);
+}
+
+static userport_port_props_t userport_props = {
+    1, /* has pa2 pin */
+    0, /* NO pa3 pin */
+    pet_userport_set_flag, /* has flag pin */
+    0, /* NO pc pin */
+    0  /* NO cnt1, cnt2 or sp pins */
+};
+
+int machine_register_userport(void)
+{
+    userport_port_register(&userport_props);
+
+    return 0;
+}

@@ -3,7 +3,7 @@
  *
  * Written by
  *  Jouko Valta <jopi@stekt.oulu.fi>
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -44,8 +44,8 @@
 
 struct snapshot_s;
 
-extern int pia1_init_resources(void);
-extern int pia1_init_cmdline_options(void);
+extern int pia1_resources_init(void);
+extern int pia1_cmdline_options_init(void);
 
 extern void pia1_init(void);
 extern void pia1_reset(void);
@@ -54,6 +54,8 @@ extern void pia1_store(WORD addr, BYTE value);
 extern BYTE pia1_read(WORD addr);
 extern BYTE pia1_peek(WORD addr);
 extern void pia1_set_tape_sense(int v);
+extern void pia1_set_tape_write_in(int v);
+extern void pia1_set_tape_motor_in(int v);
 
 extern int pia1_snapshot_read_module(struct snapshot_s *);
 extern int pia1_snapshot_write_module(struct snapshot_s *);
@@ -72,4 +74,3 @@ extern int pia2_snapshot_read_module(struct snapshot_s *);
 extern int pia2_snapshot_write_module(struct snapshot_s *);
 
 #endif
-

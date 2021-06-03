@@ -58,8 +58,8 @@ static void glue_pport_update(drive_context_t *drv)
     static BYTE old_output = 0;
     BYTE output, input;
 
-    output = (drv->cpud->drive_ram[1] & drv->cpud->drive_ram[0])
-             | ~(drv->cpud->drive_ram[0]);
+    output = (drv->drive->drive_ram[1] & drv->drive->drive_ram[0])
+             | ~(drv->drive->drive_ram[0]);
 
     /* Stepper motor.  */
     if (((old_output ^ output) & 0x3) && (output & 0x4)) {
@@ -78,20 +78,22 @@ static void glue_pport_update(drive_context_t *drv)
     /* Drive active LED.  */
     drv->drive->led_status = (output & 8) ? 0 : 1;
 
-    if (drv->drive->led_status)
+    if (drv->drive->led_status) {
         drv->drive->led_active_ticks += *(drv->clk_ptr)
                                         - drv->drive->led_last_change_clk;
+    }
     drv->drive->led_last_change_clk = *(drv->clk_ptr);
 
-    if ((old_output ^ output) & 0x60)
+    if ((old_output ^ output) & 0x60) {
         rotation_speed_zone_set((output >> 5) & 0x3, drv->mynumber);
+    }
 
     rotation_rotate_disk(drv->drive);
 
     input = drive_writeprotect_sense(drv->drive)
             | (drv->drive->byte_ready_level ? 0x80 : 0);
 
-    drv->cpud->drive_ram[1] = output & (input | ~0x90);
+    drv->drive->drive_ram[1] = output & (input | ~0x90);
 
     old_output = output;
 }
@@ -99,24 +101,24 @@ static void glue_pport_update(drive_context_t *drv)
 BYTE glue1551_port0_read(drive_context_t *drv)
 {
     glue_pport_update(drv);
-    return drv->cpud->drive_ram[0];
+    return drv->drive->drive_ram[0];
 }
 
 BYTE glue1551_port1_read(drive_context_t *drv)
 {
     glue_pport_update(drv);
-    return drv->cpud->drive_ram[1];
+    return drv->drive->drive_ram[1];
 }
 
 void glue1551_port0_store(drive_context_t *drv, BYTE value)
 {
-    drv->cpud->drive_ram[0] = value;
+    drv->drive->drive_ram[0] = value;
     glue_pport_update(drv);
 }
 
 void glue1551_port1_store(drive_context_t *drv, BYTE value)
 {
-    drv->cpud->drive_ram[1] = value;
+    drv->drive->drive_ram[1] = value;
     glue_pport_update(drv);
 }
 
@@ -152,7 +154,7 @@ void glue1551_init(drive_context_t *drv)
                                                     buffer, glue1551_timer,
                                                     drv);
     glue1551[drv->mynumber].int_num = interrupt_cpu_status_int_new(
-                                          drv->cpu->int_status, buffer);
+        drv->cpu->int_status, buffer);
     lib_free(buffer);
 }
 
@@ -166,4 +168,3 @@ void glue1551_reset(drive_context_t *drv)
     drv->drive->led_status = 1;
     drive_update_ui_status();
 }
-

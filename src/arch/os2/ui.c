@@ -69,7 +69,8 @@ int use_leds;
 
 static int set_use_leds(int val, void *param)
 {
-    use_leds = val;
+    use_leds = val ? 1 : 0;
+
     return 0;
 }
 
@@ -127,6 +128,11 @@ int c64scui_init(void)
     return 0;
 }
 
+int scpu64ui_init(void)
+{
+    return 0;
+}
+
 int c128ui_init(void)
 {
     return 0;
@@ -167,6 +173,14 @@ void ui_shutdown(void)
 }
 
 void c64ui_shutdown(void)
+{
+}
+
+void c64scui_shutdown(void)
+{
+}
+
+void scpu64ui_shutdown(void)
 {
 }
 
@@ -429,7 +443,7 @@ ui_jam_action_t ui_jam_dialog(const char *format,...)
 
 int ui_extend_image_dialog(void)
 {
-    return WinMessageBox(HWND_DESKTOP, HWND_DESKTOP, "Extend disk image in drive to 40 tracks?", "VICE/2 Extend Disk Image", 0, MB_YESNO) == MBID_YES;
+    return WinMessageBox(HWND_DESKTOP, HWND_DESKTOP, "Do you want to extend the disk image?", "VICE/2 Extend Disk Image", 0, MB_YESNO) == MBID_YES;
 }
 
 //------------------------------------------------------------------------

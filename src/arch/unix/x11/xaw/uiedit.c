@@ -127,9 +127,9 @@ static void SetSelection(
     XtPointer callData)         /* unused */
 {
     XmuInternStrings(XtDisplay(_ui_top_level), &selection_type, 1, &selection);
-    if (XtOwnSelection(w, selection,
-                       XtLastTimestampProcessed(XtDisplay(w)),
-                       ConvertSelection, LoseSelection, NULL));
+    XtOwnSelection(w, selection,
+                   XtLastTimestampProcessed(XtDisplay(w)),
+                   ConvertSelection, LoseSelection, NULL);
 }
 
 /* VICE code */
@@ -173,5 +173,11 @@ static UI_CALLBACK(ui_edit_command_paste)
 ui_menu_entry_t ui_edit_commands_submenu[] = {
     { N_("Copy"), UI_MENU_TYPE_NORMAL, (ui_callback_t)ui_edit_command_copy, NULL, NULL },
     { N_("Paste"), UI_MENU_TYPE_NORMAL, (ui_callback_t)ui_edit_command_paste, NULL, NULL },
+    { NULL }
+};
+
+ui_menu_entry_t ui_edit_commands_menu[] = {
+    { N_("Edit"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, ui_edit_commands_submenu },
     { NULL }
 };

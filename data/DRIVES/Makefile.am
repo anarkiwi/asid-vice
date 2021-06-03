@@ -1,6 +1,7 @@
 drvdir = $(VICEDIR)/DRIVES
 
 drv_DATA = \
+	dos1540 \
 	dos1541 \
 	dos1551 \
 	d1541II \
@@ -8,8 +9,6 @@ drv_DATA = \
 	dos1571 \
 	d1571cr \
 	dos1581 \
-	dos2000 \
-	dos4000 \
 	dos2031 \
 	dos1001 \
 	dos2040 \

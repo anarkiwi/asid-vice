@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Thomas Bretz <tbretz@gsi.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -47,12 +48,10 @@
 #include <ctype.h>
 #include <process.h>
 
-#if defined(__IBMC__) || defined(WATCOM_COMPILE)
 #include <io.h>
 #include <fcntl.h>
 #include <direct.h>
 #include <sys/stat.h>
-#endif
 
 #ifndef HAVE_GETTIMEOFDAY
 #include <sys/timeb.h>
@@ -225,6 +224,11 @@ char *archdep_default_fliplist_file_name(void)
     return util_concat(archdep_boot_path(), "\\vice2-", machine_name, ".vfl", NULL);
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    return util_concat(archdep_boot_path(), "\\vice2.rtc", NULL);
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
     const char *home;
@@ -241,7 +245,7 @@ int archdep_default_logger(const char *lvl, const char *txt)
     // This is used if archdep_open_default_log_file returns NULL
     //
 
-#ifndef __X1541__
+#if !defined(__X1541__) && !defined(__PETCAT__)
     char *text = util_concat(lvl, txt, NULL);
 
     WinSendMsg(hwndLog, WM_INSERT, text, FALSE);
@@ -269,35 +273,13 @@ FILE *archdep_open_default_log_file()
         setbuf(fLog, NULL);
     }
 
-#ifndef __X1541__
+#if !defined(__X1541__) && !defined(__PETCAT__)
     resources_get_int("Logwin", &val);
     log_dialog(val);
 #endif
 
     archlog = log_open("Archdep");
     return NULL;
-}
-
-int archdep_num_text_lines(void)
-{
-#if defined(__IBMC__) || defined(WATCOM_COMPILE)
-   return 25;
-#else
-   int dst[2];
-   _scrsize(dst);
-   return dst[1];
-#endif
-}
-
-int archdep_num_text_columns(void)
-{
-#if defined(__IBMC__) || defined(WATCOM_COMPILE)
-   return 80;
-#else
-   int dst[2];
-   _scrsize(dst);
-   return dst[0];
-#endif
 }
 
 int archdep_path_is_relative(const char *path)
@@ -576,6 +558,11 @@ int archdep_file_is_blockdev(const char *name)
 int archdep_file_is_chardev(const char *name)
 {
     return 0;
+}
+
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
 }
 
 void archdep_shutdown(void)

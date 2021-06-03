@@ -32,6 +32,8 @@
 
 #include "vice.h"
 
+#if defined(WIN32_COMPILE) && !defined(__XBOX__)
+
 #include <stdio.h>
 
 #if __GNUC__>2 || (__GNUC__==2 && __GNUC_MINOR__>=91) || defined _MSC_VER || defined __WATCOMC__
@@ -65,9 +67,9 @@ static void sound_debug(const char *format, ...)
     va_end(args);
     log_debug(tmp);
 }
-#define DEBUG(x) sound_debug x
+#define SDEBUG(x) sound_debug x
 #else
-#define DEBUG(x)
+#define SDEBUG(x)
 #endif
 
 
@@ -128,12 +130,11 @@ static unsigned wmm_timer_id = 0;
 /* Inactivity timer (for clearing the buffer) */
 static int inactivity_timer;
 
-static SWORD                last_buffered_sample[2];
+static SWORD last_buffered_sample[2];
 
 
 /* Prototypes */
-static int wmm_init(const char *param, int *speed,
-                   int *fragsize, int *fragnr, int *channels);
+static int wmm_init(const char *param, int *speed, int *fragsize, int *fragnr, int *channels);
 static void wmm_close(void);
 static int wmm_bufferspace(void);
 static int wmm_write(SWORD *pbuf, size_t nr);
@@ -149,14 +150,16 @@ int sound_init_wmm_device(void);
 static void CALLBACK wmm_timercallback(UINT uTimerID, UINT uMsg, DWORD_PTR dwUser,
                                        DWORD_PTR dw1, DWORD_PTR dw2)
 {
-    if (!sndinitted)
+    if (!sndinitted) {
         return;
+    }
 
-    if (wavehdr.dwFlags & WHDR_DONE)
-       return; /* Buffer stopped playing */
-
-    if (!headerprepared)
+    if (wavehdr.dwFlags & WHDR_DONE) {
+        return; /* Buffer stopped playing */
+    }
+    if (!headerprepared) {
         return;
+    }
 
     /*
      * Increment inactivity timer. If inactive for a whole buffer, stop
@@ -176,7 +179,7 @@ static int wmm_init(const char *param, int *speed, int *fragsize, int *fragnr,
 {
     DWORD dwVersion;
 
-    DEBUG(("Windows Multimedia sound driver initialization: speed = %d, fragsize = %d, fragnr = %d\n",
+    SDEBUG(("Windows Multimedia sound driver initialization: speed = %d, fragsize = %d, fragnr = %d\n",
            *speed, *fragsize, *fragnr));
 
     num_of_channels = *channels;
@@ -198,27 +201,26 @@ static int wmm_init(const char *param, int *speed, int *fragsize, int *fragnr,
 
 
     /* Try to open as 16bit */
-    if (waveOutOpen(&hwaveout, WAVE_MAPPER, &wavfmt, 0, 0, CALLBACK_NULL
-        | WAVE_ALLOWSYNC) == MMSYSERR_NOERROR)
+    if (waveOutOpen(&hwaveout, WAVE_MAPPER, &wavfmt, 0, 0, CALLBACK_NULL | WAVE_ALLOWSYNC) == MMSYSERR_NOERROR) {
         goto WAVEOUT_OK;
+    }
 
 
     /* If not successful, then try 8-bit */
     is16bit = 0;
     wavfmt.wBitsPerSample = 8;
-    wavfmt.nAvgBytesPerSec = *speed* *channels;
+    wavfmt.nAvgBytesPerSec = *speed * *channels;
     wavfmt.nBlockAlign = 1 * *channels;
 
     /* Try to open as 8bit */
-    if (waveOutOpen(&hwaveout, WAVE_MAPPER, &wavfmt, 0, 0, CALLBACK_NULL
-        | WAVE_ALLOWSYNC) != MMSYSERR_NOERROR) {
+    if (waveOutOpen(&hwaveout, WAVE_MAPPER, &wavfmt, 0, 0, CALLBACK_NULL | WAVE_ALLOWSYNC) != MMSYSERR_NOERROR) {
         ui_error("Couldn't open waveout device\n");
         wmm_close();
         return -1;
     }
-    WAVEOUT_OK:
+WAVEOUT_OK:
 
-    DEBUG(("16bit flag: %d",is16bit));
+    SDEBUG(("16bit flag: %d", is16bit));
 
     /* Calculate buffer size */
     fragment_size = *fragsize;
@@ -232,16 +234,18 @@ static int wmm_init(const char *param, int *speed, int *fragsize, int *fragnr,
      * Windows tells us is not entirely right)
      */
     play_cursor_offset = *speed / 16;
-    if (is16bit)
+    if (is16bit) {
         play_cursor_offset <<= 1;
-    if (play_cursor_offset >= (int)buffer_size)
+    }
+    if (play_cursor_offset >= (int)buffer_size) {
         play_cursor_offset = 0;
+    }
 
     /* If we're on Windows 2000/ME(?), no magic offset */
     dwVersion = GetVersion();
-    if ((dwVersion & 0xff) >= 5 ||
-		((dwVersion & 0xff) == 4 && ((dwVersion >> 8 & 0xff) >= 90)))
-		 play_cursor_offset = 0;
+    if ((dwVersion & 0xff) >= 5 || ((dwVersion & 0xff) == 4 && ((dwVersion >> 8 & 0xff) >= 90))) {
+        play_cursor_offset = 0;
+    }
 
     /* Reset writing pos, wrapping subtract, inactivity timer */
     write_cursor = buffer_size - fragment_bytesize;
@@ -249,13 +253,12 @@ static int wmm_init(const char *param, int *speed, int *fragsize, int *fragnr,
     inactivity_timer = 0;
 
     /* Allocate sound buffer */
-    hbuffer = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE | GMEM_ZEROINIT,
-              buffer_size);
+    hbuffer = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE | GMEM_ZEROINIT, buffer_size);
 
     if (!hbuffer) {
         ui_error("Couldn't allocate sound buffer\n");
         wmm_close();
-     	return -1;
+        return -1;
     }
 
     lpbuffer = GlobalLock(hbuffer);
@@ -263,7 +266,7 @@ static int wmm_init(const char *param, int *speed, int *fragsize, int *fragnr,
     if (!lpbuffer) {
         ui_error("Couldn't lock sound buffer\n");
         wmm_close();
-     	return -1;
+        return -1;
     }
 
     /* Set wave header */
@@ -276,21 +279,20 @@ static int wmm_init(const char *param, int *speed, int *fragsize, int *fragnr,
     /* Make a timer callback for clearing the buffer */
     if (timeGetDevCaps(&wmm_tc, sizeof(TIMECAPS)) != TIMERR_NOERROR) {
         ui_error("Couldn't set sound timer callback\n");
-	    wmm_close();
-     	return -1;
+        wmm_close();
+        return -1;
     }
 
     timeBeginPeriod(wmm_tc.wPeriodMin);
     beginperiod = 1;
-    wmm_timer_id = timeSetEvent((*fragsize * 1000) / (*speed), 0,
-                   wmm_timercallback, 0, TIME_PERIODIC);
+    wmm_timer_id = timeSetEvent((*fragsize * 1000) / (*speed), 0, wmm_timercallback, 0, TIME_PERIODIC);
     if (!wmm_timer_id) {
         ui_error("Couldn't set sound timer callback\n");
         wmm_close();
         return -1;
     }
 
-    DEBUG(("Windows Multimedia Sound initialization done succesfully.\n"));
+    SDEBUG(("Windows Multimedia Sound initialization done succesfully.\n"));
 
     sndinitted = 1;
     return 0;
@@ -332,21 +334,28 @@ static int wmm_bufferspace(void)
     DWORD play_cursor;
     int value;
 
-    if (!sndinitted)
+    if (!sndinitted) {
         return 0;
+    }
 
-    if (wavehdr.dwFlags & WHDR_DONE)
-        return 0; /* Buffer stopped playing */
+    if (wavehdr.dwFlags & WHDR_DONE) {
+        value = buffer_size;
+        if (is16bit) {
+            value >>= 1;
+        }
+        return value / num_of_channels;
 
+    }
     if (waveOutGetPosition(hwaveout, &mmtime, sizeof(mmtime))
-        != MMSYSERR_NOERROR)
-      	return 0;
+        != MMSYSERR_NOERROR) {
+        return 0;
+    }
 
     play_cursor = mmtime.u.cb;
     /* Take care of buffer wrap and possible counter rollover */
     play_cursor -= play_cursor_subtract;
     if (play_cursor >= buffer_size) {
-        play_cursor_subtract += (play_cursor / buffer_size)*buffer_size;
+        play_cursor_subtract += (play_cursor / buffer_size) * buffer_size;
         play_cursor %= buffer_size;
     }
 
@@ -356,13 +365,15 @@ static int wmm_bufferspace(void)
 
     value = write_cursor - play_cursor;
 
-    if (value < 0)
+    if (value < 0) {
         value += buffer_size;
+    }
 
     value = buffer_size - value;
 
-    if (is16bit)
+    if (is16bit) {
         value >>= 1;
+    }
 
     return value / num_of_channels;
 }
@@ -375,22 +386,25 @@ static int wmm_write(SWORD *pbuf, size_t nr)
     char *destptr;
     int i;
 
-    if (!sndinitted) return 0;
+    if (!sndinitted) {
+        return 0;
+    }
 
 
     /* Has buffer stopped playing? (or not yet started) */
     if (wavehdr.dwFlags & WHDR_DONE) {
         waveOutReset(hwaveout); /* To clear position counter */
         if (headerprepared) {
-     	    waveOutUnprepareHeader(hwaveout, &wavehdr, sizeof(WAVEHDR));
+            waveOutUnprepareHeader(hwaveout, &wavehdr, sizeof(WAVEHDR));
             headerprepared = 0;
         }
 
         /* Clear buffer to start from silence */
-        if (is16bit)
+        if (is16bit) {
             memset(lpbuffer, 0, buffer_size);
-        else
+        } else {
             memset(lpbuffer, 0x80, buffer_size);
+        }
 
         /* Reset writing pos, wrapping subtract, inactivity timer */
         write_cursor = buffer_size - fragment_bytesize;
@@ -400,7 +414,7 @@ static int wmm_write(SWORD *pbuf, size_t nr)
         /* Set buffer looping */
         wavehdr.dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
         wavehdr.dwLoops = 0x7fffffff;
-     	waveOutPrepareHeader(hwaveout, &wavehdr, sizeof(WAVEHDR));
+        waveOutPrepareHeader(hwaveout, &wavehdr, sizeof(WAVEHDR));
 
         /* Start buffer playing */
         if (waveOutWrite(hwaveout, &wavehdr, sizeof wavehdr)
@@ -410,25 +424,25 @@ static int wmm_write(SWORD *pbuf, size_t nr)
             return -1;
         }
         headerprepared = 1;
-    } else
+    } else {
         inactivity_timer = 0; /* Else, just reset inactivity timer */
-
-
+    }
     worktodo = (DWORD)nr * (is16bit ? sizeof(SWORD) : 1);
 
-    if (worktodo > buffer_size)
+    if (worktodo > buffer_size) {
         return 0; /* Sanity check */
-
-    for (;;) {
+    }
+    for (;; ) {
         DWORD freebufspace;
 
-        if (waveOutGetPosition(hwaveout, &mmtime, sizeof(mmtime))
-            != MMSYSERR_NOERROR) return 0;
+        if (waveOutGetPosition(hwaveout, &mmtime, sizeof(mmtime)) != MMSYSERR_NOERROR) {
+            return 0;
+        }
         play_cursor = mmtime.u.cb;
         /* Take care of buffer wrap and possible counter rollover */
         play_cursor -= play_cursor_subtract;
         if (play_cursor >= buffer_size) {
-            play_cursor_subtract += (play_cursor / buffer_size)*buffer_size;
+            play_cursor_subtract += (play_cursor / buffer_size) * buffer_size;
             play_cursor %= buffer_size;
         }
 
@@ -438,11 +452,13 @@ static int wmm_write(SWORD *pbuf, size_t nr)
 
         /* Wait until enough free space in the circular buffer */
         freebufspace = (play_cursor - write_cursor);
-        if (freebufspace >= worktodo)
+        if (freebufspace >= worktodo) {
             break;
+        }
         /* Also break out of loop if buffer stops playing */
-        if (wavehdr.dwFlags & WHDR_DONE)
+        if (wavehdr.dwFlags & WHDR_DONE) {
             break;
+        }
     }
 
     destptr = lpbuffer + write_cursor;
@@ -454,19 +470,20 @@ static int wmm_write(SWORD *pbuf, size_t nr)
             DWORD part2 = workend - buffer_size;
             DWORD part1 = worktodo - part2;
 
-            memcpy(destptr,pbuf,part1);
+            memcpy(destptr, pbuf, part1);
             pbuf += part1 >> 1;
-            memcpy(lpbuffer,pbuf,part2);
+            memcpy(lpbuffer, pbuf, part2);
             pbuf += part2 >> 1;
         } else {
-            memcpy(destptr,pbuf,worktodo);
+            memcpy(destptr, pbuf, worktodo);
             pbuf += worktodo >> 1;
         }
     } else {
         for (t = 0; t < (int)worktodo; t++) {
             *destptr++ = (*pbuf >> 8) + 0x80;
-            if (destptr >= (lpbuffer + buffer_size))
+            if (destptr >= (lpbuffer + buffer_size)) {
                 destptr = lpbuffer;
+            }
             pbuf++;
         }
     }
@@ -489,16 +506,19 @@ static int wmm_suspend(void)
 
     p = lib_malloc(fragment_size * num_of_channels * sizeof(SWORD));
 
-    if (!p)
+    if (!p) {
         return 0;
+    }
 
     for (c = 0; c < num_of_channels; c++) {
-        for (i = 0; i < fragment_size; i++) 
+        for (i = 0; i < fragment_size; i++) {
             p[i * num_of_channels + c] = last_buffered_sample[c];
+        }
     }
-    
-    for (i = 0; i < num_fragments; i++)
+
+    for (i = 0; i < num_fragments; i++) {
         wmm_write(p, fragment_size * num_of_channels);
+    }
 
     lib_free(p);
 
@@ -509,9 +529,9 @@ static int wmm_resume(void)
 {
     DWORD play_cursor;
 
-    if (waveOutGetPosition(hwaveout, &mmtime, sizeof(mmtime))
-        != MMSYSERR_NOERROR)
-      	return 0;
+    if (waveOutGetPosition(hwaveout, &mmtime, sizeof(mmtime)) != MMSYSERR_NOERROR) {
+        return 0;
+    }
 
     play_cursor = mmtime.u.cb - (mmtime.u.cb % fragment_bytesize);
 
@@ -540,4 +560,4 @@ int sound_init_wmm_device(void)
 {
     return sound_register_device(&wmm_device);
 }
-
+#endif

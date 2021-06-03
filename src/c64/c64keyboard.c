@@ -29,10 +29,13 @@
 #include "c64cia.h"
 #include "c64keyboard.h"
 #include "interrupt.h"
+#include "joystick.h"
 #include "keyboard.h"
 #include "machine.h"
 #include "maincpu.h"
 #include "vicii.h"
+
+int c64keyboard_active = 1;
 
 static unsigned int c64keyboard_int_num;
 
@@ -65,6 +68,7 @@ void c64keyboard_init(void)
     switch (machine_class) {
         case VICE_MACHINE_C64:
         case VICE_MACHINE_C64SC:
+        case VICE_MACHINE_SCPU64:
         case VICE_MACHINE_C128:
             keyboard_register_machine(c64keyboard_machine_func);
             joystick_register_machine(c64joystick_machine_func);
@@ -73,4 +77,9 @@ void c64keyboard_init(void)
             /* No lightpen in x64dtv */
             break;
     }
+}
+
+void c64keyboard_enable(int val)
+{
+    c64keyboard_active = val ? 1 : 0;
 }

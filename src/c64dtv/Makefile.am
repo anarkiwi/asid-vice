@@ -1,6 +1,6 @@
 AM_CFLAGS=@INLINE_UNIT_GROWTH@
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -10,9 +10,12 @@ INCLUDES = \
 	-I$(top_srcdir)/src/vicii \
 	-I$(top_srcdir)/src/video \
 	-I$(top_srcdir)/src/raster \
+	-I$(top_srcdir)/src/samplerdrv \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/lib/p64 \
-	-I$(top_srcdir)/src/c64
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/c64 \
+	-I$(top_srcdir)/src/tapeport
 
 noinst_LIBRARIES = libc64dtv.a libc64dtvstubs.a
 
@@ -50,7 +53,10 @@ libc64dtv_a_SOURCES = \
 	c64dtvmodel.c \
 	c64dtvmodel.h \
 	c64dtvpla.c \
+	c64dtvprinter.c \
 	c64dtvsound.c \
+	debugcart.c \
+	debugcart.h \
 	flash-trap.c \
 	flash-trap.h \
 	hummeradc.c \

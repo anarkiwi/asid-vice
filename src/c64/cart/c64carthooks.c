@@ -38,12 +38,13 @@
 #define CARTRIDGE_INCLUDE_SLOTMAIN_API
 #include "c64cartsystem.h"
 #undef CARTRIDGE_INCLUDE_SLOTMAIN_API
-#include "c64export.h"
 #include "c64mem.h"
 #include "cartio.h"
 #include "cartridge.h"
 #include "cmdline.h"
+#include "cpmcart.h"
 #include "crt.h"
+#include "export.h"
 #include "interrupt.h"
 #include "lib.h"
 #include "log.h"
@@ -69,6 +70,7 @@
 #include "c64tpi.h"
 #include "comal80.h"
 #include "capture.h"
+#include "debugcart.h"
 #include "delaep256.h"
 #include "delaep64.h"
 #include "delaep7x8.h"
@@ -77,6 +79,7 @@
 #include "dinamic.h"
 #include "dqbb.h"
 #include "ds12c887rtc.h"
+#include "easycalc.h"
 #include "easyflash.h"
 #include "epyxfastload.h"
 #include "exos.h"
@@ -91,11 +94,13 @@
 #include "gamekiller.h"
 #include "georam.h"
 #include "gs.h"
+#include "gmod2.h"
 #include "ide64.h"
 #include "isepic.h"
 #include "kcs.h"
 #include "kingsoft.h"
 #include "mach5.h"
+#include "machine.h"
 #include "magicdesk.h"
 #include "magicformel.h"
 #include "magicvoice.h"
@@ -112,7 +117,10 @@
 #include "reu.h"
 #include "rexep256.h"
 #include "rexutility.h"
+#include "rgcd.h"
+#include "rrnetmk3.h"
 #include "ross.h"
+#include "shortbus_digimax.h"
 #include "silverrock128.h"
 #include "simonsbasic.h"
 #include "snapshot64.h"
@@ -122,8 +130,8 @@
 #include "superexplode5.h"
 #include "supersnapshot.h"
 #include "supersnapshot4.h"
-#ifdef HAVE_TFE
-#include "tfe.h"
+#ifdef HAVE_PCAP
+#include "ethernetcart.h"
 #endif
 #include "warpspeed.h"
 #include "westermann.h"
@@ -170,6 +178,7 @@ extern export_t export_passthrough; /* slot1 and main combined, goes into slot0 
         CARTRIDGE_MIDI_MAPLIN
         CARTRIDGE_TFE
         CARTRIDGE_TURBO232
+        CARTRIDGE_CPM
 
     all other carts should get a commandline option here like this:
 
@@ -269,6 +278,11 @@ static const cmdline_option_t cmdline_options[] =
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_ATTACH_RAW_EASY_FLASH_CART,
       NULL, NULL },
+    { "-carteasycalc", CALL_FUNCTION, 1,
+      cart_attach_cmdline, (void *)CARTRIDGE_EASYCALC, NULL, NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDCLS_ATTACH_RAW_EASYCALC_CART,
+      NULL, NULL },
     /* omitted: CARTRIDGE_EASYFLASH_XBANK (NO CART EXISTS!) */
     { "-cartepyx", CALL_FUNCTION, 1,
       cart_attach_cmdline, (void *)CARTRIDGE_EPYX_FASTLOAD, NULL, NULL,
@@ -319,6 +333,11 @@ static const cmdline_option_t cmdline_options[] =
       cart_attach_cmdline, (void *)CARTRIDGE_FUNPLAY, NULL, NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_ATTACH_RAW_FP_PP_CART,
+      NULL, NULL },
+    { "-cartgmod2", CALL_FUNCTION, 1,
+      cart_attach_cmdline, (void *)CARTRIDGE_GMOD2, NULL, NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDCLS_ATTACH_RAW_GAME_KILLER_CART,                      /* FIXME */
       NULL, NULL },
     { "-cartgk", CALL_FUNCTION, 1,
       cart_attach_cmdline, (void *)CARTRIDGE_GAME_KILLER, NULL, NULL,
@@ -425,6 +444,18 @@ static const cmdline_option_t cmdline_options[] =
       USE_PARAM_ID, USE_DESCRIPTION_ID,
       IDCLS_P_NAME, IDCLS_ATTACH_RAW_REX_EP256_CART,
       NULL, NULL },
+    { "-cartrgcd", CALL_FUNCTION, 1,
+      cart_attach_cmdline, (void *)CARTRIDGE_RGCD, NULL, NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDCLS_ATTACH_RAW_RGCD_CART,
+      NULL, NULL },
+#ifdef HAVE_PCAP
+    { "-cartrrnet", CALL_FUNCTION, 1,
+      cart_attach_cmdline, (void *)CARTRIDGE_RRNETMK3, NULL, NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDCLS_ATTACH_RAW_RRNETMK3_CART,
+      NULL, NULL },
+#endif
     { "-cartross", CALL_FUNCTION, 1,
       cart_attach_cmdline, (void *)CARTRIDGE_ROSS, NULL, NULL,
       USE_PARAM_ID, USE_DESCRIPTION_ID,
@@ -505,8 +536,9 @@ static const cmdline_option_t cmdline_options[] =
 
 int cart_cmdline_options_init(void)
 {
-        /* "Slot 0" */
+    /* "Slot 0" */
     if (mmc64_cmdline_options_init() < 0
+        || magicvoice_cmdline_options_init() < 0
         || tpi_cmdline_options_init() < 0
         /* "Slot 1" */
         || dqbb_cmdline_options_init() < 0
@@ -517,7 +549,7 @@ int cart_cmdline_options_init(void)
 #ifdef HAVE_MIDI
         || c64_midi_cmdline_options_init() < 0
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
         || aciacart_cmdline_options_init() < 0
 #endif
         || digimax_cmdline_options_init() < 0
@@ -526,17 +558,33 @@ int cart_cmdline_options_init(void)
         || reu_cmdline_options_init() < 0
         || sfx_soundexpander_cmdline_options_init() < 0
         || sfx_soundsampler_cmdline_options_init() < 0
-#ifdef HAVE_TFE
-        || tfe_cmdline_options_init() < 0
+#ifdef HAVE_PCAP
+        || ethernetcart_cmdline_options_init() < 0
 #endif
         /* "Main Slot" */
         || easyflash_cmdline_options_init() < 0
+        || gmod2_cmdline_options_init() < 0
         || ide64_cmdline_options_init() < 0
         || mmcreplay_cmdline_options_init() < 0
         || retroreplay_cmdline_options_init() < 0
+#ifdef HAVE_PCAP
+        || rrnetmk3_cmdline_options_init() < 0
+#endif
+        || supersnapshot_v5_cmdline_options_init() < 0
         ) {
         return -1;
     }
+
+    if (debugcart_cmdline_options_init() < 0) {
+        return -1;
+    }
+
+    if (machine_class == VICE_MACHINE_C64 || machine_class == VICE_MACHINE_C64SC) {
+        if (cpmcart_cmdline_options_init() < 0) {
+            return -1;
+        }
+    }
+
     return cmdline_register_options(cmdline_options);
 }
 
@@ -547,7 +595,7 @@ int cart_cmdline_options_init(void)
 */
 int cart_resources_init(void)
 {
-        /* "Slot 0" */
+    /* "Slot 0" */
     if (mmc64_resources_init() < 0
         || magicvoice_resources_init() < 0
         || tpi_resources_init() < 0
@@ -566,20 +614,36 @@ int cart_resources_init(void)
         || reu_resources_init() < 0
         || sfx_soundexpander_resources_init() < 0
         || sfx_soundsampler_resources_init() < 0
-#ifdef HAVE_TFE
-        || tfe_resources_init() < 0
+#ifdef HAVE_PCAP
+        || ethernetcart_resources_init() < 0
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
         || aciacart_resources_init() < 0
 #endif
         /* "Main Slot" */
         || easyflash_resources_init() < 0
+        || gmod2_resources_init() < 0
         || ide64_resources_init() < 0
         || mmcreplay_resources_init() < 0
         || retroreplay_resources_init() < 0
+#ifdef HAVE_PCAP
+        || rrnetmk3_resources_init() < 0
+#endif
+        || supersnapshot_v5_resources_init() < 0
         ) {
         return -1;
     }
+
+    if (debugcart_resources_init() < 0) {
+        return -1;
+    }
+
+    if (machine_class == VICE_MACHINE_C64 || machine_class == VICE_MACHINE_C64SC) {
+        if (cpmcart_resources_init() < 0) {
+            return -1;
+        }
+    }
+
     return 0;
 }
 
@@ -595,18 +659,23 @@ void cart_resources_shutdown(void)
     reu_resources_shutdown();
     sfx_soundexpander_resources_shutdown();
     sfx_soundsampler_resources_shutdown();
-#ifdef HAVE_TFE
-    tfe_resources_shutdown();
+#ifdef HAVE_PCAP
+    ethernetcart_resources_shutdown();
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     aciacart_resources_shutdown();
 #endif
 
     /* "Main Slot" */
     easyflash_resources_shutdown();
+    gmod2_resources_shutdown();
     ide64_resources_shutdown();
     mmcreplay_resources_shutdown();
     retroreplay_resources_shutdown();
+#ifdef HAVE_PCAP
+    rrnetmk3_resources_shutdown();
+#endif
+    supersnapshot_v5_resources_shutdown();
 
     /* "Slot 1" */
     expert_resources_shutdown();
@@ -627,7 +696,7 @@ void cart_resources_shutdown(void)
 */
 int cart_is_slotmain(int type)
 {
-   switch (type) {
+    switch (type) {
         /* slot 0 */
         case CARTRIDGE_MMC64:
         case CARTRIDGE_MAGIC_VOICE:
@@ -739,15 +808,15 @@ int cart_type_enabled(int type)
             return sfx_soundexpander_cart_enabled();
         case CARTRIDGE_SFX_SOUND_SAMPLER:
             return sfx_soundsampler_cart_enabled();
-#ifdef HAVE_TFE
+#ifdef HAVE_PCAP
         case CARTRIDGE_TFE:
-            return tfe_cart_enabled();
+            return ethernetcart_cart_enabled();
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
         case CARTRIDGE_TURBO232:
             return aciacart_cart_enabled();
 #endif
-        /* Main Slot handled in c64cart.c:cartridge_type_enabled */
+            /* Main Slot handled in c64cart.c:cartridge_type_enabled */
     }
     return 0;
 }
@@ -791,15 +860,15 @@ const char *cart_get_file_name(int type)
 #endif
         case CARTRIDGE_SFX_SOUND_EXPANDER:
         case CARTRIDGE_SFX_SOUND_SAMPLER:
-#ifdef HAVE_TFE
+#ifdef HAVE_PCAP
         case CARTRIDGE_TFE:
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
         case CARTRIDGE_TURBO232:
 #endif
-          break;
+            break;
 
-        /* Main Slot handled in c64cart.c:cartridge_get_file_name */
+            /* Main Slot handled in c64cart.c:cartridge_get_file_name */
     }
     return ""; /* FIXME: NULL or empty string? */
 }
@@ -825,7 +894,7 @@ void cartridge_setup_context(machine_context_t *machine_context)
 
 int cart_bin_attach(int type, const char *filename, BYTE *rawcart)
 {
-    switch(type) {
+    switch (type) {
         /* "Slot 0" */
         case CARTRIDGE_IEEE488:
             return tpi_bin_attach(filename, rawcart);
@@ -872,6 +941,8 @@ int cart_bin_attach(int type, const char *filename, BYTE *rawcart)
             return dsm_bin_attach(filename, rawcart);
         case CARTRIDGE_DINAMIC:
             return dinamic_bin_attach(filename, rawcart);
+        case CARTRIDGE_EASYCALC:
+            return easycalc_bin_attach(filename, rawcart);
         case CARTRIDGE_EASYFLASH:
             return easyflash_bin_attach(filename, rawcart);
         case CARTRIDGE_EASYFLASH_XBANK:
@@ -900,6 +971,8 @@ int cart_bin_attach(int type, const char *filename, BYTE *rawcart)
             return generic_8kb_bin_attach(filename, rawcart);
         case CARTRIDGE_GENERIC_16KB:
             return generic_16kb_bin_attach(filename, rawcart);
+        case CARTRIDGE_GMOD2:
+            return gmod2_bin_attach(filename, rawcart);
         case CARTRIDGE_GS:
             return gs_bin_attach(filename, rawcart);
         case CARTRIDGE_IDE64:
@@ -930,6 +1003,12 @@ int cart_bin_attach(int type, const char *filename, BYTE *rawcart)
             return rex_bin_attach(filename, rawcart);
         case CARTRIDGE_REX_EP256:
             return rexep256_bin_attach(filename, rawcart);
+        case CARTRIDGE_RGCD:
+            return rgcd_bin_attach(filename, rawcart);
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            return rrnetmk3_bin_attach(filename, rawcart);
+#endif
         case CARTRIDGE_ROSS:
             return ross_bin_attach(filename, rawcart);
         case CARTRIDGE_SILVERROCK_128:
@@ -1038,6 +1117,9 @@ void cart_attach(int type, BYTE *rawcart)
         case CARTRIDGE_DINAMIC:
             dinamic_config_setup(rawcart);
             break;
+        case CARTRIDGE_EASYCALC:
+            easycalc_config_setup(rawcart);
+            break;
         case CARTRIDGE_EASYFLASH:
             easyflash_config_setup(rawcart);
             break;
@@ -1076,6 +1158,9 @@ void cart_attach(int type, BYTE *rawcart)
             break;
         case CARTRIDGE_GENERIC_16KB:
             generic_16kb_config_setup(rawcart);
+            break;
+        case CARTRIDGE_GMOD2:
+            gmod2_config_setup(rawcart);
             break;
         case CARTRIDGE_GS:
             gs_config_setup(rawcart);
@@ -1122,9 +1207,17 @@ void cart_attach(int type, BYTE *rawcart)
         case CARTRIDGE_REX_EP256:
             rexep256_config_setup(rawcart);
             break;
+        case CARTRIDGE_RGCD:
+            rgcd_config_setup(rawcart);
+            break;
         case CARTRIDGE_ROSS:
             ross_config_setup(rawcart);
             break;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            rrnetmk3_config_setup(rawcart);
+            break;
+#endif
         case CARTRIDGE_SILVERROCK_128:
             silverrock128_config_setup(rawcart);
             break;
@@ -1171,7 +1264,7 @@ void cart_attach(int type, BYTE *rawcart)
 }
 
 /* only one of the "Slot 0" carts can be enabled at a time */
-static int slot0conflicts[]=
+static int slot0conflicts[] =
 {
     CARTRIDGE_IEEE488,
     CARTRIDGE_MAGIC_VOICE,
@@ -1180,7 +1273,7 @@ static int slot0conflicts[]=
 };
 
 /* only one of the "Slot 1" carts can be enabled at a time */
-static int slot1conflicts[]=
+static int slot1conflicts[] =
 {
     CARTRIDGE_EXPERT,
     CARTRIDGE_ISEPIC,
@@ -1276,12 +1369,12 @@ int cartridge_enable(int type)
         case CARTRIDGE_SFX_SOUND_SAMPLER:
             sfx_soundsampler_enable();
             break;
-#ifdef HAVE_TFE
+#ifdef HAVE_PCAP
         case CARTRIDGE_TFE:
-            tfe_enable();
+            ethernetcart_enable();
             break;
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
         case CARTRIDGE_TURBO232:
             aciacart_enable();
             break;
@@ -1327,10 +1420,10 @@ void cart_detach_all(void)
     reu_detach();
     sfx_soundexpander_detach();
     sfx_soundsampler_detach();
-#ifdef HAVE_TFE
-    tfe_detach();
+#ifdef HAVE_PCAP
+    ethernetcart_detach();
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     aciacart_detach();
 #endif
     /* "Main Slot" */
@@ -1401,12 +1494,12 @@ void cart_detach(int type)
         case CARTRIDGE_SFX_SOUND_SAMPLER:
             sfx_soundsampler_detach();
             break;
-#ifdef HAVE_TFE
+#ifdef HAVE_PCAP
         case CARTRIDGE_TFE:
-            tfe_detach();
+            ethernetcart_detach();
             break;
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
         case CARTRIDGE_TURBO232:
             aciacart_detach();
             break;
@@ -1448,6 +1541,9 @@ void cart_detach(int type)
         case CARTRIDGE_DINAMIC:
             dinamic_detach();
             break;
+        case CARTRIDGE_EASYCALC:
+            easycalc_detach();
+            break;
         case CARTRIDGE_EASYFLASH:
             easyflash_detach();
             break;
@@ -1478,11 +1574,17 @@ void cart_detach(int type)
         case CARTRIDGE_FUNPLAY:
             funplay_detach();
             break;
+        case CARTRIDGE_GAME_KILLER:
+            gamekiller_detach();
+            break;
         case CARTRIDGE_GENERIC_16KB:
             generic_16kb_detach();
             break;
         case CARTRIDGE_GENERIC_8KB:
             generic_8kb_detach();
+            break;
+        case CARTRIDGE_GMOD2:
+            gmod2_detach();
             break;
         case CARTRIDGE_GS:
             gs_detach();
@@ -1514,6 +1616,9 @@ void cart_detach(int type)
         case CARTRIDGE_OCEAN:
             ocean_detach();
             break;
+        case CARTRIDGE_P64:
+            p64_detach();
+            break;
         case CARTRIDGE_PAGEFOX:
             pagefox_detach();
             break;
@@ -1526,6 +1631,14 @@ void cart_detach(int type)
         case CARTRIDGE_REX_EP256:
             rexep256_detach();
             break;
+        case CARTRIDGE_RGCD:
+            rgcd_detach();
+            break;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            rrnetmk3_detach();
+            break;
+#endif
         case CARTRIDGE_ROSS:
             ross_detach();
             break;
@@ -1602,10 +1715,10 @@ void cart_init(void)
     reu_init();
     /* sfx sound expander */
     /* sfx sound sampler */
-#ifdef HAVE_TFE
-    tfe_init();
+#ifdef HAVE_PCAP
+    ethernetcart_init();
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     aciacart_init();
 #endif
 }
@@ -1675,6 +1788,9 @@ void cartridge_init_config(void)
         case CARTRIDGE_DINAMIC:
             dinamic_config_init();
             break;
+        case CARTRIDGE_EASYCALC:
+            easycalc_config_init();
+            break;
         case CARTRIDGE_EASYFLASH:
             easyflash_config_init();
             break;
@@ -1713,6 +1829,9 @@ void cartridge_init_config(void)
             break;
         case CARTRIDGE_GENERIC_16KB:
             generic_16kb_config_init();
+            break;
+        case CARTRIDGE_GMOD2:
+            gmod2_config_init();
             break;
         case CARTRIDGE_GS:
             gs_config_init();
@@ -1759,6 +1878,14 @@ void cartridge_init_config(void)
         case CARTRIDGE_REX_EP256:
             rexep256_config_init();
             break;
+        case CARTRIDGE_RGCD:
+            rgcd_config_init();
+            break;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            rrnetmk3_config_init();
+            break;
+#endif
         case CARTRIDGE_ROSS:
             ross_config_init();
             break;
@@ -1825,13 +1952,12 @@ void cartridge_init_config(void)
 
     /* "Slot 0" */
     if (magicvoice_cart_enabled()) {
-        magicvoice_config_init((struct export_s*)&export_passthrough);
+        magicvoice_config_init(&export_passthrough);
     } else if (mmc64_cart_enabled()) {
-        mmc64_config_init((struct export_s*)&export_passthrough);
+        mmc64_config_init(&export_passthrough);
     } else if (tpi_cart_enabled()) {
-        tpi_config_init((struct export_s*)&export_passthrough);
+        tpi_config_init(&export_passthrough);
     }
-
 }
 
 /*
@@ -1871,12 +1997,12 @@ void cartridge_reset(void)
     if (sfx_soundsampler_cart_enabled()) {
         sfx_soundsampler_reset();
     }
-#ifdef HAVE_TFE
-    if (tfe_cart_enabled()) {
-        tfe_reset();
+#ifdef HAVE_PCAP
+    if (ethernetcart_cart_enabled()) {
+        ethernetcart_reset();
     }
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     if (aciacart_cart_enabled()) {
         aciacart_reset();
     }
@@ -1910,11 +2036,25 @@ void cartridge_reset(void)
         case CARTRIDGE_FREEZE_MACHINE:
             freezemachine_reset();
             break;
+        case CARTRIDGE_GMOD2:
+            gmod2_reset();
+            break;
+        case CARTRIDGE_IDE64:
+            ide64_reset();
+            break;
         case CARTRIDGE_MAGIC_FORMEL:
             magicformel_reset();
             break;
         case CARTRIDGE_MMC_REPLAY:
             mmcreplay_reset();
+            break;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            rrnetmk3_reset();
+            break;
+#endif
+        case CARTRIDGE_RGCD:
+            rgcd_reset();
             break;
         case CARTRIDGE_RETRO_REPLAY:
             retroreplay_reset();
@@ -1942,6 +2082,9 @@ void cartridge_reset(void)
     }
     if (mmc64_cart_enabled()) {
         mmc64_reset();
+    }
+    if (cpmcart_cart_enabled()) {
+        cpmcart_reset();
     }
 }
 
@@ -2116,10 +2259,16 @@ int cartridge_flush_image(int type)
         /* "Main Slot" */
         case CARTRIDGE_EASYFLASH:
             return easyflash_flush_image();
+        case CARTRIDGE_GMOD2:
+            return gmod2_flush_image();
         case CARTRIDGE_MMC_REPLAY:
             return mmcreplay_flush_image();
         case CARTRIDGE_RETRO_REPLAY:
             return retroreplay_flush_image();
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            return rrnetmk3_flush_image();
+#endif
         /* "I/O" */
         case CARTRIDGE_GEORAM:
             return georam_flush_image();
@@ -2154,10 +2303,16 @@ int cartridge_bin_save(int type, const char *filename)
         /* "Main Slot" */
         case CARTRIDGE_EASYFLASH:
             return easyflash_bin_save(filename);
+        case CARTRIDGE_GMOD2:
+            return gmod2_bin_save(filename);
         case CARTRIDGE_MMC_REPLAY:
             return mmcreplay_bin_save(filename);
         case CARTRIDGE_RETRO_REPLAY:
             return retroreplay_bin_save(filename);
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            return rrnetmk3_bin_save(filename);
+#endif
         /* "I/O Slot" */
         case CARTRIDGE_GEORAM:
             return georam_bin_save(filename);
@@ -2189,10 +2344,16 @@ int cartridge_crt_save(int type, const char *filename)
         /* "Main Slot" */
         case CARTRIDGE_EASYFLASH:
             return easyflash_crt_save(filename);
+        case CARTRIDGE_GMOD2:
+            return gmod2_crt_save(filename);
         case CARTRIDGE_MMC_REPLAY:
             return mmcreplay_crt_save(filename);
         case CARTRIDGE_RETRO_REPLAY:
             return retroreplay_crt_save(filename);
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            return rrnetmk3_crt_save(filename);
+#endif
     }
     return -1;
 }
@@ -2205,16 +2366,55 @@ void cartridge_sound_chip_init(void)
     sfx_soundsampler_sound_chip_init();
     sfx_soundexpander_sound_chip_init();
     magicvoice_sound_chip_init();
+    shortbus_digimax_sound_chip_init();
 }
 
 /* ------------------------------------------------------------------------- */
-/* Perform MMU translation for simple cartridge RAM/ROM mappings */
-/* TODO: add more */
+/* Perform MMU translation for simple cartridge RAM/ROM/FLASH mappings.
+   This function returns a pointer to a continuous memory area where addr
+   points into. The boundary of the area are returned in start and limit,
+   where limit is the last address where a dword read can be performed (last-3).
+
+   The CPU uses this information to read data from the defined area quickly by
+   using base[addr] instead of going through chains of various memory mapping
+   hooks.
+
+   It's important to know that this mapping optimization is valid until
+   there's no memory mapping configuration change, then the translation is
+   performed again. A memory configuration change can be signaled by calling
+   maincpu_resync_limits directly, or preferably by calling one of these:
+   - mem_pla_config_changed
+   - cart_config_changed
+   - cart_port_config_changed_slot0
+   - cart_config_changed_slot0
+   - cart_port_config_changed_slot1
+   - cart_config_changed_slot1
+   - cart_port_config_changed_slotmain
+   - cart_config_changed_slotmain
+
+   If such caching is not desired or not possible a base of NULL with start and
+   limit of 0 shall be returned, then all CPU reads go through the normal
+   hooks. There could be various reasons to do so:
+   - the cartridge has no hooks yet
+   - the address does not fall into a continuous memory area (RAM/ROM) managed
+     by the cartridge in it's current configuration or banking
+   - side effects should happen when the area is accessed (e.g. capacitor discharge,
+     i/o area)
+   - the memory area is programmable flash and it's not in it's "idle" mode now
+
+   TODO: add more cartridges
+*/
 void cartridge_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
 {
     int res = CART_READ_THROUGH;
+#if 0
+    /* disable all the mmu translation stuff for testing */
+    *base = NULL;
+    *start = 0;
+    *limit = 0;
+    return;
+#endif
     /* "Slot 0" */
-
     if (mmc64_cart_enabled()) {
         if ((res = mmc64_mmu_translate(addr, base, start, limit)) == CART_READ_VALID) {
             return;
@@ -2259,14 +2459,39 @@ void cartridge_mmu_translate(unsigned int addr, BYTE **base, int *start, int *li
 
     /* continue with "Main Slot" */
     switch (mem_cartridge_type) {
+        case CARTRIDGE_ACTION_REPLAY4:
+        case CARTRIDGE_FINAL_III:
         case CARTRIDGE_GENERIC_16KB:
         case CARTRIDGE_GENERIC_8KB:
+        case CARTRIDGE_KCS_POWER:
+        case CARTRIDGE_SIMONS_BASIC:
         case CARTRIDGE_ULTIMAX:
             generic_mmu_translate(addr, base, start, limit);
+            return;
+        case CARTRIDGE_ATOMIC_POWER:
+            atomicpower_mmu_translate(addr, base, start, limit);
+            return;
+        case CARTRIDGE_EASYFLASH:
+            easyflash_mmu_translate(addr, base, start, limit);
+            return;
+        case CARTRIDGE_GMOD2:
+            gmod2_mmu_translate(addr, base, start, limit);
             return;
         case CARTRIDGE_IDE64:
             ide64_mmu_translate(addr, base, start, limit);
             return;
+        case CARTRIDGE_RETRO_REPLAY:
+            retroreplay_mmu_translate(addr, base, start, limit);
+            return;
+#ifdef HAVE_PCAP
+        case CARTRIDGE_RRNETMK3:
+            rrnetmk3_mmu_translate(addr, base, start, limit);
+            return;
+#endif
+        case CARTRIDGE_SUPER_SNAPSHOT_V5:
+            supersnapshot_v5_mmu_translate(addr, base, start, limit);
+            return;
+        case CARTRIDGE_EPYX_FASTLOAD: /* must go through roml_read to discharge capacitor */
         default:
             *base = NULL;
             *start = 0;
@@ -2300,7 +2525,7 @@ int cartridge_snapshot_write_modules(struct snapshot_s *s)
 
     /* Find out which carts are attached */
     {
-        export_list_t *e = c64export_query_list(NULL);
+        export_list_t *e = export_query_list(NULL);
 
         while (e != NULL) {
             if (number_of_carts == C64CART_DUMP_MAX_CARTS) {
@@ -2316,7 +2541,7 @@ int cartridge_snapshot_write_modules(struct snapshot_s *s)
     }
 
     m = snapshot_module_create(s, SNAP_MODULE_NAME,
-                          C64CART_DUMP_VER_MAJOR, C64CART_DUMP_VER_MINOR);
+                               C64CART_DUMP_VER_MAJOR, C64CART_DUMP_VER_MINOR);
     if (m == NULL) {
         return -1;
     }
@@ -2377,6 +2602,11 @@ int cartridge_snapshot_write_modules(struct snapshot_s *s)
     for (i = 0; i < number_of_carts; i++) {
         switch (cart_ids[i]) {
             /* "Slot 0" */
+            case CARTRIDGE_CPM:
+                if (cpmcart_snapshot_write_module(s) < 0) {
+                    return -1;
+                }
+                break;
             case CARTRIDGE_MMC64:
                 if (mmc64_snapshot_write_module(s) < 0) {
                     return -1;
@@ -2476,6 +2706,11 @@ int cartridge_snapshot_write_modules(struct snapshot_s *s)
                     return -1;
                 }
                 break;
+            case CARTRIDGE_EASYCALC:
+                if (easycalc_snapshot_write_module(s) < 0) {
+                    return -1;
+                }
+                break;
             case CARTRIDGE_EASYFLASH:
                 if (easyflash_snapshot_write_module(s) < 0) {
                     return -1;
@@ -2535,6 +2770,11 @@ int cartridge_snapshot_write_modules(struct snapshot_s *s)
             case CARTRIDGE_GENERIC_8KB:
             case CARTRIDGE_ULTIMAX:
                 if (generic_snapshot_write_module(s, cart_ids[i]) < 0) {
+                    return -1;
+                }
+                break;
+            case CARTRIDGE_GMOD2:
+                if (gmod2_snapshot_write_module(s) < 0) {
                     return -1;
                 }
                 break;
@@ -2613,6 +2853,18 @@ int cartridge_snapshot_write_modules(struct snapshot_s *s)
                     return -1;
                 }
                 break;
+            case CARTRIDGE_RGCD:
+                if (rgcd_snapshot_write_module(s) < 0) {
+                    return -1;
+                }
+                break;
+#ifdef HAVE_PCAP
+            case CARTRIDGE_RRNETMK3:
+                if (rrnetmk3_snapshot_write_module(s) < 0) {
+                    return -1;
+                }
+                break;
+#endif
             case CARTRIDGE_ROSS:
                 if (ross_snapshot_write_module(s) < 0) {
                     return -1;
@@ -2721,14 +2973,14 @@ int cartridge_snapshot_write_modules(struct snapshot_s *s)
                     return -1;
                 }
                 break;
-#ifdef HAVE_TFE
+#ifdef HAVE_PCAP
             case CARTRIDGE_TFE:
-                if (tfe_snapshot_write_module(s) < 0) {
+                if (ethernetcart_snapshot_write_module(s) < 0) {
                     return -1;
                 }
                 break;
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
             case CARTRIDGE_TURBO232:
                 if (aciacart_snapshot_write_module(s) < 0) {
                     return -1;
@@ -2841,6 +3093,11 @@ int cartridge_snapshot_read_modules(struct snapshot_s *s)
     for (i = 0; i < number_of_carts; i++) {
         switch (cart_ids[i]) {
             /* "Slot 0" */
+            case CARTRIDGE_CPM:
+                if (cpmcart_snapshot_read_module(s) < 0) {
+                    goto fail2;
+                }
+                break;
             case CARTRIDGE_MMC64:
                 if (mmc64_snapshot_read_module(s) < 0) {
                     goto fail2;
@@ -2940,6 +3197,11 @@ int cartridge_snapshot_read_modules(struct snapshot_s *s)
                     goto fail2;
                 }
                 break;
+            case CARTRIDGE_EASYCALC:
+                if (easycalc_snapshot_read_module(s) < 0) {
+                    goto fail2;
+                }
+                break;
             case CARTRIDGE_EASYFLASH:
                 if (easyflash_snapshot_read_module(s) < 0) {
                     goto fail2;
@@ -2999,6 +3261,11 @@ int cartridge_snapshot_read_modules(struct snapshot_s *s)
             case CARTRIDGE_GENERIC_8KB:
             case CARTRIDGE_ULTIMAX:
                 if (generic_snapshot_read_module(s, cart_ids[i]) < 0) {
+                    goto fail2;
+                }
+                break;
+            case CARTRIDGE_GMOD2:
+                if (gmod2_snapshot_read_module(s) < 0) {
                     goto fail2;
                 }
                 break;
@@ -3077,6 +3344,18 @@ int cartridge_snapshot_read_modules(struct snapshot_s *s)
                     goto fail2;
                 }
                 break;
+            case CARTRIDGE_RGCD:
+                if (rgcd_snapshot_read_module(s) < 0) {
+                    goto fail2;
+                }
+                break;
+#ifdef HAVE_PCAP
+            case CARTRIDGE_RRNETMK3:
+                if (rrnetmk3_snapshot_read_module(s) < 0) {
+                    goto fail2;
+                }
+                break;
+#endif
             case CARTRIDGE_ROSS:
                 if (ross_snapshot_read_module(s) < 0) {
                     goto fail2;
@@ -3185,14 +3464,14 @@ int cartridge_snapshot_read_modules(struct snapshot_s *s)
                     goto fail2;
                 }
                 break;
-#ifdef HAVE_TFE
+#ifdef HAVE_PCAP
             case CARTRIDGE_TFE:
-                if (tfe_snapshot_read_module(s) < 0) {
+                if (ethernetcart_snapshot_read_module(s) < 0) {
                     goto fail2;
                 }
                 break;
 #endif
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
             case CARTRIDGE_TURBO232:
                 if (aciacart_snapshot_read_module(s) < 0) {
                     goto fail2;
@@ -3202,7 +3481,7 @@ int cartridge_snapshot_read_modules(struct snapshot_s *s)
 
             default:
                 DBG(("CART snapshot read: cart %i handler missing\n", cart_ids[i]));
-                    goto fail2;
+                goto fail2;
         }
 
         cart_attach_from_snapshot(cart_ids[i]);
@@ -3225,4 +3504,3 @@ fail2:
     mem_cartridge_type = CARTRIDGE_NONE; /* Failed to load cartridge! */
     return -1;
 }
-

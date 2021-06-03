@@ -106,21 +106,6 @@ static const ui_menu_toggle_t toggle_list[] = {
     { NULL, 0 }
 };
 
-static const ui_res_possible_values_t RefreshRateValues[] = {
-    { 0, IDM_REFRESH_RATE_AUTO },
-    { 1, IDM_REFRESH_RATE_1 },
-    { 2, IDM_REFRESH_RATE_2 },
-    { 3, IDM_REFRESH_RATE_3 },
-    { 4, IDM_REFRESH_RATE_4 },
-    { 5, IDM_REFRESH_RATE_5 },
-    { 6, IDM_REFRESH_RATE_6 },
-    { 7, IDM_REFRESH_RATE_7 },
-    { 8, IDM_REFRESH_RATE_8 },
-    { 9, IDM_REFRESH_RATE_9 },
-    { 10, IDM_REFRESH_RATE_10 },
-    { -1, 0 }
-};
-
 static ui_res_possible_values_t SpeedValues[] = {
     { 0, IDM_MAXIMUM_SPEED_NO_LIMIT },
     { 10, IDM_MAXIMUM_SPEED_10 },
@@ -132,7 +117,6 @@ static ui_res_possible_values_t SpeedValues[] = {
 };
 
 static const ui_res_value_list_t value_list[] = {
-    { "RefreshRate", RefreshRateValues, 0 },
     { "Speed", SpeedValues, IDM_MAXIMUM_SPEED_CUSTOM },
     { NULL, NULL, 0 }
 };
@@ -144,6 +128,12 @@ static char *vsid_sound_formats[] = {
     "wav",
 #ifdef USE_LAMEMP3
     "mp3",
+#endif
+#ifdef USE_FLAC
+    "flac",
+#endif
+#ifdef USE_VORBIS
+    "ogg",
 #endif
     NULL
 };
@@ -202,9 +192,6 @@ static int vsid_sid_engines[] = {
 #ifdef HAVE_HARDSID
    ,SID_ENGINE_HARDSID
 #endif
-#ifdef HAVE_RESID_FP
-   ,SID_ENGINE_RESID_FP
-#endif
 };
 
 static int vsid_fastsid_models[] = {
@@ -217,21 +204,6 @@ static int vsid_resid_models[] = {
     SID_MODEL_6581,
     SID_MODEL_8580,
     SID_MODEL_8580D
-};
-#endif
-
-#ifdef HAVE_RESID_FP
-static int vsid_residfp_models[] = {
-    SID_MODEL_6581R3_4885,
-    SID_MODEL_6581R3_0486S,
-    SID_MODEL_6581R3_3984,
-    SID_MODEL_6581R4AR_3789,
-    SID_MODEL_6581R3_4485,
-    SID_MODEL_6581R4_1986S,
-    SID_MODEL_8580R5_3691,
-    SID_MODEL_8580R5_3691D,
-    SID_MODEL_8580R5_1489,
-    SID_MODEL_8580R5_1489D
 };
 #endif
 
@@ -421,6 +393,8 @@ static void vsid_menu_rebuild(void)
 static int vsid_menu_handle(int idm)
 {
     char *fname = NULL;
+    char *ext = NULL;
+    char *tmp = NULL;
     char *curlang;
     int i;
 
@@ -550,9 +524,6 @@ static int vsid_menu_handle(int idm)
 #ifdef HAVE_HARDSID
                                 "HardSID | ",
 #endif
-#ifdef HAVE_RESID_FP
-                                "ReSID-fp | ",
-#endif
                                 "Fast SID", NULL);
             i = vsid_requester(translate_text(IDS_SID_ENGINE), translate_text(IDS_SID_ENGINE), fname, 0);
             resources_set_int("SidEngine", vsid_sid_engines[i]);
@@ -566,12 +537,6 @@ static int vsid_menu_handle(int idm)
                 case SID_ENGINE_RESID:
                     i = vsid_requester(translate_text(IDS_SID_MODEL), translate_text(IDS_SID_MODEL), "8580 | 8580D | 6581", 0);
                     resources_set_int("SidModel", vsid_resid_models[i]);
-                    break;
-#endif
-#ifdef HAVE_RESID_FP
-                case SID_ENGINE_RESID_FP:
-                    i = vsid_requester(translate_text(IDS_SID_MODEL), translate_text(IDS_SID_MODEL), "6581R3 0486S | 6581R3 3984 | 6581R4AR 3789 | 6581R3 4485 | 6581R4 1986S | 8580R5 3691 | 8580R5 3691D | 8580R5 1489 | 8580R5 1489D | 6581R3 4885", 0);
-                    resources_set_int("SidModel", vsid_residfp_models[i]);
                     break;
 #endif
             }
@@ -589,11 +554,27 @@ static int vsid_menu_handle(int idm)
             break;
 #endif
         case IDM_SOUND_RECORD_START:
-#ifndef USE_LAMEMP3
-            i = vsid_requester(translate_text(IDS_SOUND_RECORD_FORMAT), translate_text(IDS_SOUND_RECORD_FORMAT), "AIFF | VOC | WAV | IFF", 0);
-#else
-            i = vsid_requester(translate_text(IDS_SOUND_RECORD_FORMAT), translate_text(IDS_SOUND_RECORD_FORMAT), "AIFF | VOC | WAV | MP3 | IFF", 0);
+            ext = lib_stralloc("AIFF | VOC | WAV");
+#ifdef USE_LAMEMP3
+            tmp = util_concat(ext, " | MP3", NULL);
+            lib_free(ext);
+            ext = tmp;
 #endif
+#ifdef USE_FLAC
+            tmp = util_concat(ext, " | FLAC", NULL);
+            lib_free(ext);
+            ext = tmp;
+#endif
+#ifdef USE_VORBIS
+            tmp = util_concat(ext, " | OGG", NULL);
+            lib_free(ext);
+            ext = tmp;
+#endif
+            tmp = util_concat(ext, " | IFF", NULL);
+            lib_free(ext);
+            ext = tmp;
+
+            i = vsid_requester(translate_text(IDS_SOUND_RECORD_FORMAT), translate_text(IDS_SOUND_RECORD_FORMAT), ext, 0);
             resources_set_string("SoundRecordDeviceName", "");
             resources_set_string("SoundRecordDeviceName", vsid_sound_formats[i]);
             break;
@@ -844,7 +825,7 @@ void vsid_ui_display_sync(int sync)
 
 void vsid_ui_display_sid_model(int model)
 {
-    sprintf(vsidstrings[VSID_S_MODEL], "Using %s emulation", csidmodel[model > 19 ? 7 : model]);
+    sprintf(vsidstrings[VSID_S_MODEL], "Using %s emulation", model == 0 ? "MOS6581" : "MOS8580");
     log_message(LOG_DEFAULT, "%s", vsidstrings[VSID_S_MODEL]);
     vsid_update_text();
 }

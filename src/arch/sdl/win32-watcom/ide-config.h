@@ -3,15 +3,18 @@
 
 #define UNSTABLE
 
-#pragma warning(disable:4996)
+#pragma warning 202 10
+#pragma warning 201 10
 #pragma enum int
 
 #define HAVE_ALLOCA           1
 #define RETSIGTYPE            void
 #define HAS_JOYSTICK          1
 #define HAVE_MOUSE            1
+#define HAVE_LIGHTPEN         1
 #define HAVE_NETWORK          1
-#define HAVE_RS232            1
+#define HAVE_RS232DEV         1
+#define HAVE_RS232NET         1
 
 #define HAVE_RESID             1
 #define HAVE_RESID_FP          1
@@ -21,13 +24,15 @@
 #define WIN32_COMPILE         1
 #define HAVE_SDLMAIN          1
 #define HAVE_HWSCALE          1
-#define HAVE_CATWEASELMKIII   1
+#define HAVE_SSI2001          1
 #define HAVE_HARDSID          1
+#define HAVE_CATWEASELMKIII   1
+#define HAVE_PARSID           1
 #define HAVE_OPENCBM          1
 #define HAVE_DYNLIB_SUPPORT   1
 #define HAVE_SDL_NUMJOYSTICKS 1
 #define USE_SDL_PREFIX        1
-#define HAVE_TFE              1
+#define HAVE_PCAP              1
 
 #define HAS_LONGLONG_INTEGER  1
 #define HAS_UNLOCKRESOURCE    1
@@ -49,6 +54,17 @@
 #define HAVE_SYS_STAT_H       1
 #define HAVE_SIGNAL_H         1
 #define HAVE_WINIOCTL_H       1
+#define HAVE_TIME_T_IN_TIME_H 1
+
+#define HAVE_STRTOUL            1
+#define HAVE_STRTOK_R			1
+#define HAVE_STRREV			1
+#define HAVE_STRLWR			1
+#define HAVE_STRLCPY			1
+#define HAVE_LTOA			1
+#define HAVE_ULTOA			1
+#define HAVE_VSNPRINTF		1
+#define HAVE_SNPRINTF			1
 
 #define DWORD_IS_LONG         1
 #define HAVE_CRTDBG           1

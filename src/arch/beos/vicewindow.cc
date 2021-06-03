@@ -26,29 +26,30 @@
 
 #include "vice.h"
 
-#include <Alert.h>
-#include <Application.h>
+#include <Bitmap.h>
 #include <DirectWindow.h>
 #include <FilePanel.h>
 #include <Locker.h>
+#include <MenuBar.h>
 #include <MenuItem.h>
+#include <View.h>
 #include <string.h>
 
+#include "statusbar.h"
+#include "ui_file.h"
 #include "vicemenu.h"
+#include "vicewindow.h"
 
 extern "C" {
 #include "constants.h"
 #include "log.h"
-#include "mouse.h"
+#include "mousedrv.h"
 #include "lib.h"
 #include "machine.h"
 #include "platform.h"
 #include "resources.h"
-#include "statusbar.h"
 #include "ui.h"
-#include "ui_file.h"
 #include "util.h"
-#include "vicewindow.h"
 #include "video.h"
 #include "videoarch.h"
 }
@@ -83,7 +84,7 @@ void ViceWindow::Update_Menu_Toggles(ui_menu_toggle *toggle_list)
     for (i = 0; toggle_list[i].name != NULL; i++) {
         resources_get_int(toggle_list[i].name, &value);
         if (item = menubar->FindItem(toggle_list[i].item_id)) {
-                item->SetMarked(value ? true : false);
+            item->SetMarked(value ? true : false);
         }
     }
 }
@@ -111,7 +112,6 @@ void ViceWindow::Update_Menu_Value_Lists(ui_res_value_list *value_list)
             }
         }
     }
-
 }
 
 void ViceWindow::Update_Menu_String_Lists(ui_res_string_list *string_list)
@@ -175,7 +175,7 @@ void ViceView::MouseDown(BPoint point)
     msg = Window()->CurrentMessage();
     msg->FindInt32("buttons", &buttons);
     if (buttons & B_PRIMARY_MOUSE_BUTTON) {
-        mouse_button_left(1);
+        mousedrv_button_left(1);
     }
 }
 
@@ -185,7 +185,7 @@ void ViceView::MouseUp(BPoint point)
         return;
     }
 
-    mouse_button_left(0);
+    mousedrv_button_left(0);
 }
 
 ViceWindow::ViceWindow(unsigned int width, unsigned int height, char const *title) 
@@ -194,7 +194,7 @@ ViceWindow::ViceWindow(unsigned int width, unsigned int height, char const *titl
     BRect r;
 
     /* create the menubar; key events reserved for the emu */
-    menubar = menu_create(machine_class);
+    menubar = menu_create(machine_class, window_count);
     AddChild(menubar);
     DBG_RECT(("menubar", menubar->Frame()));
     menubar_offset = (int)menubar->Frame().Height() + 1;
@@ -251,6 +251,7 @@ ViceWindow::~ViceWindow()
 {
     BView *vsid = FindView("vsid");
 
+    DBG_MSG(("destroying window %s\n", Title()));
     fconnectiondisabled = true;
     Hide();
     Sync();

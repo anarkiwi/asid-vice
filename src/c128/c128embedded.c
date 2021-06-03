@@ -57,48 +57,65 @@
 #include "c128basiclo.h"
 #include "c128kernal64.h"
 
-#include "c64_c64hq_vpl.h"
-#include "c64_c64s_vpl.h"
-#include "c64_ccs64_vpl.h"
-#include "c64_default_vpl.h"
-#include "c64_frodo_vpl.h"
-#include "c64_godot_vpl.h"
-#include "c64_pc64_vpl.h"
-#include "c128_vdc_comp_vpl.h"
-#include "c128_vdc_deft_vpl.h"
-#include "c64_vice_vpl.h"
+#include "vicii_c64hq_vpl.h"
+#include "vicii_c64s_vpl.h"
+#include "vicii_ccs64_vpl.h"
+#include "vicii_community_colors_vpl.h"
+#include "vicii_deekay_vpl.h"
+#include "vicii_frodo_vpl.h"
+#include "vicii_godot_vpl.h"
+#include "vicii_pc64_vpl.h"
+#include "vicii_pepto_ntsc_vpl.h"
+#include "vicii_pepto_ntsc_sony_vpl.h"
+#include "vicii_pepto_pal_vpl.h"
+#include "vicii_pepto_palold_vpl.h"
+#include "vicii_ptoing_vpl.h"
+#include "vicii_rgb_vpl.h"
+#include "vicii_vice_vpl.h"
+
+#include "vdc_comp_vpl.h"
+#include "vdc_deft_vpl.h"
 
 static embedded_t c128files[] = {
-  { "kernal", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
-  { "kernalde", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
-  { "kernalfi", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
-  { "kernalfr", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
-  { "kernalit", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
-  { "kernalno", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
-  { "kernalse", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
-  { "chargen", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
-  { "chargde", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
-  { "chargfr", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
-  { "chargse", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
-  { "basiclo", C128_BASIC_ROM_IMAGELO_SIZE, C128_BASIC_ROM_IMAGELO_SIZE, C128_BASIC_ROM_IMAGELO_SIZE, c128basiclo_embedded },
-  { "basichi", C128_BASIC_ROM_IMAGEHI_SIZE, C128_BASIC_ROM_IMAGEHI_SIZE, C128_BASIC_ROM_IMAGEHI_SIZE, c128basichi_embedded },
-  { "basic64", C64_BASIC_ROM_SIZE, C64_BASIC_ROM_SIZE, C64_BASIC_ROM_SIZE, c128basic64_embedded },
-  { "kernal64", C64_KERNAL_ROM_SIZE, C64_KERNAL_ROM_SIZE, C64_KERNAL_ROM_SIZE, c128kernal64_embedded },
-  { NULL }
+    { "kernal", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "kernalde", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "kernalfi", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "kernalfr", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "kernalit", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "kernalno", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "kernalse", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "kernalch", C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, C128_KERNAL_ROM_IMAGE_SIZE, NULL },
+    { "chargen", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
+    { "chargde", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
+    { "chargfr", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
+    { "chargse", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
+    { "chargch", C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, C128_CHARGEN_ROM_SIZE, NULL },
+    { "basiclo", C128_BASIC_ROM_IMAGELO_SIZE, C128_BASIC_ROM_IMAGELO_SIZE, C128_BASIC_ROM_IMAGELO_SIZE, c128basiclo_embedded },
+    { "basichi", C128_BASIC_ROM_IMAGEHI_SIZE, C128_BASIC_ROM_IMAGEHI_SIZE, C128_BASIC_ROM_IMAGEHI_SIZE, c128basichi_embedded },
+    { "basic64", C64_BASIC_ROM_SIZE, C64_BASIC_ROM_SIZE, C64_BASIC_ROM_SIZE, c128basic64_embedded },
+    { "kernal64", C64_KERNAL_ROM_SIZE, C64_KERNAL_ROM_SIZE, C64_KERNAL_ROM_SIZE, c128kernal64_embedded },
+    { NULL }
 };
 
 static embedded_palette_t palette_files[] = {
-  { "c64hq", "c64hq.vpl", 16, c64_c64hq_vpl },
-  { "c64s", "c64s.vpl", 16, c64_c64s_vpl },
-  { "ccs64", "ccs64.vpl", 16, c64_ccs64_vpl },
-  { "default", "default.vpl", 16, c64_default_vpl },
-  { "frodo", "frodo.vpl", 16, c64_frodo_vpl },
-  { "godot", "godot.vpl", 16, c64_godot_vpl },
-  { "pc64", "pc64.vpl", 16, c64_pc64_vpl },
-  { "vdc_comp", "vdc_comp.vpl", 16, c128_vdc_comp_vpl },
-  { "vdc_deft", "vdc_deft.vpl", 16, c128_vdc_deft_vpl },
-  { "vice", "vice.vpl", 16, c64_vice_vpl },
-  { NULL }
+    { "c64hq", "c64hq.vpl", 16, vicii_c64hq_vpl },
+    { "c64s", "c64s.vpl", 16, vicii_c64s_vpl  },
+    { "ccs64", "ccs64.vpl", 16, vicii_ccs64_vpl },
+    { "community-colors", "community-colors.vpl", 16, vicii_community_colors_vpl },
+    { "deekay", "deekay.vpl", 16, vicii_deekay_vpl },
+    { "frodo", "frodo.vpl", 16, vicii_frodo_vpl },
+    { "godot", "godot.vpl", 16, vicii_godot_vpl },
+    { "pc64", "pc64.vpl", 16, vicii_pc64_vpl },
+    { "pepto-ntsc", "pepto-ntsc.vpl", 16, vicii_pepto_ntsc_vpl },
+    { "pepto-ntsc-sony", "pepto-ntsc-sony.vpl", 16, vicii_pepto_ntsc_sony_vpl },
+    { "pepto-pal", "pepto-pal.vpl", 16, vicii_pepto_pal_vpl },
+    { "pepto-palold", "pepto-palold.vpl", 16, vicii_pepto_palold_vpl },
+    { "ptoing", "ptoing.vpl", 16, vicii_ptoing_vpl },
+    { "rgb", "rgb.vpl", 16, vicii_rgb_vpl },
+    { "vdc-comp", "vdc-comp.vpl", 16, vdc_comp_vpl },
+    { "vdc-deft", "vdc-deft.vpl", 16, vdc_deft_vpl },
+    { "vice", "vice.vpl", 16, vicii_vice_vpl },
+    { NULL }
 };
 
 static size_t embedded_match_file(const char *name, BYTE *dest, int minsize, int maxsize, embedded_t *emb)
@@ -129,7 +146,7 @@ size_t embedded_check_file(const char *name, BYTE *dest, int minsize, int maxsiz
         return retval;
     }
 
-    if ((retval = embedded_match_file(name, dest, minsize,maxsize, c128files)) != 0) {
+    if ((retval = embedded_match_file(name, dest, minsize, maxsize, c128files)) != 0) {
         return retval;
     }
 

@@ -5,7 +5,7 @@
  *  Andreas Boose <viceteam@t-online.de>
  *  Daniel Sladic <sladic@eecg.toronto.edu>
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Teemu Rantanen <tvr@cs.hut.fi>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -76,30 +76,30 @@ static void iec_debug_ports(void)
         }
     }
 
-    time_usec = (unsigned long) ( (1000000. * maincpu_clk) / cycles_per_second );
+    time_usec = (unsigned long) ((1000000. * maincpu_clk) / cycles_per_second );
 
-    if ( (old_iecbus.cpu_bus != iecbus.cpu_bus) || firstcall) {
+    if ((old_iecbus.cpu_bus != iecbus.cpu_bus) || firstcall) {
         log_message(LOG_DEFAULT, "#%lu: cpu_bus changed from $%02x to $%02x.", time_usec, old_iecbus.cpu_bus, iecbus.cpu_bus);
         old_iecbus.cpu_bus = iecbus.cpu_bus;
     }
 
-    if ( (old_iecbus.cpu_port != iecbus.cpu_port) || firstcall) {
+    if ((old_iecbus.cpu_port != iecbus.cpu_port) || firstcall) {
         log_message(LOG_DEFAULT, "#%lu: cpu_port changed from $%02x to $%02x.", time_usec, old_iecbus.cpu_port, iecbus.cpu_port);
         old_iecbus.cpu_port = iecbus.cpu_port;
     }
 
-    if ( (old_iecbus.drv_port != iecbus.drv_port) || firstcall) {
+    if ((old_iecbus.drv_port != iecbus.drv_port) || firstcall) {
         log_message(LOG_DEFAULT, "#%lu: drv_port changed from $%02x to $%02x.", time_usec, old_iecbus.drv_port, iecbus.drv_port);
         old_iecbus.drv_port = iecbus.drv_port;
     }
 
     for (unit = 0; unit < 8 + DRIVE_NUM; unit++) {
-        if ( (old_iecbus.drv_bus[unit] != iecbus.drv_bus[unit]) || firstcall) {
+        if ((old_iecbus.drv_bus[unit] != iecbus.drv_bus[unit]) || firstcall) {
             log_message(LOG_DEFAULT, "#%lu: drv_bus[ %2u] changed from $%02x to $%02x.", time_usec, unit, old_iecbus.drv_bus[unit], iecbus.drv_bus[unit]);
             old_iecbus.drv_bus[unit] = iecbus.drv_bus[unit];
         }
 
-        if ( (old_iecbus.drv_data[unit] != iecbus.drv_data[unit]) || firstcall) {
+        if ((old_iecbus.drv_data[unit] != iecbus.drv_data[unit]) || firstcall) {
             log_message(LOG_DEFAULT, "#%lu: drv_data[%2u] changed from $%02x to $%02x.", time_usec, unit, old_iecbus.drv_data[unit], iecbus.drv_data[unit]);
             old_iecbus.drv_data[unit] = iecbus.drv_data[unit];
         }
@@ -115,6 +115,8 @@ static void iec_debug_ports(void)
 #define IEC_DEBUG_PORTS()
 
 #endif
+
+int c64iec_active = 1;
 
 void iec_update_cpu_bus(BYTE data)
 {
@@ -166,4 +168,21 @@ int iec_available_busses(void)
 void c64iec_init(void)
 {
     iecbus_update_ports = iec_update_ports;
+}
+
+void c64iec_enable(int val)
+{
+    c64iec_active = val ? 1 : 0;
+}
+
+/* KLUDGES: dummy to satisfy linker, unused */
+BYTE plus4tcbm_outputa[2], plus4tcbm_outputb[2], plus4tcbm_outputc[2];
+void plus4tcbm_update_pa(BYTE byte, unsigned int dnr)
+{
+}
+void plus4tcbm_update_pb(BYTE byte, unsigned int dnr)
+{
+}
+void plus4tcbm_update_pc(BYTE byte, unsigned int dnr)
+{
 }

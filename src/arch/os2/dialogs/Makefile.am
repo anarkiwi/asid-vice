@@ -1,6 +1,6 @@
 # Makefile.am for the OS2 version of `libdialogs.a'.
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@
 
 noinst_LIBRARIES = libdialogs.a
@@ -44,4 +44,5 @@ libdialogs_a_SOURCES = \
 	dlg-monitor.rc \
 	dlg-cmdopt.c \
 	dlg-create.c \
-	dlg-reset.c 
+	dlg-reset.c \
+	dlg-text-input.c

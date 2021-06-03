@@ -44,12 +44,14 @@ static ui_to_from_t ui_to_from_computer[] = {
     { NULL, MUI_TYPE_FILENAME, "KernalITName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "KernalNOName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "KernalSEName", NULL, NULL, NULL },
+    { NULL, MUI_TYPE_FILENAME, "KernalCHName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "BasicLoName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "BasicHiName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "ChargenIntName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "ChargenDEName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "ChargenFRName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "ChargenSEName", NULL, NULL, NULL },
+    { NULL, MUI_TYPE_FILENAME, "ChargenCHName", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "Kernal64Name", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "Basic64Name", NULL, NULL, NULL },
     UI_END /* mandatory */
@@ -58,6 +60,7 @@ static ui_to_from_t ui_to_from_computer[] = {
 static APTR hook_object_computer[countof(ui_to_from_computer)];
 
 static ui_to_from_t ui_to_from_drive[] = {
+    { NULL, MUI_TYPE_FILENAME, "DosName1540", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "DosName1541", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "DosName1541ii", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "DosName1570", NULL, NULL, NULL },
@@ -71,6 +74,8 @@ static ui_to_from_t ui_to_from_drive[] = {
     { NULL, MUI_TYPE_FILENAME, "DosName3040", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "DosName4040", NULL, NULL, NULL },
     { NULL, MUI_TYPE_FILENAME, "DosName1001", NULL, NULL, NULL },
+    { NULL, MUI_TYPE_FILENAME, "DriveProfDOS1571Name", NULL, NULL },
+    { NULL, MUI_TYPE_FILENAME, "DriveSuperCardName", NULL, NULL },
     UI_END /* mandatory */
 };
 
@@ -91,6 +96,8 @@ static APTR hook_object_drive[countof(ui_to_from_drive)];
     BROWSE(BrowseComputer12, ComputerHook12, ui_to_from_computer[12].object);
     BROWSE(BrowseComputer13, ComputerHook13, ui_to_from_computer[13].object);
     BROWSE(BrowseComputer14, ComputerHook14, ui_to_from_computer[14].object);
+    BROWSE(BrowseComputer15, ComputerHook15, ui_to_from_computer[15].object);
+    BROWSE(BrowseComputer16, ComputerHook16, ui_to_from_computer[16].object);
 
     BROWSE(BrowseDrive0, DriveHook0, ui_to_from_drive[0].object);
     BROWSE(BrowseDrive1, DriveHook1, ui_to_from_drive[1].object);
@@ -105,6 +112,9 @@ static APTR hook_object_drive[countof(ui_to_from_drive)];
     BROWSE(BrowseDrive10, DriveHook10, ui_to_from_drive[10].object);
     BROWSE(BrowseDrive11, DriveHook11, ui_to_from_drive[11].object);
     BROWSE(BrowseDrive12, DriveHook12, ui_to_from_drive[12].object);
+    BROWSE(BrowseDrive13, DriveHook13, ui_to_from_drive[13].object);
+    BROWSE(BrowseDrive14, DriveHook14, ui_to_from_drive[14].object);
+    BROWSE(BrowseDrive15, DriveHook15, ui_to_from_drive[15].object);
 
 static APTR build_computer_gui(void)
 {
@@ -120,14 +130,16 @@ static APTR build_computer_gui(void)
            FILENAME(ui_to_from_computer[4].object, "Kernal IT", hook_object_computer[4])
            FILENAME(ui_to_from_computer[5].object, "Kernal NO", hook_object_computer[5])
            FILENAME(ui_to_from_computer[6].object, "Kernal SE", hook_object_computer[6])
-           FILENAME(ui_to_from_computer[7].object, "Basic LO", hook_object_computer[7])
-           FILENAME(ui_to_from_computer[8].object, "Basic HI", hook_object_computer[8])
-           FILENAME(ui_to_from_computer[9].object, "Char. Int.", hook_object_computer[9])
-           FILENAME(ui_to_from_computer[10].object, "Char. DE", hook_object_computer[10])
-           FILENAME(ui_to_from_computer[11].object, "Char. FR", hook_object_computer[11])
-           FILENAME(ui_to_from_computer[12].object, "Char. SE", hook_object_computer[12])
-           FILENAME(ui_to_from_computer[13].object, "Kernal C64", hook_object_computer[13])
-           FILENAME(ui_to_from_computer[14].object, "Basic C64", hook_object_computer[14])
+           FILENAME(ui_to_from_computer[7].object, "Kernal CH", hook_object_computer[7])
+           FILENAME(ui_to_from_computer[8].object, "Basic LO", hook_object_computer[8])
+           FILENAME(ui_to_from_computer[9].object, "Basic HI", hook_object_computer[9])
+           FILENAME(ui_to_from_computer[10].object, "Char. Int.", hook_object_computer[10])
+           FILENAME(ui_to_from_computer[11].object, "Char. DE", hook_object_computer[11])
+           FILENAME(ui_to_from_computer[12].object, "Char. FR", hook_object_computer[12])
+           FILENAME(ui_to_from_computer[13].object, "Char. SE", hook_object_computer[13])
+           FILENAME(ui_to_from_computer[14].object, "Char. CH", hook_object_computer[14])
+           FILENAME(ui_to_from_computer[15].object, "Kernal C64", hook_object_computer[15])
+           FILENAME(ui_to_from_computer[16].object, "Basic C64", hook_object_computer[16])
            OK_CANCEL_BUTTON
          End;
 
@@ -182,6 +194,12 @@ static APTR build_computer_gui(void)
 
         DoMethod(hook_object_computer[14], MUIM_Notify, MUIA_Pressed, FALSE,
                  app, 2, MUIM_CallHook, &BrowseComputer14);
+
+        DoMethod(hook_object_computer[15], MUIM_Notify, MUIA_Pressed, FALSE,
+                 app, 2, MUIM_CallHook, &BrowseComputer15);
+
+        DoMethod(hook_object_computer[16], MUIM_Notify, MUIA_Pressed, FALSE,
+                 app, 2, MUIM_CallHook, &BrowseComputer16);
     }
 
     return ui;
@@ -194,19 +212,22 @@ static APTR build_drive_gui(void)
     app = mui_get_app();
 
     ui = GroupObject,
-           FILENAME(ui_to_from_drive[0].object, "1541", hook_object_drive[0])
-           FILENAME(ui_to_from_drive[1].object, "1541-II", hook_object_drive[1])
-           FILENAME(ui_to_from_drive[2].object, "1570", hook_object_drive[2])
-           FILENAME(ui_to_from_drive[3].object, "1571", hook_object_drive[3])
-           FILENAME(ui_to_from_drive[4].object, "1571CR", hook_object_drive[4])
-           FILENAME(ui_to_from_drive[5].object, "1581", hook_object_drive[5])
-           FILENAME(ui_to_from_drive[6].object, "2000", hook_object_drive[6])
-           FILENAME(ui_to_from_drive[7].object, "4000", hook_object_drive[7])
-           FILENAME(ui_to_from_drive[8].object, "2031", hook_object_drive[8])
-           FILENAME(ui_to_from_drive[9].object, "2030", hook_object_drive[9])
-           FILENAME(ui_to_from_drive[10].object, "3040", hook_object_drive[10])
-           FILENAME(ui_to_from_drive[11].object, "4040", hook_object_drive[11])
-           FILENAME(ui_to_from_drive[12].object, "1001", hook_object_drive[12])
+           FILENAME(ui_to_from_drive[0].object, "1540", hook_object_drive[0])
+           FILENAME(ui_to_from_drive[1].object, "1541", hook_object_drive[1])
+           FILENAME(ui_to_from_drive[2].object, "1541-II", hook_object_drive[2])
+           FILENAME(ui_to_from_drive[3].object, "1570", hook_object_drive[3])
+           FILENAME(ui_to_from_drive[4].object, "1571", hook_object_drive[4])
+           FILENAME(ui_to_from_drive[5].object, "1571CR", hook_object_drive[5])
+           FILENAME(ui_to_from_drive[6].object, "1581", hook_object_drive[6])
+           FILENAME(ui_to_from_drive[7].object, "2000", hook_object_drive[7])
+           FILENAME(ui_to_from_drive[8].object, "4000", hook_object_drive[8])
+           FILENAME(ui_to_from_drive[9].object, "2031", hook_object_drive[9])
+           FILENAME(ui_to_from_drive[10].object, "2030", hook_object_drive[10])
+           FILENAME(ui_to_from_drive[11].object, "3040", hook_object_drive[11])
+           FILENAME(ui_to_from_drive[12].object, "4040", hook_object_drive[12])
+           FILENAME(ui_to_from_drive[13].object, "1001", hook_object_drive[13])
+           FILENAME(ui_to_from_drive[14].object, "ProfDOS", hook_object_drive[14])
+           FILENAME(ui_to_from_drive[15].object, "SC+", hook_object_drive[15])
            OK_CANCEL_BUTTON
          End;
 
@@ -255,6 +276,15 @@ static APTR build_drive_gui(void)
 
       DoMethod(hook_object_drive[12], MUIM_Notify, MUIA_Pressed, FALSE,
                app, 2, MUIM_CallHook, &BrowseDrive12);
+
+      DoMethod(hook_object_drive[13], MUIM_Notify, MUIA_Pressed, FALSE,
+               app, 2, MUIM_CallHook, &BrowseDrive13);
+
+      DoMethod(hook_object_drive[14], MUIM_Notify, MUIA_Pressed, FALSE,
+               app, 2, MUIM_CallHook, &BrowseDrive14);
+
+      DoMethod(hook_object_drive[15], MUIM_Notify, MUIA_Pressed, FALSE,
+               app, 2, MUIM_CallHook, &BrowseDrive15);
     }
 
     return ui;

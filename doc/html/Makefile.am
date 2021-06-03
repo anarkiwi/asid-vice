@@ -5,29 +5,20 @@ docdir = $(realdocdir)
 
 doc_DATA = \
 	amigaos.html \
+	android.html \
 	beos.html \
-	images/CommodoreInnovationPriceSoftware2008.jpg \
+	darwin.html \
+	images/CIPS2008.png \
 	images/new.gif \
-	images/vice-logo.jpg \
-	images/vice-logo-small.png \
+	images/vice-logo.svg \
 	index.html \
 	macosx.html \
-	plain/64doc.txt \
-	plain/65C02.txt \
-	plain/BUGS \
-	plain/COPYING \
-	plain/NEWS \
-	plain/PETdoc.txt \
-	plain/TODO \
-	plain/VIC-Addendum.txt \
-	plain/VIC-Article.txt \
-	plain/VIC-Artikel.txt \
-	plain/cbm_basic_tokens.txt \
-	plain/drive_info.txt \
-	plain/serial.txt \
-	plain/pixel_aspect.txt \
+	COPYING \
+	NEWS \
+	nsosrh.html \
 	qnx.html \
 	sco.html \
+	sitemap.xml \
 	solaris.html \
 	vice.css \
 	vice_1.html \
@@ -50,13 +41,50 @@ doc_DATA = \
 	vice_18.html \
 	vice_19.html \
 	vice_20.html \
-	vice_toc.html
+	vice_21.html \
+	vice_22.html \
+	vice_toc.html \
+	robots.txt
 
 EXTRA_DIST = $(doc_DATA) \
 	texi2html
 
-vice_1.html vice_2.html vice_3.html vice_4.html vice_5.html vice_6.html vice_7.html vice_8.html vice_9.html vice_10.html vice_11.html vice_12.html vice_13.html vice_14.html vice_15.html vice_16.html: vice_toc.html
+CLEAN_STUFF = \
+	vice_1.html \
+	vice_2.html \
+	vice_3.html \
+	vice_4.html \
+	vice_5.html \
+	vice_6.html \
+	vice_7.html \
+	vice_8.html \
+	vice_9.html \
+	vice_10.html \
+	vice_11.html \
+	vice_12.html \
+	vice_13.html \
+	vice_14.html \
+	vice_15.html \
+	vice_16.html \
+	vice_17.html \
+	vice_18.html \
+	vice_19.html \
+	vice_20.html \
+	vice_21.html \
+	vice_22.html \
+	vice_toc.html
+
+vice_1.html vice_2.html vice_3.html vice_4.html vice_5.html vice_6.html vice_7.html vice_8.html vice_9.html vice_10.html vice_11.html vice_12.html vice_13.html vice_14.html vice_15.html vice_16.html vice_17.html vice_18.html vice_19.html vice_20.html vice_21.html vice_22.html: vice_toc.html
 
 vice_toc.html: $(top_srcdir)/doc/vice.texi
 	(cd $(builddir); \
-	$(PERL) $(srcdir)/texi2html -number -split_chapter $(top_srcdir)/doc/vice.texi)
+	$(PERL) $(srcdir)/texi2html -number -split_chapter -D$(PLATFORM_DOX_FLAGS) $(top_srcdir)/doc/vice.texi)
+
+COPYING: $(top_srcdir)/COPYING
+	cp $< $@
+
+NEWS: $(top_srcdir)/NEWS
+	cp $< $@
+
+clean:	clean-am
+	rm -f $(CLEAN_STUFF)

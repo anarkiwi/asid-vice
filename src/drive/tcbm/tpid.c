@@ -60,6 +60,12 @@ BYTE tpid_peek(drive_context_t *ctxptr, WORD addr)
     return tpicore_peek(ctxptr->tpid, addr);
 }
 
+int tpid_dump(drive_context_t *ctxptr, WORD addr)
+{
+    tpicore_dump(ctxptr->tpid);
+    return 0;
+}
+
 static void set_int(unsigned int int_num, int value)
 {
 }
@@ -243,4 +249,3 @@ void tpid_setup_context(drive_context_t *ctxptr)
     tpi->set_int = set_int;
     tpi->restore_int = restore_int;
 }
-

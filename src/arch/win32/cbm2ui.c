@@ -4,6 +4,7 @@
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -43,157 +44,67 @@
 #include "uicbm2model.h"
 #include "uicbm2set.h"
 #include "uicia.h"
+#include "uicpclockf83.h"
 #include "uidrivepetcbm2.h"
+#include "uiiocollisions.h"
+#include "uijoyport.h"
 #include "uijoystick.h"
 #include "uikeyboard.h"
+#include "uikeymap.h"
 #include "uilib.h"
+#include "uimouse.h"
 #include "uirom.h"
+#include "uisampler.h"
 #include "uisiddtv.h"
+#include "uitapelog.h"
+#include "uiuserportrtc58321a.h"
+#include "uiuserportrtcds1307.h"
 #include "uivideo.h"
+#include "videoarch.h"
 #include "winmain.h"
 
-static const unsigned int romset_dialog_resources[UIROM_TYPE_MAX] = {
-    IDD_CBM2ROM_RESOURCE_DIALOG,
-    IDD_CBM2ROMDRIVE_RESOURCE_DIALOG,
-    0
-};
-
 static const ui_menu_toggle_t cbm2_ui_menu_toggles[] = {
-    { "CrtcDoubleSize", IDM_TOGGLE_CRTCDOUBLESIZE },
-    { "CrtcDoubleScan", IDM_TOGGLE_CRTCDOUBLESCAN },
-    { "CrtcStretchVertical", IDM_TOGGLE_CRTCDOUBLEVERTICAL },
-    { "CrtcVideoCache", IDM_TOGGLE_CRTCVIDEOCACHE },
     { "CartridgeReset", IDM_TOGGLE_CART_RESET },
+    { "Mouse", IDM_MOUSE },
+    { "UserportDAC", IDM_TOGGLE_PET_USERPORT_DAC },
+    { "UserportDIGIMAX", IDM_TOGGLE_USERPORT_DIGIMAX },
+    { "Userport4bitSampler", IDM_TOGGLE_USERPORT_4BIT_SAMPLER },
+    { "Userport8BSS", IDM_TOGGLE_USERPORT_8BSS },
+    { "Datasette", IDM_TOGGLE_DATASETTE },
+    { "TapeSenseDongle", IDM_TOGGLE_TAPE_SENSE_DONGLE },
+    { "DTLBasicDongle", IDM_TOGGLE_DTL_BASIC_DONGLE },
     { NULL, 0 }
 };
 
 static const uirom_settings_t uirom_settings[] = {
     { UIROM_TYPE_MAIN, TEXT("Kernal"), "KernalName",
-      IDC_CBM2ROM_KERNAL_FILE, IDC_CBM2ROM_KERNAL_BROWSE,
-      IDC_CBM2ROM_KERNAL_RESOURCE },
+      IDC_CBM2ROM_KERNAL_FILE, IDC_CBM2ROM_KERNAL_BROWSE },
     { UIROM_TYPE_MAIN, TEXT("Basic"), "BasicName",
-      IDC_CBM2ROM_BASIC_FILE, IDC_CBM2ROM_BASIC_BROWSE,
-      IDC_CBM2ROM_BASIC_RESOURCE },
+      IDC_CBM2ROM_BASIC_FILE, IDC_CBM2ROM_BASIC_BROWSE },
     { UIROM_TYPE_MAIN, TEXT("Character"), "ChargenName",
-      IDC_CBM2ROM_CHARGEN_FILE, IDC_CBM2ROM_CHARGEN_BROWSE,
-      IDC_CBM2ROM_CHARGEN_RESOURCE },
+      IDC_CBM2ROM_CHARGEN_FILE, IDC_CBM2ROM_CHARGEN_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("2031"), "DosName2031",
-      IDC_DRIVEROM_2031_FILE, IDC_DRIVEROM_2031_BROWSE,
-      IDC_DRIVEROM_2031_RESOURCE },
+      IDC_DRIVEROM_2031_FILE, IDC_DRIVEROM_2031_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("2040"), "DosName2040",
-      IDC_DRIVEROM_2040_FILE, IDC_DRIVEROM_2040_BROWSE,
-      IDC_DRIVEROM_2040_RESOURCE },
+      IDC_DRIVEROM_2040_FILE, IDC_DRIVEROM_2040_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("3040"), "DosName3040",
-      IDC_DRIVEROM_3040_FILE, IDC_DRIVEROM_3040_BROWSE,
-      IDC_DRIVEROM_3040_RESOURCE },
+      IDC_DRIVEROM_3040_FILE, IDC_DRIVEROM_3040_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("4040"), "DosName4040",
-      IDC_DRIVEROM_4040_FILE, IDC_DRIVEROM_4040_BROWSE,
-      IDC_DRIVEROM_4040_RESOURCE },
+      IDC_DRIVEROM_4040_FILE, IDC_DRIVEROM_4040_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("1001"), "DosName1001",
-      IDC_DRIVEROM_1001_FILE, IDC_DRIVEROM_1001_BROWSE,
-      IDC_DRIVEROM_1001_RESOURCE },
-    { 0, NULL, NULL, 0, 0, 0 }
+      IDC_DRIVEROM_1001_FILE, IDC_DRIVEROM_1001_BROWSE },
+    { 0, NULL, NULL, 0, 0 }
 };
 
 static const ui_res_value_list_t cbm2_ui_res_values[] = {
     { NULL, NULL, 0 }
 };
 
-#define CBM2UI_KBD_NUM_MAP 6
-
-static const uikeyboard_mapping_entry_t mapping_entry[CBM2UI_KBD_NUM_MAP] = {
-    { IDC_CBM2KBD_MAPPING_SELECT_UKSYM, IDC_CBM2KBD_MAPPING_UKSYM,
-      IDC_CBM2KBD_MAPPING_UKSYM_BROWSE, "KeymapBusinessUKSymFile" },
-    { IDC_CBM2KBD_MAPPING_SELECT_UKPOS, IDC_CBM2KBD_MAPPING_UKPOS,
-      IDC_CBM2KBD_MAPPING_UKPOS_BROWSE, "KeymapBusinessUKPosFile" },
-    { IDC_CBM2KBD_MAPPING_SELECT_GRSYM, IDC_CBM2KBD_MAPPING_GRSYM,
-      IDC_CBM2KBD_MAPPING_GRSYM_BROWSE, "KeymapGraphicsSymFile" },
-    { IDC_CBM2KBD_MAPPING_SELECT_GRPOS, IDC_CBM2KBD_MAPPING_GRPOS,
-      IDC_CBM2KBD_MAPPING_GRPOS_BROWSE, "KeymapGraphicsPosFile" },
-    { IDC_CBM2KBD_MAPPING_SELECT_DESYM, IDC_CBM2KBD_MAPPING_DESYM,
-      IDC_CBM2KBD_MAPPING_DESYM_BROWSE, "KeymapBusinessDESymFile" },
-    { IDC_CBM2KBD_MAPPING_SELECT_DEPOS, IDC_CBM2KBD_MAPPING_DEPOS,
-      IDC_CBM2KBD_MAPPING_DEPOS_BROWSE, "KeymapBusinessDEPosFile" }
-};
-
-static uilib_localize_dialog_param cbm2_kbd_trans[] = {
-    { IDC_CBM2KBD_MAPPING_SELECT_GRSYM, IDS_GR_SYM, 0 },
-    { IDC_CBM2KBD_MAPPING_SELECT_GRPOS, IDS_GR_POS, 0 },
-    { IDC_CBM2KBD_MAPPING_SELECT_UKSYM, IDS_UK_SYM, 0 },
-    { IDC_CBM2KBD_MAPPING_SELECT_UKPOS, IDS_UK_POS, 0 },
-    { IDC_CBM2KBD_MAPPING_SELECT_DESYM, IDS_DE_SYM, 0 },
-    { IDC_CBM2KBD_MAPPING_SELECT_DEPOS, IDS_DE_POS, 0 },
-    { IDC_CBM2KBD_MAPPING_GRSYM_BROWSE, IDS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_GRPOS_BROWSE, IDS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_UKSYM_BROWSE, IDS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_UKPOS_BROWSE, IDS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_DESYM_BROWSE, IDS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_DEPOS_BROWSE, IDS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_DUMP, IDS_DUMP_KEYSET, 0 },
-    { IDC_KBD_SHORTCUT_DUMP, IDS_DUMP_SHORTCUTS, 0 },
-    { 0, 0, 0 }
-};
-
-static uilib_dialog_group cbm2_kbd_left_group[] = {
-    { IDC_CBM2KBD_MAPPING_SELECT_GRSYM, 1 },
-    { IDC_CBM2KBD_MAPPING_SELECT_GRPOS, 1 },
-    { IDC_CBM2KBD_MAPPING_SELECT_UKSYM, 1 },
-    { IDC_CBM2KBD_MAPPING_SELECT_UKPOS, 1 },
-    { IDC_CBM2KBD_MAPPING_SELECT_DESYM, 1 },
-    { IDC_CBM2KBD_MAPPING_SELECT_DEPOS, 1 },
-    { 0, 0 }
-};
-
-static uilib_dialog_group cbm2_kbd_middle_group[] = {
-    { IDC_CBM2KBD_MAPPING_GRSYM, 0 },
-    { IDC_CBM2KBD_MAPPING_GRPOS, 0 },
-    { IDC_CBM2KBD_MAPPING_UKSYM, 0 },
-    { IDC_CBM2KBD_MAPPING_UKPOS, 0 },
-    { IDC_CBM2KBD_MAPPING_DESYM, 0 },
-    { IDC_CBM2KBD_MAPPING_DEPOS, 0 },
-    { 0, 0 }
-};
-
-static uilib_dialog_group cbm2_kbd_right_group[] = {
-    { IDC_CBM2KBD_MAPPING_GRSYM_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_GRPOS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_UKSYM_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_UKPOS_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_DESYM_BROWSE, 0 },
-    { IDC_CBM2KBD_MAPPING_DEPOS_BROWSE, 0 },
-    { 0, 0 }
-};
-
-static uilib_dialog_group cbm2_kbd_buttons_group[] = {
-    { IDC_CBM2KBD_MAPPING_DUMP, 1 },
-    { IDC_KBD_SHORTCUT_DUMP, 1 },
-    { 0, 0 }
-};
-
-static int cbm2_kbd_move_buttons_group[] = {
-    IDC_CBM2KBD_MAPPING_DUMP,
-    IDC_KBD_SHORTCUT_DUMP,
-    0
-};
-
-static uikeyboard_config_t uikeyboard_config = {
-    IDD_CBM2KBD_MAPPING_SETTINGS_DIALOG,
-    CBM2UI_KBD_NUM_MAP,
-    mapping_entry,
-    IDC_CBM2KBD_MAPPING_DUMP,
-    cbm2_kbd_trans,
-    cbm2_kbd_left_group,
-    cbm2_kbd_middle_group,
-    cbm2_kbd_right_group,
-    cbm2_kbd_buttons_group,
-    cbm2_kbd_move_buttons_group
-};
-
 static const uicart_params_t cbm2_ui_cartridges[] = {
-    { IDM_LOAD_CART_1000, CARTRIDGE_CBM2_8KB_1000, IDS_ATTACH_CBM2_CART_1000, UILIB_FILTER_ALL },
-    { IDM_LOAD_CART_2000_3000, CARTRIDGE_CBM2_8KB_2000, IDS_ATTACH_CBM2_CART_2000_3000, UILIB_FILTER_ALL },
-    { IDM_LOAD_CART_4000_5000, CARTRIDGE_CBM2_16KB_4000, IDS_ATTACH_CBM2_CART_4000_5000, UILIB_FILTER_ALL },
-    { IDM_LOAD_CART_6000_7000, CARTRIDGE_CBM2_16KB_6000, IDS_ATTACH_CBM2_CART_6000_7000, UILIB_FILTER_ALL },
+    { IDM_LOAD_CART_1000, CARTRIDGE_CBM2_8KB_1000, IDS_ATTACH_CBM2_CART_1000, NULL, UILIB_FILTER_ALL },
+    { IDM_LOAD_CART_2000_3000, CARTRIDGE_CBM2_8KB_2000, IDS_ATTACH_CBM2_CART_2000_3000, NULL, UILIB_FILTER_ALL },
+    { IDM_LOAD_CART_4000_5000, CARTRIDGE_CBM2_16KB_4000, IDS_ATTACH_CBM2_CART_4000_5000, NULL, UILIB_FILTER_ALL },
+    { IDM_LOAD_CART_6000_7000, CARTRIDGE_CBM2_16KB_6000, IDS_ATTACH_CBM2_CART_6000_7000, NULL, UILIB_FILTER_ALL },
     { 0, 0, 0, 0 }
 };
 
@@ -202,6 +113,7 @@ ui_menu_translation_table_t cbm2ui_menu_translation_table[] = {
     { IDM_ABOUT, IDS_MI_ABOUT },
     { IDM_HELP, IDS_MP_HELP },
     { IDM_PAUSE, IDS_MI_PAUSE },
+    { IDM_SINGLE_FRAME_ADVANCE, IDS_MI_SINGLE_FRAME_ADVANCE },
     { IDM_EDIT_COPY, IDS_MI_EDIT_COPY },
     { IDM_EDIT_PASTE, IDS_MI_EDIT_PASTE },
     { IDM_AUTOSTART, IDS_MI_AUTOSTART },
@@ -228,7 +140,6 @@ ui_menu_translation_table_t cbm2ui_menu_translation_table[] = {
     { IDM_TOGGLE_CRTCDOUBLEVERTICAL, IDS_MI_TOGGLE_DOUBLEVERTICAL },
     { IDM_TOGGLE_DRIVE_TRUE_EMULATION, IDS_MI_DRIVE_TRUE_EMULATION },
     { IDM_TOGGLE_DRIVE_SOUND_EMULATION, IDS_MI_DRIVE_SOUND_EMULATION },
-    { IDM_TOGGLE_AUTOSTART_HANDLE_TDE, IDS_MI_AUTOSTART_HANDLE_TDE },
     { IDM_TOGGLE_CRTCVIDEOCACHE, IDS_MI_TOGGLE_VIDEOCACHE },
     { IDM_DRIVE_SETTINGS, IDS_MI_DRIVE_SETTINGS },
     { IDM_FLIP_ADD, IDS_MI_FLIP_ADD },
@@ -276,6 +187,12 @@ ui_menu_translation_table_t cbm2ui_menu_translation_table[] = {
     { IDM_EVENT_START_MODE_RESET, IDS_MI_EVENT_START_MODE_RESET },
     { IDM_EVENT_START_MODE_PLAYBACK, IDS_MI_EVENT_START_MODE_PLAYBCK },
     { IDM_EVENT_DIRECTORY, IDS_MI_EVENT_DIRECTORY },
+    { IDM_JAM_ACTION_ASK, IDS_MI_JAM_ACTION_ASK },
+    { IDM_JAM_ACTION_CONTINUE, IDS_MI_JAM_ACTION_CONTINUE },
+    { IDM_JAM_ACTION_START_MONITOR, IDS_MI_JAM_ACTION_START_MONITOR },
+    { IDM_JAM_ACTION_RESET, IDS_MI_JAM_ACTION_RESET },
+    { IDM_JAM_ACTION_HARD_RESET, IDS_MI_JAM_ACTION_HARD_RESET },
+    { IDM_JAM_ACTION_QUIT_EMULATOR, IDS_MI_JAM_ACTION_QUIT_EMULATOR },
     { IDM_MEDIAFILE, IDS_MI_MEDIAFILE },
     { IDM_SOUND_RECORD_START, IDS_MI_SOUND_RECORD_START },
     { IDM_SOUND_RECORD_STOP, IDS_MI_SOUND_RECORD_STOP },
@@ -283,22 +200,26 @@ ui_menu_translation_table_t cbm2ui_menu_translation_table[] = {
     { IDM_MAXIMUM_SPEED_NO_LIMIT, IDS_MI_MAXIMUM_SPEED_NO_LIMIT },
     { IDM_MAXIMUM_SPEED_CUSTOM, IDS_MI_MAXIMUM_SPEED_CUSTOM },
     { IDM_TOGGLE_WARP_MODE, IDS_MI_TOGGLE_WARP_MODE },
-    { IDM_TOGGLE_DX9DISABLE, IDS_MI_TOGGLE_DX9DISABLE },
     { IDM_TOGGLE_ALWAYSONTOP, IDS_MI_TOGGLE_ALWAYSONTOP },
+    { IDM_TOGGLE_CPU_AFFINITY, IDS_MI_TOGGLE_CPU_AFFINITY },
     { IDM_SWAP_JOYSTICK, IDS_MI_SWAP_EXTRA_JOYSTICK },
     { IDM_ALLOW_JOY_OPPOSITE_TOGGLE, IDS_MI_ALLOW_JOY_OPPOSITE },
     { IDM_JOYKEYS_TOGGLE, IDS_MI_JOYKEYS_TOGGLE },
     { IDM_TOGGLE_VIRTUAL_DEVICES, IDS_MI_TOGGLE_VIRTUAL_DEVICES },
     { IDM_CBM2MODEL_SETTINGS, IDS_MI_CBM2MODEL_SETTINGS },
+    { IDM_MOUSE, IDS_MI_MOUSE },
     { IDM_AUTOSTART_SETTINGS, IDS_MI_AUTOSTART_SETTINGS },
     { IDM_VIDEO_SETTINGS, IDS_MI_VIDEO_SETTINGS },
     { IDM_DEVICEMANAGER, IDS_MI_DEVICEMANAGER },
+    { IDM_JOYPORT_SETTINGS, IDS_MI_JOYPORT_SETTINGS },
     { IDM_JOY_SETTINGS, IDS_MI_USERPORT_JOY_SETTINGS },
     { IDM_KEYBOARD_SETTINGS, IDS_MI_KEYBOARD_SETTINGS },
     { IDM_SOUND_SETTINGS, IDS_MI_SOUND_SETTINGS },
+    { IDM_SAMPLER_SETTINGS, IDS_MI_SAMPLER_SETTINGS },
     { IDM_ROM_SETTINGS, IDS_MI_ROM_SETTINGS },
     { IDM_RAM_SETTINGS, IDS_MI_RAM_SETTINGS },
     { IDM_DATASETTE_SETTINGS, IDS_MI_DATASETTE_SETTINGS },
+    { IDM_MOUSE_SETTINGS, IDS_MI_MOUSE_SETTINGS },
     { IDM_SID_SETTINGS, IDS_MI_SID_SETTINGS },
     { IDM_CIA_SETTINGS, IDS_MI_CIA_SETTINGS },
     { IDM_RS232_SETTINGS, IDS_MI_RS232_SETTINGS },
@@ -324,38 +245,62 @@ ui_menu_translation_table_t cbm2ui_menu_translation_table[] = {
     { IDM_LANG_SV, IDS_MI_LANG_SV },
     { IDM_LANG_TR, IDS_MI_LANG_TR },
     { IDM_CMDLINE, IDS_MI_CMDLINE },
+    { IDM_FEATURES, IDS_MI_FEATURES },
     { IDM_CONTRIBUTORS, IDS_MI_CONTRIBUTORS },
     { IDM_LICENSE, IDS_MI_LICENSE },
     { IDM_WARRANTY, IDS_MI_WARRANTY },
+#ifdef HAVE_D3D9_H
     { IDM_TOGGLE_FULLSCREEN, IDS_MI_TOGGLE_FULLSCREEN },
+#endif
     { IDM_CBM2_SETTINGS, IDS_MI_CBM2_SETTINGS },
+    { IDM_NETWORK_SETTINGS, IDS_MI_NETWORK_SETTINGS },
+    { IDM_USERPORT_RTC_58321A_SETTINGS, IDS_MI_USERPORT_RTC_58321A_SETTINGS },
+    { IDM_USERPORT_RTC_DS1307_SETTINGS, IDS_MI_USERPORT_RTC_DS1307_SETTINGS },
+    { IDM_TOGGLE_PET_USERPORT_DAC, IDS_MI_TOGGLE_PET_USERPORT_DAC },
+    { IDM_TOGGLE_USERPORT_DIGIMAX, IDS_MI_TOGGLE_USERPORT_DIGIMAX },
+    { IDM_TOGGLE_USERPORT_4BIT_SAMPLER, IDS_MI_TOGGLE_USERPORT_4BIT_SAMPLER },
+    { IDM_TOGGLE_USERPORT_8BSS, IDS_MI_TOGGLE_USERPORT_8BSS },
+    { IDM_TAPELOG_SETTINGS, IDS_MI_TAPELOG_SETTINGS },
+    { IDM_CP_CLOCK_F83_SETTINGS, IDS_MI_CP_CLOCK_F83_SETTINGS },
+    { IDM_TOGGLE_DATASETTE, IDS_MI_TOGGLE_DATASETTE },
+    { IDM_TOGGLE_TAPE_SENSE_DONGLE, IDS_MI_TOGGLE_TAPE_SENSE_DONGLE },
+    { IDM_TOGGLE_DTL_BASIC_DONGLE, IDS_MI_TOGGLE_DTL_BASIC_DONGLE },
+    { IDM_IO_COLLISION_HANDLING, IDS_MI_IO_COLLISION_HANDLING },
     { 0, 0 }
 };
 
 ui_popup_translation_table_t cbm2ui_popup_translation_table[] = {
-    { 1, IDS_MP_FILE },
-    { 2, IDS_MP_ATTACH_DISK_IMAGE },
-    { 2, IDS_MP_DETACH_DISK_IMAGE },
-    { 2, IDS_MP_FLIP_LIST },
-    { 2, IDS_MP_DATASETTE_CONTROL },
-    { 2, IDS_MP_ATTACH_CARTRIDGE_IMAGE },
-    { 2, IDS_MP_RESET },
+    { 1, IDS_MP_FILE, NULL },
+    { 2, IDS_MP_ATTACH_DISK_IMAGE, NULL },
+    { 2, IDS_MP_DETACH_DISK_IMAGE, NULL },
+    { 2, IDS_MP_FLIP_LIST, NULL },
+    { 2, IDS_MP_DATASETTE_CONTROL, NULL },
+    { 2, IDS_MP_ATTACH_CARTRIDGE_IMAGE, NULL },
+    { 2, IDS_MP_RESET, NULL },
+    { 2, IDS_MP_DEFAULT_CPU_JAM_ACTION, NULL },
 #ifdef DEBUG
-    { 2, IDS_MP_DEBUG },
-    { 3, IDS_MP_MODE },
+    { 2, IDS_MP_DEBUG, NULL },
+    { 3, IDS_MP_MODE, NULL },
 #endif
-    { 1, IDS_MP_EDIT },
-    { 1, IDS_MP_SNAPSHOT },
-    { 2, IDS_MP_RECORDING_START_MODE },
-    { 1, IDS_MP_OPTIONS },
-    { 2, IDS_MP_REFRESH_RATE },
-    { 2, IDS_MP_MAXIMUM_SPEED },
-    { 2, IDS_MP_DRIVE_SYNC_FACTOR },
-    { 1, IDS_MP_SETTINGS },
-    { 2, IDS_MP_CARTRIDGE_IO_SETTINGS },
-    { 1, IDS_MP_LANGUAGE },
-    { 1, IDS_MP_HELP },
-    { 0, 0 }
+    { 1, IDS_MP_EDIT, NULL },
+    { 1, IDS_MP_SNAPSHOT, NULL },
+    { 2, IDS_MP_RECORDING_START_MODE, NULL },
+/*    { 1, IDS_MP_OPTIONS, NULL }, */
+    { 1, IDS_MP_SETTINGS, NULL },
+    { 2, IDS_MP_REFRESH_RATE, NULL },
+    { 2, IDS_MP_MAXIMUM_SPEED, NULL },
+    { 2, IDS_MP_SOUND_SETTINGS, NULL },
+    { 2, IDS_MP_DRIVE_SETTINGS, NULL },
+    { 2, IDS_MP_JOYSTICK_SETTINGS, NULL },
+    { 2, IDS_MP_MOUSE_SETTINGS, NULL },
+    { 2, IDS_MP_DRIVE_SYNC_FACTOR, NULL },
+    { 2, IDS_MP_CARTRIDGE_IO_SETTINGS, NULL },
+    { 3, IDS_MP_USERPORT_DEVICES, NULL },
+    { 3, IDS_MP_TAPEPORT_DEVICES, NULL },
+    { 2, IDS_MP_RS232_SETTINGS, NULL },
+    { 1, IDS_MP_LANGUAGE, NULL },
+    { 1, IDS_MP_HELP, NULL },
+    { 0, 0, NULL }
 };
 
 static uilib_localize_dialog_param cbm2_main_trans[] = {
@@ -374,17 +319,6 @@ static uilib_localize_dialog_param cbm2_drive_trans[] = {
     { IDC_DRIVEROM_3040_BROWSE, IDS_BROWSE, 0 },
     { IDC_DRIVEROM_4040_BROWSE, IDS_BROWSE, 0 },
     { IDC_DRIVEROM_1001_BROWSE, IDS_BROWSE, 0 },
-    { 0, 0, 0 }
-};
-
-static uilib_localize_dialog_param cbm2_main_res_trans[] = {
-    { 0, IDS_COMPUTER_RESOURCES_CAPTION, -1 },
-    { IDC_COMPUTER_RESOURCES, IDS_COMPUTER_RESOURCES, 0 },
-    { IDC_CBM2ROM_KERNAL_RESOURCE, IDS_KERNAL, 0 },
-    { IDC_CBM2ROM_BASIC_RESOURCE, IDS_BASIC, 0 },
-    { IDC_CBM2ROM_CHARGEN_RESOURCE, IDS_CHARACTER, 0 },
-    { IDOK, IDS_OK, 0 },
-    { IDCANCEL, IDS_CANCEL, 0 },
     { 0, 0, 0 }
 };
 
@@ -437,20 +371,11 @@ static uilib_dialog_group cbm2_drive_right_group[] = {
 };
 
 static generic_trans_table_t cbm2_generic_trans[] = {
-    { IDC_2031, "2031" },
-    { IDC_2040, "2040" },
-    { IDC_3040, "3040" },
-    { IDC_4040, "4040" },
-    { IDC_1001, "1001" },
-    { 0, NULL }
-};
-
-static generic_trans_table_t cbm2_generic_res_trans[] = {
-    { IDC_DRIVEROM_2031_RESOURCE, "2031" },
-    { IDC_DRIVEROM_2040_RESOURCE, "2040" },
-    { IDC_DRIVEROM_3040_RESOURCE, "3040" },
-    { IDC_DRIVEROM_4040_RESOURCE, "4040" },
-    { IDC_DRIVEROM_1001_RESOURCE, "1001" },
+    { IDC_2031, TEXT("2031") },
+    { IDC_2040, TEXT("2040") },
+    { IDC_3040, TEXT("3040") },
+    { IDC_4040, TEXT("4040") },
+    { IDC_1001, TEXT("1001") },
     { 0, NULL }
 };
 
@@ -481,6 +406,9 @@ static void cbm2_ui_specific(WPARAM wparam, HWND hwnd)
         case IDM_CBM2_SETTINGS:
             ui_cbm2_settings_dialog(hwnd);
             break;
+        case IDM_JOYPORT_SETTINGS:
+            ui_joyport_settings_dialog(hwnd, 0, 0, 1, 1, 0);
+            break;
         case IDM_JOY_SETTINGS:
             ui_extra_joystick_settings_dialog(hwnd);
             break;
@@ -492,11 +420,10 @@ static void cbm2_ui_specific(WPARAM wparam, HWND hwnd)
             break;
         case IDM_ROM_SETTINGS:
             uirom_settings_dialog(hwnd, IDD_CBM2ROM_SETTINGS_DIALOG, IDD_CBM2DRIVEROM_SETTINGS_DIALOG,
-                                  romset_dialog_resources, uirom_settings,
+                                  uirom_settings,
                                   cbm2_main_trans, cbm2_drive_trans, cbm2_generic_trans,
                                   cbm2_main_left_group, cbm2_main_middle_group, cbm2_main_right_group,
-                                  cbm2_drive_left_group, cbm2_drive_middle_group, cbm2_drive_right_group,
-                                  cbm2_main_res_trans, cbm2_generic_res_trans);
+                                  cbm2_drive_left_group, cbm2_drive_middle_group, cbm2_drive_right_group);
             break;
         case IDM_VIDEO_SETTINGS:
             ui_video_settings_dialog(hwnd, UI_VIDEO_CHIP_CRTC, UI_VIDEO_CHIP_NONE);
@@ -508,7 +435,28 @@ static void cbm2_ui_specific(WPARAM wparam, HWND hwnd)
             ui_acia_settings_dialog(hwnd);
             break;
         case IDM_KEYBOARD_SETTINGS:
-            uikeyboard_settings_dialog(hwnd, &uikeyboard_config);
+            ui_keymap_settings_dialog(hwnd);
+            break;
+        case IDM_MOUSE_SETTINGS:
+            ui_mouse_settings_dialog(hwnd, 0);
+            break;
+        case IDM_SAMPLER_SETTINGS:
+            ui_sampler_settings_dialog(hwnd);
+            break;
+        case IDM_USERPORT_RTC_58321A_SETTINGS:
+            ui_userport_rtc_58321a_settings_dialog(hwnd);
+            break;
+        case IDM_USERPORT_RTC_DS1307_SETTINGS:
+            ui_userport_rtc_ds1307_settings_dialog(hwnd);
+            break;
+        case IDM_TAPELOG_SETTINGS:
+            ui_tapelog_settings_dialog(hwnd);
+            break;
+        case IDM_CP_CLOCK_F83_SETTINGS:
+            ui_cp_clock_f83_settings_dialog(hwnd);
+            break;
+        case IDM_IO_COLLISION_HANDLING:
+            ui_iocollision_settings_dialog(hwnd);
             break;
     }
 }

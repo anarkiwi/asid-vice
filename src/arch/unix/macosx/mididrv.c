@@ -117,17 +117,17 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "MIDIName", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Name"), N_("Name of MIDI Client") },
+      N_("<Name>"), N_("Name of MIDI Client") },
     { "-midiinname", SET_RESOURCE, -1,
       NULL, NULL, "MIDIInName", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Name"), N_("Name of MIDI-In Port") },
+      N_("<Name>"), N_("Name of MIDI-In Port") },
     { "-midioutname", SET_RESOURCE, -1,
       NULL, NULL, "MIDIOutName", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Name"), N_("Name of MIDI-Out Port") },
+      N_("<Name>"), N_("Name of MIDI-Out Port") },
     { NULL }
 };
 
@@ -246,7 +246,7 @@ static void dispose_client(void)
     }
 }
 
-static void	midi_read_proc(const MIDIPacketList *pktlist, void *refCon, void *connRefCon)
+static void midi_read_proc(const MIDIPacketList *pktlist, void *refCon, void *connRefCon)
 {
     unsigned int i,j;
     
@@ -439,7 +439,7 @@ void mididrv_out(BYTE b)
     }
 }
 
-/* gets a byte from MIDI-In, returns !=0 if byte received, byte in *b. */
+/* gets a byte from MIDI-In, returns != 0 if byte received, byte in *b. */
 int mididrv_in(BYTE *b)
 {
     if (read_fifo(b)) {

@@ -28,7 +28,6 @@
 
 #include "drive.h"
 #include "drivetypes.h"
-#include "drivecpu.h"
 #include "iecdrive.h"
 #include "maincpu.h"
 #include "plus4parallel.h"
@@ -45,8 +44,7 @@ void parallel_cable_drive_write(int port, BYTE data, int handshake, unsigned int
 
 BYTE parallel_cable_drive_read(int type, int handshake)
 {
-    return parallel_cable_cpu_value & parallel_cable_drive_value[0]
-        & parallel_cable_drive_value[1];
+    return parallel_cable_cpu_value & parallel_cable_drive_value[0] & parallel_cable_drive_value[1];
 }
 
 void parallel_cable_cpu_write(int type, BYTE data)
@@ -56,22 +54,21 @@ void parallel_cable_cpu_write(int type, BYTE data)
         return;
     }
 
-    drivecpu_execute_all(last_write_cycle);
+    drive_cpu_execute_all(last_write_cycle);
 
     parallel_cable_cpu_value = data;
 }
 
-BYTE parallel_cable_cpu_read(int type)
+BYTE parallel_cable_cpu_read(int type, BYTE data)
 {
     if (!(drive_context[0]->drive->enable)
         && !(drive_context[1]->drive->enable)) {
         return 0;
     }
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
-    return parallel_cable_cpu_value & parallel_cable_drive_value[0]
-        & parallel_cable_drive_value[1];
+    return data & (parallel_cable_cpu_value & parallel_cable_drive_value[0] & parallel_cable_drive_value[1]);
 }
 
 void parallel_cable_cpu_undump(int type, BYTE data)

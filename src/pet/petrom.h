@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -54,4 +54,3 @@ extern int petrom_A_loaded;
 extern int petrom_B_loaded;
 
 #endif
-

@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Matthies <andreas.matthies@gmx.net>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -55,7 +56,7 @@ static int config_number[] = {
     -1
 };
 
-static char *config_text[] = {
+static const char *config_text[] = {
     "no expansion",
     "3K (block 0)",
     "8K (block 1)",
@@ -65,7 +66,7 @@ static char *config_text[] = {
     "custom"
 };
 
-static char *block_text[] = {
+static const char *block_text[] = {
     "Block 0",
     "Block 1",
     "Block 2",
@@ -73,7 +74,7 @@ static char *block_text[] = {
     "Block 5"
 };
 
-static char *block_resource[] = {
+static const char *block_resource[] = {
     "RAMBlock0",
     "RAMBlock1",
     "RAMBlock2",

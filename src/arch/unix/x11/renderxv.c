@@ -26,7 +26,7 @@
 
 /* The PAL Y/C and PAL Composite emulation is based on work by John
    Selck <graham@cruise.de>. The Xv probing and allocation code is
-   loosely based on testxv.c (by André Werthmann) and VideoLAN. */
+   loosely based on testxv.c (by Andre Werthmann) and VideoLAN. */
 
 #include "vice.h"
 
@@ -185,18 +185,9 @@ int find_yuv_port(Display* display, XvPortID* port, fourcc_t* format, int *overl
                         continue;
                     }
                     if (found_one) {
-                        int numattr;
                         if (!*overlay && is_overlay) {
                             XvUngrabPort(display, port_id, CurrentTime);
                             continue; /* Prefer non-overlay as that one can handle more than one windows */
-                        }
-                        XvAttribute *attr = XvQueryPortAttributes(display, port_id, &numattr);
-                        if (attr) {
-                            XFree(attr);
-                        }
-                        if (!numattr) {
-                            XvUngrabPort(display, port_id, CurrentTime);
-                            continue; /* no attributes? Can't be better than the previous one... */
                         }
                         XvUngrabPort(display, *port, CurrentTime);
                     }

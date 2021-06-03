@@ -40,6 +40,8 @@ extern "C" {
 #include "vsyncapi.h"
 }
 
+static mouse_func_t mouse_funcs;
+
 int _mouse_x, _mouse_y;
 static unsigned long mouse_timestamp = 0;
 /* ------------------------------------------------------------------------- */
@@ -48,8 +50,13 @@ void mousedrv_mouse_changed(void)
 {
 }
 
-int mousedrv_resources_init(void)
+int mousedrv_resources_init(mouse_func_t *funcs)
 {
+    mouse_funcs.mbl = funcs->mbl;
+    mouse_funcs.mbr = funcs->mbr;
+    mouse_funcs.mbm = funcs->mbm;
+    mouse_funcs.mbu = funcs->mbu;
+    mouse_funcs.mbd = funcs->mbd;
     return 0;
 }
 
@@ -62,10 +69,6 @@ int mousedrv_cmdline_options_init(void)
 
 /* ------------------------------------------------------------------------- */
 
-void mouse_set_format(void)
-{
-}
-
 extern ViceWindow *windowlist[];
 extern int window_count;
 
@@ -77,7 +80,6 @@ void mouse_update_mouse(void)
     static BPoint last_point;
 
     BPoint point;
-    BRect bounds;
     uint32 buttons;
 
     if (!_mouse_enabled || window_count == 0) {
@@ -86,7 +88,6 @@ void mouse_update_mouse(void)
 
     windowlist[0]->Lock();
     windowlist[0]->view->GetMouse(&point, &buttons);
-    bounds = windowlist[0]->view->Bounds();
     windowlist[0]->Unlock();
 
     if (buttons & B_SECONDARY_MOUSE_BUTTON) {
@@ -94,9 +95,11 @@ void mouse_update_mouse(void)
         return;
     }
 
-    _mouse_x += (int)((point.x - last_point.x) / bounds.Width() * 1024) % 1024;
-    _mouse_y -= (int)((point.y - last_point.y) / bounds.Height() * 1024) % 1024;
-    mouse_timestamp = vsyncarch_gettime();
+    if (point.x != last_point.x || point.y != last_point.y) {
+        _mouse_x += (int)(point.x - last_point.x);
+        _mouse_y -= (int)(point.y - last_point.y);
+        mouse_timestamp = vsyncarch_gettime();
+    }
 
     last_point = point;
 }
@@ -120,4 +123,19 @@ int mousedrv_get_y(void)
 unsigned long mousedrv_get_timestamp(void)
 {
     return mouse_timestamp;
+}
+
+void mousedrv_button_left(int pressed)
+{
+    mouse_funcs.mbl(pressed);
+}
+
+void mousedrv_button_right(int pressed)
+{
+    mouse_funcs.mbr(pressed);
+}
+
+void mousedrv_button_middle(int pressed)
+{
+    mouse_funcs.mbm(pressed);
 }

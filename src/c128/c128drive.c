@@ -40,8 +40,8 @@
 int machine_drive_resources_init(void)
 {
     if (drive_resources_type_init(DRIVE_TYPE_1571) < 0) {
-    /* FIXME: 1571CR emulation doesnt seem to work properly */
-    /* if (drive_resources_type_init(DRIVE_TYPE_1571CR) < 0) { */
+        /* FIXME: 1571CR emulation doesnt seem to work properly */
+        /* if (drive_resources_type_init(DRIVE_TYPE_1571CR) < 0) { */
         return -1;
     }
     if (iec_drive_resources_init() < 0) {
@@ -143,21 +143,6 @@ void machine_drive_rom_setup_image(unsigned int dnr)
     iec_drive_rom_setup_image(dnr);
     iec128dcr_drive_rom_setup_image(dnr);
     ieee_drive_rom_setup_image(dnr);
-}
-
-int machine_drive_rom_read(unsigned int type, WORD addr, BYTE *data)
-{
-    if (iec_drive_rom_read(type, addr, data) == 0) {
-        return 0;
-    }
-    if (iec128dcr_drive_rom_read(type, addr, data) == 0) {
-        return 0;
-    }
-    if (ieee_drive_rom_read(type, addr, data) == 0) {
-        return 0;
-    }
-
-    return -1;
 }
 
 int machine_drive_rom_check_loaded(unsigned int type)

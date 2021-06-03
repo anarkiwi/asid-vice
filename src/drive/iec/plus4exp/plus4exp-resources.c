@@ -40,8 +40,9 @@ static void set_drive_ram(unsigned int dnr)
     drive_t *drive = drive_context[dnr]->drive;
 
     if (drive->type != DRIVE_TYPE_1570 && drive->type != DRIVE_TYPE_1571
-        && drive->type != DRIVE_TYPE_1571CR)
+        && drive->type != DRIVE_TYPE_1571CR) {
         return;
+    }
 
     drivemem_init(drive_context[dnr], drive->type);
 
@@ -52,8 +53,13 @@ static int set_drive_parallel_cable(int val, void *param)
 {
     drive_t *drive = drive_context[vice_ptr_to_uint(param)]->drive;
 
-    if (val != DRIVE_PC_NONE && val != DRIVE_PC_STANDARD)
-        return -1;
+    switch (val) {
+        case DRIVE_PC_NONE:
+        case DRIVE_PC_STANDARD:
+            break;
+        default:
+            return -1;
+    }
 
     drive->parallel_cable = val;
     set_drive_ram(vice_ptr_to_uint(param));
@@ -63,7 +69,7 @@ static int set_drive_parallel_cable(int val, void *param)
 
 
 static resource_int_t res_drive[] = {
-    { NULL, 0, RES_EVENT_SAME, NULL,
+    { NULL, DRIVE_PC_NONE, RES_EVENT_SAME, NULL,
       NULL, set_drive_parallel_cable, NULL },
     { NULL }
 };
@@ -80,8 +86,9 @@ int plus4exp_resources_init(void)
         res_drive[0].value_ptr = &(drive->parallel_cable);
         res_drive[0].param = uint_to_void_ptr(dnr);
 
-        if (resources_register_int(res_drive) < 0)
+        if (resources_register_int(res_drive) < 0) {
             return -1;
+        }
 
         lib_free((char *)(res_drive[0].name));
     }
@@ -92,4 +99,3 @@ int plus4exp_resources_init(void)
 void plus4exp_resources_shutdown(void)
 {
 }
-

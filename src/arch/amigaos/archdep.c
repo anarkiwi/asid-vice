@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -53,6 +54,15 @@
 #include "platform.h"
 #include "ui.h"
 #include "util.h"
+
+#ifdef AMIGA_M68K
+#include <math.h>
+
+double log1p(double x)
+{
+    return log(1 + x) - (((1 + x) - 1) - x) / (1 + x);
+}
+#endif
 
 #if defined(AMIGA_M68K) && !defined(HAVE_GETTIMEOFDAY)
 struct Library *TimerBase = NULL;
@@ -109,7 +119,11 @@ char *archdep_program_name(void)
     if (program_name == NULL) {
         char *p, name[1024];
 
+#ifndef GetProgramName
+        GetCliProgramName(name, 1024);
+#else
         GetProgramName(name, 1024);
+#endif
         p = FilePart(name);
 
         if (p != NULL) {
@@ -188,6 +202,14 @@ char *archdep_default_fliplist_file_name(void)
     return util_concat(home, "fliplist-", machine_get_name(), ".vfl", NULL);
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    const char *home;
+
+    home = archdep_boot_path();
+    return util_concat(home, "vice.rtc", NULL);
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
     const char *home;
@@ -222,26 +244,8 @@ FILE *archdep_open_default_log_file(void)
     }
 }
 
-int archdep_num_text_lines(void)
-{
-    return 25;
-}
-
-int archdep_num_text_columns(void)
-{
-    return 80;
-}
-
 int archdep_default_logger(const char *level_string, const char *txt)
 {
-    if (run_from_wb) {
-        return 0;
-    }
-
-    if (fputs(level_string, stdout) == EOF || fprintf(stdout, txt) < 0 || fputc ('\n', stdout) == EOF) {
-        return -1;
-    }
-
     return 0;
 }
 
@@ -373,6 +377,11 @@ int archdep_file_is_blockdev(const char *name)
 int archdep_file_is_chardev(const char *name)
 {
     return 0;
+}
+
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
 }
 
 void archdep_shutdown(void)

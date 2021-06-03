@@ -6,7 +6,7 @@
  *  Andreas Boose <viceteam@t-online.de>
  * Based on the X11 code by
  *  Jouko Valta <jopi@stekt.oulu.fi>
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,46 +34,13 @@
 #include "types.h"
 
 extern void kbd_arch_init(void);
+extern int kbd_arch_get_host_mapping(void);
 
 extern signed long kbd_arch_keyname_to_keynum(char *keyname);
 extern const char *kbd_arch_keynum_to_keyname(signed long keynum);
 extern void kbd_initialize_numpad_joykeys(int *joykeys);
 
-#define KBD_C64_SYM_US  "dos_sym.vkm"
-#define KBD_C64_SYM_DE  "dos_sym.vkm"
-#define KBD_C64_POS     "dos_pos.vkm"
-#define KBD_C128_SYM    "dos_sym.vkm"
-#define KBD_C128_POS    "dos_pos.vkm"
-#define KBD_VIC20_SYM   "dos_sym.vkm"
-#define KBD_VIC20_POS   "dos_pos.vkm"
-#define KBD_PET_SYM_UK  "dos_buks.vkm"
-#define KBD_PET_POS_UK  "dos_bukp.vkm"
-#define KBD_PET_SYM_DE  "dos_bdes.vkm"
-#define KBD_PET_POS_DE  "dos_bdep.vkm"
-#define KBD_PET_SYM_GR  "dos_bgrs.vkm"
-#define KBD_PET_POS_GR  "dos_bgrp.vkm"
-#define KBD_PLUS4_SYM   "dos_sym.vkm"
-#define KBD_PLUS4_POS   "dos_pos.vkm"
-#define KBD_CBM2_SYM_UK "dos_buks.vkm"
-#define KBD_CBM2_POS_UK "dos_bukp.vkm"
-#define KBD_CBM2_SYM_DE "dos_bdes.vkm"
-#define KBD_CBM2_POS_DE "dos_bdep.vkm"
-#define KBD_CBM2_SYM_GR "dos_bgrs.vkm"
-#define KBD_CBM2_POS_GR "dos_bgrp.vkm"
-
-#define KBD_INDEX_C64_DEFAULT   KBD_INDEX_C64_POS
-#define KBD_INDEX_C128_DEFAULT  KBD_INDEX_C128_POS
-#define KBD_INDEX_VIC20_DEFAULT KBD_INDEX_VIC20_POS
-#define KBD_INDEX_PET_DEFAULT   KBD_INDEX_PET_BUKP
-#define KBD_INDEX_PLUS4_DEFAULT KBD_INDEX_PLUS4_POS
-#define KBD_INDEX_CBM2_DEFAULT  KBD_INDEX_CBM2_BUKP
-
-/* Keymap definition structure.  */
-typedef struct {
-    BYTE row;
-    BYTE column;
-    int vshift;
-} keyconv;
+#define KBD_PORT_PREFIX "dos"
 
 typedef enum {
     K_NONE, K_ESC, K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9, K_0, K_MINUS,
@@ -92,7 +59,6 @@ typedef enum {
 
 extern BYTE _kbd_extended_key_tab[256];
 
-extern int kbd_init(int num, ...);
 extern void kbd_install(void);
 extern void kbd_uninstall(void);
 extern void kbd_flush_commands(void);

@@ -3,7 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * 16/24bpp support added by
  *  Steven Tieu <stieu@physics.ubc.ca>
@@ -58,7 +58,7 @@ extern void crtc_set_chargen_offset(int offset);
 extern void crtc_set_chargen_addr(BYTE *chargen, int cmask);
 extern void crtc_set_screen_options(int num_cols, int rasterlines);
 extern void crtc_set_hw_options(int hwflag, int vmask, int vchar, int vcoffset,
-                                                                int vrevmask);
+                                int vrevmask);
 extern void crtc_set_retrace_callback(machine_crtc_retrace_signal_t callback);
 extern void crtc_set_retrace_type(int type);
 extern void crtc_set_hires_draw_callback(crtc_hires_draw_t);
@@ -74,5 +74,6 @@ extern int crtc_offscreen(void);
 extern void crtc_update_window(void);
 extern void crtc_update_renderer(void);
 
-#endif
+extern BYTE *crtc_get_active_bitmap(void);
 
+#endif

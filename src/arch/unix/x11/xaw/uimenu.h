@@ -51,6 +51,7 @@ extern void ui_menu_update_all(void);
 extern Widget ui_menu_create(const char *name, ...);
 extern void uimenu_shutdown(void);
 extern int ui_dispatch_hotkeys(int key);
+extern void ui_menu_delete(Widget widget);
 
 /* ------------------------------------------------------------------------- */
 
@@ -99,5 +100,7 @@ extern int ui_dispatch_hotkeys(int key);
 extern void _ui_menu_toggle_helper(Widget w, ui_callback_data_t client_data, ui_callback_data_t call_data, const char *resource_name);
 extern void _ui_menu_radio_helper(Widget w, ui_callback_data_t client_data, ui_callback_data_t call_data, const char *resource_name);
 extern void _ui_menu_string_radio_helper(Widget w, ui_callback_data_t client_data, ui_callback_data_t call_data, const char *resource_name);
+
+extern void ui_about_shutdown(void);
 
 #endif /* _UIMENU_H */

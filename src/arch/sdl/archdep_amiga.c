@@ -2,7 +2,7 @@
  * archdep_amiga.c
  *
  * Written by
- *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -51,6 +51,7 @@
 #include "archdep.h"
 #include "findpath.h"
 #include "ioutil.h"
+#include "keyboard.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
@@ -215,6 +216,14 @@ char *archdep_default_fliplist_file_name(void)
     return util_concat(home, "fliplist-", machine_get_name(), ".vfl", NULL);
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    const char *home;
+
+    home = archdep_boot_path();
+    return util_concat(home, "vice-sdl.rtc", NULL);
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
     const char *home;
@@ -263,16 +272,6 @@ FILE *archdep_open_default_log_file(void)
     } else {
         return stdout;
     }
-}
-
-int archdep_num_text_lines(void)
-{
-    return 25;
-}
-
-int archdep_num_text_columns(void)
-{
-    return 80;
 }
 
 int archdep_default_logger(const char *level_string, const char *txt)
@@ -429,10 +428,10 @@ void archdep_shutdown_extra(void)
 
 static int CountEntries(void)
 {
-    int entries = 0;
+    int entries = 1;
     struct DosList *dl = LockDosList(LF);
 
-    while (dl = NextDosEntry(dl, LF) {
+    while (dl = NextDosEntry(dl, LF)) {
         entries++;
     }
     UnlockDosList(LF);
@@ -443,7 +442,6 @@ static int CountEntries(void)
 char **archdep_list_drives(void)
 {
     int drive_count = CountEntries();
-    int i = 0;
     char **result, **p;
     struct DosList *dl = LockDosList(LF);
 
@@ -452,9 +450,8 @@ char **archdep_list_drives(void)
 
     while (dl = NextDosEntry(dl, LF)) {
         *p++ = lib_stralloc(BADDR(dl->dol_Name));
-        ++i;
     }
-    result[i] = NULL;
+    *p = NULL;
 
     UnlockDosList(LF);
 
@@ -482,7 +479,14 @@ void archdep_set_current_drive(const char *drive)
     if (lck) {
         CurrentDir(lck);
         Unlock(lck);
+    } else {
+        ui_error("Failed to change to drive %s", drive);
     }
+}
+
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
 }
 
 #ifdef AMIGA_MORPHOS
@@ -535,4 +539,15 @@ char *archdep_get_runtime_cpu(void)
 #ifdef AMIGA_AROS
     return platform_get_aros_runtime_cpu();
 #endif
+}
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages/actual detection
+*/
+int kbd_arch_get_host_mapping(void)
+{
+    return KBD_MAPPING_US;
 }

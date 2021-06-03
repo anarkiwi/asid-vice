@@ -1,5 +1,5 @@
 /*
- * joy.h - Joystick support for MS-DOS.
+ * joy.h - Joystick support for Vice/2.
  *
  * Written by
  *  Thomas Bretz <tbretz@gsi.de>
@@ -38,10 +38,6 @@ enum joystick_bits_s {
 };
 typedef enum joystick_bits_s joystick_bits_t;
 
-extern int joystick_init_resources(void);
-extern int joystick_init_cmdline_options(void);
-
-extern int joy_arch_init(void);
 extern void joystick_close(void);
 
 extern void joystick_update(void);

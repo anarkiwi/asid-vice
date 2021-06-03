@@ -1,6 +1,6 @@
 # Makefile.am for the Mac OS X library `libarchmacosxcocoamenu.a'.
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src/drive \
@@ -13,6 +13,7 @@ INCLUDES = \
 	-I$(top_srcdir)/src/sid \
 	-I$(top_srcdir)/src/vdrive \
 	-I$(top_srcdir)/src/raster \
+	-I$(top_srcdir)/src/joyport \
 	-I$(top_srcdir)/src
 
 noinst_LIBRARIES = libarchmacosxcocoamenu.a
@@ -49,6 +50,7 @@ libarchmacosxcocoamenu_a_SOURCES = \
 	cbm5x0ui.m \
 	petui.m \
 	plus4ui.m \
+	scpu64ui.m \
 	vic20ui.m \
 	c64controller.m \
 	c64machinecontroller.m \

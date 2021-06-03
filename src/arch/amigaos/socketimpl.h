@@ -48,6 +48,8 @@
 #  include <clib/exec_protos.h>
 # endif
 # ifdef AMIGA_AROS
+#  undef WORD
+#  undef BYTE
 #  include <proto/exec.h>
 # endif
 # include <proto/socket.h>
@@ -66,6 +68,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
+#ifdef HAVE_NETINET_TCP_H
+#include <netinet/tcp.h>
+#endif
 
 #include <sys/time.h>
 

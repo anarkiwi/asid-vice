@@ -59,6 +59,7 @@ say 'Creating Program objects...'
 CALL createProgram "C=64",        'x64.exe',     '*.d64,*.d64.gz,*.d64.zip,*.g64,*.g64.gz,*.g64.zip,*.p64,*.p64.gz,*.x64,*.x64.gz,*.x64.zip,*.t64,*.t64.gz,*.d64.zip,*.tap,*.tap.gz'
 CALL createProgram "C=64SC",      'x64sc.exe',   '*.d64,*.d64.gz,*.d64.zip,*.g64,*.g64.gz,*.g64.zip,*.p64,*.p64.gz,*.x64,*.x64.gz,*.x64.zip,*.t64,*.t64.gz,*.d64.zip,*.tap,*.tap.gz'
 CALL createProgram "C=64DTV",     'x64dtv.exe',  '*.d64,*.d64.gz,*.d64.zip,*.g64,*.g64.gz,*.g64.zip,*.p64,*.p64.gz,*.x64,*.x64.gz,*.x64.zip,*.t64,*.t64.gz,*.d64.zip'
+CALL createProgram "C=SCPU64",    'xscpu64.exe',   '*.d64,*.d64.gz,*.d64.zip,*.g64,*.g64.gz,*.g64.zip,*.p64,*.p64.gz,*.x64,*.x64.gz,*.x64.zip,*.t64,*.t64.gz,*.d64.zip,*.tap,*.tap.gz'
 CALL createProgram "C=128",       'x128.exe',    '*.d71,*.d71.gz,*.d81,*.d81.gz'
 CALL createProgram "VIC 20",      'xvic.exe',    '*.d64,*.d64.gz,*.d64.zip,*.g64,*.g64.gz,*.g64.zip,*.p64,*.p64.gz,*.x64,*.x64.gz,*.x64.zip,*.t64,*.t64.gz,*.d64.zip,*.tap,*.tap.gz'
 CALL createProgram "PET",         'xpet.exe',    '*.d80,*.d80.gz,*.d80.zip,*.d82,*.d82.gz,*.d82.zip'
@@ -87,7 +88,7 @@ end
 
 say 'Creating objects for documentation...'
 
-setupstring='EXENAME=view.exe;PARAMETERS=vice2.inf;STARTUPDIR='curdir'\doc'
+setupstring='EXENAME=view.exe;PARAMETERS=vice.inf;STARTUPDIR='curdir'\doc'
 if SysCreateObject("WPProgram","Vice Manual","<VICE2>",setupstring,"update")<>1 then
 do
     say '!!! Can''t create a program object for the Vice Manual'
@@ -106,7 +107,7 @@ do
 end
 
 setupstring='URL=file://'curdir'\html\vice_toc.html'
-if SysCreateObject("WPUrl","HTML Documetation","<VICE2_DOC>",setupstring,"update")<>1 then
+if SysCreateObject("WPUrl","HTML Documentation","<VICE2_DOC>",setupstring,"update")<>1 then
 do
     say '!!! Can''t create a html object for HTML Documatation'
     say ''
@@ -138,12 +139,6 @@ end
 
 curdir = directory(origdir'\doc\txt')
 
-CALL createShadow "<VICE2_TEXT>", '64doc.txt'
-CALL createShadow "<VICE2_TEXT>", 'cbm_basic_tokens.txt'
-CALL createShadow "<VICE2_TEXT>", 'drive_info.txt'
-CALL createShadow "<VICE2_TEXT>", 'mon.txt'
-CALL createShadow "<VICE2_TEXT>", 'PETdoc.txt'
-CALL createShadow "<VICE2_TEXT>", 'serial.txt'
 /*
  CALL createShadow "<VICE2_TEXT>", 'Evaluation'
  */

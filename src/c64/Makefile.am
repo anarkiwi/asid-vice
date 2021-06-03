@@ -1,6 +1,6 @@
 SUBDIRS = cart
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -12,43 +12,41 @@ INCLUDES = \
 	-I$(top_srcdir)/src/tape \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/viciisc \
+	-I$(top_srcdir)/src/viciivsid \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/video \
-	-I$(top_srcdir)/src/rtc
+	-I$(top_srcdir)/src/rtc \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv \
+	-I$(top_srcdir)/src/tapeport
 
-noinst_LIBRARIES = libvsid.a libc64.a libc64sc.a libc64c128.a libc64c64dtv.a
+noinst_LIBRARIES = libvsid.a libc64.a libc64sc.a libc64c128.a libc64c64dtv.a libc64scpu64.a
 
 libvsid_a_SOURCES = \
-	c64-cmdline-options.c \
-	c64-cmdline-options.h \
 	c64embedded.c \
-	c64export.c \
-	c64export.h \
 	c64gluelogic.c \
 	c64gluelogic.h \
-	c64io.c \
 	c64keyboard.c \
 	c64keyboard.h \
-	c64meminit.c \
 	c64meminit.h \
 	c64memlimit.c \
 	c64memlimit.h \
 	c64memrom.c \
 	c64memrom.h \
-	c64memsnapshot.c \
 	c64memsnapshot.h \
 	c64model.c \
 	c64model.h \
 	c64parallel.h \
-	c64pla.c \
 	c64pla.h \
 	c64rom.c \
 	c64rom.h \
 	c64romset.c \
 	c64rsuser.c \
 	c64rsuser.h \
-	c64sound.c \
 	c64video.c \
+	vsid-debugcart.c \
+	vsid-debugcart.h \
+	musdrv.h \
 	patchrom.c \
 	patchrom.h \
 	psid.c \
@@ -56,16 +54,24 @@ libvsid_a_SOURCES = \
 	psiddrv.a65 \
 	reloc65.c \
 	vsid.c \
+	vsid-cmdline-options.c \
 	vsid-resources.c \
 	vsid-snapshot.c \
 	vsidcia1.c \
 	vsidcia2.c \
+	vsidcpu.c \
 	vsidmem.c \
+	vsidmeminit.c \
+	vsidmemsnapshot.c \
+	vsidpla.c \
+	vsidsound.c \
 	vsidstubs.c
 
 libc64_a_SOURCES = \
 	c64-cmdline-options.c \
 	c64-cmdline-options.h \
+	c64-memory-hacks.c \
+	c64-memory-hacks.h \
 	c64-resources.c \
 	c64-resources.h \
 	c64-snapshot.c \
@@ -79,11 +85,11 @@ libc64_a_SOURCES = \
 	c64cia.h \
 	c64cia1.c \
 	c64cia2.c \
+	c64cpu.c \
 	c64datasette.c \
 	c64drive.c \
 	c64embedded.c \
 	c64export.c \
-	c64export.h \
 	c64fastiec.c \
 	c64fastiec.h \
 	c64gluelogic.c \
@@ -132,6 +138,8 @@ libc64_a_SOURCES = \
 libc64sc_a_SOURCES = \
 	c64-cmdline-options.c \
 	c64-cmdline-options.h \
+	c64-memory-hacks.c \
+	c64-memory-hacks.h \
 	c64-resources.c \
 	c64-resources.h \
 	c64-snapshot.c \
@@ -145,12 +153,11 @@ libc64sc_a_SOURCES = \
 	c64cia.h \
 	c64cia1.c \
 	c64cia2.c \
-	c64cpu.c \
+	c64cpusc.c \
 	c64datasette.c \
 	c64drive.c \
 	c64embedded.c \
 	c64export.c \
-	c64export.h \
 	c64fastiec.c \
 	c64fastiec.h \
 	c64gluelogic.c \
@@ -205,7 +212,6 @@ libc64c64dtv_a_SOURCES = \
 	c64keyboard.h \
 	c64parallel.c \
 	c64parallel.h \
-	c64printer.c \
 	c64rom.c \
 	c64rom.h \
 	c64romset.c \
@@ -222,7 +228,6 @@ libc64c128_a_SOURCES = \
 	c64cia2.c \
 	c64datasette.c \
 	c64export.c \
-	c64export.h \
 	c64gluelogic.c \
 	c64gluelogic.h \
 	c64iec.c \
@@ -244,6 +249,38 @@ libc64c128_a_SOURCES = \
 	c64sound.c \
 	patchrom.c \
 	patchrom.h
+
+libc64scpu64_a_SOURCES = \
+	c64bus.c \
+	c64cart.h \
+	c64cia.h \
+	c64cia1.c \
+	c64cia2.c \
+	c64datasette.c \
+	c64drive.c \
+	c64embedded.c \
+	c64export.c \
+	c64fastiec.c \
+	c64fastiec.h \
+	c64iec.c \
+	c64iec.h \
+	c64io.c \
+	c64keyboard.c \
+	c64keyboard.h \
+	c64memsnapshot.c \
+	c64memsnapshot.h \
+	c64model.h \
+	c64parallel.c \
+	c64parallel.h \
+	c64printer.c \
+	c64romset.c \
+	c64rsuser.c \
+	c64rsuser.h \
+	c64sound.c \
+	c64video.c \
+	patchrom.c \
+	patchrom.h \
+	reloc65.c
 
 BUILT_SOURCES = psiddrv.h
 

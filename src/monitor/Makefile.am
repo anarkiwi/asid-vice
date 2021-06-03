@@ -1,4 +1,4 @@
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -20,10 +20,12 @@ libmonitor_a_SOURCES = \
 	asm6502dtv.c \
 	asm6809.c \
 	asmR65C02.c \
+	asm65816.c \
 	asmz80.c \
 	asm.h \
 	mon_assemble6502.c \
 	mon_assembleR65C02.c \
+	mon_assemble65816.c \
 	mon_assemble6809.c \
 	mon_assemblez80.c \
 	mon_assemble.h \
@@ -37,14 +39,18 @@ libmonitor_a_SOURCES = \
 	mon_drive.h \
 	mon_file.c \
 	mon_file.h \
+	mon_memmap.c \
+	mon_memmap.h \
 	mon_memory.c \
 	mon_memory.h \
 	mon_register6502.c \
 	mon_register6502dtv.c \
 	mon_register6809.c \
 	mon_registerR65C02.c \
+	mon_register65816.c \
 	mon_registerz80.c \
 	mon_register.h \
+	mon_register.c \
 	mon_ui.c \
 	mon_ui.h \
 	mon_util.c \

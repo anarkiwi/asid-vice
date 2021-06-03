@@ -1,5 +1,5 @@
 /*
- * vic20io.c - VIC20 io handling ($9800-$9FFF).
+ * vic20io.c - VIC20 io handling ($9000-$93FF & $9800-$9FFF).
  *
  * Written by
  *  Marco van den Heuvel <blackystardust68@yahoo.com>
@@ -65,6 +65,7 @@ static unsigned int order = 0;
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
+static io_source_list_t vic20io0_head = { NULL, NULL, NULL };
 static io_source_list_t vic20io2_head = { NULL, NULL, NULL };
 static io_source_list_t vic20io3_head = { NULL, NULL, NULL };
 
@@ -147,7 +148,7 @@ static void io_source_msg_detach_all(WORD addr, int amount, io_source_list_t *st
 
         DBG(("IO: found %d items to detach\n", found));
         for (i = 0; i < found; i++) {
-            DBG(("IO: detach #%d id:%d name: %s\n",i , detach_list[i].det_cartid, detach_list[i].det_devname));
+            DBG(("IO: detach #%d id:%d name: %s\n", i, detach_list[i].det_cartid, detach_list[i].det_devname));
             io_source_detach(&detach_list[i]);
         }
     }
@@ -217,7 +218,7 @@ static void io_source_msg_detach_last(WORD addr, int amount, io_source_list_t *s
         DBG(("IO: found %d items to detach\n", found));
         for (i = 0; i < found; i++) {
             if (detach_list[i].order != lowest) {
-                DBG(("IO: detach #%d id:%d name: %s\n",i , detach_list[i].det_cartid, detach_list[i].det_devname));
+                DBG(("IO: detach #%d id:%d name: %s\n", i, detach_list[i].det_cartid, detach_list[i].det_devname));
                 io_source_detach(&detach_list[i]);
             }
         }
@@ -271,7 +272,6 @@ static void io_source_log_collisions(WORD addr, int amount, io_source_list_t *st
     if (found) {
         log_message(LOG_DEFAULT, new_msg, addr);
         lib_free(new_msg);
-
     }
 }
 
@@ -281,6 +281,7 @@ static inline BYTE io_read(io_source_list_t *list, WORD addr)
     int io_source_counter = 0;
     BYTE realval = 0;
     BYTE retval = 0;
+    BYTE firstval = 0;
     unsigned int lowest_order = 0xffffffff;
 
     while (current) {
@@ -301,7 +302,15 @@ static inline BYTE io_read(io_source_list_t *list, WORD addr)
                         realval &= retval;
                     }
                     if (current->device->io_source_prio != -1) {
-                        io_source_counter++;
+                        if (!io_source_counter) {
+                            firstval = retval;
+                            io_source_counter++;
+                        } else {
+                            /* if the nth read returns the same as the first read don't see it as a conflict */
+                            if (retval != firstval) {
+                                io_source_counter++;
+                            }
+                        }
                     }
                 }
             }
@@ -342,7 +351,7 @@ static inline BYTE io_read(io_source_list_t *list, WORD addr)
     return vic20_cpu_last_data;
 }
 
-/* peek from i/o area with no side-effects */
+/* peek from I/O area with no side-effects */
 static inline BYTE io_peek(io_source_list_t *list, WORD addr)
 {
     io_source_list_t *current = list->next;
@@ -389,6 +398,9 @@ io_source_list_t *io_source_register(io_source_t *device)
     DBG(("IO: register id:%d name:%s\n", device->cart_id, device->name));
 
     switch (device->start_address & 0xfc00) {
+        case 0x9000:
+            current = &vic20io0_head;
+            break;
         case 0x9800:
             current = &vic20io2_head;
             break;
@@ -436,6 +448,12 @@ void cartio_shutdown(void)
 {
     io_source_list_t *current;
 
+    current = vic20io0_head.next;
+    while (current) {
+        io_source_unregister(current);
+        current = vic20io0_head.next;
+    }
+
     current = vic20io2_head.next;
     while (current) {
         io_source_unregister(current);
@@ -455,6 +473,24 @@ void cartio_set_highest_order(unsigned int nr)
 }
 
 /* ---------------------------------------------------------------------------------------------------------- */
+
+BYTE vic20io0_read(WORD addr)
+{
+    DBGRW(("IO: io0 r %04x\n", addr));
+    return io_read(&vic20io0_head, addr);
+}
+
+BYTE vic20io0_peek(WORD addr)
+{
+    DBGRW(("IO: io0 p %04x\n", addr));
+    return io_peek(&vic20io0_head, addr);
+}
+
+void vic20io0_store(WORD addr, BYTE value)
+{
+    DBGRW(("IO: io0 w %04x %02x\n", addr, value));
+    io_store(&vic20io0_head, addr, value);
+}
 
 BYTE vic20io2_read(WORD addr)
 {
@@ -506,22 +542,29 @@ static int decodemask(WORD mask)
     return len;
 }
 
-/* add all registered i/o devices to the list for the monitor */
+/* add all registered I/O devices to the list for the monitor */
 void io_source_ioreg_add_list(struct mem_ioreg_list_s **mem_ioreg_list)
 {
     io_source_list_t *current;
 
+    current = vic20io0_head.next;
+
+    while (current) {
+        mon_ioreg_add_list(mem_ioreg_list, current->device->name, current->device->start_address, current->device->start_address + decodemask(current->device->address_mask), current->device->dump, NULL);
+        current = current->next;
+    }
+
     current = vic20io2_head.next;
 
     while (current) {
-        mon_ioreg_add_list(mem_ioreg_list, current->device->name, current->device->start_address, current->device->start_address + decodemask(current->device->address_mask), current->device->dump);
+        mon_ioreg_add_list(mem_ioreg_list, current->device->name, current->device->start_address, current->device->start_address + decodemask(current->device->address_mask), current->device->dump, NULL);
         current = current->next;
     }
 
     current = vic20io3_head.next;
 
     while (current) {
-        mon_ioreg_add_list(mem_ioreg_list, current->device->name, current->device->start_address, current->device->start_address + decodemask(current->device->address_mask), current->device->dump);
+        mon_ioreg_add_list(mem_ioreg_list, current->device->name, current->device->start_address, current->device->start_address + decodemask(current->device->address_mask), current->device->dump, NULL);
         current = current->next;
     }
 }
@@ -530,17 +573,23 @@ void io_source_ioreg_add_list(struct mem_ioreg_list_s **mem_ioreg_list)
 
 static int set_io_source_collision_handling(int val, void *param)
 {
-    if (val < 0 || val > 2) {
-        return -1;
+    switch (val) {
+        case IO_COLLISION_METHOD_DETACH_ALL:
+        case IO_COLLISION_METHOD_DETACH_LAST:
+        case IO_COLLISION_METHOD_AND_WIRES:
+            break;
+        default:
+            return -1;
     }
-	io_source_collision_handling = val;
+
+    io_source_collision_handling = val;
 
     return 0;
 }
 
 
 static const resource_int_t resources_int[] = {
-    { "IOCollisionHandling", 0, RES_EVENT_STRICT, (resource_value_t)0,
+    { "IOCollisionHandling", IO_COLLISION_METHOD_DETACH_ALL, RES_EVENT_STRICT, (resource_value_t)0,
       &io_source_collision_handling, set_io_source_collision_handling, NULL },
     { NULL }
 };

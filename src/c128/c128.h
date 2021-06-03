@@ -4,6 +4,7 @@
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -40,6 +41,9 @@
 #define C128_NTSC_CYCLES_PER_RFSH (C128_NTSC_SCREEN_LINES * C128_NTSC_CYCLES_PER_LINE)
 #define C128_NTSC_RFSH_PER_SEC    (1.0 / ((double)C128_NTSC_CYCLES_PER_RFSH / (double)C128_NTSC_CYCLES_PER_SEC))
 
+/* $01 bit 7 fall-off cycles (1->0), average is about 53 msec for a 8502 */
+#define C128_CPU8502_DATA_PORT_FALL_OFF_CYCLES 53000
+
 #define C128_MACHINE_INT       0
 #define C128_MACHINE_FINNISH   1
 #define C128_MACHINE_FRENCH    2
@@ -47,6 +51,7 @@
 #define C128_MACHINE_ITALIAN   4
 #define C128_MACHINE_NORWEGIAN 5
 #define C128_MACHINE_SWEDISH   6
+#define C128_MACHINE_SWISS     7
 
 struct cia_context_s;
 struct printer_context_s;

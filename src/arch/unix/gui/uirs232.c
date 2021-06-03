@@ -3,7 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
- *  Andr� Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -26,6 +26,8 @@
  */
 
 #include "vice.h"
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -127,3 +129,5 @@ UI_CALLBACK(set_rs232_dump_file)
 {
     uilib_select_file((char *)UI_MENU_CB_PARAM, _("File to dump RS232 to"), UILIB_FILTER_ALL);
 }
+
+#endif

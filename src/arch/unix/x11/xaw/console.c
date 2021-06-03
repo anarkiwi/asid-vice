@@ -32,6 +32,19 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef __minix
+#undef HAVE_TERMIOS_H
+#undef GWINSZ_IN_SYS_IOCTL
+#endif
+
+#ifdef HAVE_TERMIOS_H
+#include <termios.h>
+#endif
+
+#ifdef GWINSZ_IN_SYS_IOCTL
+#include <sys/ioctl.h>
+#endif
+
 #include "console.h"
 #include "lib.h"
 #include "log.h"
@@ -40,7 +53,7 @@
 
 static console_t *console_log_local = NULL;
 
-#if defined(HAVE_READLINE)
+#if defined(HAVE_READLINE) && defined(HAVE_READLINE_READLINE_H)
 #include <readline/readline.h>
 #include <readline/history.h>
 #else
@@ -49,7 +62,7 @@ static FILE *mon_input, *mon_output;
 
 int console_init(void)
 {
-#if defined(HAVE_READLINE) && defined(HAVE_RLNAME)
+#if defined(HAVE_READLINE) && defined(HAVE_READLINE_READLINE_H) && defined(HAVE_RLNAME)
     rl_readline_name = "VICE";
 #endif
 
@@ -58,27 +71,51 @@ int console_init(void)
 
 console_t *uimon_window_open(void)
 {
+#if defined(HAVE_TERMIOS_H) || defined(GWINSZ_IN_SYS_IOCTL)
+    struct winsize w;
+#endif
+
     if (!isatty(fileno(stdin))) {
         log_error(LOG_DEFAULT, "console_open: stdin is not a tty.");
         console_log_local = NULL;
+        return NULL;
     }
-    else if (!isatty(fileno(stdout))) {
+    if (!isatty(fileno(stdout))) {
         log_error(LOG_DEFAULT, "console_open: stdout is not a tty.");
         console_log_local = NULL;
+        return NULL;
     }
-    else {
-        console_log_local = lib_malloc(sizeof(console_t));
+    console_log_local = lib_malloc(sizeof(console_t));
+    /* change window title for console identification purposes */
+    if (getenv("WINDOWID") == NULL) {
+        printf("\033]2;VICE monitor console (%d)\007", (int)getpid());
+    }
 
-#if !defined(HAVE_READLINE)
-        mon_input = stdin;
-        mon_output = stdout;
+#if !defined(HAVE_READLINE) || !defined(HAVE_READLINE_READLINE_H)
+    mon_input = stdin;
+    mon_output = stdout;
 #endif
 
+#if defined(HAVE_TERMIOS_H) || defined(GWINSZ_IN_SYS_IOCTL)
+    if (ioctl(fileno(stdin), TIOCGWINSZ, &w)) {
         console_log_local->console_xres = 80;
         console_log_local->console_yres = 25;
-        console_log_local->console_can_stay_open = 1;
-        console_log_local->console_cannot_output = 0;
+    } else {
+        console_log_local->console_xres = w.ws_col >= 40 ? w.ws_col : 40;
+        console_log_local->console_yres = w.ws_row >= 22 ? w.ws_row : 22;
     }
+
+#else
+    console_log_local->console_xres = 80;
+    console_log_local->console_yres = 25;
+#endif
+
+    console_log_local->console_can_stay_open = 1;
+    console_log_local->console_cannot_output = 0;
+    ui_autorepeat_on();
+#ifdef HAVE_MOUSE
+    ui_restore_mouse();
+#endif
     ui_focus_monitor();
     return console_log_local;
 }
@@ -102,6 +139,10 @@ void uimon_window_suspend( void )
 console_t *uimon_window_resume(void)
 {
     if (console_log_local) {
+        ui_autorepeat_on();
+#ifdef HAVE_MOUSE
+        ui_restore_mouse();
+#endif
         ui_focus_monitor();
         return console_log_local;
     }
@@ -115,7 +156,18 @@ int uimon_out(const char *buffer)
     return 0;
 }
 
-#ifndef HAVE_READLINE
+#if !defined(HAVE_READLINE) || !defined(HAVE_READLINE_READLINE_H)
+int console_out(console_t *log, const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    vfprintf(mon_output, format, ap);
+    va_end(ap);
+
+    return 0;
+}
+
 static char *readline(const char *prompt)
 {
     char *p = lib_malloc(1024);
@@ -166,4 +218,3 @@ void uimon_notify_change( void )
 void uimon_set_interface(struct monitor_interface_s **monitor_interface_init, int count)
 {
 }
-

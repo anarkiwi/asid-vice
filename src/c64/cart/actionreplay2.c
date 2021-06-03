@@ -33,10 +33,10 @@
 #define CARTRIDGE_INCLUDE_SLOTMAIN_API
 #include "c64cartsystem.h"
 #undef CARTRIDGE_INCLUDE_SLOTMAIN_API
-#include "c64export.h"
 #include "c64mem.h"
 #include "cartio.h"
 #include "cartridge.h"
+#include "export.h"
 #include "snapshot.h"
 #include "types.h"
 #include "util.h"
@@ -113,7 +113,7 @@
     .word $df15-1  2
     .word $80c3-1  3
     .word $8057-1
-    .word $ff84-1  
+    .word $ff84-1
 
 .C:ff84   4C A3 FD   JMP $FDA3 ; Init I/O Devices, Ports & Timers
 ...
@@ -325,7 +325,7 @@ static io_source_t actionreplay2_io2_device = {
 static io_source_list_t *actionreplay2_io1_list_item = NULL;
 static io_source_list_t *actionreplay2_io2_list_item = NULL;
 
-static const c64export_resource_t export_res = {
+static const export_resource_t export_res = {
     CARTRIDGE_NAME_ACTION_REPLAY2, 1, 1, &actionreplay2_io1_device, &actionreplay2_io2_device, CARTRIDGE_ACTION_REPLAY2
 };
 
@@ -333,7 +333,7 @@ static const c64export_resource_t export_res = {
 
 /* these two values are hand tuned */
 #define CAPENABLE  65
-#define CAPDISABLE (50+(7*16))       /* 7*16: (bytes routine at $df27 * max filename max len) */
+#define CAPDISABLE (50 + (7 * 16))       /* 7*16: (bytes routine at $df27 * max filename max len) */
 
 static int ar_enabled = 0, ar_cap_enable = 0, ar_cap_disable = 0;
 
@@ -344,7 +344,7 @@ static void cap_charge(void)
     if (ar_cap_disable == CAPDISABLE) {
         ar_enabled = 0;
         ar_cap_enable = 0;
-        cart_config_changed_slotmain((BYTE)(2 | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(2 | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
+        cart_config_changed_slotmain((BYTE)(CMODE_RAM | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(CMODE_RAM | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
         DBG(("disabled\n"));
     }
 }
@@ -356,7 +356,7 @@ static void cap_discharge(void)
     if (ar_cap_enable == CAPENABLE) {
         roml_bank = 1;
         ar_enabled = 1;
-        cart_config_changed_slotmain((BYTE)(0 | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(0 | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
+        cart_config_changed_slotmain((BYTE)(CMODE_8KGAME | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(CMODE_8KGAME | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
         DBG(("enabled\n"));
     }
     ar_cap_disable = 0;
@@ -421,7 +421,7 @@ void actionreplay2_freeze(void)
     ar_cap_enable = 0;
     ar_cap_disable = 0;
     DBG(("freeze\n"));
-    cart_config_changed_slotmain((BYTE)(3 | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(3 | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
+    cart_config_changed_slotmain((BYTE)(CMODE_ULTIMAX | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(CMODE_ULTIMAX | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
     cartridge_release_freeze();
 }
 
@@ -432,7 +432,7 @@ void actionreplay2_config_init(void)
     ar_cap_enable = 0;
     ar_cap_disable = 0;
     DBG(("config init\n"));
-    cart_config_changed_slotmain((BYTE)(0 | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(0 | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
+    cart_config_changed_slotmain((BYTE)(CMODE_8KGAME | (roml_bank << CMODE_BANK_SHIFT)), (BYTE)(CMODE_8KGAME | (roml_bank << CMODE_BANK_SHIFT)), CMODE_READ);
 }
 
 void actionreplay2_reset(void)
@@ -453,7 +453,7 @@ void actionreplay2_config_setup(BYTE *rawcart)
 
 static int actionreplay2_common_attach(void)
 {
-    if (c64export_add(&export_res) < 0) {
+    if (export_add(&export_res) < 0) {
         return -1;
     }
 
@@ -496,7 +496,7 @@ int actionreplay2_crt_attach(FILE *fd, BYTE *rawcart)
 
 void actionreplay2_detach(void)
 {
-    c64export_remove(&export_res);
+    export_remove(&export_res);
     io_source_unregister(actionreplay2_io1_list_item);
     io_source_unregister(actionreplay2_io2_list_item);
     actionreplay2_io1_list_item = NULL;
@@ -505,16 +505,26 @@ void actionreplay2_detach(void)
 
 /* ---------------------------------------------------------------------*/
 
-#define CART_DUMP_VER_MAJOR   0
-#define CART_DUMP_VER_MINOR   0
-#define SNAP_MODULE_NAME  "CARTAR2"
+/* CARTAR2 snapshot module format:
+
+   type  | name        | description
+   ---------------------------------
+   BYTE  | enabled     | cartidge enabled flag
+   DWORD | cap enable  | capacitor enable counter
+   DWORD | cap disable | capacitor disable counter
+   ARRAY | ROML        | 16768 BYTES of ROML data
+ */
+
+static char snap_module_name[] = "CARTAR2";
+#define SNAP_MAJOR   0
+#define SNAP_MINOR   0
 
 int actionreplay2_snapshot_write_module(snapshot_t *s)
 {
     snapshot_module_t *m;
 
-    m = snapshot_module_create(s, SNAP_MODULE_NAME,
-                          CART_DUMP_VER_MAJOR, CART_DUMP_VER_MINOR);
+    m = snapshot_module_create(s, snap_module_name, SNAP_MAJOR, SNAP_MINOR);
+
     if (m == NULL) {
         return -1;
     }
@@ -528,8 +538,7 @@ int actionreplay2_snapshot_write_module(snapshot_t *s)
         return -1;
     }
 
-    snapshot_module_close(m);
-    return 0;
+    return snapshot_module_close(m);
 }
 
 int actionreplay2_snapshot_read_module(snapshot_t *s)
@@ -537,14 +546,16 @@ int actionreplay2_snapshot_read_module(snapshot_t *s)
     BYTE vmajor, vminor;
     snapshot_module_t *m;
 
-    m = snapshot_module_open(s, SNAP_MODULE_NAME, &vmajor, &vminor);
+    m = snapshot_module_open(s, snap_module_name, &vmajor, &vminor);
+
     if (m == NULL) {
         return -1;
     }
 
-    if ((vmajor != CART_DUMP_VER_MAJOR) || (vminor != CART_DUMP_VER_MINOR)) {
-        snapshot_module_close(m);
-        return -1;
+    /* Do not accept versions higher than current */
+    if (vmajor > SNAP_MAJOR || vminor > SNAP_MINOR) {
+        snapshot_set_error(SNAPSHOT_MODULE_HIGHER_VERSION);
+        goto fail;
     }
 
     if (0
@@ -552,11 +563,14 @@ int actionreplay2_snapshot_read_module(snapshot_t *s)
         || (SMR_DW_INT(m, &ar_cap_enable) < 0)
         || (SMR_DW_INT(m, &ar_cap_disable) < 0)
         || (SMR_BA(m, roml_banks, 0x4000) < 0)) {
-        snapshot_module_close(m);
-        return -1;
+        goto fail;
     }
 
     snapshot_module_close(m);
 
     return actionreplay2_common_attach();
+
+fail:
+    snapshot_module_close(m);
+    return -1;
 }

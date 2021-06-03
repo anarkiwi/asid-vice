@@ -1,3 +1,8 @@
+/** \file   src/diskimage/fsimage-create.c
+ *
+ * \brief   Create disk images on the host file system
+ */
+
 /*
  * fsimage-create.c - Create a disk image.
  *
@@ -44,8 +49,21 @@
 #include "p64.h"
 #include "cbmdos.h"
 
+
+/** \brief  Log instance for this module
+ */
 static log_t createdisk_log = LOG_DEFAULT;
 
+
+/** \brief  Create a Dxx disk image on the host file system
+ *
+ * This handles any 'normal'/non-GCR disk image supported by VICE. The only
+ * image contained inside a X64 that is supported is a D64.
+ *
+ * \param[in,out]   image   disk image
+ *
+ * \return  0 on success, < 0 on failure
+ */
 static int fsimage_create_dxx(disk_image_t *image)
 {
     unsigned int size, i, size2;
@@ -57,45 +75,45 @@ static int fsimage_create_dxx(disk_image_t *image)
     size = 0; size2 = 0;
 
     switch (image->type) {
-    case DISK_IMAGE_TYPE_D64:
-    case DISK_IMAGE_TYPE_X64:
-        size = D64_FILE_SIZE_35;
-        break;
-    case DISK_IMAGE_TYPE_D67:
-        size = D67_FILE_SIZE;
-        break;
-    case DISK_IMAGE_TYPE_D71:
-        size = D71_FILE_SIZE;
-        break;
-    case DISK_IMAGE_TYPE_D81:
-        size = D81_FILE_SIZE;
-        break;
-    case DISK_IMAGE_TYPE_D80:
-        size = D80_FILE_SIZE;
-        break;
-    case DISK_IMAGE_TYPE_D82:
-        size = D82_FILE_SIZE;
-        break;
-    case DISK_IMAGE_TYPE_G64:
-        break;
-    case DISK_IMAGE_TYPE_P64:
-        break;
-    case DISK_IMAGE_TYPE_D1M:
-        size = D1M_FILE_SIZE;
-        size2 = 40 * 256;
-        break;
-    case DISK_IMAGE_TYPE_D2M:
-        size = D2M_FILE_SIZE;
-        size2 = 80 * 256;
-        break;
-    case DISK_IMAGE_TYPE_D4M:
-        size = D4M_FILE_SIZE;
-        size2 = 160 * 256;
-        break;
-    default:
-        log_error(createdisk_log,
-                "Wrong image type.  Cannot create disk image.");
-        return -1;
+        case DISK_IMAGE_TYPE_D64:
+        case DISK_IMAGE_TYPE_X64:
+            size = D64_FILE_SIZE_35;
+            break;
+        case DISK_IMAGE_TYPE_D67:
+            size = D67_FILE_SIZE;
+            break;
+        case DISK_IMAGE_TYPE_D71:
+            size = D71_FILE_SIZE;
+            break;
+        case DISK_IMAGE_TYPE_D81:
+            size = D81_FILE_SIZE;
+            break;
+        case DISK_IMAGE_TYPE_D80:
+            size = D80_FILE_SIZE;
+            break;
+        case DISK_IMAGE_TYPE_D82:
+            size = D82_FILE_SIZE;
+            break;
+        case DISK_IMAGE_TYPE_G64:
+            break;
+        case DISK_IMAGE_TYPE_P64:
+            break;
+        case DISK_IMAGE_TYPE_D1M:
+            size = D1M_FILE_SIZE;
+            size2 = 40 * 256;
+            break;
+        case DISK_IMAGE_TYPE_D2M:
+            size = D2M_FILE_SIZE;
+            size2 = 80 * 256;
+            break;
+        case DISK_IMAGE_TYPE_D4M:
+            size = D4M_FILE_SIZE;
+            size2 = 160 * 256;
+            break;
+        default:
+            log_error(createdisk_log,
+                      "Wrong image type.  Cannot create disk image.");
+            return -1;
     }
 
     if (image->type == DISK_IMAGE_TYPE_X64) {
@@ -115,16 +133,16 @@ static int fsimage_create_dxx(disk_image_t *image)
         header[X64_HEADER_FLAGS_OFFSET + 3] = 0;
         if (fwrite(header, X64_HEADER_LENGTH, 1, fsimage->fd) < 1) {
             log_error(createdisk_log,
-                    "Cannot write X64 header to disk image `%s'.",
-                    fsimage->name);
+                      "Cannot write X64 header to disk image `%s'.",
+                      fsimage->name);
         }
     }
 
     for (i = 0; i < ((size - size2) / 256); i++) {
         if (fwrite(block, 256, 1, fsimage->fd) < 1) {
             log_error(createdisk_log,
-                    "Cannot seek to end of disk image `%s'.",
-                    fsimage->name);
+                      "Cannot seek to end of disk image `%s'.",
+                      fsimage->name);
             rc = -1;
             break;
         }
@@ -143,7 +161,7 @@ static int fsimage_create_dxx(disk_image_t *image)
                 block[0xa9] = (size - size2) >> 9;
                 block[0xe2] = 1;
                 block[0xe3] = 1;
-                memcpy(block + 0xf0, "\x43\x4d\x44\x20\x46\x44\x20\x53\x45\x52\x49\x45\x53\x20\x20\x20",16);
+                memcpy(block + 0xf0, "\x43\x4d\x44\x20\x46\x44\x20\x53\x45\x52\x49\x45\x53\x20\x20\x20", 16);
             } else if (i == 8) {
                 block[0x00] = 0x01;
                 block[0x01] = 0x01;
@@ -161,8 +179,8 @@ static int fsimage_create_dxx(disk_image_t *image)
             }
             if (fwrite(block, 256, 1, fsimage->fd) < 1) {
                 log_error(createdisk_log,
-                        "Cannot seek to end of disk image `%s'.",
-                        fsimage->name);
+                          "Cannot seek to end of disk image `%s'.",
+                          fsimage->name);
                 rc = -1;
                 break;
             }
@@ -171,6 +189,13 @@ static int fsimage_create_dxx(disk_image_t *image)
     return rc;
 }
 
+
+/** \brief  Create a G64 disk image on the host file system
+ *
+ * \param[in,out]   image   disk image
+ *
+ * return   0 on success, < 0 on failure
+ */
 static int fsimage_create_gcr(disk_image_t *image)
 {
     BYTE gcr_header[12], gcr_track[NUM_MAX_BYTES_TRACK + 2], *gcrptr;
@@ -217,21 +242,20 @@ static int fsimage_create_gcr(disk_image_t *image)
     for (track = 1; track <= NUM_TRACKS_1541; track++) {
         gap = disk_image_gap_size(image->type, track);
         gcrptr = gcr_track;
-        util_word_to_le_buf(gcrptr, disk_image_raw_track_size(image->type, track));
+        util_word_to_le_buf(gcrptr, (WORD)disk_image_raw_track_size(image->type, track));
         gcrptr += 2;
         memset(gcrptr, 0x55, NUM_MAX_BYTES_TRACK);
 
         header.track = track;
         for (sector = 0;
-        sector < disk_image_sector_per_track(image->type, track);
-        sector++) {
-
+             sector < disk_image_sector_per_track(image->type, track);
+             sector++) {
             header.sector = sector;
             gcr_convert_sector_to_GCR(rawdata, gcrptr, &header, 9, 5, CBMDOS_FDC_ERR_OK);
 
             gcrptr += SECTOR_GCR_SIZE_WITH_HEADER + 9 + gap + 5;
         }
-        if (fwrite((char *)gcr_track, sizeof(gcr_track), 1, fsimage->fd) < 1 ) {
+        if (fwrite((char *)gcr_track, sizeof(gcr_track), 1, fsimage->fd) < 1) {
             log_error(createdisk_log, "Cannot write track data.");
             return -1;
         }
@@ -239,6 +263,13 @@ static int fsimage_create_gcr(disk_image_t *image)
     return 0;
 }
 
+
+/** \brief  Create a P64 disk image on the host file system
+ *
+ * \param[in,out]   image   disk image
+ *
+ * \return 0 on success, < 0 on failure
+ */
 static int fsimage_create_p64(disk_image_t *image)
 {
     TP64MemoryStream P64MemoryStreamInstance;
@@ -260,15 +291,14 @@ static int fsimage_create_p64(disk_image_t *image)
     for (track = 1; track <= NUM_TRACKS_1541; track++) {
         gap = disk_image_gap_size(image->type, track);
         gcrptr = gcr_track;
-        util_word_to_le_buf(gcrptr, disk_image_raw_track_size(image->type, track));
+        util_word_to_le_buf(gcrptr, (WORD)disk_image_raw_track_size(image->type, track));
         gcrptr += 2;
-        memset(gcrptr, 0x55, NUM_MAX_BYTES_TRACK);
+        memset(gcrptr, 0x55, NUM_MAX_BYTES_TRACK - 2);
 
         header.track = track;
         for (sector = 0;
-        sector < disk_image_sector_per_track(image->type, track);
-        sector++) {
-
+             sector < disk_image_sector_per_track(image->type, track);
+             sector++) {
             header.sector = sector;
             gcr_convert_sector_to_GCR(rawdata, gcrptr, &header, 9, 5, CBMDOS_FDC_ERR_OK);
 
@@ -279,12 +309,12 @@ static int fsimage_create_p64(disk_image_t *image)
 
     P64MemoryStreamCreate(&P64MemoryStreamInstance);
     P64MemoryStreamClear(&P64MemoryStreamInstance);
-    if (P64ImageWriteToStream(&P64Image,&P64MemoryStreamInstance)) {
+    if (P64ImageWriteToStream(&P64Image, &P64MemoryStreamInstance)) {
         if (fwrite(P64MemoryStreamInstance.Data, P64MemoryStreamInstance.Size, 1, fsimage->fd) < 1) {
-          log_error(createdisk_log, "Cannot write image data.");
-          rc = -1;
+            log_error(createdisk_log, "Cannot write image data.");
+            rc = -1;
         } else {
-          rc = 0;
+            rc = 0;
         }
     }
     P64MemoryStreamDestroy(&P64MemoryStreamInstance);
@@ -295,8 +325,15 @@ static int fsimage_create_p64(disk_image_t *image)
 }
 
 /*-----------------------------------------------------------------------*/
-/* Create a disk image.  */
 
+
+/** \brief  Create a disk image of type \a type called \a name on the host OS
+ *
+ * \param[in]   name    disk image name/path
+ * \param[in]   type    disk image type
+ *
+ * \return  0 on success, < 0 on failure
+ */
 int fsimage_create(const char *name, unsigned int type)
 {
     disk_image_t *image;
@@ -323,24 +360,24 @@ int fsimage_create(const char *name, unsigned int type)
     }
 
     switch (type) {
-      case DISK_IMAGE_TYPE_X64:
-      case DISK_IMAGE_TYPE_D64:
-      case DISK_IMAGE_TYPE_D67:
-      case DISK_IMAGE_TYPE_D71:
-      case DISK_IMAGE_TYPE_D81:
-      case DISK_IMAGE_TYPE_D80:
-      case DISK_IMAGE_TYPE_D82:
-      case DISK_IMAGE_TYPE_D1M:
-      case DISK_IMAGE_TYPE_D2M:
-      case DISK_IMAGE_TYPE_D4M:
-        rc = fsimage_create_dxx(image);
-        break;
-      case DISK_IMAGE_TYPE_G64:
-        rc = fsimage_create_gcr(image);
-        break;
-      case DISK_IMAGE_TYPE_P64:
-        rc = fsimage_create_p64(image);
-        break;
+        case DISK_IMAGE_TYPE_X64:
+        case DISK_IMAGE_TYPE_D64:
+        case DISK_IMAGE_TYPE_D67:
+        case DISK_IMAGE_TYPE_D71:
+        case DISK_IMAGE_TYPE_D81:
+        case DISK_IMAGE_TYPE_D80:
+        case DISK_IMAGE_TYPE_D82:
+        case DISK_IMAGE_TYPE_D1M:
+        case DISK_IMAGE_TYPE_D2M:
+        case DISK_IMAGE_TYPE_D4M:
+            rc = fsimage_create_dxx(image);
+            break;
+        case DISK_IMAGE_TYPE_G64:
+            rc = fsimage_create_gcr(image);
+            break;
+        case DISK_IMAGE_TYPE_P64:
+            rc = fsimage_create_p64(image);
+            break;
     }
 
     fclose(fsimage->fd);
@@ -350,6 +387,11 @@ int fsimage_create(const char *name, unsigned int type)
     return rc;
 }
 
+
+/** \brief  Initialize module
+ *
+ * In this case: just open a log
+ */
 void fsimage_create_init(void)
 {
     createdisk_log = log_open("Disk Create");

@@ -5,6 +5,7 @@
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Tibor Biczo <crown@axelero.hu>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -49,6 +50,9 @@ static void enable_controls_for_drive_settings(HWND hwnd, int type)
     int drive_type = 0;
 
     switch (type) {
+        case IDC_SELECT_DRIVE_TYPE_1540:
+            drive_type = DRIVE_TYPE_1540;
+            break;
         case IDC_SELECT_DRIVE_TYPE_1541:
             drive_type = DRIVE_TYPE_1541;
             break;
@@ -108,6 +112,11 @@ static void enable_controls_for_drive_settings(HWND hwnd, int type)
     EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_6000), drive_check_expansion6000(drive_type));
     EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_8000), drive_check_expansion8000(drive_type));
     EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_A000), drive_check_expansionA000(drive_type));
+
+    EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_PROFDOS), drive_check_profdos(drive_type));
+    EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_SUPERCARD), drive_check_supercard(drive_type));
+
+    EnableWindow(GetDlgItem(hwnd, IDC_TOGGLE_DRIVE_RTC_SAVE), drive_type == DRIVE_TYPE_2000 || drive_type == DRIVE_TYPE_4000);
 }
 
 static uilib_localize_dialog_param drive_dialog_trans[] = {
@@ -128,6 +137,12 @@ static uilib_localize_dialog_param drive_dialog_trans[] = {
     { IDC_TOGGLE_DRIVE_EXPANSION_6000, IDS_TOGGLE_DRIVE_EXPANSION_6000, 0 },
     { IDC_TOGGLE_DRIVE_EXPANSION_8000, IDS_TOGGLE_DRIVE_EXPANSION_8000, 0 },
     { IDC_TOGGLE_DRIVE_EXPANSION_A000, IDS_TOGGLE_DRIVE_EXPANSION_A000, 0 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_PROFDOS, IDS_TOGGLE_DRIVE_EXPANSION_PROFDOS, 0 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_SUPERCARD, IDS_TOGGLE_DRIVE_EXPANSION_SUPERCARD, 0 },
+    { IDC_TOGGLE_DRIVE_RTC_SAVE, IDS_TOGGLE_DRIVE_RTC_SAVE, 0 },
+    { IDC_DRIVE_RPM_GROUP, IDS_DRIVE_RPM_GROUP, 0 },
+    { IDC_DRIVE_RPM, IDS_DRIVE_RPM, 0 },
+    { IDC_DRIVE_WOBBLE, IDS_DRIVE_WOBBLE, 0 },
     { 0, 0, 0 }
 };
 
@@ -155,11 +170,15 @@ static uilib_dialog_group drive_main_group[] = {
     { IDC_TOGGLE_DRIVE_EXPANSION_6000, 1 },
     { IDC_TOGGLE_DRIVE_EXPANSION_8000, 1 },
     { IDC_TOGGLE_DRIVE_EXPANSION_A000, 1 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_PROFDOS, 1 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_SUPERCARD, 1 },
+    { IDC_TOGGLE_DRIVE_RTC_SAVE, 1 },
     { 0, 0 }
 };
 
 static uilib_dialog_group drive_left_group[] = {
     { IDC_DRIVE_TYPE, 0 },
+    { IDC_SELECT_DRIVE_TYPE_1540, 0 },
     { IDC_SELECT_DRIVE_TYPE_1541, 0 },
     { IDC_SELECT_DRIVE_TYPE_1541II, 0 },
     { IDC_SELECT_DRIVE_TYPE_1570, 0 },
@@ -189,6 +208,11 @@ static uilib_dialog_group drive_middle_group[] = {
     { IDC_TOGGLE_DRIVE_EXPANSION_6000, 0 },
     { IDC_TOGGLE_DRIVE_EXPANSION_8000, 0 },
     { IDC_TOGGLE_DRIVE_EXPANSION_A000, 0 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_PROFDOS, 0 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_SUPERCARD, 0 },
+    { IDC_TOGGLE_DRIVE_RTC_SAVE, 0 },
+    { IDC_DRIVE_RPM_VALUE, 0 },
+    { IDC_DRIVE_WOBBLE_VALUE, 0 },
     { 0, 0 }
 };
 
@@ -201,6 +225,21 @@ static uilib_dialog_group drive_middle_move_group[] = {
     { IDC_TOGGLE_DRIVE_EXPANSION_6000, 0 },
     { IDC_TOGGLE_DRIVE_EXPANSION_8000, 0 },
     { IDC_TOGGLE_DRIVE_EXPANSION_A000, 0 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_PROFDOS, 0 },
+    { IDC_TOGGLE_DRIVE_EXPANSION_SUPERCARD, 0 },
+    { IDC_TOGGLE_DRIVE_RTC_SAVE, 0 },
+    { 0, 0 }
+};
+
+static uilib_dialog_group drive_rpm_right_group[] = {
+    { IDC_DRIVE_RPM_VALUE, 0 },
+    { IDC_DRIVE_WOBBLE_VALUE, 0 },
+    { 0, 0 }
+};
+
+static uilib_dialog_group drive_rpm_left_group[] = {
+    { IDC_DRIVE_RPM, 0 },
+    { IDC_DRIVE_WOBBLE, 0 },
     { 0, 0 }
 };
 
@@ -210,12 +249,6 @@ static uilib_dialog_group drive_right_group[] = {
     { IDC_SELECT_DRIVE_IDLE_TRAP_IDLE, 0 },
     { IDC_SELECT_DRIVE_IDLE_SKIP_CYCLES, 0 },
     { IDC_DRIVE_PARALLEL_CABLE_LABEL, 0 },
-    { 0, 0 }
-};
-
-static uilib_dialog_group drive_right_window_group[] = {
-    { IDC_IDLE_METHOD, 0 },
-    { IDC_DRIVE_PARALLEL_CABLE, 0 },
     { 0, 0 }
 };
 
@@ -234,20 +267,21 @@ static int move_buttons_group[] = {
 };
 
 static generic_trans_table_t generic_items[] = {
-    { IDC_SELECT_DRIVE_TYPE_1541, "1541" },
-    { IDC_SELECT_DRIVE_TYPE_1541II, "1541-II" },
-    { IDC_SELECT_DRIVE_TYPE_1570, "1570" },
-    { IDC_SELECT_DRIVE_TYPE_1571, "1571" },
-    { IDC_SELECT_DRIVE_TYPE_1581, "1581" },
-    { IDC_SELECT_DRIVE_TYPE_2000, "2000" },
-    { IDC_SELECT_DRIVE_TYPE_4000, "4000" },
-    { IDC_SELECT_DRIVE_TYPE_2031, "2031" },
-    { IDC_SELECT_DRIVE_TYPE_2040, "2040" },
-    { IDC_SELECT_DRIVE_TYPE_3040, "3040" },
-    { IDC_SELECT_DRIVE_TYPE_4040, "4040" },
-    { IDC_SELECT_DRIVE_TYPE_1001, "1001" },
-    { IDC_SELECT_DRIVE_TYPE_8050, "8050" },
-    { IDC_SELECT_DRIVE_TYPE_8250, "8250" },
+    { IDC_SELECT_DRIVE_TYPE_1540,   TEXT("1540") },
+    { IDC_SELECT_DRIVE_TYPE_1541,   TEXT("1541") },
+    { IDC_SELECT_DRIVE_TYPE_1541II, TEXT("1541-II") },
+    { IDC_SELECT_DRIVE_TYPE_1570,   TEXT("1570") },
+    { IDC_SELECT_DRIVE_TYPE_1571,   TEXT("1571") },
+    { IDC_SELECT_DRIVE_TYPE_1581,   TEXT("1581") },
+    { IDC_SELECT_DRIVE_TYPE_2000,   TEXT("2000") },
+    { IDC_SELECT_DRIVE_TYPE_4000,   TEXT("4000") },
+    { IDC_SELECT_DRIVE_TYPE_2031,   TEXT("2031") },
+    { IDC_SELECT_DRIVE_TYPE_2040,   TEXT("2040") },
+    { IDC_SELECT_DRIVE_TYPE_3040,   TEXT("3040") },
+    { IDC_SELECT_DRIVE_TYPE_4040,   TEXT("4040") },
+    { IDC_SELECT_DRIVE_TYPE_1001,   TEXT("1001") },
+    { IDC_SELECT_DRIVE_TYPE_8050,   TEXT("8050") },
+    { IDC_SELECT_DRIVE_TYPE_8250,   TEXT("8250") },
     { 0, NULL }
 };
 
@@ -296,10 +330,18 @@ static void init_dialog(HWND hwnd, int num)
     
     /* move the middle group elements to the correct position */
     uilib_move_group(hwnd, drive_middle_move_group, xpos + 20);
+    uilib_move_group(hwnd, drive_rpm_left_group, xpos + 20);
     uilib_move_element(hwnd, IDC_40_TRACK_HANDLING, xpos + 10);
     uilib_move_element(hwnd, IDC_DRIVE_EXPANSION, xpos + 10);
+    uilib_move_element(hwnd, IDS_DRIVE_RPM_GROUP, xpos + 10);
 
     xstart = xpos + 20;
+
+    /* get the max x of the rpm left group */
+    uilib_get_group_max_x(hwnd, drive_rpm_left_group, &xpos);
+
+    /* move the right rpm group elements to the correct position */
+    uilib_move_group(hwnd, drive_rpm_right_group, xpos + 10);
 
     /* get the max x of the middle group */
     uilib_get_group_max_x(hwnd, drive_middle_group, &xpos);
@@ -307,6 +349,7 @@ static void init_dialog(HWND hwnd, int num)
     /* resize and move the middle group boxes to the correct position */
     uilib_move_and_set_element_width(hwnd, IDC_40_TRACK_HANDLING, xstart - 10, xpos - xstart + 20);
     uilib_move_and_set_element_width(hwnd, IDC_DRIVE_EXPANSION, xstart - 10, xpos - xstart + 20);
+    uilib_move_and_set_element_width(hwnd, IDC_DRIVE_RPM_GROUP, xstart - 10, xpos - xstart + 20);
 
     /* get the max x of the middle group element */
     uilib_get_element_max_x(hwnd, IDC_DRIVE_EXPANSION, &xpos);
@@ -336,6 +379,7 @@ static void init_dialog(HWND hwnd, int num)
     resources_get_int("DriveTrueEmulation", &drive_true_emulation);
     enabled = drive_true_emulation && !iecdevice;
 
+    EnableWindow(GetDlgItem(hwnd, IDC_SELECT_DRIVE_TYPE_1540), enabled && drive_check_type(DRIVE_TYPE_1540, num - 8));
     EnableWindow(GetDlgItem(hwnd, IDC_SELECT_DRIVE_TYPE_1541), enabled && drive_check_type(DRIVE_TYPE_1541, num - 8));
     EnableWindow(GetDlgItem(hwnd, IDC_SELECT_DRIVE_TYPE_1541II), enabled && drive_check_type(DRIVE_TYPE_1541II, num - 8));
     EnableWindow(GetDlgItem(hwnd, IDC_SELECT_DRIVE_TYPE_1570), enabled && drive_check_type(DRIVE_TYPE_1570, num - 8));
@@ -360,6 +404,9 @@ static void init_dialog(HWND hwnd, int num)
     switch (drive_type) {
         case DRIVE_TYPE_NONE:
             n = IDC_SELECT_DRIVE_TYPE_NONE;
+            break;
+        case DRIVE_TYPE_1540:
+            n = IDC_SELECT_DRIVE_TYPE_1540;
             break;
         case DRIVE_TYPE_1541:
             n = IDC_SELECT_DRIVE_TYPE_1541;
@@ -409,7 +456,7 @@ static void init_dialog(HWND hwnd, int num)
         n = IDC_SELECT_DRIVE_TYPE_NONE;
     }
 
-    CheckRadioButton(hwnd, IDC_SELECT_DRIVE_TYPE_1541, IDC_SELECT_DRIVE_TYPE_NONE, n);
+    CheckRadioButton(hwnd, IDC_SELECT_DRIVE_TYPE_1540, IDC_SELECT_DRIVE_TYPE_NONE, n);
 
     enable_controls_for_drive_settings(hwnd, n);
 
@@ -446,10 +493,10 @@ static void init_dialog(HWND hwnd, int num)
     resources_get_int_sprintf("Drive%dParallelCable", &n, num);
 
     temp_hwnd = GetDlgItem(hwnd, IDC_DRIVE_PARALLEL_CABLE);
-    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)translate_text(IDS_NONE));
-    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)translate_text(IDS_STANDARD));
-    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)"Dolphin DOS 3");
-    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)"Formel 64");
+    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)intl_translate_tcs(IDS_NONE));
+    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)intl_translate_tcs(IDS_STANDARD));
+    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)TEXT("Dolphin DOS 3"));
+    SendMessage(temp_hwnd, CB_ADDSTRING, 0, (LPARAM)TEXT("Formel 64"));
     SendMessage(temp_hwnd, CB_SETCURSEL, (WPARAM)n, 0);
 
     resources_get_int_sprintf("Drive%dRAM2000", &n, num);
@@ -466,15 +513,31 @@ static void init_dialog(HWND hwnd, int num)
 
     resources_get_int_sprintf("Drive%dRAMA000", &n, num);
     CheckDlgButton(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_A000, n ? BST_CHECKED : BST_UNCHECKED);
+
+    resources_get_int_sprintf("Drive%dProfDOS", &n, num);
+    CheckDlgButton(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_PROFDOS, n ? BST_CHECKED : BST_UNCHECKED);
+
+    resources_get_int_sprintf("Drive%dSuperCard", &n, num);
+    CheckDlgButton(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_SUPERCARD, n ? BST_CHECKED : BST_UNCHECKED);
+
+    resources_get_int_sprintf("Drive%dRTCSave", &n, num);
+    CheckDlgButton(hwnd, IDC_TOGGLE_DRIVE_RTC_SAVE, n ? BST_CHECKED : BST_UNCHECKED);
+
+    resources_get_int_sprintf("Drive%dRPM", &n, num);
+    SetDlgItemInt(hwnd, IDC_DRIVE_RPM_VALUE, n, TRUE);
+
+    resources_get_int_sprintf("Drive%dWobble", &n, num);
+    SetDlgItemInt(hwnd, IDC_DRIVE_WOBBLE_VALUE, n, TRUE);
 }
 
 static BOOL CALLBACK dialog_proc(int num, HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     int type;
+    int rpm;
 
     switch (msg) {
         case WM_NOTIFY:
-            if (((NMHDR FAR *)lparam)->code == (UINT)PSN_APPLY) {
+            if (((NMHDR *)lparam)->code == (UINT)PSN_APPLY) {
                 resources_set_int_sprintf("Drive%dType", dialog_drive_type[num - 8], num);
                 resources_set_int_sprintf("Drive%dExtendImagePolicy", dialog_drive_extend[num - 8], num);
                 resources_set_int_sprintf("Drive%dIdleMethod", dialog_drive_idle[num - 8], num);
@@ -484,6 +547,16 @@ static BOOL CALLBACK dialog_proc(int num, HWND hwnd, UINT msg, WPARAM wparam, LP
                 resources_set_int_sprintf("Drive%dRAM6000", (IsDlgButtonChecked(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_6000) == BST_CHECKED ? 1 : 0), num);
                 resources_set_int_sprintf("Drive%dRAM8000", (IsDlgButtonChecked(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_8000) == BST_CHECKED ? 1 : 0), num);
                 resources_set_int_sprintf("Drive%dRAMA000", (IsDlgButtonChecked(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_A000) == BST_CHECKED ? 1 : 0), num);
+                resources_set_int_sprintf("Drive%dProfDOS", (IsDlgButtonChecked(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_PROFDOS) == BST_CHECKED ? 1 : 0), num);
+                resources_set_int_sprintf("Drive%dSuperCard", (IsDlgButtonChecked(hwnd, IDC_TOGGLE_DRIVE_EXPANSION_SUPERCARD) == BST_CHECKED ? 1 : 0), num);
+                resources_set_int_sprintf("Drive%dRTCSave", (IsDlgButtonChecked(hwnd, IDC_TOGGLE_DRIVE_RTC_SAVE) == BST_CHECKED ? 1 : 0), num);
+
+                rpm = GetDlgItemInt(hwnd, IDC_DRIVE_RPM_VALUE, NULL, TRUE);
+                resources_set_int_sprintf("Drive%dRPM", rpm, num);
+
+                rpm = GetDlgItemInt(hwnd, IDC_DRIVE_WOBBLE_VALUE, NULL, TRUE);
+                resources_set_int_sprintf("Drive%dWobble", rpm, num);
+
                 SetWindowLongPtr(hwnd, DWLP_MSGRESULT, FALSE);
                 return TRUE;
             }
@@ -496,6 +569,10 @@ static BOOL CALLBACK dialog_proc(int num, HWND hwnd, UINT msg, WPARAM wparam, LP
             switch (type) {
                 case IDC_SELECT_DRIVE_TYPE_NONE:
                     dialog_drive_type[num - 8] = DRIVE_TYPE_NONE;
+                    enable_controls_for_drive_settings(hwnd, LOWORD(wparam));
+                    break;
+                case IDC_SELECT_DRIVE_TYPE_1540:
+                    dialog_drive_type[num - 8] = DRIVE_TYPE_1540;
                     enable_controls_for_drive_settings(hwnd, LOWORD(wparam));
                     break;
                 case IDC_SELECT_DRIVE_TYPE_1541:
@@ -578,6 +655,7 @@ static BOOL CALLBACK dialog_proc(int num, HWND hwnd, UINT msg, WPARAM wparam, LP
                 case IDC_TOGGLE_DRIVE_EXPANSION_6000:
                 case IDC_TOGGLE_DRIVE_EXPANSION_8000:
                 case IDC_TOGGLE_DRIVE_EXPANSION_A000:
+                case IDC_TOGGLE_DRIVE_RTC_SAVE:
                     break;
             }
             return TRUE;
@@ -618,19 +696,19 @@ void uidrivec64_settings_dialog(HWND hwnd)
     }
 
     psp[0].pfnDlgProc = callback_8;
-    psp[0].pszTitle = translate_text(IDS_DRIVE_8);
+    psp[0].pszTitle = intl_translate_tcs(IDS_DRIVE_8);
     psp[1].pfnDlgProc = callback_9;
-    psp[1].pszTitle = translate_text(IDS_DRIVE_9);
+    psp[1].pszTitle = intl_translate_tcs(IDS_DRIVE_9);
     psp[2].pfnDlgProc = callback_10;
-    psp[2].pszTitle = translate_text(IDS_DRIVE_10);
+    psp[2].pszTitle = intl_translate_tcs(IDS_DRIVE_10);
     psp[3].pfnDlgProc = callback_11;
-    psp[3].pszTitle = translate_text(IDS_DRIVE_11);
+    psp[3].pszTitle = intl_translate_tcs(IDS_DRIVE_11);
 
     psh.dwSize = sizeof(PROPSHEETHEADER);
     psh.dwFlags = PSH_PROPSHEETPAGE | PSH_NOAPPLYNOW;
     psh.hwndParent = hwnd;
     psh.hInstance = winmain_instance;
-    psh.pszCaption = translate_text(IDS_DRIVE_SETTINGS);
+    psh.pszCaption = intl_translate_tcs(IDS_DRIVE_SETTINGS);
     psh.nPages = 4;
 #ifdef _ANONYMOUS_UNION
     psh.pszIcon = NULL;

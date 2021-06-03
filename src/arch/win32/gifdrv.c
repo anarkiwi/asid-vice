@@ -40,7 +40,7 @@
 #include "types.h"
 #include "util.h"
 
-#ifndef HAVE_GIF
+#ifdef USE_GIF_DLL
 
 #define GIF_ERROR 0
 #define GIF_OK    1
@@ -297,8 +297,11 @@ static gfxoutputdrv_t gif_drv =
 #endif
 };
 
-void gfxoutput_init_gif(void)
+void gfxoutput_init_gif(int help)
 {
+    if (help) {
+        return;
+    }
     if (gifdrv_init() == 0) {
         gfxoutput_register(&gif_drv);
     }

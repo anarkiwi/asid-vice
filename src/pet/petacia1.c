@@ -2,7 +2,7 @@
  * petacia1.c - Definitions for a 6551 ACIA interface
  *
  * Written by
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -60,5 +60,8 @@
 #define mycpu_set_nmi maincpu_set_nmi
 #define mycpu_set_int_noclk maincpu_set_int
 
-#include "aciacore.c"
+#include "acia.h"
 
+#define ACIA_MODE_HIGHEST   ACIA_MODE_NORMAL
+
+#include "aciacore.c"

@@ -5,7 +5,7 @@
  *  Dag Lem <resid@nimrod.no>
  * based on c64ui.c written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  Andr� Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -29,7 +29,7 @@
 
 #include "vice.h"
 
-#define VSIDUI 1
+#define VSIDUI 1 /* WTH ? */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -241,7 +241,9 @@ static ui_menu_entry_t sid_submenu[] = {
 #ifdef HAVE_RESID
     { "--", UI_MENU_TYPE_SEPARATOR }, 
     { N_("reSID sampling method"), UI_MENU_TYPE_NORMAL, NULL, NULL, sid_resid_sampling_submenu }, 
+#if !defined(USE_GNOMEUI)
     { N_("reSID resampling passband"), UI_MENU_TYPE_DOTS, (ui_callback_t)set_sid_resid_passband, NULL, NULL },
+#endif
 #endif
     { NULL },
 };
@@ -263,6 +265,7 @@ static char *psidpath = NULL;
 
 static int vsid_ui_load_psid(char *filename)
 {
+    vsync_suspend_speed_eval();
     if (machine_autodetect_psid(filename) < 0) {
         log_error(vsid_log, "`%s' is not a valid PSID file.", filename);
         return -1;
@@ -297,16 +300,6 @@ static UI_CALLBACK(psid_load)
     lib_free(filename);
 }
 
-#if 0
-static UI_CALLBACK(psid_tune)
-{
-    int tune = *((int *)UI_MENU_CB_PARAM);
-    machine_play_psid(tune);
-    vsync_suspend_speed_eval();
-    machine_trigger_reset(MACHINE_RESET_MODE_SOFT);
-}
-#endif
-
 static ui_menu_entry_t ui_load_commands_menu[] = {
     { N_("Load PSID file"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)psid_load, NULL, NULL,
@@ -331,6 +324,7 @@ static ui_menu_entry_t set_video_standard_submenu_vsid[] = {
     { NULL }
 };
 
+/* FIXME: find a better way that lets us use the global reset menu */
 static UI_CALLBACK(reset)
 {
     vsync_suspend_speed_eval();
@@ -353,38 +347,11 @@ static ui_menu_entry_t reset_submenu[] = {
     { NULL }
 };
 
-static UI_CALLBACK(toggle_pause)
-{
-    static int pause = 0;
-
-    if (!CHECK_MENUS) {
-        pause = !pause;
-        ui_update_menus();
-        ui_pause_emulation(pause);
-        return;
-    }
-
-    ui_menu_set_tick(w, pause);
-}
-
 static ui_menu_entry_t vsid_run_commands_menu[] = {
     { N_("Reset"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, reset_submenu },
-    { N_("Pause"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)toggle_pause, NULL, NULL,
-      KEYSYM_p, UI_HOTMOD_META },
-    { NULL }
-};
-
-static ui_menu_entry_t ui_sound_settings_menu_vsid[] = {
-    { N_("Sound settings"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, sound_settings_submenu },
-    { NULL }
-};
-
-static ui_menu_entry_t ui_sound_recording_menu_vsid[] = {
-    { N_("Sound recording"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, ui_sound_record_commands_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_runmode_commands_menu },
     { NULL }
 };
 
@@ -400,13 +367,14 @@ static ui_menu_entry_t psid_menu[] = {
     { NULL }
 };
 
+#ifndef USE_GNOMEUI
 static ui_menu_entry_t vsidui_left_menu[] = {
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_load_commands_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_tune_menu },
     { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_recording_menu_vsid },
+      NULL, NULL, ui_sound_record_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, vsid_run_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -418,7 +386,7 @@ static ui_menu_entry_t vsidui_left_menu[] = {
 
 static ui_menu_entry_t vsidui_right_menu[] = {
     { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_settings_menu_vsid },
+      NULL, NULL, ui_sound_settings_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, psid_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -427,17 +395,19 @@ static ui_menu_entry_t vsidui_right_menu[] = {
       NULL, NULL, ui_help_commands_menu },
 #ifdef DEBUG
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_debug_settings_menu },
+      NULL, NULL, ui_debug_settings_menu_vsid },
 #endif
     { NULL }
 };
+
+#endif
 
 #ifdef USE_GNOMEUI
 static ui_menu_entry_t vsidui_file_menu[] = {
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_load_commands_menu },
     { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_recording_menu_vsid },
+      NULL, NULL, ui_sound_record_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, vsid_run_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -449,9 +419,11 @@ static ui_menu_entry_t vsidui_file_menu[] = {
 
 static ui_menu_entry_t vsidui_settings_menu[] = {
     { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_settings_menu_vsid },
+      NULL, NULL, ui_sound_settings_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, psid_menu },
+    { "Maximum speed", UI_MENU_TYPE_NORMAL,
+       NULL, NULL, set_maximum_speed_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_settings_settings_menu },
     { NULL }
@@ -460,18 +432,26 @@ static ui_menu_entry_t vsidui_settings_menu[] = {
 static ui_menu_entry_t vsidui_top_menu[] = {
     { N_("File"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, vsidui_file_menu },
-    { N_("Tunes"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, NULL }, /* WARNING: position hardcoded */
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_tune_menu },
     { N_("Settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, vsidui_settings_menu },
 #ifdef DEBUG
     { N_("Debug"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, debug_settings_submenu },
+      NULL, NULL, debug_settings_submenu_vsid },
 #endif
     /* Translators: RJ means right justify and should be
         saved in your tranlation! e.g. german "RJHilfe" */
     { N_("RJHelp"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ui_help_commands_menu },
+    { NULL }
+};
+
+static ui_menu_entry_t vsidui_speed_menu[] = {
+    { N_("Reset"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, reset_submenu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_runmode_commands_menu },
     { NULL }
 };
 #endif  /* USE_GNOMEUI */
@@ -495,6 +475,10 @@ static void vsid_create_menus(void)
         lib_free(tune_menu[i].string);
     }
 
+#ifdef USE_GNOMEUI
+    ui_menu_shutdown();
+#endif
+
     /* Get number of tunes in current PSID. */
     tunes = psid_tunes(&default_tune);
 
@@ -513,23 +497,32 @@ static void vsid_create_menus(void)
 
     lib_free(buf);
 
+    /* last entry in menu */
     tune_menu[i].string = (ui_callback_data_t) NULL;
 
-    ui_tune_menu[0].sub_menu = tune_menu;
-#ifdef USE_GNOMEUI
-    vsidui_top_menu[1].sub_menu = tune_menu;
-#endif
-
     num_checkmark_menu_items = 0;
+    ui_tune_menu[0].sub_menu = tune_menu;
 
+#ifndef USE_GNOMEUI
     ui_set_left_menu(vsidui_left_menu);
     ui_set_right_menu(vsidui_right_menu);
+#endif
 
 #ifdef USE_GNOMEUI
     ui_set_topmenu(vsidui_top_menu);
+    ui_set_speedmenu(vsidui_speed_menu);
 #endif
+}
 
-    ui_update_menus();
+static void vsid_close_menus(void)
+{
+    unsigned int i;
+    for (i = 0; i < 256; i++) {
+        if (ui_tune_menu[0].sub_menu[i].string == NULL) {
+            break;
+        }
+        lib_free(ui_tune_menu[0].sub_menu[i].string);
+    }
 }
 
 int vsid_ui_init(void)
@@ -537,7 +530,7 @@ int vsid_ui_init(void)
     int res;
     video_canvas_t *canvas = vicii_get_canvas();
 
-    res = ui_open_canvas_window(canvas, _("VSID: The SID Emulator"), VSID_WINDOW_MINW, VSID_WINDOW_MINH, 0);
+    res = ui_open_canvas_window(canvas, _("VSID: The SID emulator"), VSID_WINDOW_MINW, VSID_WINDOW_MINH, 0);
     if (res < 0) {
         return -1;
     }
@@ -545,6 +538,7 @@ int vsid_ui_init(void)
     /* FIXME: There might be a separte vsid icon.  */
     ui_set_application_icon(c64_icon_data);
     uisound_menu_create();
+    uisid_model_menu_create();
 
     ui_set_drop_callback(vsid_ui_load_psid);
 
@@ -555,24 +549,36 @@ int vsid_ui_init(void)
 /* void vsid_ui_shutdown(void) */
 void vsid_ui_close(void) /* FIXME: bad name */
 {
+    if (psidpath != NULL) {
+        lib_free(psidpath);
+        psidpath = NULL;
+    }
+
     uisound_menu_shutdown();
+    uisid_model_menu_shutdown();
+    vsid_close_menus();
+#ifndef USE_GNOMEUI
+    ui_vsid_control_shutdown();
+#endif
 }
+
+/******************************************************************************/
 
 void vsid_ui_display_name(const char *name)
 {
-    log_message(LOG_DEFAULT, "Name: %s", name);
+    log_message(LOG_DEFAULT, "VSIDUI: Name: %s", name);
     ui_vsid_setpsid(name);
 }
 
 void vsid_ui_display_author(const char *author)
 {
-    log_message(LOG_DEFAULT, "Author: %s", author);
+    log_message(LOG_DEFAULT, "VSIDUI: Author: %s", author);
     ui_vsid_setauthor(author);
 }
 
 void vsid_ui_display_copyright(const char *copyright)
 {
-    log_message(LOG_DEFAULT, "Copyright: %s", copyright);
+    log_message(LOG_DEFAULT, "VSIDUI: Copyright: %s", copyright);
     ui_vsid_setcopyright(copyright);
 }
 
@@ -580,42 +586,48 @@ void vsid_ui_display_sync(int sync)
 {
     char buf[50];
     sprintf(buf, "Using %s sync", sync == MACHINE_SYNC_PAL ? "PAL" : "NTSC");
-    log_message(LOG_DEFAULT, "%s", buf);
+    log_message(LOG_DEFAULT, "VSIDUI: %s", buf);
     ui_vsid_setsync(buf);
 }
 
 void vsid_ui_display_sid_model(int model)
 {
-    log_message(LOG_DEFAULT, "Using %s emulation", model == 0 ? "MOS6581" : "MOS8580");
+    log_message(LOG_DEFAULT, "VSIDUI: Using %s emulation", model == 0 ? "MOS6581" : "MOS8580");
     ui_vsid_setmodel(model == 0 ? "MOS6581" : "MOS8580");
 }
 
 void vsid_ui_set_default_tune(int nr)
 {
-    log_message(LOG_DEFAULT, "Default tune: %i", nr);
+    log_message(LOG_DEFAULT, "VSIDUI: Default tune: %i", nr);
+    ui_vsid_setdeftune(nr);
 }
 
 void vsid_ui_display_tune_nr(int nr)
 {
-    log_message(LOG_DEFAULT, "Playing tune: %i", nr);
+    log_message(LOG_DEFAULT, "VSIDUI: Playing tune: %i", nr);
     ui_vsid_settune(nr);
 }
 
 void vsid_ui_display_nr_of_tunes(int count)
 {
-    log_message(LOG_DEFAULT, "Number of tunes: %i", count);
+    log_message(LOG_DEFAULT, "VSIDUI: Number of tunes: %i", count);
+    ui_vsid_setnumtunes(count);
 }
 
 void vsid_ui_display_time(unsigned int sec)
 {
+    /* log_message(LOG_DEFAULT, "VSIDUI: Time: %i", sec); */
+    ui_vsid_settime(sec);
 }
 
 void vsid_ui_display_irqtype(const char *irq)
 {
-    log_message(LOG_DEFAULT, "Using %s interrupt", irq);
+    log_message(LOG_DEFAULT, "VSIDUI: Using %s interrupt", irq);
     ui_vsid_setirq(irq);
 }
 
 void vsid_ui_setdrv(char* driver_info_text)
 {
+    log_message(LOG_DEFAULT, "VSIDUI: Driver info: %s", driver_info_text);
+    ui_vsid_setdrv(driver_info_text);
 }

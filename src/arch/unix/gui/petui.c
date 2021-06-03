@@ -3,7 +3,8 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -30,11 +31,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "cartio.h"
 #include "debug.h"
 #include "icon.h"
 #include "keyboard.h"
+#include "lib.h"
 #include "machine.h"
 #include "machine-video.h"
+#include "pet-resources.h"
 #include "petmodel.h"
 #include "pets.h"
 #include "petui.h"
@@ -47,19 +51,32 @@
 #include "uidrive.h"
 #include "uidrivepetcbm2.h"
 #include "uiedit.h"
+#include "uijoyport.h"
 #include "uijoystick2.h"
 #include "uikeyboard.h"
 #include "uimenu.h"
+#include "uimouse.h"
+#include "uinetplay.h"
 #include "uiperipheralieee.h"
+#include "uipetcolour.h"
 #include "uipetdww.h"
+#include "uipethre.h"
 #include "uipetreu.h"
+#include "uiprinterieee.h"
 #include "uiram.h"
 #include "uiromset.h"
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "uirs232petplus4cbm2.h"
+#endif
+
+#include "uisampler.h"
 #include "uiscreenshot.h"
 #include "uisettings.h"
 #include "uisid.h"
 #include "uisound.h"
+#include "uitapeport.h"
+#include "uiuserport.h"
 #include "vsync.h"
 
 UI_MENU_DEFINE_TOGGLE(DiagPin)
@@ -71,24 +88,22 @@ UI_MENU_DEFINE_RADIO(RamSize)
 UI_MENU_DEFINE_RADIO(IOSize)
 UI_MENU_DEFINE_TOGGLE(Basic1)
 UI_MENU_DEFINE_TOGGLE(Basic1Chars)
-
-/* this is partially modeled after the radio_* callbacks */
-static UI_CALLBACK(set_KeyboardType)
-{
-    int current_value, new_value = 2 * vice_ptr_to_int(UI_MENU_CB_PARAM);
-
-    resources_get_int("KeymapIndex", &current_value);
-    if (!CHECK_MENUS) {
-        if ((current_value & ~1) != new_value) {
-            resources_set_int("KeymapIndex", (current_value & 1) + new_value);
-            ui_update_menus();
-        }
-    } else {
-        ui_menu_set_tick(w, (current_value & ~1) == new_value);
-    }
-}
+UI_MENU_DEFINE_TOGGLE(EoiBlank)
+UI_MENU_DEFINE_RADIO(KeyboardType)
 
 /* ------------------------------------------------------------------------- */
+
+UI_MENU_DEFINE_RADIO(IOCollisionHandling)
+
+static ui_menu_entry_t iocollision_submenu[] = {
+    { N_("detach all"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_ALL, NULL },
+    { N_("detach last"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_LAST, NULL },
+    { N_("AND values"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_AND_WIRES, NULL },
+    { NULL }
+};
 
 UI_MENU_DEFINE_TOGGLE(SidCart)
 UI_MENU_DEFINE_TOGGLE(SidFilters)
@@ -97,9 +112,9 @@ UI_MENU_DEFINE_RADIO(SidAddress)
 
 static ui_menu_entry_t sidcart_address_submenu[] = {
     { "$8F00", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)0, NULL },
+      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)0x8f00, NULL },
     { "$E900", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)1, NULL },
+      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)0xe900, NULL },
     { NULL }
 };
 
@@ -123,9 +138,13 @@ static ui_menu_entry_t sidcart_submenu[] = {
       (ui_callback_t)toggle_SidFilters, NULL, NULL },
     { N_("SID address"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, sidcart_address_submenu },
-    /* Translators: "SID clock" as in "CPU Frequency" */
+   /* Translators: "SID clock" as in "CPU Frequency" */
     { N_("SID clock"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, sidcart_clock_submenu },
+#ifdef HAVE_RESID
+    { N_("ReSID sampling method"), UI_MENU_TYPE_NORMAL,
+        NULL, NULL, sid_resid_sampling_submenu },
+#endif
     { NULL }
 };
 
@@ -150,16 +169,6 @@ static ui_menu_entry_t pet_iosize_submenu[] = {
       (ui_callback_t)radio_IOSize, (ui_callback_data_t)0x800, NULL },
     { "256 B", UI_MENU_TYPE_TICK,
       (ui_callback_t)radio_IOSize, (ui_callback_data_t)0x100, NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t pet_keybd_submenu[] = {
-    { N_("Graphics"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)set_KeyboardType, (ui_callback_data_t)1, NULL },
-    { N_("Business (UK)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)set_KeyboardType, (ui_callback_data_t)0, NULL },
-    { N_("Business (DE)"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)set_KeyboardType, (ui_callback_data_t)2, NULL },
     { NULL }
 };
 
@@ -221,12 +230,6 @@ static ui_menu_entry_t model_defaults_submenu[] = {
     { NULL }
 };
 
-static ui_menu_entry_t model_options_submenu[] = {
-    { N_("PET model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, model_defaults_submenu },
-    { NULL }
-};
-
 UI_MENU_DEFINE_STRING_RADIO(ChargenName)
 
 static ui_menu_entry_t petui_main_romset_submenu[] = {
@@ -242,19 +245,26 @@ static ui_menu_entry_t petui_main_romset_submenu[] = {
     { NULL }
 };
 
-UI_MENU_DEFINE_TOGGLE(UserportDAC)
-
 static ui_menu_entry_t io_extensions_submenu[] = {
     { N_("PET RAM and Expansion Unit"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, petreu_submenu },
+    { N_("PET Colour graphics"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, petcolour_submenu },
     { N_("PET DWW hi-res graphics"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, petdww_submenu },
+    { N_("PET HRE hi-res graphics"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, pethre_submenu },
     { N_("SID cartridge"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, sidcart_submenu },
-    { N_("Userport DAC"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)toggle_UserportDAC, NULL, NULL },
+    { "Userport devices", UI_MENU_TYPE_NORMAL,
+      NULL, NULL, userport_pet_vic20_submenu },
+    { "Tape port devices", UI_MENU_TYPE_NORMAL,
+      NULL, NULL, tapeport_submenu },
     { N_("PET userport diagnostic pin"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_DiagPin, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("I/O collision handling ($8800-$8FFF / $E900-$EEFF)"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, iocollision_submenu },
     { NULL }
 };
 
@@ -281,9 +291,6 @@ static ui_menu_entry_t pet_romset_submenu[] = {
       NULL, NULL, petui_main_romset_submenu },
     { N_("Load new drive ROM"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ui_drivepetcbm2_romset_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("ROM set type"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, uiromset_type_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Load new character ROM"), UI_MENU_TYPE_NORMAL,
       (ui_callback_t)ui_load_rom_file,
@@ -362,6 +369,9 @@ static ui_menu_entry_t model_settings_submenu[] = {
     { N_("PET model"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, model_defaults_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
+      /* Do not change position as position 2 is hard coded. */
+    { N_("Keyboard type"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, NULL },
     { N_("Video size"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, pet_video_submenu },
     { N_("Memory size"), UI_MENU_TYPE_NORMAL,
@@ -370,11 +380,15 @@ static ui_menu_entry_t model_settings_submenu[] = {
       NULL, NULL, pet_iosize_submenu },
     { N_("CRTC chip enable"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_Crtc, NULL, NULL },
+    { N_("EOI blanks screen"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_EoiBlank, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("SuperPET I/O enable (disables 8x96)"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_SuperPET, NULL, NULL },
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     { N_("SuperPET ACIA"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uirs232petplus4cbm2_submenu },
+#endif
     { N_("SuperPET CPU Switch"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, superpet_cpuswitch_submenu },
     { N_("SuperPET 6809 ROMs"), UI_MENU_TYPE_NORMAL,
@@ -384,62 +398,6 @@ static ui_menu_entry_t model_settings_submenu[] = {
       (ui_callback_t)toggle_Ram9, NULL, NULL },
     { N_("$A*** as RAM (8296 only)"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_RamA, NULL, NULL },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Keyboard type"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, pet_keybd_submenu },
-    { NULL }
-};
-
-/* ------------------------------------------------------------------------- */
-
-static void pet_select_keymap(ui_window_t w, int check, char *name, int sympos)
-{
-    char filename[0x20];
-    const char *resname;
-    int kindex;
-    const char *wd;
-    const char *maps[6] = {"x11_buks", "x11_bukp", "x11_bgrs", "x11_bgrp", "x11_bdes", "x11_bdep"};
-
-    resources_get_int("KeymapIndex", &kindex);
-    strcpy(filename, maps[kindex]);
-    strcat(filename, name);
-    kindex = (kindex & ~1) + sympos;
-    resname = machine_keymap_res_name_list[kindex];
-
-    if (name) {
-        if (!check) {
-            resources_set_string(resname, filename);
-            ui_update_menus();
-        } else {
-            resources_get_string(resname, &wd);
-            if (!strcmp(wd, filename)) {
-                ui_menu_set_tick(w, 1);
-            } else {
-                ui_menu_set_tick(w, 0);
-            }
-        }
-    }
-}
-
-static UI_CALLBACK(radio_SymKeymap_pet)
-{
-    pet_select_keymap(w, CHECK_MENUS, UI_MENU_CB_PARAM, 0);
-}
-
-static UI_CALLBACK(radio_PosKeymap_pet)
-{
-    pet_select_keymap(w, CHECK_MENUS, UI_MENU_CB_PARAM, 1);
-}
-
-static ui_menu_entry_t keymap_sym_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap_pet, (ui_callback_data_t)".vkm", NULL },
-    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap_pet, (ui_callback_data_t)"_de.vkm", NULL },
-    { NULL }
-};
-
-static ui_menu_entry_t keymap_pos_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap_pet, (ui_callback_data_t)".vkm", NULL },
-    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap_pet, (ui_callback_data_t)"_de.vkm", NULL },
     { NULL }
 };
 
@@ -485,13 +443,13 @@ static ui_menu_entry_t ui_screenshot_commands_menu[] = {
 
 static ui_menu_entry_t petui_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, uiattach_smart_attach_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uiattach_disk_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uiattach_tape_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_datasette_commands_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uiattach_smart_attach_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_directory_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -501,41 +459,21 @@ static ui_menu_entry_t petui_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_record_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_tool_commands_menu },
+      NULL, NULL, ui_edit_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_help_commands_menu },
+      NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
 #if defined(USE_XAWUI)
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_edit_commands_submenu },
+      NULL, NULL, ui_help_commands_menu },
 #endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_exit_commands_menu },
-    { NULL }
-};
-
-static ui_menu_entry_t petui_right_menu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uikeyboard_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_drivepetcbm2_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheralieee_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, joystick_settings_pet_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, pet_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_settings_settings_menu },
-#ifdef DEBUG
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_debug_settings_menu },
-#endif
     { NULL }
 };
 
@@ -560,6 +498,10 @@ static ui_menu_entry_t petui_file_menu[] = {
       NULL, NULL, ui_directory_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -585,33 +527,41 @@ static ui_menu_entry_t petui_snapshot_menu[] = {
     { NULL }
 };
 
-static ui_menu_entry_t petui_options_menu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, joystick_options_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, model_options_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, io_extensions_submenu },
-    { NULL }
-};
+UI_MENU_DEFINE_TOGGLE(VirtualDevices)
 
 static ui_menu_entry_t petui_settings_menu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_performance_settings_menu },
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_runmode_commands_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uikeyboard_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_settings_menu },
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_sampler_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_drivepetcbm2_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheralieee_settings_menu },
+    { N_("Printer settings"), UI_MENU_TYPE_NORMAL, 
+      NULL, NULL, printerieee_cbm2_settings_menu },
+    { N_("Enable Virtual Devices"), UI_MENU_TYPE_TICK, 
+      (ui_callback_t)toggle_VirtualDevices, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_joyport_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, joystick_settings_pet_menu },
+#ifdef HAVE_MOUSE
+    { N_("Mouse emulation"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, mouse_grab_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, pet_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_settings_settings_menu },
+#ifdef DEBUG
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_debug_settings_menu },
+#endif
     { NULL }
 };
 
@@ -624,8 +574,6 @@ static ui_menu_entry_t petui_top_menu[] = {
 #endif
     { N_("Snapshot"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, petui_snapshot_menu },
-    { N_("Options"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, petui_options_menu },
     { N_("Settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, petui_settings_menu },
 #ifdef DEBUG
@@ -639,19 +587,83 @@ static ui_menu_entry_t petui_top_menu[] = {
     { NULL }
 };
 
+static ui_menu_entry_t petui_speed_menu[] = {
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_performance_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_runmode_commands_menu },
+    { NULL }
+};
+
+void uipetkeyboard_menu_create(void)
+{
+    unsigned int i, num;
+    ui_menu_entry_t *keyboard_layouttype_submenu;
+    kbdtype_info_t *list;
+
+    num = machine_get_num_keyboard_types();
+
+    if (num == 0) {
+        return;
+    }
+
+    keyboard_layouttype_submenu = lib_calloc((size_t)(num + 1), sizeof(ui_menu_entry_t));
+    list = machine_get_keyboard_info_list();
+
+    for (i = 0; i < num ; i++) {
+        keyboard_layouttype_submenu[i].string = (ui_callback_data_t)lib_msprintf("%s", list->name);
+        keyboard_layouttype_submenu[i].type = UI_MENU_TYPE_TICK;
+        keyboard_layouttype_submenu[i].callback = (ui_callback_t)radio_KeyboardType;
+        keyboard_layouttype_submenu[i].callback_data = (ui_callback_data_t)uint_to_void_ptr(list->type);
+        ++list;
+    }
+
+    model_settings_submenu[2].sub_menu = keyboard_layouttype_submenu;
+}
+
+void uipetkeyboard_menu_shutdown(void)
+{
+    unsigned int i;
+    ui_menu_entry_t *keyboard_layouttype_submenu = NULL;
+
+    keyboard_layouttype_submenu = model_settings_submenu[2].sub_menu;
+
+    if (keyboard_layouttype_submenu == NULL) {
+        return;
+    }
+
+    model_settings_submenu[2].sub_menu = NULL;
+
+    i = 0;
+
+    while (keyboard_layouttype_submenu[i].string != NULL) {
+        lib_free(keyboard_layouttype_submenu[i].string);
+        i++;
+    }
+
+    lib_free(keyboard_layouttype_submenu);
+}
+
 static void petui_dynamic_menu_create(void)
 {
     uisound_menu_create();
+    uisampler_menu_create();
     uicrtc_menu_create();
-
-    memcpy(uikeymap_sym_submenu, keymap_sym_submenu, sizeof(keymap_sym_submenu));
-    memcpy(uikeymap_pos_submenu, keymap_pos_submenu, sizeof(keymap_pos_submenu));
+    uikeyboard_menu_create();
+    uipetkeyboard_menu_create();
+    uijoyport_menu_create(0, 0, 1, 1, 0);
+    uisid_model_menu_create();
 }
 
 static void petui_dynamic_menu_shutdown(void)
 {
     uicrtc_menu_shutdown();
     uisound_menu_shutdown();
+    uisampler_menu_shutdown();
+    uikeyboard_menu_shutdown();
+    uipetkeyboard_menu_shutdown();
+    uijoyport_menu_shutdown();
+    uisid_model_menu_shutdown();
 }
 
 int petui_init(void)
@@ -660,11 +672,11 @@ int petui_init(void)
     petui_dynamic_menu_create();
     ui_set_left_menu(petui_left_menu);
 
-    ui_set_right_menu(petui_right_menu);
+    ui_set_right_menu(petui_settings_menu);
 
     ui_set_tape_menu(petui_tape_menu);
     ui_set_topmenu(petui_top_menu);
-    ui_set_speedmenu(ui_performance_settings_menu);
+    ui_set_speedmenu(petui_speed_menu);
 
     ui_set_drop_callback(uiattach_autostart_file);
 

@@ -29,6 +29,13 @@
 
 #include "types.h"
 
+/* Masks to extract information. */
+#define OPINFO_NUMBER_MSK               0xff
+
+/* Return the opcode number for `opinfo'.  */
+#define OPINFO_NUMBER(opinfo)                   \
+    ((opinfo) & OPINFO_NUMBER_MSK)
+
 struct drive_context_s;
 struct interrupt_cpu_status_s;
 struct monitor_interface_s;
@@ -40,20 +47,13 @@ extern void drivecpu65c02_init(struct drive_context_s *drv, int type);
 extern void drivecpu65c02_reset(struct drive_context_s *drv);
 extern void drivecpu65c02_sleep(struct drive_context_s *drv);
 extern void drivecpu65c02_wake_up(struct drive_context_s *drv);
-extern void drivecpu65c02_prevent_clk_overflow_all(CLOCK sub);
+extern CLOCK drivecpu65c02_prevent_clk_overflow(struct drive_context_s *drv, CLOCK sub);
 extern void drivecpu65c02_shutdown(struct drive_context_s *drv);
 extern void drivecpu65c02_reset_clk(struct drive_context_s *drv);
 extern void drivecpu65c02_trigger_reset(unsigned int dnr);
 
 extern void drivecpu65c02_execute(struct drive_context_s *drv, CLOCK clk_value);
-extern void drivecpu65c02_execute_all(CLOCK clk_value);
-extern int drivecpu65c02_snapshot_write_module(struct drive_context_s *drv,
-                                          struct snapshot_s *s);
-extern int drivecpu65c02_snapshot_read_module(struct drive_context_s *drv,
-                                         struct snapshot_s *s);
-
-/* Don't use these pointers before the context is set up!  */
-extern struct monitor_interface_s *drivecpu65c02_monitor_interface_get(
-    unsigned int dnr);
+extern int drivecpu65c02_snapshot_write_module(struct drive_context_s *drv, struct snapshot_s *s);
+extern int drivecpu65c02_snapshot_read_module(struct drive_context_s *drv, struct snapshot_s *s);
 
 #endif

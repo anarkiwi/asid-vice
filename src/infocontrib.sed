@@ -4,7 +4,7 @@
 
 s/@b{Dag Lem}/Dag Lem <resid@nimrod.no>/g
 s/@b{Andreas Matthies}/Andreas Matthies <andreas.matthies@gmx.net>/g
-s/@b{Martin Pottendorfer}/Martin Pottendorder <pottendo@gmx.net>/g
+s/@b{Martin Pottendorfer}/Martin Pottendorfer <pottendo@gmx.net>/g
 s/@b{Spiro Trikaliotis}/Spiro Trikaliotis <Spiro.Trikaliotis@gmx.de>/g
 s/@b{Marco van den Heuvel}/Marco van den Heuvel <blackystardust68@yahoo.com>/g
 s/@b{Christian Vogelgsang}/Christian Vogelgsang <chris@vogelgsang.org>/g
@@ -146,7 +146,7 @@ s/@b{Jarek Sobolewski}/Jarek Sobolewski <r@sledinmay.com>/g
 s/@b{Magnus Lind}/Magnus Lind/g
 s/@b{Manuel Antonio Rodriguez Bas}/Manuel Antonio Rodriguez Bas <formater@winuaespanol.com>/g
 s/@b{Helfried Peyrl}/Helfried Peyrl/g
-s/@b{Benjamin 'BeRo' Rosseaux}/Benjamin 'BeRo' Rosseaux/g
+s/@b{Benjamin 'BeRo' Rosseaux}/Benjamin 'BeRo' Rosseaux <benjamin@rosseaux.com>/g
 s/@b{Peter Rittwage}/Peter Rittwage/g
 s/@b{Robert McIntyre}/Robert McIntyre/g
 s/@b{István Fábián}/István Fábián/g
@@ -155,6 +155,27 @@ s/@b{mar77i}/mar77i/g
 s/@b{Uffe Jakobsen}/Uffe Jakobsen <microtop@starion.dk>/g
 s/@b{Derrick Inksley}/Derrick Inksley <dink@lemon64>/g
 s/@b{Ian Gledhill}/Ian Gledhill <ian.gledhill@btinternet.com>/g
+s/@b{Locnet}/Locnet <android.locnet@gmail.com>/g
+s/@b{BSzili}/BSzili <col.lawrence@gmail.com>/g
+s/@b{AreaScout}/AreaScout <areascout@gmx.at>/g
+s/@b{Bas Wassink}/Bas Wassink <b.wassink@ziggo.nl>/g
+s/@b{Anthony J. Bentley}/Anthony J. Bentley <anthonyjbentley@users.sourceforge.net>/g
+s/@b{Leandro Nini}/Leandro Nini <drfiemost@email.it>/g
+s/@b{Enrico Bruttomesso}/Enrico Bruttomesso <enrico.br71@gmail.com>/g
+s/@b{Alexis Ballier}/Alexis Ballier <aballier@users.sourceforge.net>/g
+s/@b{Moiree}/Moiree <hootee7ieyie7s@users.sourceforge.net>/g
+s/@b{Stein Pedersen}/Stein Pedersen <galfodo@users.sourceforge.net>/g
+s/@b{vonred}/vonred <vonred@users.sourceforge.net>/g
+s/@b{mjhn}/mjhn <mjhn@users.sourceforge.net>/g
+s/@b{Frank Buss}/Frank Buss/g
+s/@b{David Wood}/David Wood/g
+s/@b{Count Zero}/Count Zero <count0@pokefinder.org>/g
+s/@b{Lioncash}/LionCash <lioncash@users.sourceforge.net>/g
+s/@b{lvd}/lvd <lvd.mhm@gmail.com>/g
+s/@b{Michael Steil}/Michael Steil <mist64@mac.com>/g
+s/@b{Hans Deragon}/Hans Deragon <hans@deragon.biz>/g
+s/@b{TMLPiper}/TMLPiper <icolquhoun@users.sourceforge.net>/g
+s/@b{Christopher Phillips}/Christopher Phillips <shrydar@users.sourceforge.net>/g
 s/@code{\([^}]*\)}/`\1'/g
 s/@t{\([^}]*\)}/\1/g
 s/@dots{}/..../g

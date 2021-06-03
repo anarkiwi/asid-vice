@@ -37,7 +37,7 @@
 #define MAX_PWM 1000
 
 #define DRIVE_ROM_SIZE 0x8000
-#define DRIVE_RAM_SIZE 0x2000
+#define DRIVE_RAM_SIZE 0xc000
 
 /* Extended disk image handling.  */
 #define DRIVE_EXTEND_NEVER  0
@@ -51,7 +51,9 @@
 
 /* Drive type.  */
 #define DRIVE_TYPE_NONE      0
-/* #define DRIVE_TYPE_1540   1540 */ /* FIXME: we should emulate 1540 */
+#define DRIVE_TYPE_ANY    9999
+
+#define DRIVE_TYPE_1540   1540
 #define DRIVE_TYPE_1541   1541
 #define DRIVE_TYPE_1541II 1542
 #define DRIVE_TYPE_1551   1551
@@ -68,23 +70,30 @@
 #define DRIVE_TYPE_1001   1001  /* DOS 2.7 single floppy drive, 1M/disk */
 #define DRIVE_TYPE_8050   8050  /* DOS 2.7 dual floppy drive, 0.5M/disk */
 #define DRIVE_TYPE_8250   8250  /* DOS 2.7 dual floppy drive, 1M/disk */
-#define DRIVE_TYPE_ANY    9999
 
+#define DRIVE_TYPE_NUM    17
+
+/* max. half tracks */
+#define DRIVE_HALFTRACKS_1541   84
+/* FIXME: this constant is at some places used unconditionally for all 2-sided drives */
+#define DRIVE_HALFTRACKS_1571   70
 
 /* Possible colors of the drive active LED.  */
-#define DRIVE_ACTIVE_RED     0
-#define DRIVE_ACTIVE_GREEN   1
+#define DRIVE_LED1_RED     0
+#define DRIVE_LED1_GREEN   1
+#define DRIVE_LED2_RED     0
+#define DRIVE_LED2_GREEN   2
 
 /* Number of cycles before an attached disk becomes visible to the R/W head.
    This is mostly to make routines that auto-detect disk changes happy.  */
-#define DRIVE_ATTACH_DELAY           (3*600000)
+#define DRIVE_ATTACH_DELAY           (3 * 600000)
 
 /* Number of cycles the write protection is activated on detach.  */
-#define DRIVE_DETACH_DELAY           (3*200000)
+#define DRIVE_DETACH_DELAY           (3 * 200000)
 
 /* Number of cycles the after a disk can be inserted after a disk has been
    detached.  */
-#define DRIVE_ATTACH_DETACH_DELAY    (3*400000)
+#define DRIVE_ATTACH_DETACH_DELAY    (3 * 400000)
 
 /* Parallel cables available.  */
 #define DRIVE_PC_NONE     0
@@ -114,6 +123,9 @@ typedef struct drive_s {
 
     /* Current half track on which the R/W head is positioned.  */
     int current_half_track;
+    /* last clock and new value for stepper position */
+    CLOCK stepper_last_change_clk;
+    int stepper_new_position;
 
     /* Is this drive enabled?  */
     unsigned int enable;
@@ -126,6 +138,9 @@ typedef struct drive_s {
 
     /* What idling method?  (See `DRIVE_IDLE_*')  */
     int idling_method;
+
+    /* FD2000/4000 RTC save? */
+    int rtc_save;
 
     /* pointers for detecting dual drives and finding the other one */
     /* (only needed as long as we abuse the odd devices for drive 1:) */
@@ -198,13 +213,13 @@ typedef struct drive_s {
     DWORD snap_ref_advance;
     DWORD snap_req_ref_cycles;
 
-	  /* IF: requested additional R cycles */
-	  int req_ref_cycles;
+    /* IF: requested additional R cycles */
+    int req_ref_cycles;
 
     /* UI stuff.  */
     int old_led_status;
     int old_half_track;
-    int old_side;
+    unsigned int old_side;
 
     /* Complicated image, with complex emulation requirements */
     int complicated_image_loaded;
@@ -242,10 +257,6 @@ typedef struct drive_s {
 
     PP64Image p64;
 
-    /* Pointer to 8KB RAM expansion.  */
-    BYTE *drive_ram_expand2, *drive_ram_expand4, *drive_ram_expand6,
-         *drive_ram_expand8, *drive_ram_expanda;
-
     /* Which RAM expansion is enabled?  */
     int drive_ram2_enabled, drive_ram4_enabled, drive_ram6_enabled,
         drive_ram8_enabled, drive_rama_enabled;
@@ -257,10 +268,6 @@ typedef struct drive_s {
 
     /* RTC context */
     rtc_ds1216e_t *ds1216;
-    time_t rtc_offset;
-
-    /* Drive ROM starts here.  */
-    WORD rom_start;
 
     /* Current ROM image.  */
     BYTE rom[DRIVE_ROM_SIZE];
@@ -268,10 +275,16 @@ typedef struct drive_s {
     /* Current trap ROM image.  */
     BYTE trap_rom[DRIVE_ROM_SIZE];
 
+    /* Drive RAM */
+    BYTE drive_ram[DRIVE_RAM_SIZE];
+
+    /* rotations per minute (300rpm = 30000) */
+    int rpm;
+    int rpm_wobble;
 } drive_t;
 
 
-extern CLOCK drive_clk[];
+extern CLOCK drive_clk[DRIVE_NUM];
 
 /* Drive context structure for low-level drive emulation.
    Full definition in drivetypes.h */
@@ -284,9 +297,19 @@ extern int drive_init(void);
 extern int drive_enable(struct drive_context_s *drv);
 extern void drive_disable(struct drive_context_s *drv);
 extern void drive_move_head(int step, struct drive_s *drive);
+/* Don't use these pointers before the context is set up!  */
+extern struct monitor_interface_s *drive_cpu_monitor_interface_get(unsigned int dnr);
+extern void drive_cpu_early_init_all(void);
+extern void drive_cpu_prevent_clk_overflow_all(CLOCK sub);
+extern void drive_cpu_trigger_reset(unsigned int dnr);
 extern void drive_reset(void);
 extern void drive_shutdown(void);
+extern void drive_cpu_execute_one(struct drive_context_s *drv, CLOCK clk_value);
+extern void drive_cpu_execute_all(CLOCK clk_value);
+extern void drive_cpu_set_overflow(struct drive_context_s *drv);
 extern void drive_vsync_hook(void);
+extern int drive_get_disk_drive_type(int dnr);
+extern void drive_enable_update_ui(struct drive_context_s *drv);
 extern void drive_update_ui_status(void);
 extern void drive_gcr_data_writeback(struct drive_s *drive);
 extern void drive_gcr_data_writeback_all(void);
@@ -323,4 +346,3 @@ extern void drive_setup_context(void);
 extern int drive_resources_type_init(unsigned int default_type);
 
 #endif
-

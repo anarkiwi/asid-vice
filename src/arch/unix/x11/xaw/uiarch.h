@@ -35,6 +35,9 @@
 #include <X11/keysym.h>
 
 #include "types.h"
+#include "joystick.h"
+#include "ui.h"
+#include "uitapestatus.h"
 
 /* If this is #defined, `Mode_switch' is handled the same as `Meta'.  */
 /* #define MODE_SWITCH_AS_META */
@@ -93,6 +96,37 @@ typedef enum ui_keysym_s ui_keysym_t;
 
 extern Widget _ui_top_level;
 extern Visual *visual;
+extern Atom wm_delete_window;
+extern Atom wm_protocols;
+
+/* ------------------------------------------------------------------------- */
+
+struct video_canvas_s;
+
+#define NUM_TAPES       1
+#define MAX_APP_SHELLS 10
+typedef struct {
+    String title;
+    Widget shell;
+    Widget canvas;
+    Widget speed_label;
+    Widget statustext_label;
+    struct {
+        Widget status;          /* container for the following widgets */
+        Widget track_label;
+        Widget driveled;
+        /* those two replace the single LED widget when SFD1001 is selected */
+        Widget driveled1;
+        Widget driveled2;
+    } drive_widgets[NUM_DRIVES];
+    int drive_nleds[NUM_DRIVES];
+    tape_widgets_t tape_widgets[NUM_TAPES];
+    struct video_canvas_s *video_canvas;
+    Widget joystick_status[JOYSTICK_NUM];
+} app_shell_type;
+
+extern app_shell_type app_shells[MAX_APP_SHELLS];
+extern Pixel drive_led_on_red_pixel, drive_led_on_green_pixel, drive_led_off_pixel;
 
 /* ------------------------------------------------------------------------- */
 /* Prototypes */
@@ -106,5 +140,8 @@ extern void ui_about (Widget w, ui_callback_data_t cd, ui_callback_data_t cl);
 extern int ui_fullscreen_statusbar(struct video_canvas_s *canvas, int enable);
 
 extern void ui_set_drop_callback(void *cb);
+extern int get_num_shells(void);
+extern void ui_delete_menu(Widget w);
+extern void ui_update_menus(void);
 
 #endif

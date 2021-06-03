@@ -55,6 +55,9 @@
 
 #include "vice.h"
 
+
+#include <string.h>
+
 #include <X11/Xlib.h>
 #include <X11/Xlibint.h>
 #include <X11/Xutil.h>
@@ -63,9 +66,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/utsname.h>
 
+#include "util.h"
 #include "color.h"
 #include "cmdline.h"
 #include "fullscreenarch.h"
@@ -77,7 +80,6 @@
 #include "types.h"
 #include "ui.h"
 #include "uicolor.h"
-#include "util.h"
 #include "video.h"
 #include "videoarch.h"
 #include "viewport.h"
@@ -128,13 +130,15 @@ static int keepaspect, trueaspect;
 
 static int set_use_xsync(int val, void *param)
 {
-    _video_use_xsync = val;
+    _video_use_xsync = val ? 1 : 0;
+
     return 0;
 }
 
 static int set_try_mitshm(int val, void *param)
 {
-    try_mitshm = val;
+    try_mitshm = val ? 1 : 0;
+
     return 0;
 }
 
@@ -150,13 +154,13 @@ static int set_fourcc(const char *val, void *param)
     } else {
         fourcc = 0;
     }
-    
     return 0;
 }
 
 static int set_keepaspect(int val, void *param)
 {
-    keepaspect = val;
+    keepaspect = val ? 1 : 0;
+
     return 0;
 }
 
@@ -193,7 +197,8 @@ UI_CALLBACK(set_custom_aspect_ratio)
 
 static int set_trueaspect(int val, void *param)
 {
-    trueaspect = val;
+    trueaspect = val ? 1 : 0;
+
     return 0;
 }
 #endif
@@ -229,11 +234,13 @@ int video_arch_resources_init(void)
 #ifdef HAVE_OPENGL_SYNC
     openGL_register_resources();
 #endif
-    if (resources_register_string(resources_string) < 0) {
-        return -1;
+    if (machine_class != VICE_MACHINE_VSID) {
+        if (resources_register_string(resources_string) < 0) {
+            return -1;
+        }
+        return resources_register_int(resources_int);
     }
-
-    return resources_register_int(resources_int);
+    return 0;
 }
 
 void video_arch_resources_shutdown(void)
@@ -273,12 +280,12 @@ static const cmdline_option_t cmdline_options[] = {
       NULL, NULL, "FOURCC", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("fourcc"), N_("Request YUV FOURCC format") },
+      N_("<fourcc>"), N_("Request YUV FOURCC format") },
     { "-aspect", SET_RESOURCE, -1,
       NULL, NULL, "AspectRatio", NULL,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("Aspect ratio"), N_("Set aspect ratio (0.5 - 2.0)") },
+      N_("<Aspect ratio>"), N_("Set aspect ratio (0.5 - 2.0)") },
     { "-trueaspect", SET_RESOURCE, 0,
       NULL, NULL, "TrueAspectRatio", (resource_value_t)1,
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
@@ -289,23 +296,31 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_STRING, USE_DESCRIPTION_STRING,
       IDCLS_UNUSED, IDCLS_UNUSED,
       NULL, N_("Disable true aspect ratio") },
+    { "-keepaspect", SET_RESOURCE, 0,
+      NULL, NULL, "KeepAspectRatio", (resource_value_t)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      NULL, N_("Keep aspect ratio when scaling") },
+    { "+keepaspect", SET_RESOURCE, 0,
+      NULL, NULL, "KeepAspectRatio", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
+      IDCLS_UNUSED, IDCLS_UNUSED,
+      NULL, N_("Do not keep aspect ratio when scaling (freescale)") },
 #endif
     { NULL }
 };
 
-int video_init_cmdline_options(void)
+int video_arch_cmdline_options_init(void)
 {
-    return cmdline_register_options(cmdline_options);
+    if (machine_class != VICE_MACHINE_VSID) {
+        return cmdline_register_options(cmdline_options);
+    }
+    return 0;
 }
 
 /* ------------------------------------------------------------------------- */
 
-#if !defined(__NETBSD__)
 static GC _video_gc;
-#else
-GC _video_gc;
-#endif
-
 static void (*_refresh_func)() = NULL;
 
 /* This is set to 1 if the Shared Memory Extensions can actually be used. */
@@ -418,7 +433,7 @@ static void video_arch_frame_buffer_free(video_canvas_t *canvas)
 #endif
 
 #ifdef HAVE_FULLSCREEN
-    if (fullscreen_is_enabled) {
+    if (canvas->fullscreenconfig->enable) {
         return;
     }
 #endif
@@ -457,76 +472,10 @@ void video_arch_canvas_init(struct video_canvas_s *canvas)
 #endif
 }
 
-
-#ifdef HAVE_XVIDEO
-/* Mapping between VICE and XVideo color settings. */
-struct {
-    char* name;
-    Atom atom;
-    int min;
-    int max;
-    int v_max;
-    int xv_zero;
-    int xv_default;
-    int restore;     /* 0 unknown, 1 ok, 2 fault */
-    int *value;
-}
-
-xv_settings[] = {
-    { "XV_SATURATION", 0, 0, 0, 2000, 32, 0, 0, NULL },
-    { "XV_CONTRAST", 0, 0, 0, 2000, 64, 0, 0, NULL },
-    { "XV_BRIGHTNESS", 0, 0, 0, 2000, 144, 0, 0, NULL },
-    { "XV_GAMMA", 0, 0, 0, 4000, 1000, 0, 0, NULL }
-};
-
-static void init_xv_settings(video_canvas_t *canvas)
+static void video_refresh_func(void (*rfunc)(void))
 {
-    /* Find XVideo color setting limits. */
-    if (canvas->videoconfig->hwscale && canvas->xv_image) {
-        int i, j;
-        int numattr = 0;
-        Display *dpy = x11ui_get_display_ptr();
-        XvAttribute *attr = XvQueryPortAttributes(dpy, canvas->xv_port, &numattr);
-
-        xv_settings[0].value = &(canvas->videoconfig->video_resources.color_saturation);
-        xv_settings[1].value = &(canvas->videoconfig->video_resources.color_contrast);
-        xv_settings[2].value = &(canvas->videoconfig->video_resources.color_brightness);
-        xv_settings[3].value = &(canvas->videoconfig->video_resources.color_gamma);
-
-        for (i = 0; i < (int)util_arraysize(xv_settings); i++) {
-            xv_settings[i].atom = 0;
-
-            for (j = 0; j < numattr; j++) {
-                if (!(attr[j].flags & XvSettable)) {
-                    continue; /* useless, can't be set */
-                }
-                if (strcmp(xv_settings[i].name, attr[j].name) == 0) {
-                    xv_settings[i].atom = XInternAtom(dpy, xv_settings[i].name, False);
-                    xv_settings[i].min = attr[j].min_value;
-                    xv_settings[i].max = attr[j].max_value;
-                    if ((attr[j].flags & XvGettable) && !xv_settings[i].restore) {
-                        xv_settings[i].restore = (XvGetPortAttribute(dpy, canvas->xv_port,
-                                xv_settings[i].atom, &xv_settings[i].xv_default) == Success);
-                        if (!xv_settings[i].restore) {
-                            xv_settings[i].restore = 2;
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-
-        if (attr) {
-            XFree(attr);
-        }
-
-        /* Apply color settings to XVideo. */
-        video_canvas_set_palette(canvas, canvas->palette);
-    }
+    _refresh_func = rfunc;
 }
-#endif
-
-static void video_refresh_func(void (*rfunc)(void));
 
 static int video_arch_frame_buffer_alloc(video_canvas_t *canvas, unsigned int width, unsigned int height)
 {
@@ -568,7 +517,7 @@ static int video_arch_frame_buffer_alloc(video_canvas_t *canvas, unsigned int wi
 	    }
 
 	    if (shminfo) {
-#ifndef __QNX__
+#if !defined(__QNX__) && !defined(MINIX_SUPPORT)
 		canvas->using_mitshm = 0;
 #endif
 		shminfo = NULL;
@@ -589,7 +538,7 @@ static int video_arch_frame_buffer_alloc(video_canvas_t *canvas, unsigned int wi
 
         log_message(x11video_log, "Successfully initialized using XVideo (%dx%d %.4s)%s shared memory.",
 		width, height, canvas->xv_format.label,
-#ifndef __QNX__
+#if !defined(__QNX__) && !defined(MINIX_SUPPORT)
 		canvas->using_mitshm ? ", using" : " without");
 #else
                 " without");
@@ -739,6 +688,8 @@ video_canvas_t *video_canvas_create(video_canvas_t *canvas, unsigned int *width,
 {
     int res;
     XGCValues gc_values;
+    int win_width = canvas->draw_buffer->visible_width * canvas->videoconfig->scalex;
+    int win_height = canvas->draw_buffer->visible_height * canvas->videoconfig->scaley;
 
     canvas->depth = x11ui_get_display_depth();
 
@@ -753,11 +704,20 @@ video_canvas_t *video_canvas_create(video_canvas_t *canvas, unsigned int *width,
         }
         resources_set_int("HwScalePossible", 0);
     }
+    if (canvas->videoconfig->hwscale) {
+        double local_aspect_ratio = 1.0;
+        if (trueaspect) {
+            local_aspect_ratio = canvas->geometry->pixel_aspect_ratio;
+        } else if (keepaspect) {
+            local_aspect_ratio = aspect_ratio;
+        }
+        win_width = (int)((double)win_width * local_aspect_ratio + 0.5);
+    }
 #else
     resources_set_int("HwScalePossible", 0);
 #endif
 
-    res = ui_open_canvas_window(canvas, canvas->viewport->title, 300, 100, 1);
+    res = ui_open_canvas_window(canvas, canvas->viewport->title, win_width, win_height, 1);
     if (res < 0) {
         return NULL;
     }
@@ -772,10 +732,6 @@ video_canvas_t *video_canvas_create(video_canvas_t *canvas, unsigned int *width,
         uicolor_init_video_colors(canvas);
     }
 
-#ifdef HAVE_XVIDEO
-    init_xv_settings(canvas);
-#endif
-
 #ifdef HAVE_OPENGL_SYNC
     openGL_sync_init(canvas);
 #endif
@@ -785,20 +741,7 @@ video_canvas_t *video_canvas_create(video_canvas_t *canvas, unsigned int *width,
 
 void video_canvas_destroy(video_canvas_t *canvas)
 {
-#ifdef HAVE_XVIDEO
-    /* Restore color settings to XVideo. */
-    if (canvas->videoconfig->hwscale && canvas->xv_image) {
-        int i;
-        Display *dpy = x11ui_get_display_ptr();
-
-        for (i = 0; i < (int)util_arraysize(xv_settings); i++) {
-            if (xv_settings[i].restore == 1) {
-                XvSetPortAttribute(dpy, canvas->xv_port, xv_settings[i].atom, xv_settings[i].xv_default);
-            }
-        }
-        video_canvas_refresh(canvas, 0, 0, 0, 0, 0, 0); /* settings not restored unless it's displayed once... */
-    }
-#endif
+    video_arch_frame_buffer_free(canvas);
 #ifdef HAVE_FULLSCREEN
     if (canvas != NULL) {
         fullscreen_shutdown_alloc_hooks(canvas);
@@ -812,46 +755,6 @@ int video_canvas_set_palette(video_canvas_t *c, struct palette_s *palette)
     if (palette == NULL) {
         return 0; /* no palette, nothing to do */
     }
-#ifdef HAVE_XVIDEO
-    /* Apply color settings to XVideo. */
-    if (c->videoconfig->hwscale && c->xv_image) {
-        int i;
-
-        Display *dpy = x11ui_get_display_ptr();
-
-        for (i = 0; i < (int)util_arraysize(xv_settings); i++) {
-            /* Map from VICE [0,2000] to XVideo [xv_min, xv_max]. */
-            /* Problem with gamma: vice's values range [0,4000] with 2200 being
-             * neutral; XVideo ranges [100,10 000] with 1000 being neutral.
-             */
-            int v_min = 0, v_max = xv_settings[i].v_max;
-            int v_zero = (v_min + v_max) / 2;
-            int v_range = v_max - v_min;
-            int xv_range = xv_settings[i].max - xv_settings[i].min;
-            int xv_zero = xv_settings[i].min + xv_settings[i].xv_zero * xv_range / 256;
-            int xv_val;
-
-            if (xv_settings[i].xv_zero > 256) { /* gamma */
-                xv_val = *xv_settings[i].value;
-            } else {
-                xv_val = (*xv_settings[i].value - v_zero) * xv_range / v_range + xv_zero;
-            }
-
-            if (xv_val > xv_settings[i].max) {
-                xv_val = xv_settings[i].max;
-            }
-            if (xv_val < xv_settings[i].min) {
-                xv_val = xv_settings[i].min;
-            }
-
-            if (!xv_settings[i].atom) {
-                continue;
-            }
-
-            XvSetPortAttribute(dpy, c->xv_port, xv_settings[i].atom, xv_val);
-        }
-    }
-#endif
 
     c->palette = palette;
 
@@ -886,17 +789,6 @@ void video_canvas_resize(video_canvas_t *canvas, char resize_canvas)
     }
 
     ui_finish_canvas(canvas);
-
-#ifdef HAVE_XVIDEO
-    init_xv_settings(canvas);
-#endif
-}
-
-/* ------------------------------------------------------------------------- */
-
-static void video_refresh_func(void (*rfunc)(void))
-{
-    _refresh_func = rfunc;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -912,8 +804,6 @@ void video_canvas_refresh(video_canvas_t *canvas, unsigned int xs, unsigned int 
 
 #ifdef HAVE_XVIDEO
     if (canvas->videoconfig->hwscale && canvas->xv_image) {
-        //int doublesize = canvas->videoconfig->doublesizex && canvas->videoconfig->doublesizey;
-
 #if defined(__QNX__) || defined(MINIX_SUPPORT)
         XShmSegmentInfo* shminfo = NULL;
 #else
@@ -967,15 +857,11 @@ void video_canvas_refresh(video_canvas_t *canvas, unsigned int xs, unsigned int 
     }
 #endif
 
-    if (canvas->videoconfig->doublesizex) {
-        xi *= (canvas->videoconfig->doublesizex + 1);
-        w *= (canvas->videoconfig->doublesizex + 1);
-    }
+    xi *= canvas->videoconfig->scalex;
+    w *= canvas->videoconfig->scalex;
 
-    if (canvas->videoconfig->doublesizey) {
-        yi *= (canvas->videoconfig->doublesizey + 1);
-        h *= (canvas->videoconfig->doublesizey + 1);
-    }
+    yi *= canvas->videoconfig->scaley;
+    h *= canvas->videoconfig->scaley;
 
 #ifdef HAVE_FULLSCREEN
     if (canvas->video_fullscreen_refresh_func) {

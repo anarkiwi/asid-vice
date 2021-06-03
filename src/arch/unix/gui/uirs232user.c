@@ -3,7 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -26,6 +26,8 @@
  */
 
 #include "vice.h"
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 
 #include <stdio.h>
 
@@ -63,3 +65,5 @@ ui_menu_entry_t rs232user_baudrate_submenu[] = {
       (ui_callback_t)radio_RsUserBaud, (ui_callback_data_t)9600, NULL },
     { NULL }
 };
+
+#endif

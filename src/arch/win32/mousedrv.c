@@ -34,9 +34,13 @@
 
 #include <stdio.h>
 
+#include "cmdline.h"
 #include "log.h"
 #include "mouse.h"
 #include "mousedrv.h"
+#include "res.h"
+#include "resources.h"
+#include "translate.h"
 #include "types.h"
 #include "ui.h"
 #include "vsyncapi.h"
@@ -44,10 +48,15 @@
 int _mouse_x, _mouse_y;
 unsigned long _mouse_timestamp = 0;
 
+/* Mouse sensitivity multiplier  */
+static int mouse_sensitivity_mult = 40;
+
 #ifdef HAVE_DINPUT
 static int mouse_acquired = 0;
 static LPDIRECTINPUTDEVICE di_mouse = NULL;
 #endif
+
+static mouse_func_t mouse_funcs;
 
 /* ------------------------------------------------------------------------- */
 
@@ -56,14 +65,51 @@ void mousedrv_mouse_changed(void)
     mouse_update_mouse_acquire();
 }
 
-int mousedrv_resources_init(void)
+static int set_mouse_sensitivity_mult(int val, void *param)
 {
+    if (val < 0) {
+        val = 0;
+    }
+
+    if (val > 40) {
+        val = 40;
+    }
+
+    mouse_sensitivity_mult = val;
+
     return 0;
 }
 
+static const resource_int_t resources_int[] = {
+    { "MouseSensitivity", 40, RES_EVENT_NO, NULL,
+      &mouse_sensitivity_mult, set_mouse_sensitivity_mult, NULL },
+    { NULL }
+};
+
+int mousedrv_resources_init(mouse_func_t *funcs)
+{
+    mouse_funcs.mbl = funcs->mbl;
+    mouse_funcs.mbr = funcs->mbr;
+    mouse_funcs.mbm = funcs->mbm;
+    mouse_funcs.mbu = funcs->mbu;
+    mouse_funcs.mbd = funcs->mbd;
+
+    return resources_register_int(resources_int);
+}
+
+static const cmdline_option_t cmdline_options[] =
+{
+    { "-mousesensitivity", SET_RESOURCE, 1,
+      NULL, NULL, "MouseSensitivity", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDS_P_SENSITIVITY, IDS_DESC_MOUSE_SENSITIVITY,
+      NULL, NULL },
+    { NULL }
+};
+
 int mousedrv_cmdline_options_init(void)
 {
-    return 0;
+    return cmdline_register_options(cmdline_options);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -88,17 +134,19 @@ void mouse_update_mouse(void)
         }
     }
 
-    _mouse_x += state.lX * 4;
-    _mouse_y -= state.lY * 4;
+    if (state.lX || state.lY) {
+        _mouse_x += (int)(state.lX * mouse_sensitivity_mult / 10);
+        _mouse_y -= (int)(state.lY * mouse_sensitivity_mult / 10);
+        _mouse_timestamp = vsyncarch_gettime();
+    }
 
-    mouse_button_left((int)(state.rgbButtons[0] & 0x80));
-    mouse_button_right((int)(state.rgbButtons[1] & 0x80));
-    mouse_button_middle((int)(state.rgbButtons[2] & 0x80));
+    mouse_funcs.mbl((int)(state.rgbButtons[0] & 0x80));
+    mouse_funcs.mbr((int)(state.rgbButtons[1] & 0x80));
+    mouse_funcs.mbm((int)(state.rgbButtons[2] & 0x80));
     /* FIXME: back/forward buttons as up/down? Or state.lZ increase/decrease?
-    mouse_button_up((int)(state.rgbButtons[3] & 0x80));
-    mouse_button_down((int)(state.rgbButtons[4] & 0x80));
+    mouse_funcs.mbu((int)(state.rgbButtons[3] & 0x80));
+    mouse_funcs.mbd((int)(state.rgbButtons[4] & 0x80));
     */
-    _mouse_timestamp = vsyncarch_gettime();
 #endif
 }
 
@@ -182,4 +230,19 @@ int mousedrv_get_y(void)
 unsigned long mousedrv_get_timestamp(void)
 {
     return _mouse_timestamp;
+}
+
+void mousedrv_button_left(int pressed)
+{
+    mouse_funcs.mbl(pressed);
+}
+
+void mousedrv_button_right(int pressed)
+{
+    mouse_funcs.mbr(pressed);
+}
+
+void mousedrv_button_middle(int pressed)
+{
+    mouse_funcs.mbm(pressed);
 }

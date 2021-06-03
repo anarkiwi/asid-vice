@@ -1,300 +1,350 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 2 November 2012 -->
+     from ../../doc/vice.texi on 15 December 2016 -->
 
-<TITLE>VICE Manual - 13  cartconv</TITLE>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
+<TITLE>VICE Manual - 13  c1541</TITLE>
+<style type="text/css">
+    @import 'vice.css';
+</style>
 </HEAD>
 <BODY>
-Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_12.html">previous</A>, <A HREF="vice_14.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_12.html">previous</A>, <A HREF="vice_14.html">next</A>, <A HREF="vice_22.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
 <P><HR><P>
 
 
-<H1><A NAME="SEC260" HREF="vice_toc.html#TOC260">13  cartconv</A></H1>
+<H1><A NAME="SEC301" HREF="vice_toc.html#TOC301">13  c1541</A></H1>
 
 <P>
-The cartconv program is a cartridge conversion utility, it can convert
-between binary and .crt images and it can 'insert' binary and/or
-.crt images into the EPROM type of cartridges.
+VICE is provided with a complete stand-alone disk image maintenance
+utility, called <CODE>c1541</CODE>.
+
+</P>
+<P>
+You can either invoke it from the command
+line or from within one of the VICE emulators, using the "Run c1541"
+menu item which will open a new terminal window with a running
+<CODE>c1541</CODE> in it.
+
+</P>
+<P>
+The syntax is:
+
+</P>
+
+<PRE>
+c1541 [IMAGE1 [IMAGE2]] [COMMAND1 COMMAND2 ... COMMANDN]
+</PRE>
+
+<P>
+<CODE>IMAGE1</CODE> and <CODE>IMAGE2</CODE> are disk image names that can be
+attached before <CODE>c1541</CODE> starts.  <CODE>c1541</CODE> can handle up to
+two disk images at the same time by using two virtual built-in drives,
+numbered <CODE>8</CODE> and <CODE>9</CODE>; <CODE>IMAGE1</CODE> (if present) is always
+attached to drive <CODE>8</CODE>, while <CODE>IMAGE2</CODE> is attached to drive
+<CODE>9</CODE>.
+
+</P>
+<P>
+<CODE>COMMAND</CODE>s specified on the command-line all begin with the minus
+sign (<CODE>-</CODE>); if present, <CODE>c1541</CODE> executes them in the same
+order as they are on the command line and returns a zero error code if
+they were successful.  If any of the <CODE>COMMAND</CODE>s fails, <CODE>c1541</CODE>
+stops and returns a nonzero error code.
+
+</P>
+<P>
+If no <CODE>COMMAND</CODE>s are specified at all, <CODE>c1541</CODE> enters
+interactive mode, where you can type commands manually.  Commands in
+interactive mode are the same as commands in batch mode, but do not
+require a leading <CODE>-</CODE>.  As with the monitor, file name completion
+and command line editing with history are provided via GNU
+<CODE>readline</CODE>.  Use the command <SAMP>`quit'</SAMP> or press <KBD>C-d</KBD> to
+exit.
 
 </P>
 
 
-<H2><A NAME="SEC261" HREF="vice_toc.html#TOC261">13.1  cartconv command line options</A></H2>
+
+<H2><A NAME="SEC302" HREF="vice_toc.html#TOC302">13.1  Specifying files in c1541</A></H2>
 
 <P>
-The cartconv program has the following parameters:
+When accessing CBM DOS files (i.e. files that reside on disk images),
+c1541 uses a special syntax that lets you access files on both drive 8
+and 9.  If you prepend the file name with <CODE>@8:</CODE> or <CODE>@9:</CODE>, you
+will specified that file is to be found or created on drive 8 and 9,
+respectively.
+
+</P>
+<P>
+For instance,
+
+</P>
+
+<PRE>
+@8:somefile
+</PRE>
+
+<P>
+will name file named <CODE>somefile</CODE> on unit 8, while
+
+</P>
+
+<PRE>
+@9:somefile
+</PRE>
+
+<P>
+will name file named <CODE>somefile</CODE> on unit 9.
+
+</P>
+
+
+<H2><A NAME="SEC303" HREF="vice_toc.html#TOC303">13.2  Using quotes and backslashes</A></H2>
+
+<P>
+You can use quotes (<CODE>"</CODE>) in a command to embed spaces into file
+names.  For instance,
+
+</P>
+
+<PRE>
+read some file
+</PRE>
+
+<P>
+will read file <CODE>some</CODE> from the disk image and write it into the
+file system as <CODE>file</CODE>, while
+
+</P>
+
+<PRE>
+read "some file"
+</PRE>
+
+<P>
+will copy <CODE>some file</CODE> into the file system, with the name
+<CODE>some file</CODE>.
+
+</P>
+<P>
+The backslash character (<CODE>\</CODE>) has a special meaning too: it lets
+you literally insert the following character no matter what it is.  For
+example,
+
+</P>
+
+<PRE>
+read some\ file
+</PRE>
+
+<P>
+will copy file <CODE>some file</CODE> into the file system, while
+
+</P>
+
+<PRE>
+read some\ file this\"file
+</PRE>
+
+<P>
+will copy <CODE>some file</CODE> into the file system with name
+<CODE>this"file</CODE> (with an embedded quote).
+
+</P>
+
+
+
+<H2><A NAME="SEC304" HREF="vice_toc.html#TOC304">13.3  c1541 commands and options</A></H2>
+
+<P>
+This is a list of the <CODE>c1541</CODE> commands.  They are shown in their
+interactive form, without the leading <CODE>-</CODE>.
+Square brackets [] indicate an optional part, and "&#60;COMMAND&#62;" translates
+to a disk command according to CBM DOS, like "i0" for example.
 
 </P>
 <DL COMPACT>
 
-<DT><CODE>-i "input name"</CODE>
+<DT><CODE>@ [&#60;command&#62;]</CODE>
 <DD>
-<A NAME="IDX1260"></A>
- 
-This parameter is mandatory, it should contain the name of the binary/.crt
-file you want to convert. For the EPROM type of cartridges this parameter
-can be used multiple times to insert images into the resulting file.
-<A NAME="IDX1261"></A>
-<DT><CODE>-o "output name"</CODE>
+Execute specified CBM DOS command and print the current status of the
+drive.  If no <CODE>command</CODE> is specified, just print the status.
+
+<DT><CODE>? [&#60;command&#62;]</CODE>
 <DD>
-This parameter is mandatory, it should contain the name of the binary/.crt
-file you want to convert the input file to.
-<A NAME="IDX1262"></A>
-<DT><CODE>-t carttype</CODE>
+Explain specified command.  If no command is specified, list available
+ones.
+
+<DT><CODE>attach &#60;diskimage&#62; [&#60;unit&#62;]</CODE>
 <DD>
-This parameter is optional. It is only needed when converting to a .crt
-file. See below for the supported cartridge types.
-<A NAME="IDX1263"></A>
-<DT><CODE>-n "cart name"</CODE>
+Attach <CODE>diskimage</CODE> to <CODE>unit</CODE> (default unit is 8).
+
+<DT><CODE>block &#60;track&#62; &#60;sector&#62; &#60;disp&#62; [&#60;drive&#62;]</CODE>
 <DD>
-This parameter is optional and is used as the cartridge name when creating
-a .crt file.
-<A NAME="IDX1264"></A>
-<DT><CODE>-l loadaddress</CODE>
+Show specified disk block in hex form.
+
+<DT><CODE>copy &#60;source1&#62; [&#60;source2&#62; ... &#60;sourceN&#62;] &#60;destination&#62;</CODE>
 <DD>
-This parameter is optional and is used as the load-address when converting
-a .crt file to a .prg file, or when converting to a generic type .crt
-file.
-<A NAME="IDX1265"></A>
-<DT><CODE>-f "input name"</CODE>
+Copy <CODE>source1</CODE> ... <CODE>sourceN</CODE> into destination.  If N &#62; 1,
+<CODE>destination</CODE> must be a simple drive specifier (<CODE>@n:</CODE>).
+
+<DT><CODE>delete &#60;file1&#62; [&#60;file2&#62; ... &#60;fileN&#62;]</CODE>
 <DD>
-This parameter is optional, and is meant to output information about the
-named file. It can't be used in conjuction with any of the other parameters.
-<A NAME="IDX1266"></A>
-<DT><CODE>-r</CODE>
+Delete the specified files.
+
+<DT><CODE>exit</CODE>
 <DD>
-This parameter is optional, it enables repair mode (accept broken input files)
+Exit (same as <CODE>quit</CODE>).
+
+<DT><CODE>extract</CODE>
+<DD>
+Extract all the files to the file system.
+
+<DT><CODE>format &#60;diskname,id&#62; [&#60;type&#62; &#60;imagename&#62;] [&#60;unit&#62;]</CODE>
+<DD>
+If <CODE>unit</CODE> is specified, format the disk in unit <CODE>unit</CODE>.  If
+<CODE>type</CODE> and <CODE>imagename</CODE> are specified, create a new image named
+<CODE>imagename</CODE>, attach it to unit 8 and format it.  <CODE>type</CODE> is a
+disk image type, and must be either <CODE>x64</CODE>, <CODE>d64</CODE> (both VC1541/2031),
+<CODE>g64</CODE> (VC1541/2031 but in GCR coding), <CODE>d71</CODE> (VC1571), <CODE>d81</CODE>
+(VC1581), <CODE>d80</CODE> (CBM8050) or <CODE>d82</CODE> (CBM8250/1001).
+Otherwise, format the disk in the current unit, if any.
+
+<DT><CODE>geosread &#60;source&#62; [&#60;destination&#62;]</CODE>
+<DD>
+Read GEOS &#60;source&#62; from the disk image and copy it as a Convert file into
+&#60;destination&#62; in the file system.  If &#60;destination&#62; is not specified, copy
+it into a file with the same name as &#60;source&#62;.
+
+<DT><CODE>geoswrite &#60;source&#62;</CODE>
+<DD>
+Write GOES Convert file &#60;source&#62; from the file system on a disk image.
+
+<DT><CODE>geosextract &#60;source&#62;</CODE>
+<DD>
+Extract all the files to the file system and GEOS Convert them.
+
+<DT><CODE>help [&#60;command&#62;]</CODE>
+<DD>
+Explain specified command.  If no command is specified, list available
+ones.
+
+<DT><CODE>info [&#60;unit&#62;]</CODE>
+<DD>
+Display information about unit <CODE>unit</CODE> (if unspecified, use the current
+one).
+
+<DT><CODE>list [&#60;pattern&#62;]</CODE>
+<DD>
+<DT><CODE>dir [&#60;pattern&#62;]</CODE>
+<DD>
+List files matching <CODE>pattern</CODE> (default is all files).
+
+<DT><CODE>name &#60;diskname&#62;[,&#60;id&#62;] &#60;unit&#62;</CODE>
+<DD>
+Change image name.
+
+<DT><CODE>p00save &#60;enable&#62; [&#60;unit&#62;]</CODE>
+<DD>
+Save P00 files to the file system.
+
+<DT><CODE>quit</CODE>
+<DD>
+Exit (same as <CODE>exit</CODE>).
+
+<DT><CODE>read &#60;source&#62; [&#60;destination&#62;]</CODE>
+<DD>
+Read <CODE>source</CODE> from the disk image and copy it into <CODE>destination</CODE> in
+the file system.  If <CODE>destination</CODE> is not specified, copy it into a
+file with the same name as <CODE>source</CODE>.",
+
+<DT><CODE>rename &#60;oldname&#62; &#60;newname&#62;</CODE>
+<DD>
+Rename <CODE>oldname</CODE> into <CODE>newname</CODE>.  The files must be on the
+same drive.
+
+<DT><CODE>show [copying | warranty]</CODE>
+<DD>
+Show conditions for redistributing copies of C1541 (`copying') or the
+various kinds of warranty you do not have with C1541 (`warranty').
+
+<DT><CODE>tape &#60;t64name&#62; [&#60;file1&#62; ... &#60;fileN&#62;]</CODE>
+<DD>
+Extract files from a T64 image.
+
+<DT><CODE>unit &#60;number&#62;</CODE>
+<DD>
+Make unit <CODE>number</CODE> the current unit.
+
+<DT><CODE>unlynx &#60;lynxname&#62; [&#60;unit&#62;]</CODE>
+<DD>
+Extract the specified Lynx image file into the specified unit (default
+is the current unit).
+
+<DT><CODE>validate [&#60;unit&#62;]</CODE>
+<DD>
+Validate the disk in unit <CODE>unit</CODE>.  If <CODE>unit</CODE> is not specified,
+validate the disk in the current unit.
+
+<DT><CODE>verbose</CODE>
+<DD>
+Enable verbose output.
+
+<DT><CODE>write &#60;source&#62; [&#60;destination&#62;]</CODE>
+<DD>
+Write <CODE>source</CODE> from the file system into <CODE>destination</CODE> on a
+disk image.
+
+<DT><CODE>zcreate &#60;x64name&#62; &#60;zipname&#62; [&#60;label,id&#62;]</CODE>
+<DD>
+Create an X64 disk image out of a set of four Zipcoded files named
+<CODE>1!zipname</CODE>, <CODE>2!zipname</CODE>, <CODE>3!zipname</CODE> and
+<CODE>4!zipname</CODE>.
+
 </DL>
 
+
+
+<H2><A NAME="SEC305" HREF="vice_toc.html#TOC305">13.4  Executing shell commands</A></H2>
+
 <P>
-The following cartridge types are supported:
+If you want to execute a shell command from withing <CODE>c1541</CODE>, just
+prepend it with an exclamation mark (<CODE>!</CODE>).  For example,
 
 </P>
-<DL COMPACT>
 
-<DT><CODE>bin</CODE>
-<DD>
-Binary .bin file (Default crt-&#62;bin)
-<DT><CODE>normal</CODE>
-<DD>
-Generic 8kB/12kB/16kB .crt file (Default bin-&#62;crt)
-<DT><CODE>prg</CODE>
-<DD>
-Binary C64 .prg file with load-address
-<DT><CODE>ulti</CODE>
-<DD>
-Ultimax mode 4kB/8kB/16kB .crt file
-<DT><CODE>ap</CODE>
-<DD>
-Atomic Power .crt file
-<DT><CODE>ar2</CODE>
-<DD>
-Action Replay MK2 .crt file
-<DT><CODE>ar3</CODE>
-<DD>
-Action Replay MK3 .crt file
-<DT><CODE>ar4</CODE>
-<DD>
-Action Replay MK4 .crt file
-<DT><CODE>ar5</CODE>
-<DD>
-Action Replay V5 .crt file
-<DT><CODE>cap</CODE>
-<DD>
-Capture .crt file
-<DT><CODE>comal</CODE>
-<DD>
-Comal 80 .crt file
-<DT><CODE>dep256</CODE>
-<DD>
-Dela EP256 .crt file, extra files can be inserted (1)(2)
-<DT><CODE>dep64</CODE>
-<DD>
-Dela EP64 .crt file, extra files can be inserted (1)
-<DT><CODE>dep7x8</CODE>
-<DD>
-Dela EP7x8 .crt file, extra files can be inserted (1)(2)(3)
-<DT><CODE>din</CODE>
-<DD>
-Dinamic .crt file
-<DT><CODE>dsm</CODE>
-<DD>
-Diashow-Maker .crt file
-<DT><CODE>easy</CODE>
-<DD>
-EasyFlash .crt file
-<DT><CODE>epyx</CODE>
-<DD>
-Epyx FastLoad .crt file
-<DT><CODE>exos</CODE>
-<DD>
-EXOS .crt file
-<DT><CODE>expert</CODE>
-<DD>
-Expert Cartridge .crt file
-<DT><CODE>fc1</CODE>
-<DD>
-The Final Cartridge .crt file
-<DT><CODE>fc3</CODE>
-<DD>
-The Final Cartridge III .crt file
-<DT><CODE>fcp</CODE>
-<DD>
-Final Cartridge Plus .crt file
-<DT><CODE>ff</CODE>
-<DD>
-Freeze Frame .crt file
-<DT><CODE>fm</CODE>
-<DD>
-Freeze Machine .crt file
-<DT><CODE>fp</CODE>
-<DD>
-Fun Play .crt file
-<DT><CODE>gk</CODE>
-<DD>
-Game Killer .crt file
-<DT><CODE>gs</CODE>
-<DD>
-C64 Games System .crt file
-<DT><CODE>ide64</CODE>
-<DD>
-IDE64 .crt file
-<DT><CODE>ieee</CODE>
-<DD>
-IEEE-488 Interface .crt file
-<DT><CODE>kcs</CODE>
-<DD>
-KCS Power Cartridge .crt file
-<DT><CODE>mach5</CODE>
-<DD>
-MACH 5 .crt file
-<DT><CODE>md</CODE>
-<DD>
-Magic Desk .crt file
-<DT><CODE>mf</CODE>
-<DD>
-Magic Formel .crt file
-<DT><CODE>mikro</CODE>
-<DD>
-Mikro Assembler .crt file
-<DT><CODE>mmc64</CODE>
-<DD>
-MMC64 .crt file
-<DT><CODE>mmcr</CODE>
-<DD>
-MMC Replay .crt file
-<DT><CODE>mv</CODE>
-<DD>
-Magic Voice .crt file
-<DT><CODE>ocean</CODE>
-<DD>
-Ocean .crt file
-<DT><CODE>p64</CODE>
-<DD>
-Prophet64 .crt file
-<DT><CODE>rep256</CODE>
-<DD>
-REX 256k EPROM Cart .crt file, extra files can be inserted (1)(2)(3)
-<DT><CODE>ross</CODE>
-<DD>
-ROSS .crt file
-<DT><CODE>rr</CODE>
-<DD>
-Retro Replay .crt file
-<DT><CODE>ru</CODE>
-<DD>
-REX Utility .crt file
-<DT><CODE>s64</CODE>
-<DD>
-Snapshot 64 .crt file
-<DT><CODE>sb</CODE>
-<DD>
-Structured BASIC .crt file
-<DT><CODE>se5</CODE>
-<DD>
-Super Explode V5.0 .crt file
-<DT><CODE>sg</CODE>
-<DD>
-Super Games .crt file
-<DT><CODE>simon</CODE>
-<DD>
-Simons' BASIC .crt file
-<DT><CODE>ss4</CODE>
-<DD>
-Super Snapshot V4 .crt file
-<DT><CODE>ss5</CODE>
-<DD>
-Super Snapshot V5 .crt file
-<DT><CODE>star</CODE>
-<DD>
-Stardos .crt file
-<DT><CODE>wl</CODE>
-<DD>
-Westermann Learning .crt file
-<DT><CODE>ws</CODE>
-<DD>
-Warp Speed .crt file
-<DT><CODE>zaxxon</CODE>
-<DD>
-Zaxxon .crt file
-</DL>
+<PRE>
+!ls -la
+</PRE>
+
+<P>
+will execute the command <CODE>ls -la</CODE>, which will show you all the
+files in the current directory.
+
+</P>
 
 
-<UL>
-<LI>(1) insertion of 32kB EPROM files supported.
-
-<LI>(2) insertion of 8kB .crt/binary files supported.
-
-<LI>(3) insertion of 16kB .crt/binary files supported.
-
-</UL>
-
-
-
-<H2><A NAME="SEC262" HREF="vice_toc.html#TOC262">13.2  cartconv examples</A></H2>
+<H2><A NAME="SEC306" HREF="vice_toc.html#TOC306">13.5  c1541 examples</A></H2>
 
 <DL COMPACT>
 
-<DT><CODE>cartconv -i foo.crt -o foo.bin</CODE>
+<DT><CODE>c1541 -attach test.d64 -list</CODE>
 <DD>
-Convert a .crt file to a binary file with no load-address.
-<DT><CODE>cartconv -t prg -i foo.crt -o foo.prg</CODE>
-<DD>
-Convert a .crt file to a .prg file with default load-address.
-<DT><CODE>cartconv -t prg -l 49152 -i foo.crt -o foo.prg</CODE>
-<DD>
-Convert a .crt file to a .prg file with 49152 as the load-address.
-<DT><CODE>cartconv -t ocean -i foo.bin -o foo.crt</CODE>
-<DD>
-Convert a binary file to an ocean type cartridge.
-<DT><CODE>cartconv -t dep64 -i dep64.bin -i eprom.prg -o foo.crt</CODE>
-<DD>
-Inserting a 32kB EPROM file into an dep64 type cartridge.
+Attach <CODE>test.d64</CODE> and show directory.
 
-<UL>
-<LI>step 1 : use the dep64 binary file in VICE as a generic 8kB cartridge.
-
-<LI>step 2 : generate an EPROM file.
-
-<LI>step 3 : get the EPROM file to the host computer.
-
-<LI>step 4 : insert the EPROM file into the final dep64 .crt file:
-
-</UL>
-
-<DT><CODE>cartconv -t dep256 -i dep256.bin -i somegame.crt -o foo.crt</CODE>
+<DT><CODE>c1541 -attach test.d64 -write test.prg testfile</CODE>
 <DD>
-Insert an 8kB .crt file into a dep256 type cartridge.
-<DT><CODE>cartconv -t rep256 -i rep256.bin -i foo1.crt -i foo2.crt -i foo3.crt -o foo.crt</CODE>
+Write <CODE>test.prg</CODE> to <CODE>test.d64</CODE> as <CODE>testfile</CODE>.
+
+<DT><CODE>c1541 -format "name,id" d64 disk.d64</CODE>
 <DD>
-Insert multiple 8kB .crt files into a rep256 type cartridge.
-<DT><CODE>cartconv -f foo.crt</CODE>
-<DD>
-Get information about a .crt file.
+Create a disk image in <CODE>d64</CODE> format, format it with the <CODE>name</CODE> and <CODE>id</CODE> and save it to <CODE>disk.d64</CODE>.
 </DL>
 
 <P><HR><P>
-Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_12.html">previous</A>, <A HREF="vice_14.html">next</A>, <A HREF="vice_20.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_12.html">previous</A>, <A HREF="vice_14.html">next</A>, <A HREF="vice_22.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
 </BODY>
 </HTML>

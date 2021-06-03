@@ -35,11 +35,14 @@
 #include "menu_rom.h"
 #include "uimenu.h"
 
-UI_MENU_DEFINE_TOGGLE(ExternalFunctionROM)
 UI_MENU_DEFINE_FILE_STRING(InternalFunctionName)
 UI_MENU_DEFINE_FILE_STRING(ExternalFunctionName)
 
 UI_MENU_DEFINE_RADIO(InternalFunctionROM)
+UI_MENU_DEFINE_RADIO(ExternalFunctionROM)
+
+UI_MENU_DEFINE_TOGGLE(InternalFunctionROMRTCSave)
+UI_MENU_DEFINE_TOGGLE(ExternalFunctionROMRTCSave)
 
 const ui_menu_entry_t int_func_rom_menu[] = {
     { "None",
@@ -61,6 +64,26 @@ const ui_menu_entry_t int_func_rom_menu[] = {
     SDL_MENU_LIST_END
 };
 
+const ui_menu_entry_t ext_func_rom_menu[] = {
+    { "None",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_ExternalFunctionROM_callback,
+      (ui_callback_data_t)0 },
+    { "ROM",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_ExternalFunctionROM_callback,
+      (ui_callback_data_t)1 },
+    { "RAM",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_ExternalFunctionROM_callback,
+      (ui_callback_data_t)2 },
+    { "RTC",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_ExternalFunctionROM_callback,
+      (ui_callback_data_t)3 },
+    SDL_MENU_LIST_END
+};
+
 static const ui_menu_entry_t c128_function_rom_menu[] = {
     { "Internal function ROM type",
       MENU_ENTRY_SUBMENU,
@@ -70,14 +93,22 @@ static const ui_menu_entry_t c128_function_rom_menu[] = {
       MENU_ENTRY_DIALOG,
       file_string_InternalFunctionName_callback,
       (ui_callback_data_t)"Select internal function ROM image" },
-    { "Enable external function ROM",
+    { "Save Internal Function RTC data when changed",
       MENU_ENTRY_RESOURCE_TOGGLE,
-      toggle_ExternalFunctionROM_callback,
+      toggle_InternalFunctionROMRTCSave_callback,
       NULL },
+    { "External function ROM type",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)ext_func_rom_menu },
     { "External function ROM file",
       MENU_ENTRY_DIALOG,
       file_string_ExternalFunctionName_callback,
       (ui_callback_data_t)"Select external function ROM image" },
+    { "Save External Function RTC data when changed",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_ExternalFunctionROMRTCSave_callback,
+      NULL },
     SDL_MENU_LIST_END
 };
 
@@ -88,18 +119,21 @@ UI_MENU_DEFINE_FILE_STRING(KernalFRName)
 UI_MENU_DEFINE_FILE_STRING(KernalITName)
 UI_MENU_DEFINE_FILE_STRING(KernalNOName)
 UI_MENU_DEFINE_FILE_STRING(KernalSEName)
+UI_MENU_DEFINE_FILE_STRING(KernalCHName)
 UI_MENU_DEFINE_FILE_STRING(BasicLoName)
 UI_MENU_DEFINE_FILE_STRING(BasicHiName)
 UI_MENU_DEFINE_FILE_STRING(ChargenIntName)
 UI_MENU_DEFINE_FILE_STRING(ChargenDEName)
 UI_MENU_DEFINE_FILE_STRING(ChargenFRName)
 UI_MENU_DEFINE_FILE_STRING(ChargenSEName)
+UI_MENU_DEFINE_FILE_STRING(ChargenCHName)
 UI_MENU_DEFINE_FILE_STRING(Kernal64Name)
 UI_MENU_DEFINE_FILE_STRING(Basic64Name)
 
 UI_MENU_DEFINE_FILE_STRING(KernalName)
 UI_MENU_DEFINE_FILE_STRING(BasicName)
 UI_MENU_DEFINE_FILE_STRING(ChargenName)
+UI_MENU_DEFINE_FILE_STRING(SCPU64Name)
 
 const ui_menu_entry_t c128_rom_menu[] = {
     { "Drive ROMs",
@@ -115,31 +149,35 @@ const ui_menu_entry_t c128_rom_menu[] = {
     { "International kernal",
       MENU_ENTRY_DIALOG,
       file_string_KernalIntName_callback,
-      (ui_callback_data_t)"Select international kernal ROM image" },
+      (ui_callback_data_t)"Select International kernal ROM image" },
     { "German kernal",
       MENU_ENTRY_DIALOG,
       file_string_KernalDEName_callback,
-      (ui_callback_data_t)"Select german kernal ROM image" },
+      (ui_callback_data_t)"Select German kernal ROM image" },
     { "Finnish kernal",
       MENU_ENTRY_DIALOG,
       file_string_KernalFIName_callback,
-      (ui_callback_data_t)"Select finnish kernal ROM image" },
+      (ui_callback_data_t)"Select Finnish kernal ROM image" },
     { "French kernal",
       MENU_ENTRY_DIALOG,
       file_string_KernalFRName_callback,
-      (ui_callback_data_t)"Select french kernal ROM image" },
+      (ui_callback_data_t)"Select French kernal ROM image" },
     { "Italian kernal",
       MENU_ENTRY_DIALOG,
       file_string_KernalITName_callback,
-      (ui_callback_data_t)"Select italian kernal ROM image" },
+      (ui_callback_data_t)"Select Italian kernal ROM image" },
     { "Norwegian kernal",
       MENU_ENTRY_DIALOG,
       file_string_KernalNOName_callback,
-      (ui_callback_data_t)"Select norwegian kernal ROM image" },
+      (ui_callback_data_t)"Select Norwegian kernal ROM image" },
     { "Swedish kernal",
       MENU_ENTRY_DIALOG,
       file_string_KernalSEName_callback,
-      (ui_callback_data_t)"Select swedish kernal ROM image" },
+      (ui_callback_data_t)"Select Swedish kernal ROM image" },
+    { "Swiss kernal",
+      MENU_ENTRY_DIALOG,
+      file_string_KernalCHName_callback,
+      (ui_callback_data_t)"Select Swiss kernal ROM image" },
     { "Basic low",
       MENU_ENTRY_DIALOG,
       file_string_BasicLoName_callback,
@@ -151,19 +189,23 @@ const ui_menu_entry_t c128_rom_menu[] = {
     { "International chargen",
       MENU_ENTRY_DIALOG,
       file_string_ChargenIntName_callback,
-      (ui_callback_data_t)"Select international chargen ROM image" },
+      (ui_callback_data_t)"Select International chargen ROM image" },
     { "German chargen",
       MENU_ENTRY_DIALOG,
       file_string_ChargenDEName_callback,
-      (ui_callback_data_t)"Select german chargen ROM image" },
+      (ui_callback_data_t)"Select German chargen ROM image" },
     { "French chargen",
       MENU_ENTRY_DIALOG,
       file_string_ChargenFRName_callback,
-      (ui_callback_data_t)"Select french chargen ROM image" },
+      (ui_callback_data_t)"Select French chargen ROM image" },
     { "Swedish chargen",
       MENU_ENTRY_DIALOG,
       file_string_ChargenSEName_callback,
-      (ui_callback_data_t)"Select swedish chargen ROM image" },
+      (ui_callback_data_t)"Select Swedish chargen ROM image" },
+    { "Swiss chargen",
+      MENU_ENTRY_DIALOG,
+      file_string_ChargenCHName_callback,
+      (ui_callback_data_t)"Select Swiss chargen ROM image" },
     { "C64 mode kernal",
       MENU_ENTRY_DIALOG,
       file_string_Kernal64Name_callback,
@@ -234,6 +276,24 @@ const ui_menu_entry_t cbm2_rom_menu[] = {
       MENU_ENTRY_DIALOG,
       file_string_BasicName_callback,
       (ui_callback_data_t)"Select basic ROM image" },
+    { "Chargen",
+      MENU_ENTRY_DIALOG,
+      file_string_ChargenName_callback,
+      (ui_callback_data_t)"Select chargen ROM image" },
+    SDL_MENU_LIST_END
+};
+
+const ui_menu_entry_t scpu64_rom_menu[] = {
+    { "Drive ROMs",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)iec_ieee_drive_rom_menu },
+    SDL_MENU_ITEM_SEPARATOR,
+    SDL_MENU_ITEM_TITLE("Computer ROMs"),
+    { "SCPU64",
+      MENU_ENTRY_DIALOG,
+      file_string_SCPU64Name_callback,
+      (ui_callback_data_t)"Select SCPU64 ROM image" },
     { "Chargen",
       MENU_ENTRY_DIALOG,
       file_string_ChargenName_callback,

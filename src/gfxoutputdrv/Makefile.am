@@ -1,6 +1,6 @@
 # Makefile.am for `libgfxoutputdrv.a'.
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
 	@FFMPEG_INCLUDES@ \
@@ -16,6 +16,7 @@ EXTRA_libgfxoutputdrv_a_SOURCES = \
 	ffmpeglib.c \
 	ffmpeglib.h \
 	gifdrv.c \
+	gifdrv.h \
 	jpegdrv.c \
 	jpegdrv.h \
 	pngdrv.c \
@@ -28,10 +29,14 @@ libgfxoutputdrv_a_SOURCES = \
 	bmpdrv.c \
 	bmpdrv.h \
 	doodledrv.c \
-	doodledrv.h \
 	gfxoutput.c \
+	godotdrv.c \
+	godotdrv.h \
 	iffdrv.c \
 	iffdrv.h \
+	koaladrv.c \
+	nativedrv.c \
+	nativedrv.h \
 	pcxdrv.c \
 	pcxdrv.h \
 	ppmdrv.c \

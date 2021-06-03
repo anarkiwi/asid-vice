@@ -3,7 +3,7 @@
  *
  * Written by
  *  Marco van den Heuvel <blackystardust68@yahoo.com>
- * 
+ *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -30,11 +30,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cartio.h"
 #include "cmdline.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
 #include "mem.h"
+#include "monitor.h"
 #include "plus4mem.h"
 #include "plus4memcsory256k.h"
 #include "plus4memhannes256k.h"
@@ -60,193 +62,200 @@ static int h256k_bound = 1;
 
 BYTE *h256k_ram = NULL;
 
+/* Some prototypes */
+static BYTE h256k_reg_read(WORD addr);
+static void h256k_reg_store(WORD addr, BYTE value);
+static int h256k_dump(void);
 
-static int set_h256k_enabled(int val, void *param)
+static io_source_t h256k_device = {
+    "HANNES",
+    IO_DETACH_CART, /* dummy */
+    NULL,           /* dummy */
+    0xfd16, 0xfd16, 1,
+    1, /* read is always valid */
+    h256k_reg_store,
+    h256k_reg_read,
+    NULL, /* no peek */
+    h256k_dump,
+    0, /* dummy (not a cartridge) */
+    IO_PRIO_NORMAL,
+    0
+};
+
+static io_source_list_t *h256k_list_item = NULL;
+
+int set_h256k_enabled(int val)
 {
-    if (val < 0 || val > 3)
-        return -1;
+    switch (val) {
+        case H256K_DISABLED:
+        case H256K_256K:
+        case H256K_1024K:
+        case H256K_4096K:
+            break;
+        default:
+            return -1;
+    }
+
+    if (val == h256k_enabled) {
+        return 0;
+    }
 
     if (!val) {
         if (h256k_enabled) {
             if (h256k_deactivate() < 0) {
                 return -1;
             }
+            io_source_unregister(h256k_list_item);
+            h256k_list_item = NULL;
+            plus4_pio1_init(-1);
         }
         h256k_enabled = 0;
-        return 0;
     } else {
         if (!h256k_enabled || h256k_enabled != val) {
             if (h256k_activate(val) < 0) {
                 return -1;
             }
         }
-
+        if (!h256k_enabled) {
+            h256k_list_item = io_source_register(&h256k_device);
+            plus4_pio1_init(1);
+        }
         h256k_enabled = val;
-
-        if (cs256k_enabled)
-            resources_set_int("CS256K", 0);
-        if (h256k_enabled == 1)
-            resources_set_int("RamSize", 256);
-        if (h256k_enabled == 2)
-            resources_set_int("RamSize", 1024);
-        if (h256k_enabled == 3)
-            resources_set_int("RamSize", 4096);
-
-        return 0;
     }
-}
-
-static const resource_int_t resources_int[] = {
-    { "H256K", 0, RES_EVENT_SAME, NULL,
-      &h256k_enabled, set_h256k_enabled, NULL },
-    { NULL }
-};
-
-int h256k_resources_init(void)
-{
-    return resources_register_int(resources_int);
-}
-
-/* ------------------------------------------------------------------------- */
-
-static const cmdline_option_t cmdline_options[] =
-{
-    { "-h256k", SET_RESOURCE, 0,
-      NULL, NULL, "H256K", (resource_value_t)1,
-      USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_ENABLE_H256K_EXPANSION,
-      NULL, NULL },
-    { "-h1024k", SET_RESOURCE, 0,
-      NULL, NULL, "H256K", (resource_value_t)2,
-      USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_ENABLE_H1024K_EXPANSION,
-      NULL, NULL },
-    { "-h4096k", SET_RESOURCE, 0,
-      NULL, NULL, "H256K", (resource_value_t)3,
-      USE_PARAM_STRING, USE_DESCRIPTION_ID,
-      IDCLS_UNUSED, IDCLS_ENABLE_H4096K_EXPANSION,
-      NULL, NULL },
-    { NULL }
-};
-
-int h256k_cmdline_options_init(void)
-{
-  return cmdline_register_options(cmdline_options);
+    return 0;
 }
 
 /* ------------------------------------------------------------------------- */
 
 void h256k_init(void)
 {
-  h256k_log = log_open("H256K");
+    h256k_log = log_open("H256K");
 }
 
 void h256k_reset(void)
 {
-  h256k_reg=0xff;
-  h256k_bank=3;
-  h256k_bound=1;
+    h256k_reg = 0xff;
+    h256k_bank = 3;
+    h256k_bound = 1;
 }
 
 static int h256k_activate(int type)
 {
-  if (type==1)
-  {
-    h256k_ram = lib_realloc((void *)h256k_ram, (size_t)0x30000);
-    log_message(h256k_log, "HANNES 256K expansion installed.");
-  }
-  if (type==2)
-  {
-    h256k_ram = lib_realloc((void *)h256k_ram, (size_t)0xf0000);
-    log_message(h256k_log, "HANNES 1024K expansion installed.");
-  }
-  if (type==3)
-  {
-    h256k_ram = lib_realloc((void *)h256k_ram, (size_t)0x3f0000);
-    log_message(h256k_log, "HANNES 4096K expansion installed.");
-  }
-  h256k_reset();
-  return 0;
+    switch (type) {
+        case 1:
+            h256k_ram = lib_realloc((void *)h256k_ram, (size_t)0x30000);
+            log_message(h256k_log, "HANNES 256K expansion installed.");
+            break;
+        case 2:
+            h256k_ram = lib_realloc((void *)h256k_ram, (size_t)0xf0000);
+            log_message(h256k_log, "HANNES 1024K expansion installed.");
+            break;
+        case 3:
+            h256k_ram = lib_realloc((void *)h256k_ram, (size_t)0x3f0000);
+            log_message(h256k_log, "HANNES 4096K expansion installed.");
+            break;
+    }
+    h256k_reset();
+    return 0;
 }
 
 static int h256k_deactivate(void)
 {
-  lib_free(h256k_ram);
-  h256k_ram = NULL;
-  return 0;
+    lib_free(h256k_ram);
+    h256k_ram = NULL;
+    return 0;
 }
 
 void h256k_shutdown(void)
 {
-  if (h256k_enabled)
-    h256k_deactivate();
+    if (h256k_enabled) {
+        h256k_deactivate();
+    }
 }
 
 /* ------------------------------------------------------------------------- */
 
-BYTE h256k_reg_read(WORD addr)
+static BYTE h256k_reg_read(WORD addr)
 {
-  return h256k_reg;
+    return h256k_reg;
 }
 
-void h256k_reg_store(WORD addr, BYTE value)
+static void h256k_reg_store(WORD addr, BYTE value)
 {
-  h256k_bank=value&3;
-  h256k_reg=((value&0xbf)|0x40);
-  if (h256k_enabled==1)
-    h256k_reg=h256k_reg|0x7c;
-  if (h256k_enabled==2)
-  {
-    h256k_bank=h256k_bank+((3-((value&0xc)>>2))<<2);
-    h256k_reg=h256k_reg|0x70;
-  }
-  if (h256k_enabled==3)
-    h256k_bank=h256k_bank+((3-((value&0x30)>>4))<<4);
-  h256k_bound=(value&0x80)>>7;
+    h256k_bank = value & 3;
+    h256k_reg = ((value & 0xbf) | 0x40);
+    if (h256k_enabled == 1) {
+        h256k_reg = h256k_reg | 0x7c;
+    }
+    if (h256k_enabled == 2) {
+        h256k_bank = h256k_bank + ((3 - ((value & 0xc) >> 2)) << 2);
+        h256k_reg = h256k_reg | 0x70;
+    }
+    if (h256k_enabled == 3) {
+        h256k_bank = h256k_bank + ((3 - ((value & 0x30) >> 4)) << 4);
+    }
+    h256k_bound = (value & 0x80) >> 7;
 }
 
 void h256k_store(WORD addr, BYTE value)
 {
-  int real_bank;
+    int real_bank;
 
-  if (h256k_enabled!=1 && h256k_bank>3)
-    real_bank=h256k_bank-1;
-  else
-    real_bank=h256k_bank;
+    if (h256k_enabled != 1 && h256k_bank > 3) {
+        real_bank = h256k_bank - 1;
+    } else {
+        real_bank = h256k_bank;
+    }
 
-  if (addr<0x1000 || h256k_bank==3)
-    mem_ram[addr]=value;
+    if (addr < 0x1000 || h256k_bank == 3) {
+        mem_ram[addr] = value;
+    }
 
-  if (h256k_bound==0 && addr>=0x1000 && h256k_bank!=3)
-    h256k_ram[(real_bank*0x10000)+addr]=value;
+    if (h256k_bound == 0 && addr >= 0x1000 && h256k_bank != 3) {
+        h256k_ram[(real_bank * 0x10000) + addr] = value;
+    }
 
-  if (h256k_bound==1 && addr>=0x1000 && addr<0x4000)
-    mem_ram[addr]=value;
+    if (h256k_bound == 1 && addr >= 0x1000 && addr < 0x4000) {
+        mem_ram[addr] = value;
+    }
 
-  if (addr>=0x4000 && h256k_bank!=3)
-    h256k_ram[(real_bank*0x10000)+addr]=value;
+    if (addr >= 0x4000 && h256k_bank != 3) {
+        h256k_ram[(real_bank * 0x10000) + addr] = value;
+    }
 }
 
 BYTE h256k_read(WORD addr)
 {
-  int real_bank;
+    int real_bank;
 
-  if (h256k_enabled!=1 && h256k_bank>3)
-    real_bank=h256k_bank-1;
-  else
-    real_bank=h256k_bank;
+    if (h256k_enabled != 1 && h256k_bank > 3) {
+        real_bank = h256k_bank - 1;
+    } else {
+        real_bank = h256k_bank;
+    }
 
-  if (addr<0x1000 || h256k_bank==3)
+    if (addr < 0x1000 || h256k_bank == 3) {
+        return mem_ram[addr];
+    }
+
+    if (h256k_bound == 0 && addr >= 0x1000 && h256k_bank != 3) {
+        return h256k_ram[(real_bank * 0x10000) + addr];
+    }
+
+    if (h256k_bound == 1 && addr >= 0x1000 && addr < 0x4000) {
+        return mem_ram[addr];
+    }
+
+    if (addr >= 0x4000 && h256k_bank != 3) {
+        return h256k_ram[(real_bank * 0x10000) + addr];
+    }
+
     return mem_ram[addr];
+}
 
-  if (h256k_bound==0 && addr>=0x1000 && h256k_bank!=3)
-    return h256k_ram[(real_bank*0x10000)+addr];
+static int h256k_dump(void)
+{
+    mon_out("RAM at $%04X-$FFFF comes from bank %d\n", (h256k_bound) ? 0x4000 : 0x1000, h256k_bank);
 
-  if (h256k_bound==1 && addr>=0x1000 && addr<0x4000)
-    return mem_ram[addr];
-
-  if (addr>=0x4000 && h256k_bank!=3)
-    return h256k_ram[(real_bank*0x10000)+addr];
-
-  return mem_ram[addr];
+    return 0;
 }

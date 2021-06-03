@@ -34,15 +34,30 @@
 
 #include <X11/Xlib.h>
 #include <X11/Intrinsic.h>
+
+/* Xaw or Xaw3d */
+#ifdef USE_XAW3D
+#include <X11/Xaw3d/SimpleMenu.h>
+#include <X11/Xaw3d/SmeLine.h>
+#include <X11/Xaw3d/SmeBSB.h>
+#else
 #include <X11/Xaw/SimpleMenu.h>
 #include <X11/Xaw/SmeLine.h>
 #include <X11/Xaw/SmeBSB.h>
+#endif
+
+#ifdef HAVE_X11_INTRINSICI_H
+#include <X11/IntrinsicI.h>
+#else
+#include <X11/IntrinsicP.h>
+#endif
 
 #include "checkmark.xbm"
 #include "right_arrow.xbm"
 
 #include "fullscreenarch.h"
 #include "lib.h"
+#include "log.h"
 #include "machine.h"
 #include "resources.h"
 #include "uiapi.h"
@@ -719,11 +734,52 @@ int ui_menu_init(XtAppContext app_context, Display *d, int s)
 
     if (registered_hotkeys != NULL) {
         lib_free(registered_hotkeys);
+        registered_hotkeys = NULL;
         num_registered_hotkeys = num_allocated_hotkeys = 0;
     }
 
     return 0;
 }
+
+/*
+ * Hack the popup_list from the Core part of the parent Widget from a
+ * FIFO to a LIFO list.
+ *
+ * Reason: if a Widget (a menu in our case) is destroyed, this happens
+ * in 2 phases. Only in phase 2 is the Widget removed from this
+ * popup_list.  Phase 2 is only called if app->dispatch_level == 0. So,
+ * if we destroy a menu in a callback or Action, this does not happen
+ * (yet).  If (before the dispatch ends) a new replacement menu is
+ * created with the same name, it will normally be put at the end of the
+ * list. If the old (half-destroyed one) is still there, it will be
+ * found first. Chaos will ensue.
+ *
+ * Changing the order of the list seems the least disruptive way to fix
+ * this.
+ */
+
+#ifndef DARWIN_COMPILE
+static void do_popuplist_hack(Widget widget)
+{
+    Widget parent = XtParent(widget);
+    Cardinal i, n;
+
+    n = parent->core.num_popups - 1;
+    if (parent->core.popup_list[n] == widget) {
+        for (i = n; i > 0; i--) {
+            parent->core.popup_list[i] = parent->core.popup_list[i-1];
+        }
+        parent->core.popup_list[0] = widget;
+    } else {
+        static int warned;
+        
+        if (!warned) {
+            log_warning(LOG_DEFAULT, "popup widget list not FIFO");
+            warned = 1;
+        }
+    }
+}
+#endif
 
 static void ui_add_items_to_shell(Widget w, int menulevel, ui_menu_entry_t *list);
 static XtTranslations menu_translations;
@@ -735,6 +791,9 @@ Widget ui_menu_create(const char *menu_name, ...)
     va_list ap;
 
     w = ui_create_shell(_ui_top_level, menu_name, simpleMenuWidgetClass);
+#ifndef DARWIN_COMPILE
+    do_popuplist_hack(w);
+#endif
     XtAddCallback(w, XtNpopupCallback, menu_popup_callback, NULL);
     XtAddCallback(w, XtNpopdownCallback, menu_popdown_callback, NULL);
 
@@ -766,6 +825,15 @@ Widget ui_menu_create(const char *menu_name, ...)
     va_end(ap);
 
     return w;
+}
+
+void ui_menu_delete(Widget widget)
+{
+    if (widget) {
+        /* pop down the menu if it is still up */
+        XtPopdown(widget);
+        XtDestroyWidget(widget);
+    }
 }
 
 static void tick_destroy(Widget w, XtPointer client_data, XtPointer call_data)
@@ -813,6 +881,7 @@ static void ui_add_items_to_shell(Widget w, int menulevel, ui_menu_entry_t *list
     for (i = j = 0; list[i].string; i++) {
         Widget new_item = NULL;
         char *name;
+        int update_item = 0;
 
         name = lib_msprintf("MenuItem%d", j);
         switch (list[i].type) {
@@ -836,12 +905,10 @@ static void ui_add_items_to_shell(Widget w, int menulevel, ui_menu_entry_t *list
                     /* Add this item to the list of calls to perform to update
                        the menu status. */
                     if (list[i].callback) {
-                        if (num_checkmark_menu_items >= num_checkmark_menu_items_max) {
-                            num_checkmark_menu_items_max += 100;
-                            checkmark_menu_items = lib_realloc(checkmark_menu_items, num_checkmark_menu_items_max * sizeof(Widget));
-                        }
-                        XtAddCallback(new_item, XtNdestroyCallback, tick_destroy, (XtPointer)num_checkmark_menu_items);
-                        checkmark_menu_items[num_checkmark_menu_items++] = new_item;
+                        update_item = 1;
+                    } else {
+			log_error(LOG_DEFAULT, "checkbox menu item without callback: %s",
+				  label);
                     }
                     j++;
 
@@ -850,10 +917,17 @@ static void ui_add_items_to_shell(Widget w, int menulevel, ui_menu_entry_t *list
                 break;
             case UI_MENU_TYPE_NONE:
                 break;
+            case UI_MENU_TYPE_BL_SUB:
+                update_item = 1;
+                /* fall through */
             default:
                 {
                     char *label = make_menu_label(&list[i]);
 
+                    if (update_item && !list[i].callback) {
+                        log_error(LOG_DEFAULT, "callback menu item without callback: %s",
+                                  label);
+                    }
                     new_item = XtVaCreateManagedWidget(name,
                                                        smeBSBObjectClass, w,
                                                        XtNleftMargin, 20,
@@ -864,6 +938,23 @@ static void ui_add_items_to_shell(Widget w, int menulevel, ui_menu_entry_t *list
                     j++;
                 }
         }
+
+        if (update_item) {
+            /*
+             * This is a menu item that may be updated on the fly:
+             * either checked/unchecked or sensitive/insensitive (grayed out).
+             */
+            if (num_checkmark_menu_items >= num_checkmark_menu_items_max) {
+                num_checkmark_menu_items_max += 100;
+                checkmark_menu_items = lib_realloc(checkmark_menu_items, num_checkmark_menu_items_max * sizeof(Widget));
+            }
+            /* cast num_checkmark_menu_items to long and then to void *, so
+             * casting to XtPointer (void*) is safe. (BW) */
+            XtAddCallback(new_item, XtNdestroyCallback, tick_destroy,
+                    (XtPointer)int_to_void_ptr(num_checkmark_menu_items));
+            checkmark_menu_items[num_checkmark_menu_items++] = new_item;
+        }
+
         lib_free(name);
 
         if (list[i].callback) {
@@ -997,5 +1088,8 @@ void _ui_menu_string_radio_helper(Widget w, ui_callback_data_t client_data, ui_c
 void uimenu_shutdown(void)
 {
     lib_free(registered_hotkeys);
+    registered_hotkeys = NULL;
     lib_free(checkmark_menu_items);
+    checkmark_menu_items = NULL;
+    ui_about_shutdown();
 }

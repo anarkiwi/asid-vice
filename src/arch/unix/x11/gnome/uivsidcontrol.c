@@ -34,15 +34,25 @@
 #include "vsiduiunix.h"
 
 static GtkWidget *current_line;
-static char *author, *copyright, *name, *vsidsync, *model, *irq;
-static int tune;
+static char *author, *copyright, *name, *vsidsync, *model, *irq, *info;
+static int tune, numtunes, deftune;
 static char *line;
 
 static void update_line(void)
 {
-    lib_free(line);
-    line = lib_msprintf(_("Name: %s\nTune: %d\nAuthor: %s\nCopyright: %s\n%s\nModel: %s\nIRQ: %s"), name, tune, author, copyright, vsidsync, model, irq);
+    char *a1, *a2, *a3;
+    if (line) {
+        lib_free(line);
+    }
+    a1 = (char*)convert_utf8((unsigned char*)name);
+    a2 = (char*)convert_utf8((unsigned char*)author);
+    a3 = (char*)convert_utf8((unsigned char*)copyright);
+    line = lib_msprintf(_("Name: %s\nAuthor: %s\nCopyright: %s\n\nTune: %d of %d (Default: %d)\n%s\nModel: %s\nIRQ: %s\n\n%s"), 
+                        a1, a2, a3, tune, numtunes, deftune, vsidsync, model, irq, info);
     gtk_label_set_text(GTK_LABEL(current_line), line);
+    lib_free(a1);
+    lib_free(a2);
+    lib_free(a3);
 }
 
 ui_window_t build_vsid_ctrl_widget(void)
@@ -60,10 +70,30 @@ ui_window_t build_vsid_ctrl_widget(void)
     gtk_container_add(GTK_CONTAINER(event_box), f);
     gtk_widget_show(f);
 
-    line = lib_msprintf(_("Name: %s\nTune: %d\nAuthor: %s\nCopyright: %s\n%s\nModel: %s\nIRQ: %s"), "-", 0, "-", "-", "", "-", "-");
-    gtk_label_set_text(GTK_LABEL(current_line), line);
+    name = lib_stralloc("-");
+    tune = 0;
+    numtunes = 0;
+    author = lib_stralloc("-");
+    copyright = lib_stralloc("-");
+    model = lib_stralloc("-");
+    vsidsync = lib_stralloc("-");
+    irq = lib_stralloc("-");
+    info = lib_stralloc("-");
 
+    update_line();
     return event_box;
+}
+
+void shutdown_vsid_ctrl_widget(void)
+{
+    lib_free(name);
+    lib_free(author);
+    lib_free(copyright);
+    lib_free(model);
+    lib_free(vsidsync);
+    lib_free(irq);
+    lib_free(info);
+    lib_free(line);
 }
 
 void ui_vsid_setpsid(const char *psid)
@@ -76,6 +106,18 @@ void ui_vsid_setpsid(const char *psid)
 void ui_vsid_settune(const int t)
 {
     tune = t;
+    update_line();
+}
+
+void ui_vsid_setdeftune(const int t)
+{
+    deftune = t;
+    update_line();
+}
+
+void ui_vsid_setnumtunes(const int t)
+{
+    numtunes = t;
     update_line();
 }
 
@@ -110,5 +152,24 @@ void ui_vsid_setirq(const char *c)
 {
     lib_free(irq);
     irq = lib_stralloc(c);
+    update_line();
+}
+
+void ui_vsid_setdrv(const char *c)
+{
+    char *p;
+    lib_free(info);
+    info = lib_stralloc(c);
+    p = info;
+    while (*p) {
+        if (*p == '=') {
+            *p = ':';
+        } else if (*p == ',') {
+            *p = ' ';
+            ++p;
+            *p = '\n';
+        }
+        ++p;
+    }
     update_line();
 }

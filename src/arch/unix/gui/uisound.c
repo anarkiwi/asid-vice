@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -88,12 +89,16 @@ static ui_menu_entry_t set_sound_buffer_size_submenu[] = {
 };
 
 static ui_menu_entry_t set_sound_fragment_size_submenu[] = {
+    { N_("Very small"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SoundFragmentSize,
+      (ui_callback_data_t)SOUND_FRAGMENT_VERY_SMALL, NULL },
     { N_("Small"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SoundFragmentSize,
       (ui_callback_data_t)SOUND_FRAGMENT_SMALL, NULL },
     { N_("Medium"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SoundFragmentSize,
       (ui_callback_data_t)SOUND_FRAGMENT_MEDIUM, NULL },
     { N_("Large"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SoundFragmentSize,
       (ui_callback_data_t)SOUND_FRAGMENT_LARGE, NULL },
+    { N_("Very large"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SoundFragmentSize,
+      (ui_callback_data_t)SOUND_FRAGMENT_VERY_LARGE, NULL },
     { NULL }
 };
 
@@ -184,10 +189,10 @@ void uisound_menu_create(void)
     devices_submenu = lib_calloc((size_t)(num + 1), sizeof(ui_menu_entry_t));
 
     for (i = 0; i < num ; i++) {
-        devices_submenu[i].string = (ui_callback_data_t)lib_msprintf("%s", sound_device_name(i));
+        devices_submenu[i].string = (ui_callback_data_t)sound_device_name(i);
         devices_submenu[i].type = UI_MENU_TYPE_TICK;
         devices_submenu[i].callback = (ui_callback_t)radio_SoundDeviceName;
-        devices_submenu[i].callback_data = (ui_callback_data_t)lib_stralloc(sound_device_name(i));
+        devices_submenu[i].callback_data = (ui_callback_data_t)sound_device_name(i);
     }
 
     sound_settings_submenu[2].sub_menu = devices_submenu;
@@ -195,24 +200,5 @@ void uisound_menu_create(void)
 
 void uisound_menu_shutdown(void)
 {
-    unsigned int i;
-    ui_menu_entry_t *devices_submenu = NULL;
-
-    devices_submenu = sound_settings_submenu[2].sub_menu;
-
-    if (devices_submenu == NULL) {
-        return;
-    }
-
-    sound_settings_submenu[2].sub_menu = NULL;
-
-    i = 0;
-
-    while (devices_submenu[i].string != NULL) {
-        lib_free(devices_submenu[i].string);
-        lib_free(devices_submenu[i].callback_data);
-        i++;
-    }
-
-    lib_free(devices_submenu);
+    lib_free(sound_settings_submenu[2].sub_menu);
 }

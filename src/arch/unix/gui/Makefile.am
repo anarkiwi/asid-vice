@@ -1,20 +1,24 @@
 # Makefile.am for the Unix version of `libarchgui.a'.
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src/drive \
 	-I$(top_srcdir)/src/c64 \
+	-I$(top_srcdir)/src/c64/cart \
 	-I$(top_srcdir)/src/c64dtv \
 	-I$(top_srcdir)/src/c128 \
 	-I$(top_srcdir)/src/vic20 \
 	-I$(top_srcdir)/src/pet \
 	-I$(top_srcdir)/src/plus4 \
+	-I$(top_srcdir)/src/scpu64 \
 	-I$(top_srcdir)/src/cbm2 \
 	-I$(top_srcdir)/src/sid \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/imagecontents \
 	-I$(top_srcdir)/src/lib/p64 \
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/samplerdrv \
 	-I$(top_srcdir)/src
 
 noinst_LIBRARIES = libarchgui.a
@@ -27,6 +31,7 @@ libarchgui_a_SOURCES = \
 	cbm2ui.c \
 	petui.c \
 	plus4ui.c \
+	scpu64ui.c \
 	ui.c \
 	uiacia1.c \
 	uiacia1.h \
@@ -34,20 +39,24 @@ libarchgui_a_SOURCES = \
 	uiattach.c \
 	uiautostart.h \
 	uiautostart.c \
-	uic64_256k.c \
-	uic64_256k.h \
 	uic64cart.c \
 	uic64cart.h \
 	uic64dtv.c \
 	uic64dtv.h \
+	uic64memoryhacks.c \
+	uic64memoryhacks.h \
 	uicartridge.h \
 	uicbm2cart.c \
 	uicbm2cart.h \
+	uiclockport-device.c \
+	uiclockport-device.h \
 	uicmdline.c \
 	uicommands.c \
 	uicommands.h \
 	uicrtc.c \
 	uicrtc.h \
+	uics8900.c \
+	uics8900.h \
 	uidatasette.c \
 	uidatasette.h \
 	uidigimax.c \
@@ -80,6 +89,8 @@ libarchgui_a_SOURCES = \
 	uieasyflash.h \
 	uiedisk.h \
 	uiedit.h \
+	uiethernetcart.c \
+	uiethernetcart.h \
 	uiexpert.c \
 	uiexpert.h \
 	uifliplist.c \
@@ -87,11 +98,15 @@ libarchgui_a_SOURCES = \
 	uifullscreen-menu.h \
 	uigeoram.c \
 	uigeoram.h \
+	uigmod2.c \
+	uigmod2.h \
 	uihotkey.h \
 	uiide64.c \
 	uiide64.h \
 	uiisepic.c \
 	uiisepic.h \
+	uijoyport.c \
+	uijoyport.h \
 	uijoystick2.c \
 	uijoystick2.h \
 	uijoystickkeys.h \
@@ -109,12 +124,8 @@ libarchgui_a_SOURCES = \
 	uimmcreplay.h \
 	uimouse.c \
 	uimouse.h \
-	uilightpen.c \
-	uilightpen.h \
 	uinetplay.c \
 	uinetplay.h \
-	uipalemu.c \
-	uipalemu.h \
 	uipalette.c \
 	uipalette.h \
 	uiperipheral.c \
@@ -123,16 +134,16 @@ libarchgui_a_SOURCES = \
 	uiperipheraliec.h \
 	uiperipheralieee.c \
 	uiperipheralieee.h \
+	uipetcolour.c \
+	uipetcolour.h \
 	uipetdww.c \
 	uipetdww.h \
+	uipethre.c \
+	uipethre.h \
 	uipetreu.c \
 	uipetreu.h \
-	uiplus256k.c \
-	uiplus256k.h \
 	uiplus4cart.c \
 	uiplus4cart.h \
-	uiplus60k.c \
-	uiplus60k.h \
 	uiprinter.c \
 	uiprinter.h \
 	uiprinteriec.c \
@@ -151,6 +162,8 @@ libarchgui_a_SOURCES = \
 	uiretroreplay.h \
 	uireu.c \
 	uireu.h \
+	uirrnetmk3.c \
+	uirrnetmk3.h \
 	uiromset.c \
 	uiromset.h \
 	uirs232.c \
@@ -161,6 +174,10 @@ libarchgui_a_SOURCES = \
 	uirs232petplus4cbm2.h \
 	uirs232user.c \
 	uirs232user.h \
+	uisampler.c \
+	uisampler.h \
+	uiscpu64.c \
+	uiscpu64.h \
 	uiscreenshot.h \
 	uisettings.c \
 	uisettings.h \
@@ -173,12 +190,16 @@ libarchgui_a_SOURCES = \
 	uisoundexpander.h \
 	uisoundsampler.c \
 	uisoundsampler.h \
+	uisupersnapshot.c \
+	uisupersnapshot.h \
+	uitapeport.c \
+	uitapeport.h \
 	uited.c \
 	uited.h \
-	uitfe.c \
-	uitfe.h \
 	uitpi.c \
 	uitpi.h \
+	uiuserport.c \
+	uiuserport.h \
 	uiv364speech.c \
 	uiv364speech.h \
 	uivdc.c \
@@ -189,4 +210,3 @@ libarchgui_a_SOURCES = \
 	uivicii.h \
 	vic20ui.c \
 	vsidui.c
-

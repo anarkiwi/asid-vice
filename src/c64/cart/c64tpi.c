@@ -2,7 +2,7 @@
  * c64tpi.c - IEEE488 interface for the C64.
  *
  * Written by
- *  André Fachat <a.fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
  *  Andreas Boose <viceteam@t-online.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -36,12 +36,12 @@
 #define CARTRIDGE_INCLUDE_SLOT0_API
 #include "c64cartsystem.h"
 #undef CARTRIDGE_INCLUDE_SLOT0_API
-#include "c64export.h"
 #include "c64mem.h"
 #include "cartio.h"
 #include "cartridge.h"
 #include "cmdline.h"
-#include "drivecpu.h"
+#include "drive.h"
+#include "export.h"
 #include "lib.h"
 #include "log.h"
 #include "parallel.h"
@@ -108,8 +108,8 @@ static io_source_t tpi_io2_device = {
 
 static io_source_list_t *tpi_list_item = NULL;
 
-static const c64export_resource_t export_res = {
-    CARTRIDGE_NAME_IEEE488, 0, 0, NULL, &tpi_io2_device, CARTRIDGE_IEEE488
+static const export_resource_t export_res = {
+    CARTRIDGE_NAME_IEEE488, 0, 1, NULL, &tpi_io2_device, CARTRIDGE_IEEE488
 };
 
 /* ---------------------------------------------------------------------*/
@@ -307,7 +307,7 @@ static BYTE read_pa(tpi_context_t *tpi_context)
 {
     BYTE byte;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     byte = 0xff;
     if (ieee_is_out) {
@@ -340,7 +340,7 @@ static BYTE read_pb(tpi_context_t *tpi_context)
 {
     BYTE byte;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
     byte = ieee_is_out ? 0xff : parallel_bus;
     byte = (byte & ~(tpi_context->c_tpi)[TPI_DDPB]) | (tpi_context->c_tpi[TPI_PB] & tpi_context->c_tpi[TPI_DDPB]);
@@ -352,7 +352,7 @@ static BYTE read_pc(tpi_context_t *tpi_context)
 {
     BYTE byte = 0xff;
 
-    if(tpi_extexrom) {
+    if (tpi_extexrom) {
         byte &= ~(1 << 7);
     }
     byte = (byte & ~(tpi_context->c_tpi)[TPI_DDPC]) | (tpi_context->c_tpi[TPI_PC] & tpi_context->c_tpi[TPI_DDPC]);
@@ -410,10 +410,10 @@ void tpi_setup_context(machine_context_t *machine_context)
     tpi_context->restore_int = restore_int;
 }
 
-void tpi_passthrough_changed(struct export_s *export)
+void tpi_passthrough_changed(export_t *export)
 {
-    tpi_extexrom = ((export_t*)export)->exrom;
-    tpi_extgame = ((export_t*)export)->game;
+    tpi_extexrom = (export)->exrom;
+    tpi_extgame = (export)->game;
     DBG(("IEEE488 passthrough changed exrom: %d game: %d\n", tpi_extexrom, tpi_extgame));
 
     cart_set_port_game_slot0(tpi_extgame);
@@ -424,8 +424,10 @@ void tpi_passthrough_changed(struct export_s *export)
 
 static char *ieee488_filename = NULL;
 
-static int set_ieee488_enabled(int val, void *param)
+static int set_ieee488_enabled(int value, void *param)
 {
+    int val = value ? 1 : 0;
+
     DBG(("IEEE: set_enabled: (%p) '%s' %d to %d\n", param, ieee488_filename, ieee488_enabled, val));
     if (ieee488_enabled && !val) {
         cart_power_off();
@@ -436,7 +438,7 @@ static int set_ieee488_enabled(int val, void *param)
 #endif
         lib_free(tpi_rom);
         tpi_rom = NULL;
-        c64export_remove(&export_res);
+        export_remove(&export_res);
         io_source_unregister(tpi_list_item);
         tpi_list_item = NULL;
         ieee488_enabled = 0;
@@ -463,7 +465,7 @@ static int set_ieee488_enabled(int val, void *param)
         } else {
             cart_power_off();
             /* if the param is == NULL, then we should actually set the resource */
-            if (c64export_add(&export_res) < 0) {
+            if (export_add(&export_res) < 0) {
                 DBG(("IEEE: set_enabled did not register\n"));
                 lib_free(tpi_rom);
                 tpi_rom = NULL;
@@ -476,7 +478,7 @@ static int set_ieee488_enabled(int val, void *param)
         }
     }
 
-    DBG(("IEEE: set_enabled done: '%s' %d : %d\n",ieee488_filename , val, ieee488_enabled));
+    DBG(("IEEE: set_enabled done: '%s' %d : %d\n", ieee488_filename, val, ieee488_enabled));
     return 0;
 }
 
@@ -489,19 +491,19 @@ static int set_ieee488_filename(const char *name, void *param)
             return -1;
         }
     }
-    DBG(("IEEE: set_name: %d '%s'\n",ieee488_enabled, ieee488_filename));
+    DBG(("IEEE: set_name: %d '%s'\n", ieee488_enabled, ieee488_filename));
 
     util_string_set(&ieee488_filename, name);
     resources_get_int("IEEE488", &enabled);
 
-    if (set_ieee488_enabled(enabled, (void*)1) < 0 ) {
+    if (set_ieee488_enabled(enabled, (void*)1) < 0) {
         lib_free(ieee488_filename);
         ieee488_filename = NULL;
-        DBG(("IEEE: set_name done: %d '%s'\n",ieee488_enabled, ieee488_filename));
+        DBG(("IEEE: set_name done: %d '%s'\n", ieee488_enabled, ieee488_filename));
         return -1;
     }
 
-    DBG(("IEEE: set_name done: %d '%s'\n",ieee488_enabled, ieee488_filename));
+    DBG(("IEEE: set_name done: %d '%s'\n", ieee488_enabled, ieee488_filename));
     return 0;
 }
 
@@ -575,29 +577,29 @@ int tpi_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
 {
     if (rom_enabled) {
         switch (addr & 0xf000) {
-        case 0x9000:
-            *base = tpi_rom - 0x9000;
-            *start = 0x9000;
-            *limit = 0x9ffd;
-            return CART_READ_VALID;
-        case 0x8000:
-            *base = tpi_rom - 0x8000;
-            *start = 0x8000;
-            *limit = 0x8ffd;
-            return CART_READ_VALID;
-        default:
-            break;
+            case 0x9000:
+                *base = tpi_rom - 0x9000;
+                *start = 0x9000;
+                *limit = 0x9ffd;
+                return CART_READ_VALID;
+            case 0x8000:
+                *base = tpi_rom - 0x8000;
+                *start = 0x8000;
+                *limit = 0x8ffd;
+                return CART_READ_VALID;
+            default:
+                break;
         }
     }
     return CART_READ_THROUGH;
 }
 
-void tpi_config_init(struct export_s *export)
+void tpi_config_init(export_t *export)
 {
     DBG(("TPI: tpi_config_init\n"));
 
-    tpi_extexrom = ((export_t*)export)->exrom;
-    tpi_extgame = ((export_t*)export)->game;
+    tpi_extexrom = export->exrom;
+    tpi_extgame = export->game;
 
     cart_set_port_exrom_slot0(1);
     cart_set_port_game_slot0(tpi_extgame);

@@ -31,6 +31,7 @@
 #include "mui.h"
 
 #include "uiide64.h"
+#include "clockport.h"
 #include "intl.h"
 #include "translate.h"
 
@@ -52,7 +53,7 @@ static const int ui_ide64_autodetect_values[] = {
 
 static int ui_cylinders_range[] = {
     1,
-    1024
+    65535
 };
 
 static int ui_heads_range[] = {
@@ -65,8 +66,43 @@ static int ui_sectors_range[] = {
     63
 };
 
+static char *ui_ide64_version[] = {
+    "V3",
+    "V4.1",
+    "V4.2",
+    NULL
+};
+
+static const int ui_ide64_version_values[] = {
+    0,
+    1,
+    2,
+    -1
+};
+
+static char *ui_ide64_shortbus_digimax_base[] = {
+    "$DE40",
+    "$DE48",
+    NULL
+};
+
+static const int ui_ide64_shortbus_digimax_base_values[] = {
+    0xde40,
+    0xde48,
+    -1
+};
+
+static char *ui_ide64_clockport_devices[CLOCKPORT_MAX_ENTRIES + 1];
+static int ui_ide64_clockport_devices_values[CLOCKPORT_MAX_ENTRIES + 1];
+
 static ui_to_from_t ui_to_from_v4[] = {
-    { NULL, MUI_TYPE_CYCLE, "IDE64version4", ui_ide64_autodetect, ui_ide64_autodetect_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "IDE64version", ui_ide64_version, ui_ide64_version_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "IDE64USBServer", ui_ide64_autodetect, ui_ide64_autodetect_values, NULL },
+    { NULL, MUI_TYPE_TEXT, "IDE64USBServerAddress", NULL, NULL, NULL },
+    { NULL, MUI_TYPE_CYCLE, "IDE64RTCSave", ui_ide64_autodetect, ui_ide64_autodetect_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "IDE64ClockPort", ui_ide64_clockport_devices, ui_ide64_clockport_devices_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "SBDIGIMAX", ui_ide64_autodetect, ui_ide64_autodetect_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "SBDIGIMAXbase", ui_ide64_shortbus_digimax_base, ui_ide64_shortbus_digimax_base_values, NULL },
     UI_END /* mandatory */
 };
 
@@ -278,7 +314,13 @@ static APTR build_gui(void)
     app = mui_get_app();
 
     ui = GroupObject,
-           CYCLE(ui_to_from_v4[0].object, translate_text(IDS_IDE64_V4), ui_ide64_autodetect)
+           CYCLE(ui_to_from_v4[0].object, translate_text(IDS_IDE64_VERSION), ui_ide64_version)
+           CYCLE(ui_to_from_v4[1].object, translate_text(IDS_USB_SERVER), ui_ide64_autodetect)
+           STRING(ui_to_from_v4[2].object, translate_text(IDS_USB_SERVER_ADDRESS), 50+1)
+           CYCLE(ui_to_from_v4[3].object, translate_text(IDS_IDE64_RTC_SAVE), ui_ide64_autodetect)
+           CYCLE(ui_to_from_v4[4].object, translate_text(IDS_CLOCKPORT_DEVICE), ui_ide64_clockport_devices)
+           CYCLE(ui_to_from_v4[5].object, translate_text(IDS_SHORTBUS_DIGIMAX), ui_ide64_autodetect)
+           CYCLE(ui_to_from_v4[6].object, translate_text(IDS_SHORTBUS_DIGIMAX_BASE), ui_ide64_shortbus_digimax_base)
            BUTTON(hd_button1, translate_text(IDS_IDE64_HD_1_SETTINGS))
            BUTTON(hd_button2, translate_text(IDS_IDE64_HD_2_SETTINGS))
            BUTTON(hd_button3, translate_text(IDS_IDE64_HD_3_SETTINGS))
@@ -312,6 +354,14 @@ static APTR build_gui(void)
 void ui_ide64_settings_dialog(video_canvas_t *canvas)
 {
     APTR window;
+    int i;
+
+    for (i = 0; clockport_supported_devices[i].name; ++i) {
+        ui_ide64_clockport_devices[i] = clockport_supported_devices[i].name;
+        ui_ide64_clockport_devices_values[i] = clockport_supported_devices[i].id;
+    }
+    ui_ide64_clockport_devices[i] = NULL;
+    ui_ide64_clockport_devices_values[i] = -1;
 
     ide64_canvas = canvas;
     intl_convert_mui_table(ui_ide64_autodetect_translate, ui_ide64_autodetect);

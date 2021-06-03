@@ -4,7 +4,7 @@
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -64,6 +64,7 @@ void crtc_update_renderer(void)
         crtc.video_chip_cap->double_mode.sizex = 2;
         crtc.video_chip_cap->double_mode.sizey = 4;
         crtc.video_chip_cap->double_mode.rmode = VIDEO_RENDER_CRT_2X4;
+        crtc.video_chip_cap->scale2x_allowed = 0;
     } else {
         /* 40 columns */
         crtc.video_chip_cap->single_mode.sizex = 1;
@@ -72,13 +73,14 @@ void crtc_update_renderer(void)
         crtc.video_chip_cap->double_mode.sizex = 2;
         crtc.video_chip_cap->double_mode.sizey = 2;
         crtc.video_chip_cap->double_mode.rmode = VIDEO_RENDER_CRT_2X2;
+        crtc.video_chip_cap->scale2x_allowed = ARCHDEP_CRTC_DSIZE;
     }
 }
 
 static int set_stretch(int val, void *param)
 {
     DBG(("set_stretch"));
-    crtc_stretchy = val;
+    crtc_stretchy = val ? 1 : 0;
     crtc_update_renderer();
     resources_touch("CrtcDoubleSize");
     return 0;
@@ -100,10 +102,7 @@ int crtc_resources_init(void)
     video_chip_cap.dsize_limit_height = 700; /* 4 times the 80cols screen */
     video_chip_cap.dscan_allowed = ARCHDEP_CRTC_DSCAN;
     video_chip_cap.hwscale_allowed = ARCHDEP_CRTC_HWSCALE;
-    video_chip_cap.scale2x_allowed = ARCHDEP_CRTC_DSIZE;
-    video_chip_cap.internal_palette_allowed = 1;
     video_chip_cap.external_palette_name = "green";
-    video_chip_cap.palemulation_allowed = 1;
     video_chip_cap.double_buffering_allowed = ARCHDEP_CRTC_DBUF;
     fullscreen_capability(&(video_chip_cap.fullscreen));
 
@@ -115,4 +114,3 @@ int crtc_resources_init(void)
 
     return resources_register_int(resources_int);
 }
-

@@ -145,9 +145,9 @@
 - (IBAction)createAndAttachDiskImage:(id)sender
 {
     NSArray *extensions = [NSArray arrayWithObjects:
-        @"d64", @"d67", @"d71", @"d80", @"d81", @"d82", @"g64", @"p64", @"x64", nil];
+        @"d64", @"d67", @"d71", @"d80", @"d81", @"d82", @"g64", @"p64", @"x64", @"d1m", @"d2m", @"d4m", nil];
     NSArray *labels = [NSArray arrayWithObjects:
-        @"D64", @"D67", @"D71", @"D80", @"D81", @"D82", @"G64", @"P64", @"X64", nil];
+        @"D64", @"D67", @"D71", @"D80", @"D81", @"D82", @"G64", @"P64", @"X64", @"D1m", @"D2m", @"D4m", nil];
 
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
     NSSavePanel * panel = [NSSavePanel savePanel];
@@ -188,7 +188,7 @@
 
     if ([panel runModal] == NSFileHandlingPanelOKButton) {
         int type = [type_button indexOfSelectedItem];
-        NSString * path = [[panel filename] stringByAppendingPathExtension:[extensions objectAtIndex:type]];
+        NSString * path = [[[panel URL] path] stringByAppendingPathExtension:[extensions objectAtIndex:type]];
 
         if (![[VICEApplication theMachineController] 
                     createDiskImage:type
@@ -312,7 +312,7 @@
     if ([panel runModal] == NSFileHandlingPanelOKButton) {
         BOOL saveRoms  = ([saveRomsCheck state] == NSOnState);
         BOOL saveDisks = ([saveDisksCheck state] == NSOnState);
-        NSString * path = [panel filename];
+        NSString * path = [[panel URL] path];
         if (path!=nil) {
             [[VICEApplication theMachineController] saveSnapshot:path withROMS:saveRoms andDisks:saveDisks];
         }
@@ -638,7 +638,7 @@
         infoController = [[VICEInformationWindowController alloc] init];
     }
     [infoController showWindow:self];
-    [infoController setInformationText:[NSString stringWithCString:info encoding:NSUTF8StringEncoding]];
+    [infoController setInformationText:[NSString stringWithCString:info encoding:NSISOLatin1StringEncoding]];
 }
 
 // ----- Resource Updates -----

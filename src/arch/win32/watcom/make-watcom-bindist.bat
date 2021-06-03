@@ -1,9 +1,34 @@
 @echo off
+
+rem make-watcom-bindist.bat - make binary distribution for the Windows port
+rem
+rem Written by
+rem  Marco van den Heuvel <blackystardust68@yahoo.com>
+rem
+rem This file is part of VICE, the Versatile Commodore Emulator.
+rem See README for copyright notice.
+rem
+rem  This program is free software; you can redistribute it and/or modify
+rem  it under the terms of the GNU General Public License as published by
+rem  the Free Software Foundation; either version 2 of the License, or
+rem  (at your option) any later version.
+rem
+rem  This program is distributed in the hope that it will be useful,
+rem  but WITHOUT ANY WARRANTY; without even the implied warranty of
+rem  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+rem  GNU General Public License for more details.
+rem
+rem  You should have received a copy of the GNU General Public License
+rem  along with this program; if not, write to the Free Software
+rem  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+rem  02111-1307  USA.
+
 call ..\vice-version.bat
 set VICEDIR=WinVICE-%VICEVERSION%-x86
 if not exist x64.exe goto missingwatcom
 if not exist x64dtv.exe goto missingwatcom
 if not exist x64sc.exe goto missingwatcom
+if not exist xscpu64.exe goto missingwatcom
 if not exist x128.exe goto missingwatcom
 if not exist xcbm2.exe goto missingwatcom
 if not exist xcbm5x0.exe goto missingwatcom
@@ -21,6 +46,7 @@ mkdir %VICEDIR%
 copy x64.exe %VICEDIR%
 copy x64dtv.exe %VICEDIR%
 copy x64sc.exe %VICEDIR%
+copy xscpu64.exe %VICEDIR%
 copy x128.exe %VICEDIR%
 copy xvic.exe %VICEDIR%
 copy xpet.exe %VICEDIR%
@@ -44,8 +70,20 @@ copy ..\..\..\..\data\C64\*.vpl %VICEDIR%\C64
 copy ..\..\..\..\data\C64\c64mem.sym %VICEDIR%\C64
 copy ..\..\..\..\data\C64\chargen %VICEDIR%\C64
 copy ..\..\..\..\data\C64\*.vrs %VICEDIR%\C64
+copy ..\..\..\..\data\C64\edkernal %VICEDIR%\C64
+copy ..\..\..\..\data\C64\gskernal %VICEDIR%\C64
+copy ..\..\..\..\data\C64\jp* %VICEDIR%\C64
 copy ..\..\..\..\data\C64\kernal %VICEDIR%\C64
+copy ..\..\..\..\data\C64\sxkernal %VICEDIR%\C64
 copy ..\..\..\..\data\C64\win_*.v* %VICEDIR%\C64
+mkdir %VICEDIR%\SCPU64
+copy ..\..\..\..\data\SCPU64\*.vpl %VICEDIR%\SCPU64
+copy ..\..\..\..\data\SCPU64\chargen %VICEDIR%\SCPU64
+copy ..\..\..\..\data\SCPU64\*.vrs %VICEDIR%\SCPU64
+copy ..\..\..\..\data\SCPU64\scpu64 %VICEDIR%\SCPU64
+copy ..\..\..\..\data\SCPU64\jp* %VICEDIR%\SCPU64
+copy ..\..\..\..\data\SCPU64\scpu64mem.sym %VICEDIR%\SCPU64
+copy ..\..\..\..\data\SCPU64\win_*.v* %VICEDIR%\SCPU64
 mkdir %VICEDIR%\C64DTV
 copy ..\..\..\..\data\C64DTV\basic %VICEDIR%\C64DTV
 copy ..\..\..\..\data\C64DTV\*.vpl %VICEDIR%\C64DTV
@@ -76,9 +114,11 @@ copy ..\..\..\..\data\PET\*.bin %VICEDIR%\PET
 mkdir %VICEDIR%\PLUS4
 copy ..\..\..\..\data\PLUS4\3plus1* %VICEDIR%\PLUS4
 copy ..\..\..\..\data\PLUS4\basic %VICEDIR%\PLUS4
+copy ..\..\..\..\data\PLUS4\c2lo.364 %VICEDIR%\PLUS4
 copy ..\..\..\..\data\PLUS4\*.vpl %VICEDIR%\PLUS4
 copy ..\..\..\..\data\PLUS4\*.vrs %VICEDIR%\PLUS4
 copy ..\..\..\..\data\PLUS4\kernal %VICEDIR%\PLUS4
+copy ..\..\..\..\data\PLUS4\kernal.* %VICEDIR%\PLUS4
 copy ..\..\..\..\data\PLUS4\win_*.v* %VICEDIR%\PLUS4
 mkdir %VICEDIR%\PRINTER
 copy ..\..\..\..\data\PRINTER\cbm1526 %VICEDIR%\PRINTER
@@ -98,10 +138,14 @@ mkdir %VICEDIR%\html
 copy ..\..\..\..\doc\html\*.html %VICEDIR%\html
 mkdir %VICEDIR%\html\images
 copy ..\..\..\..\doc\html\images\* %VICEDIR%\html\images
-mkdir %VICEDIR%\html\plain
-copy ..\..\..\..\doc\html\plain\* %VICEDIR%\html\plain
 copy ..\..\..\..\FEEDBACK %VICEDIR%
 copy ..\..\..\..\README %VICEDIR%
+copy ..\..\..\..\COPYING %VICEDIR%
+copy ..\..\..\..\NEWS %VICEDIR%
+mkdir %VICEDIR%\doc
+copy ..\..\..\..\doc\vice.chm %VICEDIR%\doc
+copy ..\..\..\..\doc\vice.hlp %VICEDIR%\doc
+copy ..\..\..\..\doc\vice.pdf %VICEDIR%\doc
 echo WIN32 port binary distribution directory generated as %VICEDIR%
 goto end
 :missingwatcom

@@ -31,46 +31,13 @@
 #include "types.h"
 
 extern void kbd_arch_init(void);
+extern int kbd_arch_get_host_mapping(void);
 
 extern signed long kbd_arch_keyname_to_keynum(char *keyname);
 extern const char *kbd_arch_keynum_to_keyname(signed long keynum);
 extern void kbd_initialize_numpad_joykeys(int *joykeys);
 
-#define KBD_C64_SYM_US  "win_sym_us.vkm"
-#define KBD_C64_SYM_DE  "win_sym_de.vkm"
-#define KBD_C64_POS     "win_pos.vkm"
-#define KBD_C128_SYM    "win_sym.vkm"
-#define KBD_C128_POS    "win_pos.vkm"
-#define KBD_VIC20_SYM   "win_sym.vkm"
-#define KBD_VIC20_POS   "win_pos.vkm"
-#define KBD_PET_SYM_UK  "win_sym_uk.vkm"
-#define KBD_PET_POS_UK  "win_pos_uk.vkm"
-#define KBD_PET_SYM_DE  "win_sym_de.vkm"
-#define KBD_PET_POS_DE  "win_pos_de.vkm"
-#define KBD_PET_SYM_GR  "win_sym_gr.vkm"
-#define KBD_PET_POS_GR  "win_pos_gr.vkm"
-#define KBD_PLUS4_SYM   "win_sym.vkm"
-#define KBD_PLUS4_POS   "win_pos.vkm"
-#define KBD_CBM2_SYM_UK "win_sym_uk.vkm"
-#define KBD_CBM2_POS_UK "win_pos_uk.vkm"
-#define KBD_CBM2_SYM_DE "win_sym_de.vkm"
-#define KBD_CBM2_POS_DE "win_pos_de.vkm"
-#define KBD_CBM2_SYM_GR "win_sym_gr.vkm"
-#define KBD_CBM2_POS_GR "win_pos_gr.vkm"
-
-#define KBD_INDEX_C64_DEFAULT   KBD_INDEX_C64_POS
-#define KBD_INDEX_C128_DEFAULT  KBD_INDEX_C128_POS
-#define KBD_INDEX_VIC20_DEFAULT KBD_INDEX_VIC20_POS
-#define KBD_INDEX_PET_DEFAULT   KBD_INDEX_PET_BUKP
-#define KBD_INDEX_PLUS4_DEFAULT KBD_INDEX_PLUS4_POS
-#define KBD_INDEX_CBM2_DEFAULT  KBD_INDEX_CBM2_BUKP
-
-/* Keymap definition structure.  */
-typedef struct {
-    BYTE row;
-    BYTE column;
-    int vshift;
-} keyconv;
+#define KBD_PORT_PREFIX "win"
 
 /* Warning: this might be not 100% correct.  */
 typedef enum {
@@ -89,7 +56,6 @@ typedef enum {
 
 extern BYTE _kbd_extended_key_tab[];
 
-extern int kbd_init(int num, ...);
 extern int kbd_handle_keydown(DWORD virtual_key, DWORD key_data);
 extern int kbd_handle_keyup(DWORD virtual_key, DWORD key_data);
 

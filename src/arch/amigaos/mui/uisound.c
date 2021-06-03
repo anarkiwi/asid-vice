@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -90,18 +91,22 @@ static const int ui_sound_adjusting_values[] = {
 };
 
 static int ui_sound_fragment_size_translate[] = {
+    IDS_VERY_SMALL,
     IDS_SMALL,
     IDS_MEDIUM,
     IDS_LARGE,
+    IDS_VERY_LARGE,
     0
 };
 
 static char *ui_sound_fragment_size[countof(ui_sound_fragment_size_translate)];
 
 static const int ui_sound_fragment_size_values[] = {
+    SOUND_FRAGMENT_VERY_SMALL,
     SOUND_FRAGMENT_SMALL,
     SOUND_FRAGMENT_MEDIUM,
     SOUND_FRAGMENT_LARGE,
+    SOUND_FRAGMENT_VERY_LARGE,
     -1
 };
 
@@ -128,6 +133,12 @@ static char *ui_sound_formats[] = {
     "wav",
 #ifdef USE_LAMEMP3
     "mp3",
+#endif
+#ifdef USE_FLAC
+    "flac",
+#endif
+#ifdef USE_VORBIS
+    "ogg",
 #endif
     NULL
 };
@@ -172,7 +183,7 @@ static APTR build_gui(void)
              CYCLE(ui_to_from[1].object, translate_text(IDS_BUFFER_SIZE), ui_sound_buffer)
              CYCLE(ui_to_from[2].object, translate_text(IDS_FRAGMENT_SIZE), ui_sound_fragment_size)
              CYCLE(ui_to_from[3].object, translate_text(IDS_SPEED_ADJUSTMENT), ui_sound_adjusting)
-             STRING(ui_to_from[4].object, translate_text(IDS_VOLUME), "0123456789", 5+1)
+             NSTRING(ui_to_from[4].object, translate_text(IDS_VOLUME), "0123456789", 5+1)
              CYCLE(ui_to_from[5].object, translate_text(IDS_SOUND_OUTPUT_MODE), ui_sound_output_mode)
            End;
 }

@@ -72,17 +72,6 @@ static struct {
     unsigned int right_alt:1;
 } modifiers;
 
-/* Pointer to the keyboard conversion maps.  Fixed-length arrays suck, but
-   for now we don't care.  */
-#define MAX_CONVMAPS 10
-struct _convmap {
-    /* Conversion map.  */
-    keyconv *map;
-    /* Location of the virtual shift key in the keyboard matrix.  */
-    int virtual_shift_row, virtual_shift_column;
-};
-static struct _convmap keyconvmaps[MAX_CONVMAPS];
-
 /* Function for triggering cartridge (e.g. AR) freezing.  */
 static void (*freeze_function)(void);
 
@@ -480,7 +469,6 @@ static void kbd_init_common(void)
     _go32_dpmi_lock_code(my_kbd_interrupt_handler, (unsigned long)my_kbd_interrupt_handler_end - (unsigned long)my_kbd_interrupt_handler);
     _go32_dpmi_lock_code(queue_command, (unsigned long)queue_command_end - (unsigned long)queue_command);
 
-    _go32_dpmi_lock_data(keyconvmaps, sizeof(keyconvmaps));
     _go32_dpmi_lock_data(keyarr, sizeof(keyarr));
     _go32_dpmi_lock_data(rev_keyarr, sizeof(rev_keyarr));
     _go32_dpmi_lock_data(&modifiers, sizeof(modifiers));
@@ -556,4 +544,15 @@ void kbd_initialize_numpad_joykeys(int* joykeys)
     joykeys[6] = K_KP7;
     joykeys[7] = K_KP8;
     joykeys[8] = K_KP9;
+}
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages/actual detection
+*/
+int kbd_arch_get_host_mapping(void)
+{
+    return KBD_MAPPING_US;
 }

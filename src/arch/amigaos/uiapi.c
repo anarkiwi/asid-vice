@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -40,6 +41,7 @@
 #include "cmdline.h"
 #include "lib.h"
 #include "loadlibs.h"
+#include "machine.h"
 #include "resources.h"
 #include "types.h"
 #include "ui.h"
@@ -69,27 +71,9 @@ extern video_canvas_t *canvaslist;
 
 ui_resources_t ui_resources;
 
-static int set_fullscreen_bitdepth(int val, void *param)
-{
-    ui_resources.fullscreenbitdepth = val;
-    return 0;
-}
-
-static int set_fullscreen_width(int val, void *param)
-{
-    ui_resources.fullscreenwidth = val;
-    return 0;
-}
-
-static int set_fullscreen_height(int val, void *param)
-{
-    ui_resources.fullscreenheight = val;
-    return 0;
-}
-
 static int set_fullscreen_enabled(int val, void *param)
 {
-    ui_resources.fullscreenenabled = val;
+    ui_resources.fullscreenenabled = val ? 1 : 0;
 
     video_arch_fullscreen_toggle();
 
@@ -97,8 +81,10 @@ static int set_fullscreen_enabled(int val, void *param)
 }
 
 #if defined(HAVE_PROTO_CYBERGRAPHICS_H) && defined(HAVE_XVIDEO)
-static int set_videooverlay_enabled(int val, void *param)
+static int set_videooverlay_enabled(int value, void *param)
 {
+    int val = value ? 1 : 0;
+
     if (!xvideo_lib_loaded && val) {
         return -1;
     }
@@ -114,7 +100,8 @@ static int set_videooverlay_enabled(int val, void *param)
 
 static int set_statusbar_enabled(int val, void *param)
 {
-    ui_resources.statusbarenabled = val;
+    ui_resources.statusbarenabled = val ? 1 : 0;
+
     video_arch_fullscreen_toggle();
 
     return 0;
@@ -122,24 +109,15 @@ static int set_statusbar_enabled(int val, void *param)
 
 static int set_save_resources_on_exit(int val, void *param)
 {
-    ui_resources.save_resources_on_exit = val;
+    ui_resources.save_resources_on_exit = val ? 1 : 0;
+
     return 0;
 }
 
 static int set_confirm_on_exit(int val, void *param)
 {
-    ui_resources.confirm_on_exit = val;
-    return 0;
-}
+    ui_resources.confirm_on_exit = val ? 1 : 0;
 
-static int set_monitor_dimensions(const char *name, void *param)
-{
-    if (ui_resources.monitor_dimensions != NULL && name != NULL) {
-        if (strcmp(name, ui_resources.monitor_dimensions) == 0) {
-            return 0;
-        }
-    }
-    util_string_set(&ui_resources.monitor_dimensions, name ? name : "");
     return 0;
 }
 
@@ -157,30 +135,34 @@ static int set_initial_dir(const char *name, void *param)
 }
 
 static const resource_string_t resources_string[] = {
-    { "MonitorDimensions", "", RES_EVENT_NO, NULL,
-      &ui_resources.monitor_dimensions, set_monitor_dimensions, NULL },
     { "InitialDefaultDir", "", RES_EVENT_NO, NULL,
       &ui_resources.initialdir[0], set_initial_dir, (void *)0 },
-    { "InitialTapeDir", "", RES_EVENT_NO, NULL,
-      &ui_resources.initialdir[1], set_initial_dir, (void *)1 },
+    { NULL }
+};
+
+static const resource_string_t init_resources_string[] = {
     { "InitialDiskDir", "", RES_EVENT_NO, NULL,
       &ui_resources.initialdir[2], set_initial_dir, (void *)2 },
     { "InitialAutostartDir", "", RES_EVENT_NO, NULL,
       &ui_resources.initialdir[3], set_initial_dir, (void *)3 },
-    { "InitialCartDir", "", RES_EVENT_NO, NULL,
-      &ui_resources.initialdir[4], set_initial_dir, (void *)4 },
     { "InitialSnapshotDir", "", RES_EVENT_NO, NULL,
       &ui_resources.initialdir[5], set_initial_dir, (void *)5 },
     { NULL }
 };
 
+static const resource_string_t init_tape_resources_string[] = {
+    { "InitialTapeDir", "", RES_EVENT_NO, NULL,
+      &ui_resources.initialdir[1], set_initial_dir, (void *)1 },
+    { NULL }
+};
+
+static const resource_string_t init_cart_resources_string[] = {
+    { "InitialCartDir", "", RES_EVENT_NO, NULL,
+      &ui_resources.initialdir[4], set_initial_dir, (void *)4 },
+    { NULL }
+};
+
 static const resource_int_t resources_int[] = {
-    { "FullscreenBitdepth", 8, RES_EVENT_NO, NULL,
-      &ui_resources.fullscreenbitdepth, set_fullscreen_bitdepth, NULL },
-    { "FullscreenWidth", 640, RES_EVENT_NO, NULL,
-      &ui_resources.fullscreenwidth, set_fullscreen_width, NULL },
-    { "FullscreenHeight", 480, RES_EVENT_NO, NULL,
-      &ui_resources.fullscreenheight, set_fullscreen_height, NULL },
     { "FullscreenEnabled", 0, RES_EVENT_NO, NULL,
       &ui_resources.fullscreenenabled, set_fullscreen_enabled, NULL },
     { "StatusBarEnabled", 1, RES_EVENT_NO, NULL,
@@ -204,6 +186,22 @@ int ui_resources_init(void)
         return -1;
     }
 
+    if (machine_class != VICE_MACHINE_VSID) {
+        if (resources_register_string(init_resources_string) < 0) {
+            return -1;
+        }
+        if (machine_class != VICE_MACHINE_SCPU64 && machine_class != VICE_MACHINE_C64DTV) {
+            if (resources_register_string(init_tape_resources_string) < 0) {
+                return -1;
+            }
+        }
+        if (machine_class != VICE_MACHINE_C64DTV) {
+            if (resources_register_string(init_cart_resources_string) < 0) {
+                return -1;
+            }
+        }
+    }
+
     return resources_register_int(resources_int);
 }
 
@@ -212,8 +210,6 @@ void ui_resources_shutdown(void)
     int i;
 
     translate_resources_shutdown();
-
-    lib_free(ui_resources.monitor_dimensions);
 
     for (i = 0; i < UILIB_SELECTOR_STYLES_NUM; i++) {
         lib_free(ui_resources.initialdir[i]);
@@ -225,6 +221,43 @@ void ui_resources_shutdown(void)
 /* UI-related command-line options.  */
 
 static const cmdline_option_t cmdline_options[] = {
+    { "-initialdiskdir", SET_RESOURCE, 1,
+      NULL, NULL, "InitialDiskDir", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDS_SPECIFY_INITIAL_DISK_DIR,
+      NULL, NULL },
+    { "-initialautostartdir", SET_RESOURCE, 1,
+      NULL, NULL, "InitialAutostartDir", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDS_SPECIFY_INITIAL_AUTOSTART_DIR,
+      NULL, NULL },
+    { "-initialsnapshotdir", SET_RESOURCE, 1,
+      NULL, NULL, "InitialSnapshotDir", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDS_SPECIFY_INITIAL_SNAPSHOT_DIR,
+      NULL, NULL },
+    { NULL }
+};
+
+static const cmdline_option_t tape_cmdline_options[] = {
+    { "-initialtapedir", SET_RESOURCE, 1,
+      NULL, NULL, "InitialTapeDir", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDS_SPECIFY_INITIAL_TAPE_DIR,
+      NULL, NULL },
+    { NULL }
+};
+
+static const cmdline_option_t cart_cmdline_options[] = {
+    { "-initialcartdir", SET_RESOURCE, 1,
+      NULL, NULL, "InitialCartDir", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDS_SPECIFY_INITIAL_CART_DIR,
+      NULL, NULL },
+    { NULL }
+};
+
+static const cmdline_option_t common_cmdline_options[] = {
     { "-saveres", SET_RESOURCE, 0,
       NULL, NULL, "SaveResourcesOnExit", (resource_value_t)1,
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
@@ -245,13 +278,67 @@ static const cmdline_option_t cmdline_options[] = {
       USE_PARAM_STRING, USE_DESCRIPTION_ID,
       IDCLS_UNUSED, IDS_NEVER_CONFIRM_QUITING_VICE,
       NULL, NULL },
+    { "-initialdefaultdir", SET_RESOURCE, 1,
+      NULL, NULL, "InitialDefaultDir", NULL,
+      USE_PARAM_ID, USE_DESCRIPTION_ID,
+      IDCLS_P_NAME, IDS_SPECIFY_INITIAL_DEFAULT_DIR,
+      NULL, NULL },
+    { "-fullscreen", SET_RESOURCE, 0,
+      NULL, NULL, "FullscreenEnabled", (resource_value_t)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_ENABLE_FULLSCREEN,
+      NULL, NULL },
+    { "+fullscreen", SET_RESOURCE, 0,
+      NULL, NULL, "FullscreenEnabled", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_DISABLE_FULLSCREEN,
+      NULL, NULL },
+    { "-statusbar", SET_RESOURCE, 0,
+      NULL, NULL, "StatusBarEnabled", (resource_value_t)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_ENABLE_STATUSBAR,
+      NULL, NULL },
+    { "+statusbar", SET_RESOURCE, 0,
+      NULL, NULL, "StatusBarEnabled", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_DISABLE_STATUSBAR,
+      NULL, NULL },
+#if defined(HAVE_PROTO_CYBERGRAPHICS_H) && defined(HAVE_XVIDEO)
+    { "-videooverlay", SET_RESOURCE, 0,
+      NULL, NULL, "VideoOverlayEnabled", (resource_value_t)1,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_ENABLE_VIDEOOVERLAY,
+      NULL, NULL },
+    { "+videooverlay", SET_RESOURCE, 0,
+      NULL, NULL, "VideoOverlayEnabled", (resource_value_t)0,
+      USE_PARAM_STRING, USE_DESCRIPTION_ID,
+      IDCLS_UNUSED, IDS_DISABLE_VIDEOOVERLAY,
+      NULL, NULL },
+#endif
     { NULL }
 };
 
 int ui_cmdline_options_init(void)
 {
     translate_cmdline_options_init();
-    return cmdline_register_options(cmdline_options);
+
+    if (machine_class != VICE_MACHINE_VSID) {
+        if (cmdline_register_options(cmdline_options) < 0) {
+            return -1;
+        }
+        if (machine_class != VICE_MACHINE_SCPU64 && machine_class != VICE_MACHINE_C64DTV) {
+            if (cmdline_register_options(tape_cmdline_options) < 0) {
+                return -1;
+            }
+        }
+        if (machine_class != VICE_MACHINE_C64DTV) {
+            if (cmdline_register_options(cart_cmdline_options) < 0) {
+                return -1;
+            }
+        }
+    }
+
+    return cmdline_register_options(common_cmdline_options);
 }
 
 int ui_init(int *argc, char **argv)
@@ -261,7 +348,7 @@ int ui_init(int *argc, char **argv)
 
 int ui_init_finish(void)
 {
-    return load_libs();
+    return 0;
 }
 
 int ui_init_finalize(void)

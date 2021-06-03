@@ -3,6 +3,7 @@
  *
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -28,6 +29,8 @@
 #define VICE_ARCHDEP_H
 
 #include "archapi.h"
+
+#include "sound.h"
 
 /* Filesystem dependant operators.  */
 #define FSDEVICE_DEFAULT_DIR "."
@@ -104,5 +107,20 @@
 
 /* No key symcode.  */
 #define ARCHDEP_KEYBOARD_SYM_NONE 0
+
+/* When using the ascii printer driver we need a return before the newline */
+#define ARCHDEP_PRINTER_RETURN_BEFORE_NEWLINE
+
+/* what to use to return an error when a socket error happens */
+#define ARCHDEP_SOCKET_ERROR errno
+
+/* Default sound output mode */
+#define ARCHDEP_SOUND_OUTPUT_MODE SOUND_OUTPUT_SYSTEM
+
+/* Keyword to use for a static prototype */
+#define STATIC_PROTOTYPE static
+
+/* define if the platform supports the monitor in a seperate window */
+#define ARCHDEP_SEPERATE_MONITOR_WINDOW
 
 #endif

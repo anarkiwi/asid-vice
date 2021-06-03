@@ -38,8 +38,9 @@ static char *dos_rom_name_1551 = NULL;
 
 static int set_dos_rom_name_1551(const char *val, void *param)
 {
-    if (util_string_set(&dos_rom_name_1551, val))
+    if (util_string_set(&dos_rom_name_1551, val)) {
         return 0;
+    }
 
     return tcbmrom_load_1551();
 }
@@ -50,20 +51,12 @@ static const resource_string_t resources_string[] = {
     { NULL }
 };
 
-static const resource_int_t resources_int[] = {
-    { NULL }
-};
-
 int tcbm_resources_init(void)
 {
-    if (resources_register_string(resources_string) < 0)
-        return -1;
-
-    return resources_register_int(resources_int);
+    return resources_register_string(resources_string);
 }
 
 void tcbm_resources_shutdown(void)
 {
     lib_free(dos_rom_name_1551);
 }
-

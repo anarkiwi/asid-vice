@@ -3,7 +3,7 @@
  *
  * Written by
  *  Marco van den Heuvel <blackystardust68@yahoo.com>
- * 
+ *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -33,11 +33,11 @@
 #define CARTRIDGE_INCLUDE_SLOT1_API
 #include "c64cartsystem.h"
 #undef CARTRIDGE_INCLUDE_SLOT1_API
-#include "c64export.h"
 #include "c64mem.h"
 #include "cartio.h"
 #include "cartridge.h"
 #include "cmdline.h"
+#include "export.h"
 #include "lib.h"
 #include "mem.h"
 #include "monitor.h"
@@ -128,7 +128,7 @@ static io_source_t dqbb_io1_device = {
 
 static io_source_list_t *dqbb_io1_list_item = NULL;
 
-static const c64export_resource_t export_res = {
+static const export_resource_t export_res = {
     CARTRIDGE_NAME_DQBB, 1, 1, &dqbb_io1_device, NULL, CARTRIDGE_DQBB
 };
 
@@ -215,13 +215,15 @@ static int dqbb_deactivate(void)
     lib_free(dqbb_ram);
     dqbb_ram = NULL;
 
-    c64export_remove(&export_res);
+    export_remove(&export_res);
 
     return 0;
 }
 
-static int set_dqbb_enabled(int val, void *param)
+static int set_dqbb_enabled(int value, void *param)
 {
+    int val = value ? 1 : 0;
+
     if ((!val) && (dqbb_enabled)) {
         cart_power_off();
         if (dqbb_deactivate() < 0) {
@@ -234,7 +236,7 @@ static int set_dqbb_enabled(int val, void *param)
         dqbb_change_config();
     } else if ((val) && (!dqbb_enabled)) {
         cart_power_off();
-        if (c64export_add(&export_res) < 0) {
+        if (export_add(&export_res) < 0) {
             return -1;
         }
         if (dqbb_activate() < 0) {
@@ -273,11 +275,8 @@ static int set_dqbb_filename(const char *name, void *param)
 
 static int set_dqbb_image_write(int val, void *param)
 {
-    if (dqbb_write_image && !val) {
-        dqbb_write_image = 0;
-    } else if (!dqbb_write_image && val) {
-        dqbb_write_image = 1;
-    }
+    dqbb_write_image = val ? 1 : 0;
+
     return 0;
 }
 
@@ -369,16 +368,16 @@ void dqbb_reset(void)
 void dqbb_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
 {
     switch (addr & 0xf000) {
-    case 0xb000:
-    case 0xa000:
-    case 0x9000:
-    case 0x8000:
-        *base = dqbb_ram - 0x8000;
-        *start = 0x8000;
-        *limit = 0xbffd;
-        return;
-    default:
-        break;
+        case 0xb000:
+        case 0xa000:
+        case 0x9000:
+        case 0x8000:
+            *base = dqbb_ram - 0x8000;
+            *start = 0x8000;
+            *limit = 0xbffd;
+            return;
+        default:
+            break;
     }
     *base = NULL;
     *start = 0;
@@ -482,16 +481,28 @@ int dqbb_peek_mem(WORD addr, BYTE *value)
 
 /* ---------------------------------------------------------------------*/
 
-#define CART_DUMP_VER_MAJOR   0
-#define CART_DUMP_VER_MINOR   0
-#define SNAP_MODULE_NAME  "CARTDQBB"
+/* CARTDQBB snapshot module format:
+
+   type  | name       | description
+   --------------------------------
+   BYTE  | enabled    | cartridge enabled flag
+   BYTE  | read write | read/write flag
+   BYTE  | a000 map   | $A000 mapped flag
+   BYTE  | off        | dqbb off flag
+   BYTE  | register   | register
+   ARRAY | RAM        | 16768 BYTES of RAM data
+ */
+
+static char snap_module_name[] = "CARTDQBB";
+#define SNAP_MAJOR   0
+#define SNAP_MINOR   0
 
 int dqbb_snapshot_write_module(snapshot_t *s)
 {
     snapshot_module_t *m;
 
-    m = snapshot_module_create(s, SNAP_MODULE_NAME,
-                          CART_DUMP_VER_MAJOR, CART_DUMP_VER_MINOR);
+    m = snapshot_module_create(s, snap_module_name, SNAP_MAJOR, SNAP_MINOR);
+
     if (m == NULL) {
         return -1;
     }
@@ -507,8 +518,7 @@ int dqbb_snapshot_write_module(snapshot_t *s)
         return -1;
     }
 
-    snapshot_module_close(m);
-    return 0;
+    return snapshot_module_close(m);
 }
 
 int dqbb_snapshot_read_module(snapshot_t *s)
@@ -516,12 +526,15 @@ int dqbb_snapshot_read_module(snapshot_t *s)
     BYTE vmajor, vminor;
     snapshot_module_t *m;
 
-    m = snapshot_module_open(s, SNAP_MODULE_NAME, &vmajor, &vminor);
+    m = snapshot_module_open(s, snap_module_name, &vmajor, &vminor);
+
     if (m == NULL) {
         return -1;
     }
 
-    if ((vmajor != CART_DUMP_VER_MAJOR) || (vminor != CART_DUMP_VER_MINOR)) {
+    /* Do not accept versions higher than current */
+    if (vmajor > SNAP_MAJOR || vminor > SNAP_MINOR) {
+        snapshot_set_error(SNAPSHOT_MODULE_HIGHER_VERSION);
         snapshot_module_close(m);
         return -1;
     }
@@ -550,7 +563,7 @@ int dqbb_snapshot_read_module(snapshot_t *s)
     /* FIXME: ugly code duplication to avoid cart_config_changed calls */
     dqbb_io1_list_item = io_source_register(&dqbb_io1_device);
 
-    if (c64export_add(&export_res) < 0) {
+    if (export_add(&export_res) < 0) {
         lib_free(dqbb_ram);
         dqbb_ram = NULL;
         io_source_unregister(dqbb_io1_list_item);

@@ -37,7 +37,7 @@ subdir = src/arch/sdl/win32-watcom
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -60,7 +60,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BINDIR = @BINDIR@
+CAIRO_CFLAGS = @CAIRO_CFLAGS@
+CAIRO_LIBS = @CAIRO_LIBS@
 CATALOGS = @CATALOGS@
 CATOBJEXT = @CATOBJEXT@
 CC = @CC@
@@ -92,10 +93,17 @@ EGREP = @EGREP@
 ENABLE_ARCH = @ENABLE_ARCH@
 EXEEXT = @EXEEXT@
 FCCACHE = @FCCACHE@
+FFMPEGSUB = @FFMPEGSUB@
+FFMPEG_AVRESAMPLE_CFLAGS = @FFMPEG_AVRESAMPLE_CFLAGS@
+FFMPEG_AVRESAMPLE_LIBS = @FFMPEG_AVRESAMPLE_LIBS@
 FFMPEG_AV_CFLAGS = @FFMPEG_AV_CFLAGS@
 FFMPEG_AV_LIBS = @FFMPEG_AV_LIBS@
+FFMPEG_DEP = @FFMPEG_DEP@
+FFMPEG_DIR = @FFMPEG_DIR@
 FFMPEG_INCLUDES = @FFMPEG_INCLUDES@
 FFMPEG_LIBS = @FFMPEG_LIBS@
+FFMPEG_SWRESAMPLE_CFLAGS = @FFMPEG_SWRESAMPLE_CFLAGS@
+FFMPEG_SWRESAMPLE_LIBS = @FFMPEG_SWRESAMPLE_LIBS@
 FFMPEG_SWSCALE_CFLAGS = @FFMPEG_SWSCALE_CFLAGS@
 FFMPEG_SWSCALE_LIBS = @FFMPEG_SWSCALE_LIBS@
 FULLSCREEN_DRIVERS = @FULLSCREEN_DRIVERS@
@@ -124,12 +132,15 @@ INTLLIBS = @INTLLIBS@
 INTLOBJS = @INTLOBJS@
 IPFC = @IPFC@
 JOY_LIBS = @JOY_LIBS@
+LAMEMP3SUB = @LAMEMP3SUB@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+LIBFFMPEGSUB = @LIBFFMPEGSUB@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBX264SUB = @LIBX264SUB@
 LINKCC = @LINKCC@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -138,8 +149,10 @@ MAKEINFO = @MAKEINFO@
 MAKERTF = @MAKERTF@
 MAX_INLINE_INSN_SINGLE = @MAX_INLINE_INSN_SINGLE@
 MKDIR_P = @MKDIR_P@
+MKFONTDIR_BIN = @MKFONTDIR_BIN@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MSGFMT = @MSGFMT@
+NATIVE_TOOLS_COMPILER = @NATIVE_TOOLS_COMPILER@
 NETPLAY_LIBS = @NETPLAY_LIBS@
 NLS_LOCALEDIR = @NLS_LOCALEDIR@
 OBJC = @OBJC@
@@ -153,10 +166,13 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
+PANGO_CFLAGS = @PANGO_CFLAGS@
+PANGO_LIBS = @PANGO_LIBS@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PDFTEX = @PDFTEX@
 PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
+PLATFORM_DOX_FLAGS = @PLATFORM_DOX_FLAGS@
 POFILES = @POFILES@
 POSUB = @POSUB@
 QUICKTIME_INCLUDES = @QUICKTIME_INCLUDES@
@@ -164,19 +180,18 @@ QUICKTIME_LIBS = @QUICKTIME_LIBS@
 RANLIB = @RANLIB@
 READLINE = @READLINE@
 READLINE_LIBS = @READLINE_LIBS@
+RESIDDTVSUB = @RESIDDTVSUB@
+RESIDSUB = @RESIDSUB@
 RESID_DEP = @RESID_DEP@
 RESID_DIR = @RESID_DIR@
 RESID_DTV_DEP = @RESID_DTV_DEP@
 RESID_DTV_DIR = @RESID_DTV_DIR@
 RESID_DTV_INCLUDES = @RESID_DTV_INCLUDES@
 RESID_DTV_LIBS = @RESID_DTV_LIBS@
-RESID_FP_DEP = @RESID_FP_DEP@
-RESID_FP_DIR = @RESID_FP_DIR@
-RESID_FP_INCLUDES = @RESID_FP_INCLUDES@
-RESID_FP_LIBS = @RESID_FP_LIBS@
 RESID_INCLUDES = @RESID_INCLUDES@
 RESID_LIBS = @RESID_LIBS@
 SDL_EXTRA_LIBS = @SDL_EXTRA_LIBS@
+SDL_VERSION = @SDL_VERSION@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOUND_AIX_OBJ = @SOUND_AIX_OBJ@
@@ -188,6 +203,9 @@ SOUND_SDL_OBJ = @SOUND_SDL_OBJ@
 SOUND_SGI_OBJ = @SOUND_SGI_OBJ@
 SOUND_USS_OBJ = @SOUND_USS_OBJ@
 STRIP = @STRIP@
+SVN = @SVN@
+SVNVERSION = @SVNVERSION@
+TAR = @TAR@
 TEXI2DVI = @TEXI2DVI@
 TEXI2IPF = @TEXI2IPF@
 TFE_LIBS = @TFE_LIBS@
@@ -196,9 +214,11 @@ UNIX_MACOSX_UITYPE = @UNIX_MACOSX_UITYPE@
 USE_INCLUDED_LIBINTL = @USE_INCLUDED_LIBINTL@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+VERSION_COMBINED = @VERSION_COMBINED@
 VERSION_RC = @VERSION_RC@
 VICEDIR = @VICEDIR@
 VICE_SYNC = @VICE_SYNC@
+VICE_UI_THREADS = @VICE_UI_THREADS@
 VICE_VERSION = @VICE_VERSION@
 VICE_VERSION_BUILD = @VICE_VERSION_BUILD@
 VICE_VERSION_MAJOR = @VICE_VERSION_MAJOR@
@@ -217,13 +237,14 @@ XGETTEXT = @XGETTEXT@
 XMKMF = @XMKMF@
 XPET_WINRES = @XPET_WINRES@
 XPLUS4_WINRES = @XPLUS4_WINRES@
+XSCPU64_WINRES = @XSCPU64_WINRES@
 XVIC_WINRES = @XVIC_WINRES@
 X_CFLAGS = @X_CFLAGS@
 X_EXTRA_LIBS = @X_EXTRA_LIBS@
 X_LIBS = @X_LIBS@
 X_PRE_LIBS = @X_PRE_LIBS@
 YACC = @YACC@
-YFLAGS = @YFLAGS@
+YASM = @YASM@
 ZLIB_LIBS = @ZLIB_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -231,7 +252,6 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_sdl_config = @ac_ct_sdl_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -250,6 +270,7 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+ffmpeg_have_bash = @ffmpeg_have_bash@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -271,6 +292,7 @@ prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
+sdl2_config = @sdl2_config@
 sdl_config = @sdl_config@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -286,12 +308,12 @@ x64_LDFLAGS = @x64_LDFLAGS@
 xcbm2_LDFLAGS = @xcbm2_LDFLAGS@
 xpet_LDFLAGS = @xpet_LDFLAGS@
 xplus4_LDFLAGS = @xplus4_LDFLAGS@
+xscpu64_LDFLAGS = @xscpu64_LDFLAGS@
 xvic_LDFLAGS = @xvic_LDFLAGS@
 EXTRA_DIST = \
 	ide-config.h \
 	ide-siddefs.h \
 	ide-siddtvdefs.h \
-	ide-sidfpdefs.h \
 	arch.tgt \
 	base.tgt \
 	c128.tgt \
@@ -302,12 +324,16 @@ EXTRA_DIST = \
 	c64commoncart.tgt \
 	c64commonsc.tgt \
 	c64commonsc128.tgt \
-	c64commonsc128vsid.tgt \
-	c64commonscdtv.tgt \
-	c64commonscdtv128.tgt \
-	c64commonscdtvvsid.tgt \
-	c64commonscvsid.tgt \
+	c64commonsc128scpu.tgt \
+	c64commonscdtv128scpu.tgt \
+	c64commonscdtvscpu.tgt \
+	c64commonscscpu.tgt \
+	c64commonscvsid128.tgt \
 	c64commonvsid.tgt \
+	c64commonvsidsc.tgt \
+	c64commonvsidscdtv.tgt \
+	c64commonvsidscdtvscpu.tgt \
+	c64commonvsidscscpu.tgt \
 	c64dtv.tgt \
 	c64exp.tgt \
 	c64sc.tgt \
@@ -317,6 +343,8 @@ EXTRA_DIST = \
 	cbm5x0.tgt \
 	core.tgt \
 	crtc.tgt \
+	debug.h \
+	diag.tgt \
 	diskimage.tgt \
 	drive.tgt \
 	fileio.tgt \
@@ -333,6 +361,7 @@ EXTRA_DIST = \
 	iecieee.tgt \
 	ieee.tgt \
 	imagecontents.tgt \
+	joyport.tgt \
 	maincpu.tgt \
 	make-watcom-bindist.bat \
 	monitor.tgt \
@@ -347,12 +376,15 @@ EXTRA_DIST = \
 	raster.tgt \
 	resid.tgt \
 	residdtv.tgt \
-	residfp.tgt \
 	rs232drv.tgt \
+	rtc.tgt \
+	samplerdrv.tgt \
+	scpu64.tgt \
 	serial.tgt \
 	sid.tgt \
 	sounddrv.tgt \
 	tape.tgt \
+	tapeport.tgt \
 	tcbm.tgt \
 	userport.tgt \
 	vdc.tgt \
@@ -364,6 +396,7 @@ EXTRA_DIST = \
 	viciicommon.tgt \
 	viciidtv.tgt \
 	viciinew.tgt \
+	viciivsid.tgt \
 	video.tgt \
 	vsid.tgt \
 	vsidlib.tgt \
@@ -375,6 +408,7 @@ EXTRA_DIST = \
 	xcbm5x0.tgt \
 	xpet.tgt \
 	xplus4.tgt \
+	xscpu64.tgt \
 	xvic.tgt
 
 all: all-am

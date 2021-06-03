@@ -37,6 +37,7 @@
 
 extern "C" {
 #include "constants.h"
+#include "log.h"
 #include "machine.h"
 #include "resources.h"
 #include "sid.h"
@@ -46,12 +47,40 @@ extern "C" {
 #include "vsync.h"
 }
 
-static char *samplingmode[] = {
+/* #define DEBUG_UI */
+
+#ifdef DEBUG_UI
+void print_rect(const char *view, BRect r)
+{
+    log_debug("%s slider (Width: %.1f, Height: %.1f) (Top: %.1f, Bottom: %.1f)", view, r.Width(), r.Height(), r.top, r.bottom);
+}
+#define DBG_RECT(_x_) print_rect _x_
+#define DBG_MSG(_x_) log_debug _x_
+#else
+#define DBG_RECT(_x_)
+#define DBG_MSG(_x_)
+#endif
+
+static const char *samplingmode[] = {
     "fast sampling",
     "interpolating",
     "resampling",
     "fast resampling",
     NULL
+};
+
+typedef struct slider_res_s {
+    const char *name;
+    const char *res_name;
+    int min_val;
+    int max_val;
+} slider_res_t;
+
+static slider_res_t sliders[] = {
+    { "Passband", "SidResidPassband", 0, 90 },
+    { "Gain", "SidResidGain", 90, 100 },
+    { "Bias", "SidResidFilterBias", -5000, 5000 },
+    { NULL, NULL, 0, 0 }
 };
 
 static sid_engine_model_t **sid_engine_model_list;
@@ -62,11 +91,10 @@ class SidWindow : public BWindow {
         BOptionPopUp *engine_model_popup;
         BOptionPopUp *second_sid_popup;
         BOptionPopUp *third_sid_popup;
-        BSlider *passbandslider;
         BBox *extrasidbox;
         BBox *residbox;
 
-        BOptionPopUp *CreateAddressPopUp(BRect r, char *label, char *resource);
+        BOptionPopUp *CreateAddressPopUp(BRect r, const char *label, const char *resource);
         void EnableReSidControls(int engine);
     public:
         SidWindow();
@@ -76,7 +104,7 @@ class SidWindow : public BWindow {
 
 static SidWindow *sidwindow = NULL;
 
-BOptionPopUp *SidWindow::CreateAddressPopUp(BRect r, char *label, char *resource)
+BOptionPopUp *SidWindow::CreateAddressPopUp(BRect r, const char *label, const char *resource)
 {
     BOptionPopUp *address_popup;
     char st[12];
@@ -107,20 +135,21 @@ void SidWindow::EnableReSidControls(int engine)
 
     children = residbox->CountChildren();
     for (i = 0; i < children; i++) {
-        ((BControl *)residbox->ChildAt(i))->SetEnabled((engine == SID_ENGINE_RESID) || (engine == SID_ENGINE_RESID_FP));
+        ((BControl *)residbox->ChildAt(i))->SetEnabled(engine == SID_ENGINE_RESID);
     }
 
 }
 
 SidWindow::SidWindow() 
-    : BWindow(BRect(250, 50, 500, 310), "SID settings", B_TITLED_WINDOW_LOOK, B_MODAL_APP_WINDOW_FEEL, B_NOT_ZOOMABLE | B_NOT_RESIZABLE) 
+    : BWindow(BRect(250, 50, 580, 420), "SID settings", B_TITLED_WINDOW_LOOK, B_MODAL_APP_WINDOW_FEEL, B_NOT_ZOOMABLE | B_NOT_RESIZABLE) 
 {
     BMessage *msg;
     BCheckBox *checkbox;
     BRect r;
     BRadioButton *radiobutton;
+    BSlider *slider;
     BView *background;
-    char st[12];
+    char st[12], st2[12];
     int engine, res_val, i;
 
     r = Bounds();
@@ -134,7 +163,7 @@ SidWindow::SidWindow()
     resources_get_int("SidEngine", &engine);
     res_val = engine << 8;
     res_val |= i;
-    engine_model_popup = new BOptionPopUp(BRect(10, 10, 240, 34), "SID Engine/Model", "SID Engine/Model", new BMessage(MESSAGE_SID_MODEL));
+    engine_model_popup = new BOptionPopUp(BRect(10, 10, 330, 34), "SID Engine/Model", "SID Engine/Model", new BMessage(MESSAGE_SID_MODEL));
     for (i = 0; sid_engine_model_list[i] != NULL; i++) {
         engine_model_popup->AddOption(sid_engine_model_list[i]->name, sid_engine_model_list[i]->value);
     }
@@ -148,7 +177,7 @@ SidWindow::SidWindow()
     background->AddChild(checkbox);
 
     if (sidaddressbase) {
-        extrasidbox = new BBox(BRect(10, 60, 240, 140), "Extra SID chips");
+        extrasidbox = new BBox(BRect(10, 60, 320, 140), "Extra SID chips");
         extrasidbox->SetViewColor(220, 220, 220, 0);
         extrasidbox->SetLabel("Extra SID chips");
         background->AddChild(extrasidbox);
@@ -177,16 +206,16 @@ SidWindow::SidWindow()
         extrasidbox = NULL;
         second_sid_popup = NULL;
         third_sid_popup = NULL;
-        ResizeTo(250, 170);
+        ResizeTo(330, 270);
     }
 
     /* reSID settings */
     r = Bounds();
     r.InsetBy(10, 10);
-    r.top = r.bottom - 100;
-    residbox = new BBox(r, "reSID/reSID-fp settings");
-    residbox->SetViewColor(220, 220, 220, 0);
-    residbox->SetLabel("reSID/reSID-fp settings");
+    r.top = r.bottom - 200;
+    residbox = new BBox(r, "reSID settings");
+    //~ residbox->SetViewColor(220, 220, 220, 0);
+    residbox->SetLabel("reSID settings");
     background->AddChild(residbox);
     r = residbox->Bounds();
 
@@ -195,18 +224,30 @@ SidWindow::SidWindow()
     for (i = 0; samplingmode[i] != NULL; i++) {
         msg = new BMessage(MESSAGE_SID_RESIDSAMPLING);
         msg->AddInt32("mode", i);
-        radiobutton = new BRadioButton(BRect(10, 15 + i * 20, r.Width() / 2 - 10, 30 + i * 20), samplingmode[i], samplingmode[i], msg);
+        radiobutton = new BRadioButton(BRect(10, 15 + i * 25, r.Width() / 2, 30 + i * 25), samplingmode[i], samplingmode[i], msg);
         radiobutton->SetValue(res_val == i);
         residbox->AddChild(radiobutton);
     }
 
-    resources_get_int("SidResidPassband", &res_val);
-    passbandslider = new BSlider(BRect(r.Width() / 2 + 10, 20, r.Width() - 10, 60), "Passband", "Passband", new BMessage(MESSAGE_SID_RESIDPASSBAND), 0, 90, B_TRIANGLE_THUMB);
-    passbandslider->SetValue(res_val);
-    passbandslider->SetHashMarkCount(10);
-    passbandslider->SetHashMarks(B_HASH_MARKS_BOTTOM);
-    passbandslider->SetLimitLabels("0", "90");
-    residbox->AddChild(passbandslider);
+    //~ r = residbox->Bounds();
+    //~ r = BRect(r.Width() / 2, 15, r.Width() - 10, 65);
+    r.left = r.Width() / 2 - 10;
+    r.bottom = 80;
+    r.InsetBy(10, 15);
+    for (i = 0; sliders[i].name; i++) {
+        resources_get_int(sliders[i].res_name, &res_val);
+        msg = new BMessage(MESSAGE_SID_RESIDSLIDER);
+        slider = new BSlider(r, sliders[i].res_name, sliders[i].name, msg, sliders[i].min_val, sliders[i].max_val, B_TRIANGLE_THUMB);
+        slider->SetValue(res_val);
+        slider->SetHashMarkCount(11);
+        slider->SetHashMarks(B_HASH_MARKS_BOTTOM);
+        sprintf(st, "%d", sliders[i].min_val);
+        sprintf(st2, "%d", sliders[i].max_val);
+        slider->SetLimitLabels(st, st2);
+        residbox->AddChild(slider);
+        DBG_RECT((sliders[i].name, slider->Frame()));
+        r.OffsetBy(0, 60);
+    }
 
     EnableReSidControls(engine);
 
@@ -220,7 +261,7 @@ SidWindow::~SidWindow()
 
 void SidWindow::MessageReceived(BMessage *msg)
 {
-    BOptionPopUp *address_popup;
+    BControl *control;
     int32 engine, val;
 
     switch (msg->what) {
@@ -244,17 +285,20 @@ void SidWindow::MessageReceived(BMessage *msg)
             }
             break;
         case MESSAGE_SID_ADDRESS:
-            msg->FindPointer("source", (void **)&address_popup);
-            if (address_popup) {
-                resources_set_int(address_popup->Name(), address_popup->Value());
+        case MESSAGE_SID_RESIDSLIDER:
+            msg->FindPointer("source", (void **)&control);
+            if (control) {
+                DBG_MSG(("Setting resource %s to %d", control->Name(), control->Value()));
+                resources_set_int(control->Name(), control->Value());
+#ifdef DEBUG_UI
+                resources_get_int(control->Name(), (int *)&val);
+                DBG_MSG(("Resource %s set to %d", control->Name(), val));
+#endif
             }
             break;
         case MESSAGE_SID_RESIDSAMPLING:
             val = msg->FindInt32("mode");
             resources_set_int("SidResidSampling", val);
-            break;
-        case MESSAGE_SID_RESIDPASSBAND:
-            resources_set_int("SidResidPassband", passbandslider->Value());
             break;
         default:
             BWindow::MessageReceived(msg);

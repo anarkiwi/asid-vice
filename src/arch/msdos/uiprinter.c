@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 
+#include "machine.h"
 #include "printer.h"
 #include "resources.h"
 #include "tuimenu.h"
@@ -70,8 +71,6 @@ TUI_MENU_DEFINE_RADIO(PrinterUserportDriver)
 static tui_menu_item_def_t printerusdriver_submenu[] = {
     { "_ASCII", NULL, radio_PrinterUserportDriver_callback,
       (void *)"ascii", 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
-    { "_MPS803", NULL, radio_PrinterUserportDriver_callback,
-      (void *)"mps803", 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
     { "_NL10", NULL, radio_PrinterUserportDriver_callback,
       (void *)"nl10", 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
     { "_RAW", NULL, radio_PrinterUserportDriver_callback,
@@ -108,7 +107,7 @@ static tui_menu_item_def_t printerus_submenu[] = {
       "Text output file/device" },
     { "--" },
     { "Send _form feed", "Send a form feed to the printer",
-      form_feed_callback, (void *)2, 0,
+      form_feed_callback, (void *)3, 0,
       TUI_MENU_BEH_CLOSE, NULL, NULL },
     { NULL }
 };
@@ -256,6 +255,64 @@ static tui_menu_item_def_t printer5_submenu[] = {
     { NULL }
 };
 
+TUI_MENU_DEFINE_RADIO(Printer6)
+
+static tui_menu_item_def_t printer6dev_submenu[] = {
+    { "_None", NULL, radio_Printer6_callback,
+      (void *)PRINTER_DEVICE_NONE, 19, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_File system access", NULL, radio_Printer6_callback,
+      (void *)PRINTER_DEVICE_FS, 19, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+TUI_MENU_DEFINE_RADIO(Printer6Driver)
+
+static tui_menu_item_def_t printer6driver_submenu[] = {
+    { "_1520", NULL, radio_Printer6Driver_callback,
+      (void *)"1520", 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_RAW", NULL, radio_Printer6Driver_callback,
+      (void *)"raw", 7, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+TUI_MENU_DEFINE_RADIO(Printer6TextDevice)
+
+static tui_menu_item_def_t printer6_text_submenu[] = {
+    { "_1", NULL, radio_Printer6TextDevice_callback,
+      (void *)0, 2, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_2", NULL, radio_Printer6TextDevice_callback,
+      (void *)1, 2, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { "_3", NULL, radio_Printer6TextDevice_callback,
+      (void *)2, 2, TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
+TUI_MENU_DEFINE_TOGGLE(IECDevice6)
+
+static tui_menu_item_def_t printer6_submenu[] = {
+    { "_Printer device:", "Select the printer device",
+      printer_device_submenu_callback, "Printer6", 19,
+      TUI_MENU_BEH_CONTINUE, printer6dev_submenu,
+      "Printer #6 device" },
+    { "_IEC device:", "Enable IEC device emulation for printer #6",
+      toggle_IECDevice6_callback, NULL, 3,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Printer _driver:", "Select the printer driver",
+      printer_driver_submenu_callback, "Printer6Driver", 7,
+      TUI_MENU_BEH_CONTINUE, printer6driver_submenu,
+      "Printer #6 driver" },
+    { "_Text output file/device:",
+      "Select the number of the text output file/device",
+      printer_text_submenu_callback, "Printer6TextDevice", 2,
+      TUI_MENU_BEH_CONTINUE, printer6_text_submenu,
+      "Text output file/device" },
+    { "--" },
+    { "Send _form feed", "Send a form feed to the printer",
+      form_feed_callback, (void *)2, 0,
+      TUI_MENU_BEH_CLOSE, NULL, NULL },
+    { NULL }
+};
+
 static TUI_MENU_CALLBACK(text_output_file_callback)
 {
     const char *s;
@@ -265,13 +322,15 @@ static TUI_MENU_CALLBACK(text_output_file_callback)
     return s;
 }
 
-static tui_menu_item_def_t printer_submenu[] = {
+static tui_menu_item_def_t printer_with_userport_submenu[] = {
     { "_Userport printer...", "Settings for userport printer", NULL, NULL, 0,
       TUI_MENU_BEH_CONTINUE, printerus_submenu, "Userport printer settings" },
     { "Printer #_4...", "Settings for printer #4", NULL, NULL, 0,
       TUI_MENU_BEH_CONTINUE, printer4_submenu, "Printer #4 settings" },
     { "Printer #_5...", "Settings for printer #5", NULL, NULL, 0,
       TUI_MENU_BEH_CONTINUE, printer5_submenu, "Printer #5 settings" },
+    { "Printer #_6...", "Settings for printer #6", NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, printer6_submenu, "Printer #6 settings" },
     { "--" },
     { "Text output file/device _1:",
       "Select the text output file or device",
@@ -288,12 +347,41 @@ static tui_menu_item_def_t printer_submenu[] = {
     { NULL }
 };
 
+static tui_menu_item_def_t printer_submenu[] = {
+    { "Printer #_4...", "Settings for printer #4", NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, printer4_submenu, "Printer #4 settings" },
+    { "Printer #_5...", "Settings for printer #5", NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, printer5_submenu, "Printer #5 settings" },
+    { "Printer #_6...", "Settings for printer #6", NULL, NULL, 0,
+      TUI_MENU_BEH_CONTINUE, printer6_submenu, "Printer #6 settings" },
+    { "--" },
+    { "Text output file/device _1:",
+      "Select the text output file or device",
+      text_output_file_callback, (void *)"PrinterTextDevice1", 20,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Text output file/device _2:",
+      "Select the text output file or device",
+      text_output_file_callback, (void *)"PrinterTextDevice2", 20,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Text output file/device _3:",
+      "Select the text output file or device",
+      text_output_file_callback, (void *)"PrinterTextDevice3", 20,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { NULL }
+};
 
 void uiprinter_init(struct tui_menu *parent_submenu)
 {
     tui_menu_t tmp = tui_menu_create("Printer settings", 1);
 
-    tui_menu_add(tmp, printer_submenu);
+    if (machine_class != VICE_MACHINE_VSID &&
+        machine_class != VICE_MACHINE_C64DTV &&
+        machine_class != VICE_MACHINE_PLUS4) {
+        tui_menu_add(tmp, printer_with_userport_submenu);
+    } else {
+        tui_menu_add(tmp, printer_submenu);
+    }
+
     tui_menu_add_submenu(parent_submenu,
                          "P_rinter settings...",
                          "Various printer settings",

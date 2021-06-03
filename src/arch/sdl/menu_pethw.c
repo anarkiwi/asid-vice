@@ -32,16 +32,21 @@
 
 #include "machine.h"
 #include "menu_common.h"
+#include "menu_joyport.h"
 #include "menu_joystick.h"
+#include "menu_mouse.h"
 #include "menu_ram.h"
 #include "menu_rom.h"
+#include "pet.h"
 #include "petmodel.h"
+#include "pet-resources.h"
 
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "menu_rs232.h"
 #endif
 
 #include "menu_sid.h"
+#include "menu_tape.h"
 #include "pets.h"
 #include "uimenu.h"
 
@@ -167,6 +172,33 @@ static const ui_menu_entry_t petdww_menu[] = {
     SDL_MENU_LIST_END
 };
 
+/* PETCOLOUR */
+
+UI_MENU_DEFINE_RADIO(PETColour)
+UI_MENU_DEFINE_SLIDER(PETColourBG, 0, 255)
+
+static const ui_menu_entry_t petcolour_menu[] = {
+    SDL_MENU_ITEM_TITLE("PET Colour type"),
+    { "Off",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_PETColour_callback,
+      (ui_callback_data_t)PET_COLOUR_TYPE_OFF },
+    { "RGBI",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_PETColour_callback,
+      (ui_callback_data_t)PET_COLOUR_TYPE_RGBI },
+    { "Analog",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_PETColour_callback,
+      (ui_callback_data_t)PET_COLOUR_TYPE_ANALOG },
+    SDL_MENU_ITEM_SEPARATOR,
+    { "PET Colour background",
+      MENU_ENTRY_RESOURCE_INT,
+      slider_PETColourBG_callback,
+      (ui_callback_data_t)"Set PET Colour background (0-255)" },
+    SDL_MENU_LIST_END
+};
+
 /* PET MODEL SELECTION */
 
 static UI_MENU_CALLBACK(custom_PETModel_callback)
@@ -204,22 +236,65 @@ static const ui_menu_entry_t pet_model_menu[] = {
     SDL_MENU_LIST_END
 };
 
-UI_MENU_DEFINE_RADIO(KeymapIndex)
+UI_MENU_DEFINE_RADIO(KeyboardType)
 
 static const ui_menu_entry_t pet_keyboard_menu[] = {
-    { "Graphics",
+    { "Business (US)",
       MENU_ENTRY_RESOURCE_RADIO,
-      radio_KeymapIndex_callback,
-      (ui_callback_data_t)2 },
+      radio_KeyboardType_callback,
+      (ui_callback_data_t)KBD_TYPE_BUSINESS_US },
     { "Business (UK)",
       MENU_ENTRY_RESOURCE_RADIO,
-      radio_KeymapIndex_callback,
-      (ui_callback_data_t)0 },
+      radio_KeyboardType_callback,
+      (ui_callback_data_t)KBD_TYPE_BUSINESS_UK },
+    { "Business (DE)",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_KeyboardType_callback,
+      (ui_callback_data_t)KBD_TYPE_BUSINESS_DE },
+    { "Business (JP)",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_KeyboardType_callback,
+      (ui_callback_data_t)KBD_TYPE_BUSINESS_JP },
+    { "Graphics (US)",
+      MENU_ENTRY_RESOURCE_RADIO,
+      radio_KeyboardType_callback,
+      (ui_callback_data_t)KBD_TYPE_GRAPHICS_US },
+    SDL_MENU_LIST_END
+};
+
+UI_MENU_DEFINE_TOGGLE(UserportDAC)
+UI_MENU_DEFINE_TOGGLE(UserportRTCDS1307)
+UI_MENU_DEFINE_TOGGLE(UserportRTCDS1307Save)
+UI_MENU_DEFINE_TOGGLE(UserportRTC58321a)
+UI_MENU_DEFINE_TOGGLE(UserportRTC58321aSave)
+
+static const ui_menu_entry_t userport_menu[] = {
+    SDL_MENU_ITEM_TITLE("Userport devices"),
+    { "8 bit DAC enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportDAC_callback,
+      NULL },
+    { "RTC (58321a) enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTC58321a_callback,
+      NULL },
+    { "Save RTC (58321a) data when changed",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTC58321aSave_callback,
+      NULL },
+    { "RTC (DS1307) enable",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTCDS1307_callback,
+      NULL },
+    { "Save RTC (DS1307) data when changed",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_UserportRTCDS1307Save_callback,
+      NULL },
     SDL_MENU_LIST_END
 };
 
 UI_MENU_DEFINE_TOGGLE(Crtc)
-UI_MENU_DEFINE_TOGGLE(UserportDAC)
+UI_MENU_DEFINE_TOGGLE(PETHRE)
 
 const ui_menu_entry_t pet_hardware_menu[] = {
     { "Select PET model",
@@ -231,10 +306,20 @@ const ui_menu_entry_t pet_hardware_menu[] = {
       submenu_radio_callback,
       (ui_callback_data_t)pet_keyboard_menu },
     SDL_MENU_ITEM_SEPARATOR,
+    { "Joyport settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)joyport_menu },
     { "Joystick settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)joystick_userport_only_menu },
+#ifdef HAVE_MOUSE
+    { "Mouse emulation",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)mouse_grab_menu },
+#endif
     { "SID cart settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -255,10 +340,22 @@ const ui_menu_entry_t pet_hardware_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)petdww_menu },
-    { "PET Userport DAC enable",
+    { "PET Colour settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)petcolour_menu },
+    { "Enable PET High Res Emulation board",
       MENU_ENTRY_RESOURCE_TOGGLE,
-      toggle_UserportDAC_callback,
+      toggle_PETHRE_callback,
       NULL },
+    { "Userport devices",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)userport_menu },
+    { "Tape port devices",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)tapeport_devices_menu },
     { "Memory and I/O settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -267,7 +364,7 @@ const ui_menu_entry_t pet_hardware_menu[] = {
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_Crtc_callback,
       NULL },
-#ifdef HAVE_RS232
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
     { "RS232 settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,

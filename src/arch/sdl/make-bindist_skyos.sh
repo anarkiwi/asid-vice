@@ -1,10 +1,32 @@
 #!/bin/sh
-# make-bindist.sh for the SkyOS SDL port
+
 #
-# written by Marco van den Heuvel <blackystardust68@yahoo.com>
+# make-bindist.sh - make binary distribution for the SkyOS SDL port
 #
-# make-bindist.sh <strip> <vice-version> <prefix> <--enable-arch> <zip|nozip> <x64sc-included> <topsrcdir>
-#                 $1      $2             $3       $4              $5          $6               $7
+# Written by
+#  Marco van den Heuvel <blackystardust68@yahoo.com>
+#
+# This file is part of VICE, the Versatile Commodore Emulator.
+# See README for copyright notice.
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+#  02111-1307  USA.
+#
+# Usage: make-bindist.sh <strip> <vice-version> <prefix> <--enable-arch> <zip|nozip> <x64sc-included> <topsrcdir>
+#                         $1      $2             $3       $4              $5          $6               $7
+#
 
 STRIP=$1
 VERSION=$2
@@ -25,7 +47,7 @@ else
   SCFILE=""
 fi
 
-EMULATORS="x64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic vsid"
+EMULATORS="x64 xscpu64 x64dtv $SCFILE x128 xcbm2 xcbm5x0 xpet xplus4 xvic vsid"
 CONSOLE_TOOLS="c1541 cartconv petcat"
 EXECUTABLES="$EMULATORS $CONSOLE_TOOLS"
 
@@ -76,6 +98,7 @@ DefaultPath=
 [PANELMENU]
 /menu="Emulators/SDLVICE"	/name="vsid"	/link="/boot/programs/SDLVICE/bin/vsid.app"	/icon="/boot/programs/SDLVICE/icons/vsid.ico"
 /menu="Emulators/SDLVICE"	/name="x64"	/link="/boot/programs/SDLVICE/bin/x64.app"		/icon="/boot/programs/SDLVICE/icons/x64.ico"   
+/menu="Emulators/SDLVICE"	/name="xscpu64"	/link="/boot/programs/SDLVICE/bin/xscpu64.app"		/icon="/boot/programs/SDLVICE/icons/xscpu64.ico"   
 /menu="Emulators/SDLVICE"	/name="x64dtv"	/link="/boot/programs/SDLVICE/bin/x64dtv.app"		/icon="/boot/programs/SDLVICE/icons/x64dtv.ico"   
 _end
 
@@ -96,6 +119,7 @@ cat >>SDLVICE-$VERSION/install.sif <<_END
 [FILEICONS]
 /file="\$INSTALL_ROOT/programs/SDLVICE/bin/vsid.app"	/icon="/boot/programs/SDLVICE/icons/vsid.ico"
 /file="\$INSTALL_ROOT/programs/SDLVICE/bin/x64.app"	/icon="/boot/programs/SDLVICE/icons/x64.ico"
+/file="\$INSTALL_ROOT/programs/SDLVICE/bin/xscpu64.app"	/icon="/boot/programs/SDLVICE/icons/xscpu64.ico"
 /file="\$INSTALL_ROOT/programs/SDLVICE/bin/x64dtv.app"	/icon="/boot/programs/SDLVICE/icons/x64dtv.ico"
 _END
 
@@ -114,7 +138,10 @@ cat >>SDLVICE-$VERSION/install.sif <<_END
 /file="\$INSTALL_ROOT/programs/SDLVICE/bin/xvic.app"	/icon="/boot/programs/SDLVICE/icons/xvic.ico"
 
 [SS_DESCRIPTION]
-VICE is a program that runs on a Unix, MS-DOS, Win32, OS/2, Acorn RISC OS, BeOS, QNX, SkyOS, Amiga, GP2X or Mac OS X machine and executes programs intended for the old 8-bit computers. The current version emulates the C64, the C128, the VIC20, almost all PET models, the PLUS4 and the CBM-II (aka C610).
+VICE is a program that runs on a Unix, MS-DOS, Win32, OS/2, BeOS, QNX, 
+SkyOS, Amiga or Mac OS X machine and executes programs intended for the 
+old 8-bit computers. The current version emulates the C64, the C128, the 
+VIC20, practically all PET models, the PLUS4 and the CBM-II (aka C610).
 [/SS_DESCRIPTION]
 
 [END]

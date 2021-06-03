@@ -4,6 +4,7 @@
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * Based on the original work in VICE 0.11.0 by
  *  Jouko Valta <jopi@stekt.oulu.fi>
@@ -49,6 +50,7 @@
 #include "cartio.h"
 #include "cartridge.h"
 #include "cia.h"
+#include "clkguard.h"
 #include "functionrom.h"
 #include "georam.h"
 #include "keyboard.h"
@@ -63,6 +65,7 @@
 #include "types.h"
 #include "vdc-mem.h"
 #include "vdc.h"
+#include "vdctypes.h"
 #include "vicii-mem.h"
 #include "vicii-phi1.h"
 #include "vicii.h"
@@ -125,6 +128,9 @@ static int vbank = 0;
 /* Tape sense status: 1 = some button pressed, 0 = no buttons pressed.  */
 static int tape_sense = 0;
 
+static int tape_write_in = 0;
+static int tape_motor_in = 0;
+
 /* Current memory configuration.  */
 static int mem_config;
 
@@ -173,6 +179,11 @@ static void mem_update_chargen(unsigned int chargen_high)
     BYTE *old_chargen_rom_ptr;
 
     old_chargen_rom_ptr = mem_chargen_rom_ptr;
+
+    /* invert line on international version, fixes bug #781 */
+    if (mem_machine_type == C128_MACHINE_INT) {
+        chargen_high = chargen_high ? 0 : 1;
+    }
 
     if (chargen_high) {
         mem_chargen_rom_ptr = mem_chargen_rom;
@@ -233,6 +244,8 @@ void mem_update_config(int config)
 void mem_set_machine_type(unsigned type)
 {
     mem_machine_type = type;
+    caps_sense = 1;
+    mem_pla_config_changed();
 }
 
 /* Change the current video bank.  Call this routine only when the vbank
@@ -282,10 +295,14 @@ void mem_set_ram_config(BYTE value)
 
 void mem_pla_config_changed(void)
 {
-    c64pla_config_changed(tape_sense, caps_sense, 0x57);
+    /* NOTE: on the international/US version of the hardware, there is no DIN/ASCII key -
+             instead this key is caps lock */
+    c64pla_config_changed(tape_sense, tape_write_in, tape_motor_in, caps_sense, 0x57);
 
     mmu_set_config64(((~pport.dir | pport.data) & 0x7) | (export.exrom << 3) | (export.game << 4));
 
+    /* on the international version, A8 of the chargen comes from the c64/c128 mode, not
+       from the status of the DIN/ASCII (capslock) key */
     if (mem_machine_type != C128_MACHINE_INT) {
         mem_update_chargen(pport.data_read & 0x40);
     }
@@ -300,15 +317,63 @@ static void mem_toggle_caps_key(void)
 
 /* ------------------------------------------------------------------------- */
 
+/* $00/$01 unused bits emulation
+
+   - There are 2 different unused bits, 1) the output bits, 2) the input bits
+   - The output bits can be (re)set when the data-direction is set to output
+     for those bits and the output bits will not drop-off to 0.
+   - When the data-direction for the unused bits is set to output then the
+     unused input bits can be (re)set by writing to them, when set to 1 the
+     drop-off timer will start which will cause the unused input bits to drop
+     down to 0 in a certain amount of time.
+   - When an unused input bit already had the drop-off timer running, and is
+     set to 1 again, the drop-off timer will restart.
+   - when an unused bit changes from output to input, and the current output
+     bit is 1, the drop-off timer will restart again
+
+    see testprogs/CPU/cpuport for details and tests
+*/
+
+static void clk_overflow_callback(CLOCK sub, void *unused_data)
+{
+    if (pport.data_set_clk_bit7 > (CLOCK)0) {
+        pport.data_set_clk_bit7 -= sub;
+    }
+    if (pport.data_falloff_bit7 && (pport.data_set_clk_bit7 < maincpu_clk)) {
+        pport.data_falloff_bit7 = 0;
+        pport.data_set_bit7 = 0;
+    }
+}
+
 BYTE zero_read(WORD addr)
 {
-    addr &= 0xff;
+    BYTE retval;
+    
+	addr &= 0xff;
 
     switch ((BYTE)addr) {
         case 0:
             return pport.dir_read;
         case 1:
-            return pport.data_read;
+            retval = pport.data_read;
+
+            /* discharge the "capacitor" */
+
+            /* set real value of read bit 7 */
+            if (pport.data_falloff_bit7 && (pport.data_set_clk_bit7 < maincpu_clk)) {
+                pport.data_falloff_bit7 = 0;
+                pport.data_set_bit7 = 0;
+            }
+
+            /* for unused bits in input mode, the value comes from the "capacitor" */
+
+            /* set real value of bit 7 */
+            if (!(pport.dir_read & 0x80)) {
+               retval &= ~0x80;
+               retval |= pport.data_set_bit7;
+            }
+
+            return retval;
     }
 
     return mem_page_zero[addr];
@@ -325,11 +390,24 @@ void zero_store(WORD addr, BYTE value)
                 vicii_mem_vbank_store((WORD)0, vicii_read_phi1_lowlevel());
             } else {
 #endif
-                mem_page_zero[0] = vicii_read_phi1_lowlevel();
-                machine_handle_pending_alarms(maincpu_rmw_flag + 1);
+            mem_page_zero[0] = vicii_read_phi1_lowlevel();
+            machine_handle_pending_alarms(maincpu_rmw_flag + 1);
 #if 0
-            }
+    }
 #endif
+            /* when switching an unused bit from output (where it contained a
+               stable value) to input mode (where the input is floating), some
+               of the charge is transferred to the floating input */
+
+            /* check if bit 7 has flipped */
+            if ((pport.dir & 0x80)) {
+                if ((pport.dir ^ value) & 0x80) {
+                    pport.data_set_clk_bit7 = maincpu_clk + C128_CPU8502_DATA_PORT_FALL_OFF_CYCLES;
+                    pport.data_set_bit7 = pport.data & 0x80;
+                    pport.data_falloff_bit7 = 1;
+                }
+            }
+
             if (pport.dir != value) {
                 pport.dir = value;
                 mem_pla_config_changed();
@@ -341,11 +419,19 @@ void zero_store(WORD addr, BYTE value)
                 vicii_mem_vbank_store((WORD)1, vicii_read_phi1_lowlevel());
             } else {
 #endif
-                mem_page_zero[1] = vicii_read_phi1_lowlevel();
-                machine_handle_pending_alarms(maincpu_rmw_flag + 1);
+            mem_page_zero[1] = vicii_read_phi1_lowlevel();
+            machine_handle_pending_alarms(maincpu_rmw_flag + 1);
 #if 0
-            }
+    }
 #endif
+            /* when writing to an unused bit that is output, charge the "capacitor",
+               otherwise don't touch it */
+            if (pport.dir & 0x80) {
+                pport.data_set_bit7 = value & 0x80;
+                pport.data_set_clk_bit7 = maincpu_clk + C128_CPU8502_DATA_PORT_FALL_OFF_CYCLES;
+                pport.data_falloff_bit7 = 1;
+            }
+
             if (pport.data != value) {
                 pport.data = value;
                 mem_pla_config_changed();
@@ -357,9 +443,9 @@ void zero_store(WORD addr, BYTE value)
                 vicii_mem_vbank_store(addr, value);
             } else {
 #endif
-                mem_page_zero[addr] = value;
+            mem_page_zero[addr] = value;
 #if 0
-            }
+    }
 #endif
     }
 }
@@ -609,6 +695,8 @@ void mem_initialize_memory(void)
 {
     int i, j, k;
 
+    clk_guard_add_callback(maincpu_clk_guard, clk_overflow_callback, NULL);
+
     mem_chargen_rom_ptr = mem_chargen_rom;
     mem_color_ram_cpu = mem_color_ram;
     mem_color_ram_vicii = mem_color_ram;
@@ -755,7 +843,8 @@ void mem_initialize_memory(void)
 #pragma optimize("",on)
 #endif
 
-void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit) {
+void mem_mmu_translate(unsigned int addr, BYTE **base, int *start, int *limit)
+{
     BYTE *p = _mem_read_base_tab_ptr[addr >> 8];
 
     *base = (p == NULL) ? NULL : p;
@@ -778,6 +867,20 @@ void mem_powerup(void)
 void mem_set_tape_sense(int sense)
 {
     tape_sense = sense;
+    mem_pla_config_changed();
+}
+
+/* Set the tape write in. */
+void mem_set_tape_write_in(int val)
+{
+    tape_write_in = val;
+    mem_pla_config_changed();
+}
+
+/* Set the tape motor in. */
+void mem_set_tape_motor_in(int val)
+{
+    tape_motor_in = val;
     mem_pla_config_changed();
 }
 
@@ -945,7 +1048,7 @@ static BYTE peek_bank_io(WORD addr)
         case 0xd500:
             return mmu_peek(addr);
         case 0xd600:
-            return vdc_read(addr);
+            return vdc_peek(addr);
         case 0xd700:
             return c64io_d700_peek(addr);
         case 0xd800:
@@ -1047,8 +1150,8 @@ BYTE mem_bank_read(int bank, WORD addr, void *context)
             }
             break;
         case 6:
-            if (addr >= 0x8000 && addr <= 0xbfff) {
-                return ext_function_rom[addr & 0x3fff];
+            if (addr >= 0x8000) {
+                return ext_function_rom[addr & 0x7fff];
             }
             break;
         case 7:
@@ -1074,10 +1177,10 @@ BYTE mem_bank_peek(int bank, WORD addr, void *context)
 {
     switch (bank) {
         case 0:                   /* current */
-             /* FIXME: we must check for which bank is currently active, and only use peek_bank_io
-                       when needed. doing this without checking is wrong, but we do it anyways to
-                       avoid side effects
-            */
+            /* FIXME: we must check for which bank is currently active, and only use peek_bank_io
+                      when needed. doing this without checking is wrong, but we do it anyways to
+                      avoid side effects
+           */
             if (addr >= 0xd000 && addr < 0xe000) {
                 return peek_bank_io(addr);
             }
@@ -1152,7 +1255,7 @@ void mem_bank_write(int bank, WORD addr, BYTE byte, void *context)
     mem_ram[addr] = byte;
 }
 
-static int mem_dump_io(WORD addr)
+static int mem_dump_io(void *context, WORD addr)
 {
     if ((addr >= 0xdc00) && (addr <= 0xdc3f)) {
         return ciacore_dump(machine_context.cia1);
@@ -1166,9 +1269,10 @@ mem_ioreg_list_t *mem_ioreg_list_get(void *context)
 {
     mem_ioreg_list_t *mem_ioreg_list = NULL;
 
-    mon_ioreg_add_list(&mem_ioreg_list, "MMU", 0xd500, 0xd50b, mmu_dump);
-    mon_ioreg_add_list(&mem_ioreg_list, "CIA1", 0xdc00, 0xdc0f, mem_dump_io);
-    mon_ioreg_add_list(&mem_ioreg_list, "CIA2", 0xdd00, 0xdd0f, mem_dump_io);
+    mon_ioreg_add_list(&mem_ioreg_list, "MMU", 0xd500, 0xd50b, mmu_dump, NULL);
+    mon_ioreg_add_list(&mem_ioreg_list, "VDC", 0xd600, 0xd601, vdc_dump, NULL);
+    mon_ioreg_add_list(&mem_ioreg_list, "CIA1", 0xdc00, 0xdc0f, mem_dump_io, NULL);
+    mon_ioreg_add_list(&mem_ioreg_list, "CIA2", 0xdd00, 0xdd0f, mem_dump_io, NULL);
 
     io_source_ioreg_add_list(&mem_ioreg_list);
 
@@ -1177,10 +1281,18 @@ mem_ioreg_list_t *mem_ioreg_list_get(void *context)
 
 void mem_get_screen_parameter(WORD *base, BYTE *rows, BYTE *columns, int *bank)
 {
-    *base = ((vicii_peek(0xd018) & 0xf0) << 6) | ((~cia2_peek(0xdd00) & 0x03) << 14);
-    *rows = 25;
-    *columns = 40;
-    *bank = 0;
+    /* Check the 40/80 DISPLAY switch state */
+    if (peek_bank_io(0xD505) & 0x80) { /* 40 column so read VIC screen */
+        *base = ((vicii_peek(0xd018) & 0xf0) << 6) | ((~cia2_peek(0xdd00) & 0x03) << 14);
+        *rows = 25;
+        *columns = 40;
+        *bank = 0;
+    } else { /* Read VDC */
+        *base = (vdc.regs[12] << 8) | vdc.regs[13];
+        *rows = vdc.regs[6];
+        *columns = vdc.regs[1];
+        *bank = 9;
+    }
 }
 
 /* ------------------------------------------------------------------------- */

@@ -33,6 +33,7 @@
 #include <ctype.h>
 
 #include "archdep.h"
+#include "keyboard.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
@@ -57,7 +58,7 @@ typedef struct WSAData {
 } WSADATA;
 typedef WSADATA *LPWSADATA;
 
-extern int PASCAL WSAStartup(WORD,LPWSADATA);
+extern int PASCAL WSAStartup(WORD, LPWSADATA);
 extern int PASCAL WSACleanup(void);
 
 static char *orig_workdir;
@@ -170,13 +171,13 @@ const char *archdep_boot_path(void)
 
     GetModuleFileName(NULL, boot_path, MAX_PATH);
 
-    checkpath=boot_path+strlen(boot_path);
+    checkpath = boot_path + strlen(boot_path);
 
     while (*checkpath != '\\') {
         checkpath--;
     }
     *checkpath = 0;
-    
+
     return boot_path;
 }
 
@@ -220,6 +221,11 @@ char *archdep_default_fliplist_file_name(void)
     return util_concat(archdep_boot_path(), "\\fliplist-", machine_get_name(), ".vfl", NULL);
 }
 
+char *archdep_default_rtc_file_name(void)
+{
+    return util_concat(archdep_boot_path(), "\\sdl-vice.rtc", NULL);
+}
+
 char *archdep_default_autostart_disk_image_file_name(void)
 {
     return util_concat(archdep_boot_path(), "\\autostart-", machine_get_name(), ".d64", NULL);
@@ -245,16 +251,6 @@ FILE *archdep_open_default_log_file(void)
     lib_free(fname);
 
     return f;
-}
-
-int archdep_num_text_lines(void)
-{
-    return 25;
-}
-
-int archdep_num_text_columns(void)
-{
-    return 80;
 }
 
 int archdep_default_logger(const char *level_string, const char *txt)
@@ -285,7 +281,7 @@ int archdep_spawn(const char *name, char **argv, char **pstdout_redir, const cha
     return -1;
 }
 
-/* return malloc´d version of full pathname of orig_name */
+/* return malloc'd version of full pathname of orig_name */
 int archdep_expand_path(char **return_path, const char *orig_name)
 {
     /*  Win32 version   */
@@ -419,6 +415,11 @@ int archdep_require_vkbd(void)
     return 0;
 }
 
+int archdep_rename(const char *oldpath, const char *newpath)
+{
+    return rename(oldpath, newpath);
+}
+
 static void archdep_shutdown_extra(void)
 {
     lib_free(argv0);
@@ -435,4 +436,15 @@ char *archdep_get_runtime_cpu(void)
 {
     /* TODO: add runtime cpu detection code */
     return "Unknown CPU";
+}
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a black (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages/actual detection
+*/
+int kbd_arch_get_host_mapping(void)
+{
+    return KBD_MAPPING_US;
 }

@@ -33,7 +33,7 @@
 #include "archdep_amiga.c"
 #endif
 
-#ifdef __BEOS__
+#ifdef BEOS_COMPILE
 #include "archdep_beos.c"
 #endif
 
@@ -53,9 +53,6 @@
 #include "archdep_cegcc.c"
 #endif
 
-#ifdef DINGOO_NATIVE
-#include "archdep_dingoo.c"
-#endif
 
 int archdep_init(int *argc, char **argv)
 {
@@ -66,7 +63,7 @@ int archdep_init(int *argc, char **argv)
 
     return archdep_init_extra(argc, argv);
 }
- 
+
 void archdep_shutdown(void)
 {
     SDL_Quit();

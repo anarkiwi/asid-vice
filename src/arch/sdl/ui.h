@@ -2,7 +2,8 @@
  * ui.h
  *
  * Written by
- *  Martin Pottendorfer (Martin.Pottendorfer@alcatel.at)
+ *  Hannu Nuotio <hannu.nuotio@tut.fi>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -35,6 +36,11 @@
 #include "uiapi.h"
 #include "uimenu.h"
 
+/* Allow native monitor code for various platforms. */
+#if defined(UNIX_COMPILE)
+#define ALLOW_NATIVE_MONITOR
+#endif
+
 /* Number of drives we support in the UI.  */
 #define NUM_DRIVES 4
 
@@ -59,7 +65,7 @@ extern void ui_display_paused(int flag);
 extern void ui_handle_misc_sdl_event(SDL_Event e);
 extern ui_menu_action_t ui_dispatch_events(void);
 extern void ui_exit(void);
-extern void ui_message(const char *format,...);
+extern void ui_message(const char *format, ...);
 extern void ui_show_text(const char *title, const char *text, int width, int height);
 extern char *ui_select_file(const char *title, char *(*read_contents_func)(const char *, unsigned int unit), unsigned int unit,
                             unsigned int allow_autostart, const char *default_dir, const char *default_pattern,
@@ -84,5 +90,7 @@ extern void ui_update_pal_ctrls(int v);
 extern void ui_common_init(void);
 extern void ui_common_shutdown(void);
 extern void ui_sdl_quit(void);
+
+extern int native_monitor;
 
 #endif

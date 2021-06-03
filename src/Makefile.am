@@ -7,8 +7,9 @@ ARCH_LIBS = @ARCH_LIBS@
 
 SUBDIRS = \
 	@RESID_DIR@ \
-	@RESID_FP_DIR@ \
 	@RESID_DTV_DIR@ \
+	samplerdrv \
+	joyport \
 	sounddrv \
 	drive \
 	vdrive \
@@ -24,6 +25,7 @@ SUBDIRS = \
 	raster \
 	vicii \
 	viciisc \
+	viciivsid \
 	vdc \
 	crtc \
 	gfxoutputdrv \
@@ -34,7 +36,10 @@ SUBDIRS = \
 	core \
 	rtc \
 	userport \
+	tapeport \
+	diag \
 	c64 \
+	scpu64 \
 	c64dtv \
 	c128 \
 	vic20 \
@@ -42,11 +47,13 @@ SUBDIRS = \
 	plus4 \
 	cbm2 \
 	arch \
-	lib/p64 \
+	lib \
 	platform
 
 DIST_SUBDIRS = \
 	sounddrv \
+	samplerdrv \
+	joyport \
 	drive \
 	vdrive \
 	fsdevice \
@@ -61,6 +68,7 @@ DIST_SUBDIRS = \
 	raster \
 	vicii \
 	viciisc \
+	viciivsid \
 	vdc \
 	crtc \
 	gfxoutputdrv \
@@ -70,8 +78,11 @@ DIST_SUBDIRS = \
 	monitor \
 	core \
 	rtc \
+	diag \
 	userport \
+	tapeport \
 	c64 \
+	scpu64 \
 	c64dtv \
 	c128 \
 	vic20 \
@@ -79,13 +90,12 @@ DIST_SUBDIRS = \
 	plus4 \
 	cbm2 \
 	arch \
-	resid \
-	resid-fp \
-	resid-dtv \
+	@RESIDSUB@ \
+	@RESIDDTVSUB@ \
 	lib \
 	platform
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -97,10 +107,14 @@ INCLUDES = \
 	-I$(top_srcdir)/src/vic20 \
 	-I$(top_srcdir)/src/vdrive \
 	-I$(top_srcdir)/src/imagecontents \
+	-I$(top_srcdir)/src/diag \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/lib/p64 \
 	-I$(top_srcdir)/src/platform \
-	-I$(top_srcdir)/src/rtc
+	-I$(top_srcdir)/src/joyport \
+	-I$(top_srcdir)/src/rtc \
+	-I$(top_srcdir)/src/tapeport \
+	-I$(top_srcdir)/src/tape
 
 noinst_HEADERS = \
 	6510core.h \
@@ -130,11 +144,13 @@ noinst_HEADERS = \
 	crc32.h \
 	datasette.h \
 	debug.h \
+	digimaxcore.c \
 	diskconstants.h \
 	diskimage.h \
 	dma.h \
 	dynlib.h \
 	embedded.h \
+	export.h \
 	fileio.h \
 	findpath.h \
 	fixpoint.h \
@@ -154,12 +170,10 @@ noinst_HEADERS = \
 	initcmdline.h \
 	interrupt.h \
 	ioutil.h \
-	joystick.h \
 	kbdbuf.h \
 	keyboard.h \
 	lib.h \
 	libm_math.h \
-	lightpen.h \
 	log.h \
 	machine-bus.h \
 	machine-drive.h \
@@ -169,6 +183,8 @@ noinst_HEADERS = \
 	main.h \
 	mainc64cpu.c \
 	mainc64cpu.h \
+	main65816cpu.c \
+	main65816cpu.h \
 	maincpu.h \
 	mainviccpu.c \
 	mem.h \
@@ -177,7 +193,6 @@ noinst_HEADERS = \
 	monitor.h \
 	mos6510.h \
 	mos6510dtv.h \
-	mouse.h \
 	network.h \
 	opencbm.h \
 	opencbmlib.h \
@@ -197,14 +212,18 @@ noinst_HEADERS = \
 	resources.h \
 	riot.h \
 	romset.h \
+	rs232dev.h \
 	rs232drv.h \
+	rs232net.h \
 	rsuser.h \
+	scpu64ui.h \
 	screenshot.h \
 	serial.h \
 	sidcart.h \
 	signals.h \
 	snapshot.h \
 	sound.h \
+	ssi2001.h \
 	sysfile.h \
 	tap.h \
 	tape.h \
@@ -228,12 +247,14 @@ noinst_HEADERS = \
 	vice-event.h \
 	vicemaxpath.h \
 	vicesocket.h \
+	vicefeatures.h \
 	vicii.h \
 	video.h \
 	viewport.h \
 	vsidui.h \
 	vsync.h \
 	vsyncapi.h \
+	wdc65816.h \
 	z80regs.h \
 	zfile.h \
 	zipcode.h
@@ -243,12 +264,12 @@ base_sources = \
 	attach.c \
 	autostart.c \
 	autostart-prg.c \
-	charset.c \
-	clkguard.c \
-	clipboard.c \
-	cmdline.c \
 	cbmdos.c \
 	cbmimage.c \
+	charset.c \
+	clipboard.c \
+	clkguard.c \
+	cmdline.c \
 	color.c \
 	crc32.c \
 	datasette.c \
@@ -264,12 +285,10 @@ base_sources = \
 	initcmdline.c \
 	interrupt.c \
 	ioutil.c \
-	joystick.c \
 	kbdbuf.c \
 	keyboard.c \
 	lib.c \
 	libm_math.c \
-	lightpen.c \
 	log.c \
 	machine-bus.c \
 	machine.c \
@@ -290,12 +309,10 @@ base_sources = \
 	translate.c \
 	traps.c \
 	util.c \
+	vicefeatures.c \
 	vsync.c \
 	zfile.c \
 	zipcode.c
-
-mouse_sources = \
-	mouse.c
 
 ps2mouse_sources = \
 	ps2mouse.c
@@ -305,16 +322,15 @@ midi_sources = \
 
 cpucore_sources = \
 	6510core.c \
-	65c02core.c
+	65c02core.c \
+	65816core.c
 
 cpudtvcore_sources = \
 	6510dtvcore.c
 
-maincpu_sources = \
-	maincpu.c
-
-EXTRA_DIST = \
+COMMON_EXTRA_DIST = \
 	6510core.c \
+	65816core.c \
 	65c02core.c \
 	6510dtvcore.c \
 	ChangeLog \
@@ -331,15 +347,125 @@ EXTRA_DIST = \
 	debug.h.in \
 	fixpoint.c \
 	geninfocontrib_h.sh \
+	gensvnversion.sh \
 	gentranslate_h.sh \
-	gentranslate_h.sh.in \
 	gentranslatetable.sh \
 	infocontrib.sed \
 	od2c.sh \
+	palette2c.c \
 	palette2c.sh \
 	piacore.c \
 	sedinfocontrib_h.sh \
-	translate.txt
+	translate.txt \
+	vice-version.sh \
+	vice-version.sh.in \
+	wrap-u-ar.sh
+
+# RESID_EXTRA_DIST is a list of files in the resid directory that need to be
+# included in the source archive, this list was added to fix the fact that
+# 'make dist' only produced a proper/workable source archive when done on a
+# platform with a c++ compiler and resid enabled.
+
+RESID_EXTRA_DIST = \
+	resid/aclocal.m4 \
+	resid/AUTHORS \
+	resid/ChangeLog \
+	resid/configure \
+	resid/configure.in \
+	resid/COPYING \
+	resid/dac.cc \
+	resid/dac.h \
+	resid/envelope.cc \
+	resid/envelope.h \
+	resid/extfilt.cc \
+	resid/extfilt.h \
+	resid/filter.cc \
+	resid/filter.h \
+	resid/INSTALL \
+	resid/Makefile.am \
+	resid/Makefile.in \
+	resid/NEWS \
+	resid/pot.cc \
+	resid/pot.h \
+	resid/README \
+	resid/README.VICE \
+	resid/resid-config.h \
+	resid/samp2src.pl \
+	resid/sid.cc \
+	resid/sid.h \
+	resid/siddefs.h.in \
+	resid/spline.h \
+	resid/THANKS \
+	resid/TODO \
+	resid/version.cc \
+	resid/voice.cc \
+	resid/voice.h \
+	resid/wave.cc \
+	resid/wave.h \
+	resid/wave6581__ST.dat \
+	resid/wave6581__ST.h \
+	resid/wave6581_P_T.dat \
+	resid/wave6581_P_T.h \
+	resid/wave6581_PS_.dat \
+	resid/wave6581_PS_.h \
+	resid/wave6581_PST.dat \
+	resid/wave6581_PST.h \
+	resid/wave8580__ST.dat \
+	resid/wave8580__ST.h \
+	resid/wave8580_P_T.dat \
+	resid/wave8580_P_T.h \
+	resid/wave8580_PS_.dat \
+	resid/wave8580_PS_.h \
+	resid/wave8580_PST.dat \
+	resid/wave8580_PST.h
+
+# RESIDDTV_EXTRA_DIST is a list of files in the resid directory that need to be
+# included in the source archive, this list was added to fix the fact that
+# 'make dist' only produced a proper/workable source archive when done on a
+# platform with a c++ compiler and resid enabled.
+
+RESIDDTV_EXTRA_DIST = \
+	resid-dtv/aclocal.m4 \
+	resid-dtv/AUTHORS \
+	resid-dtv/bittrain.h \
+	resid-dtv/ChangeLog \
+	resid-dtv/configure \
+	resid-dtv/configure.in \
+	resid-dtv/COPYING \
+	resid-dtv/envelope.cc \
+	resid-dtv/envelope.h \
+	resid-dtv/extfilt.cc \
+	resid-dtv/extfilt.h \
+	resid-dtv/filter.cc \
+	resid-dtv/filter.h \
+	resid-dtv/INSTALL \
+	resid-dtv/Makefile.am \
+	resid-dtv/Makefile.in \
+	resid-dtv/NEWS \
+	resid-dtv/README \
+	resid-dtv/residdtv-config.h \
+	resid-dtv/sid.cc \
+	resid-dtv/sid.h \
+	resid-dtv/siddtvdefs.h.in \
+	resid-dtv/version.cc \
+	resid-dtv/voice.cc \
+	resid-dtv/voice.h \
+	resid-dtv/wave.cc \
+	resid-dtv/wave.h
+
+if RESID_DIR_USED
+
+EXTRA_DIST = $(COMMON_EXTRA_DIST)
+
+else
+
+EXTRA_DIST = $(COMMON_EXTRA_DIST) $(RESID_EXTRA_DIST) $(RESIDDTV_EXTRA_DIST)
+
+endif
+
+if NATIVE_TOOLS
+GENFILES = $(builddir)/geninfocontrib $(builddir)/gentranslate bin2c palette2c
+endif
 
 if EMBEDDED
 EMBEDDED_H_FILES = \
@@ -350,6 +476,7 @@ EMBEDDED_H_FILES = \
 	c128chargen.h \
 	c128chargfr.h \
 	c128chargse.h \
+	c128chargch.h \
 	c128kernal.h \
 	c128kernal64.h \
 	c128kernalde.h \
@@ -358,6 +485,7 @@ EMBEDDED_H_FILES = \
 	c128kernalit.h \
 	c128kernalno.h \
 	c128kernalse.h \
+	c128kernalch.h \
 	c64basic.h \
 	c64kernal.h \
 	c64chargen.h \
@@ -372,13 +500,12 @@ EMBEDDED_H_FILES = \
 	drived1541II.h \
 	drived1571cr.h \
 	drivedos1001.h \
+	drivedos1540.h \
 	drivedos1541.h \
 	drivedos1551.h \
 	drivedos1570.h \
 	drivedos1571.h \
 	drivedos1581.h \
-	drivedos2000.h \
-	drivedos4000.h \
 	drivedos2031.h \
 	drivedos2040.h \
 	drivedos3040.h \
@@ -396,6 +523,13 @@ EMBEDDED_H_FILES = \
 	petkernal1.h \
 	petkernal2.h \
 	petkernal4.h \
+	superpet_char.h \
+	superpet_waterloo_a000.h \
+	superpet_waterloo_b000.h \
+	superpet_waterloo_c000.h \
+	superpet_waterloo_d000.h \
+	superpet_waterloo_e000.h \
+	superpet_waterloo_f000.h \
 	plus43plus1hi.h \
 	plus43plus1lo.h \
 	plus4basic.h \
@@ -405,26 +539,36 @@ EMBEDDED_H_FILES = \
 	vic20basic.h \
 	vic20chargen.h \
 	vic20kernal.h \
-	c128_vdc_comp_vpl.h \
-	c128_vdc_deft_vpl.h \
-	c64_c64hq_vpl.h \
-	c64_c64s_vpl.h \
-	c64_ccs64_vpl.h \
-	c64_default_vpl.h \
-	c64_frodo_vpl.h \
-	c64_godot_vpl.h \
-	c64_pc64_vpl.h \
-	c64_vice_vpl.h \
-	pet_amber_vpl.h \
-	pet_green_vpl.h \
-	pet_white_vpl.h \
-	plus4_default_vpl.h \
-	vic20_default_vpl.h
+	vdc_comp_vpl.h \
+	vdc_deft_vpl.h \
+	vicii_c64hq_vpl.h \
+	vicii_c64s_vpl.h \
+	vicii_ccs64_vpl.h \
+	vicii_community_colors_vpl.h \
+	vicii_deekay_vpl.h \
+	vicii_frodo_vpl.h \
+	vicii_godot_vpl.h \
+	vicii_pc64_vpl.h \
+	vicii_pepto_ntsc_vpl.h \
+	vicii_pepto_ntsc_sony_vpl.h \
+	vicii_pepto_pal_vpl.h \
+	vicii_pepto_palold_vpl.h \
+	vicii_ptoing_vpl.h \
+	vicii_rgb_vpl.h \
+	vicii_vice_vpl.h \
+	viciidtv_spiff_vpl.h \
+	crtc_amber_vpl.h \
+	crtc_green_vpl.h \
+	crtc_white_vpl.h \
+	ted_vice_vpl.h \
+	vic_mike_ntsc_vpl.h \
+	vic_mike_pal_vpl.h \
+	vic_vice_vpl.h
 
-if !CROSS
-EMBEDDED_DEPENDS = bin2c bin2c.sh
+if NATIVE_TOOLS
+EMBEDDED_DEPENDS = bin2c bin2c.sh palette2c palette2c.sh
 else
-EMBEDDED_DEPENDS = bin2c.sh
+EMBEDDED_DEPENDS = bin2c.sh palette2c.sh
 endif
 
 else
@@ -437,27 +581,68 @@ else
 OWCC_LIBS =
 endif
 
-if HAVE_TRANSLATION
-BUILT_SOURCES = translate.h translate_table.h $(EMBEDDED_H_FILES) $(OWCC_LIBS) infocontrib.h
+if USE_SVN_REVISION
+SVN_VERSION_HEADER = svnversion.h
+else
+SVN_VERSION_HEADER =
+endif
 
+if HAVE_TRANSLATION
+BUILT_SOURCES = translate.h translate_table.h $(EMBEDDED_H_FILES) $(OWCC_LIBS) $(SVN_VERSION_HEADER) infocontrib.h
+
+if !NATIVE_TOOLS
 translate_table.h:	$(srcdir)/translate.txt $(srcdir)/gentranslatetable.sh
 	echo "generating translate_table.h..."
 	$(SHELL) $(srcdir)/gentranslatetable.sh <$(srcdir)/translate.txt >translate_table.h
+endif
 else
-BUILT_SOURCES = translate.h $(EMBEDDED_H_FILES) $(OWCC_LIBS) infocontrib.h
+BUILT_SOURCES = translate.h $(EMBEDDED_H_FILES) $(OWCC_LIBS) $(SVN_VERSION_HEADER) infocontrib.h
 endif
 
-infocontrib.h:	$(top_srcdir)/doc/vice.texi
-	echo "generating infocontrib.h..."
-	$(SHELL) $(srcdir)/geninfocontrib_h.sh <$(top_srcdir)/doc/vice.texi | $(srcdir)/sedinfocontrib_h.sh $(srcdir)/infocontrib.sed >infocontrib.h
+.PHONY: svnversion.h.indirect
 
+svnversion.h.indirect:
+	$(SHELL) $(srcdir)/gensvnversion.sh $(SVNVERSION) $(top_srcdir) $(srcdir)/svnversion.h
+
+svnversion.h: svnversion.h.indirect
+
+if NATIVE_TOOLS
+$(builddir)/geninfocontrib:	$(top_srcdir)/doc/vice.texi $(srcdir)/infocontrib.sed $(srcdir)/arch/win32/utils/geninfocontrib.c
+	$(NATIVE_TOOLS_COMPILER) -o $(builddir)/geninfocontrib $(srcdir)/arch/win32/utils/geninfocontrib.c
+
+infocontrib.h:	$(top_srcdir)/doc/vice.texi $(srcdir)/infocontrib.sed $(builddir)/geninfocontrib
+	echo "generating infocontrib.h..."
+	$(builddir)/geninfocontrib $(top_srcdir)/ ../ doc/vice.texi src/infocontrib.h src/infocontrib.sed AUTHORS src/arch/unix/macosx/Resources/Credits.html README doc/html/index.html src/arch/os2/dialogs/dialogs.rc man/vice.1
+else
+infocontrib.h:	$(top_srcdir)/doc/vice.texi $(srcdir)/infocontrib.sed
+	echo "generating infocontrib.h..."
+	$(SHELL) $(srcdir)/geninfocontrib_h.sh infocontrib.h <$(top_srcdir)/doc/vice.texi | $(srcdir)/sedinfocontrib_h.sh $(srcdir)/infocontrib.sed >infocontrib.h
+	$(SHELL) $(srcdir)/geninfocontrib_h.sh AUTHORS | $(srcdir)/sedinfocontrib_h.sh $(srcdir)/infocontrib.sed >../AUTHORS
+	$(SHELL) $(srcdir)/geninfocontrib_h.sh OSXcreditshtml >arch/unix/macosx/Resources/Credits.html
+	cp $(top_srcdir)/README ./README.tmp
+	$(SHELL) $(srcdir)/geninfocontrib_h.sh README <README.tmp >../README
+	rm -f README.tmp
+	cp $(top_srcdir)/doc/html/index.html ./index.tmp
+	$(SHELL) $(srcdir)/geninfocontrib_h.sh indexhtml <index.tmp >../doc/html/index.html
+	rm -f index.tmp
+	cp $(top_srcdir)/src/arch/os2/dialogs/dialogs.rc ./dialogs.tmp
+	$(SHELL) $(srcdir)/geninfocontrib_h.sh os2dialogs <dialogs.tmp >arch/os2/dialogs/dialogs.rc
+	rm -f dialogs.tmp
+	$(SHELL) $(srcdir)/geninfocontrib_h.sh vice1 | $(srcdir)/sedinfocontrib_h.sh $(srcdir)/infocontrib.sed >../man/vice.1
+	rm -f team.tmp
+endif
+
+if NATIVE_TOOLS
+$(builddir)/gentranslate:	$(srcdir)/translate.txt $(srcdir)/arch/win32/utils/gentranslate.c
+	$(NATIVE_TOOLS_COMPILER) -o $(builddir)/gentranslate $(srcdir)/arch/win32/utils/gentranslate.c
+
+translate.h translate_table.h:	$(srcdir)/translate.txt $(builddir)/gentranslate
+	echo "generating translate.h..."
+	$(builddir)/gentranslate $(srcdir)/translate.txt ./translate.h ./translate_table.h
+else
 translate.h:	$(srcdir)/translate.txt $(srcdir)/gentranslate_h.sh
 	echo "generating translate.h..."
-if MINIX_SUPPORT
-	cc $(srcdir)/arch/win32/utils/gentranslate.c -o gentranslate
-	./gentranslate translate.txt translate.h translate_table.h
-else
-	$(SHELL) $(srcdir)/gentranslate_h.sh <$(srcdir)/translate.txt >translate.h
+	$(SHELL) $(srcdir)/gentranslate_h.sh $(DEBUGBUILD) <$(srcdir)/translate.txt >translate.h
 endif
 
 if OWCC
@@ -465,8 +650,305 @@ owcc_libs_converted.h:
 	$(SHELL) $(srcdir)/convert_owcc_libs.sh $(LIBS)
 endif
 
-bin2c: bin2c.c
-	$(CC) $(INCLUDES) $(CFLAGS) $(srcdir)/bin2c.c -o bin2c
+if NATIVE_TOOLS
+bin2c: $(srcdir)/bin2c.c
+	$(NATIVE_TOOLS_COMPILER) -o bin2c $(srcdir)/bin2c.c
+
+palette2c: $(srcdir)/palette2c.c
+	$(NATIVE_TOOLS_COMPILER) -o palette2c $(srcdir)/palette2c.c
+
+c128basic64.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/basic64 c128basic64.h "static BYTE c128basic64_embedded[C128_BASIC64_ROM_SIZE]"
+
+c128basichi.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/basichi c128basichi.h "static BYTE c128basichi_embedded[C128_BASIC_ROM_IMAGEHI_SIZE]"
+
+c128basiclo.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/basiclo c128basiclo.h "static BYTE c128basiclo_embedded[C128_BASIC_ROM_IMAGELO_SIZE]"
+
+c128chargde.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/chargde c128chargde.h "static BYTE chargen_de[C128_CHARGEN_ROM_SIZE]"
+
+c128chargen.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/chargen c128chargen.h "static BYTE chargen_int[C128_CHARGEN_ROM_SIZE]"
+
+c128chargfr.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/chargfr c128chargfr.h "static BYTE chargen_fr[C128_CHARGEN_ROM_SIZE]"
+
+c128chargse.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/chargse c128chargse.h "static BYTE chargen_se[C128_CHARGEN_ROM_SIZE]"
+
+c128chargch.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/chargch c128chargch.h "static BYTE chargen_ch[C128_CHARGEN_ROM_SIZE]"
+
+c128kernal.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernal c128kernal.h "static BYTE kernal_int[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c128kernal64.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernal64 c128kernal64.h "static BYTE c128kernal64_embedded[C128_KERNAL64_ROM_SIZE]"
+
+c128kernalde.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernalde c128kernalde.h "static BYTE kernal_de[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c128kernalfi.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernalfi c128kernalfi.h "static BYTE kernal_fi[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c128kernalfr.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernalfr c128kernalfr.h "static BYTE kernal_fr[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c128kernalit.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernalit c128kernalit.h "static BYTE kernal_it[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c128kernalno.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernalno c128kernalno.h "static BYTE kernal_no[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c128kernalse.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernalse c128kernalse.h "static BYTE kernal_se[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c128kernalch.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C128/kernalch c128kernalch.h "static BYTE kernal_ch[C128_KERNAL_ROM_IMAGE_SIZE]"
+
+c64basic.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C64/basic c64basic.h "BYTE c64memrom_basic64_rom[C64_BASIC_ROM_SIZE]"
+
+c64kernal.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C64/kernal c64kernal.h "BYTE c64memrom_kernal64_rom[C64_KERNAL_ROM_SIZE]"
+
+c64chargen.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/C64/chargen c64chargen.h "BYTE mem_chargen_rom[C64_CHARGEN_ROM_SIZE]"
+
+cbm2basic128.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/basic.128 cbm2basic128.h "static BYTE cbm2basic128_embedded[0x4000]"
+
+cbm2basic256.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/basic.256 cbm2basic256.h "static BYTE cbm2basic256_embedded[0x4000]"
+
+cbm2basic500.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/basic.500 cbm2basic500.h "static BYTE cbm2basic500_embedded[0x4000]"
+
+cbm2chargen500.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/chargen.500 cbm2chargen500.h "static BYTE cbm2chargen500_embedded[0x1000]"
+
+cbm2chargen600.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/chargen.600 cbm2chargen600.h "static BYTE cbm2chargen600_embedded[0x1000]"
+
+cbm2chargen700.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/chargen.700 cbm2chargen700.h "static BYTE cbm2chargen700_embedded[0x1000]"
+
+cbm2kernal.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/kernal cbm2kernal.h "static BYTE cbm2kernal_embedded[0x2000]"
+
+cbm2kernal500.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/CBM-II/kernal.500 cbm2kernal500.h "static BYTE cbm2kernal500_embedded[0x2000]"
+
+drived1541II.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/d1541II drived1541II.h "static BYTE drive_rom1541ii_embedded[DRIVE_ROM1541II_SIZE]"
+
+drived1571cr.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/d1571cr drived1571cr.h "static BYTE drive_rom1571cr[DRIVE_ROM1571CR_SIZE]"
+
+drivedos1001.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos1001 drivedos1001.h "static BYTE drive_rom1001[DRIVE_ROM1001_SIZE]"
+
+drivedos1540.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos1540 drivedos1540.h "static BYTE drive_rom1540_embedded[DRIVE_ROM1540_SIZE]"
+
+drivedos1541.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos1541 drivedos1541.h "static BYTE drive_rom1541_embedded[DRIVE_ROM1541_SIZE]"
+
+drivedos1551.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos1551 drivedos1551.h "static BYTE drive_rom1551[DRIVE_ROM1551_SIZE]"
+
+drivedos1570.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos1570 drivedos1570.h "static BYTE drive_rom1570[DRIVE_ROM1570_SIZE]"
+
+drivedos1571.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos1571 drivedos1571.h "static BYTE drive_rom1571[DRIVE_ROM1571_SIZE]"
+
+drivedos1581.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos1581 drivedos1581.h "static BYTE drive_rom1581[DRIVE_ROM1581_SIZE]"
+
+#drivedos2000.h: $(EMBEDDED_DEPENDS) bin2c
+#	./bin2c $(top_srcdir)/data/DRIVES/dos2000 drivedos2000.h "static BYTE drive_rom2000[DRIVE_ROM2000_SIZE]"
+#
+#drivedos4000.h: $(EMBEDDED_DEPENDS) bin2c
+#	./bin2c $(top_srcdir)/data/DRIVES/dos4000 drivedos4000.h "static BYTE drive_rom4000[DRIVE_ROM4000_SIZE]"
+
+drivedos2031.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos2031 drivedos2031.h "static BYTE drive_rom2031[DRIVE_ROM2031_SIZE]"
+
+drivedos2040.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos2040 drivedos2040.h "static BYTE drive_rom2040[DRIVE_ROM2040_SIZE]"
+
+drivedos3040.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos3040 drivedos3040.h "static BYTE drive_rom3040[DRIVE_ROM3040_SIZE]"
+
+drivedos4040.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/DRIVES/dos4040 drivedos4040.h "static BYTE drive_rom4040[DRIVE_ROM4040_SIZE]"
+
+petbasic1.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/basic1 petbasic1.h "BYTE petbasic1_embedded[0x2000]"
+
+petbasic2.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/basic2 petbasic2.h "BYTE petbasic2_embedded[0x2000]"
+
+petbasic4.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/basic4 petbasic4.h "BYTE petbasic4_embedded[0x3000]"
+
+petchargen.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/chargen petchargen.h "BYTE petchargen_embedded[0x800]"
+
+petedit1g.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/edit1g petedit1g.h "BYTE petedit1g_embedded[0x800]"
+
+petedit2b.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/edit2b petedit2b.h "BYTE petedit2b_embedded[0x800]"
+
+petedit2g.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/edit2g petedit2g.h "BYTE petedit2g_embedded[0x800]"
+
+petedit4b40.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/edit4b40 petedit4b40.h "BYTE petedit4b40_embedded[0x800]"
+
+petedit4b80.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/edit4b80 petedit4b80.h "BYTE petedit4b80_embedded[0x800]"
+
+petedit4g40.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/edit4g40 petedit4g40.h "BYTE petedit4g40_embedded[0x800]"
+
+petkernal1.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/kernal1 petkernal1.h "BYTE petkernal1_embedded[0x1000]"
+
+petkernal2.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/kernal2 petkernal2.h "BYTE petkernal2_embedded[0x1000]"
+
+petkernal4.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/kernal4 petkernal4.h "BYTE petkernal4_embedded[0x1000]"
+
+superpet_char.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/characters.901640-01.bin superpet_char.h "BYTE superpet_char_embedded[0x1000]"
+
+superpet_waterloo_a000.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/waterloo-a000.901898-01.bin superpet_waterloo_a000.h "BYTE superpet_waterloo_a000_embedded[0x1000]"
+
+superpet_waterloo_b000.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/waterloo-b000.901898-02.bin superpet_waterloo_b000.h "BYTE superpet_waterloo_b000_embedded[0x1000]"
+
+superpet_waterloo_c000.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/waterloo-c000.901898-03.bin superpet_waterloo_c000.h "BYTE superpet_waterloo_c000_embedded[0x1000]"
+
+superpet_waterloo_d000.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/waterloo-d000.901898-04.bin superpet_waterloo_d000.h "BYTE superpet_waterloo_d000_embedded[0x1000]"
+
+superpet_waterloo_e000.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/waterloo-e000.901897-01.bin superpet_waterloo_e000.h "BYTE superpet_waterloo_e000_embedded[0x800]"
+
+superpet_waterloo_f000.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PET/waterloo-f000.901898-05.bin superpet_waterloo_f000.h "BYTE superpet_waterloo_f000_embedded[0x1000]"
+
+plus43plus1hi.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PLUS4/3plus1hi plus43plus1hi.h "BYTE extromhi1[PLUS4_KERNAL_ROM_SIZE]"
+
+plus43plus1lo.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PLUS4/3plus1lo plus43plus1lo.h "BYTE extromlo1[PLUS4_BASIC_ROM_SIZE]"
+
+plus4basic.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PLUS4/basic plus4basic.h "BYTE plus4memrom_basic_rom[PLUS4_BASIC_ROM_SIZE]"
+
+plus4kernal.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PLUS4/kernal plus4kernal.h "BYTE plus4memrom_kernal_rom[PLUS4_KERNAL_ROM_SIZE]"
+
+printermps803.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PRINTER/mps803 printermps803.h "static BYTE charset[512][7]"
+
+printernl10cbm.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/PRINTER/nl10-cbm printernl10cbm.h "static BYTE drv_nl10_rom[NL10_ROM_SIZE]"
+
+vic20basic.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/VIC20/basic vic20basic.h "BYTE vic20memrom_basic_rom[VIC20_BASIC_ROM_SIZE]"
+
+vic20chargen.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/VIC20/chargen vic20chargen.h "BYTE vic20chargen_embedded[VIC20_CHARGEN_ROM_SIZE]"
+
+vic20kernal.h: $(EMBEDDED_DEPENDS) bin2c
+	./bin2c $(top_srcdir)/data/VIC20/kernal vic20kernal.h "BYTE vic20memrom_kernal_rom[VIC20_KERNAL_ROM_SIZE]"
+
+vdc_comp_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C128/vdc_comp.vpl vdc_comp_vpl.h "unsigned char vdc_comp_vpl[]"
+
+vdc_deft_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C128/vdc_deft.vpl vdc_deft_vpl.h "unsigned char vdc_deft_vpl[]"
+
+vicii_c64hq_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/c64hq.vpl vicii_c64hq_vpl.h "unsigned char vicii_c64hq_vpl[]"
+
+vicii_c64s_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/c64s.vpl vicii_c64s_vpl.h "unsigned char vicii_c64s_vpl[]"
+
+vicii_ccs64_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/ccs64.vpl vicii_ccs64_vpl.h "unsigned char vicii_ccs64_vpl[]"
+
+vicii_community_colors_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/community-colors.vpl vicii_community_colors_vpl.h "unsigned char vicii_community_colors_vpl[]"
+
+vicii_deekay_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/deekay.vpl vicii_deekay_vpl.h "unsigned char vicii_deekay_vpl[]"
+
+vicii_frodo_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/frodo.vpl vicii_frodo_vpl.h "unsigned char vicii_frodo_vpl[]"
+
+vicii_godot_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/godot.vpl vicii_godot_vpl.h "unsigned char vicii_godot_vpl[]"
+
+vicii_pc64_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/pc64.vpl vicii_pc64_vpl.h "unsigned char vicii_pc64_vpl[]"
+
+vicii_pepto_ntsc_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/pepto-ntsc.vpl vicii_pepto_ntsc_vpl.h "unsigned char vicii_pepto_ntsc_vpl[]"
+
+vicii_pepto_ntsc_sony_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/pepto-ntsc-sony.vpl vicii_pepto_ntsc_sony_vpl.h "unsigned char vicii_pepto_ntsc_sony_vpl[]"
+
+vicii_pepto_pal_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/pepto-pal.vpl vicii_pepto_pal_vpl.h "unsigned char vicii_pepto_pal_vpl[]"
+
+vicii_pepto_palold_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/pepto-palold.vpl vicii_pepto_palold_vpl.h "unsigned char vicii_pepto_palold_vpl[]"
+
+vicii_ptoing_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/ptoing.vpl vicii_ptoing_vpl.h "unsigned char vicii_ptoing_vpl[]"
+
+vicii_rgb_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/rgb.vpl vicii_rgb_vpl.h "unsigned char vicii_rgb_vpl[]"
+
+vicii_vice_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64/vice.vpl vicii_vice_vpl.h "unsigned char vicii_vice_vpl[]"
+
+viciidtv_spiff_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/C64DTV/spiff.vpl viciidtv_spiff_vpl.h "unsigned char viciidtv_spiff_vpl[]"
+
+crtc_amber_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/PET/amber.vpl crtc_amber_vpl.h "unsigned char crtc_amber_vpl[]"
+
+crtc_green_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/PET/green.vpl crtc_green_vpl.h "unsigned char crtc_green_vpl[]"
+
+crtc_white_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/PET/white.vpl crtc_white_vpl.h "unsigned char crtc_white_vpl[]"
+
+ted_vice_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/PLUS4/vice.vpl ted_vice_vpl.h "unsigned char ted_vice_vpl[]"
+
+vic_mike_ntsc_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/VIC20/mike-ntsc.vpl vic_mike_ntsc_vpl.h "unsigned char vic_mike_ntsc_vpl[]"
+
+vic_mike_pal_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/VIC20/mike-pal.vpl vic_mike_pal_vpl.h "unsigned char vic_mike_pal_vpl[]"
+
+vic_vice_vpl.h: $(EMBEDDED_DEPENDS) palette2c
+	./palette2c $(top_srcdir)/data/VIC20/vice.vpl vic_vice_vpl.h "unsigned char vic_vice_vpl[]"
+
+else
 
 c128basic64.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/C128/basic64 c128basic64.h "static BYTE c128basic64_embedded[C128_BASIC64_ROM_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
@@ -488,6 +970,9 @@ c128chargfr.h: $(EMBEDDED_DEPENDS)
 
 c128chargse.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/C128/chargse c128chargse.h "static BYTE chargen_se[C128_CHARGEN_ROM_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
+
+c128chargch.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/C128/chargch c128chargch.h "static BYTE chargen_ch[C128_CHARGEN_ROM_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
 c128kernal.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/C128/kernal c128kernal.h "static BYTE kernal_int[C128_KERNAL_ROM_IMAGE_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
@@ -512,6 +997,9 @@ c128kernalno.h: $(EMBEDDED_DEPENDS)
 
 c128kernalse.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/C128/kernalse c128kernalse.h "static BYTE kernal_se[C128_KERNAL_ROM_IMAGE_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
+
+c128kernalch.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/C128/kernalch c128kernalch.h "static BYTE kernal_ch[C128_KERNAL_ROM_IMAGE_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
 c64basic.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/C64/basic c64basic.h "BYTE c64memrom_basic64_rom[C64_BASIC_ROM_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
@@ -550,10 +1038,13 @@ drived1541II.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/d1541II drived1541II.h "static BYTE drive_rom1541ii_embedded[DRIVE_ROM1541II_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
 drived1571cr.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/d1571cr drived1571cr.h "static BYTE drive_rom1571cr[DRIVE_ROM1571_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/d1571cr drived1571cr.h "static BYTE drive_rom1571cr[DRIVE_ROM1571CR_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
 drivedos1001.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1001 drivedos1001.h "static BYTE drive_rom1001[DRIVE_ROM1001_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
+
+drivedos1540.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1540 drivedos1540.h "static BYTE drive_rom1540_embedded[DRIVE_ROM1540_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
 drivedos1541.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1541 drivedos1541.h "static BYTE drive_rom1541_embedded[DRIVE_ROM1541_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
@@ -562,7 +1053,7 @@ drivedos1551.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1551 drivedos1551.h "static BYTE drive_rom1551[DRIVE_ROM1551_SIZE]" $(CROSS) $(SHELL)  $(top_srcdir)
 
 drivedos1570.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1570 drivedos1570.h "static BYTE drive_rom1570[DRIVE_ROM1571_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1570 drivedos1570.h "static BYTE drive_rom1570[DRIVE_ROM1570_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
 drivedos1571.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1571 drivedos1571.h "static BYTE drive_rom1571[DRIVE_ROM1571_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
@@ -570,11 +1061,11 @@ drivedos1571.h: $(EMBEDDED_DEPENDS)
 drivedos1581.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos1581 drivedos1581.h "static BYTE drive_rom1581[DRIVE_ROM1581_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
-drivedos2000.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos2000 drivedos2000.h "static BYTE drive_rom2000[DRIVE_ROM2000_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
-
-drivedos4000.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos4000 drivedos4000.h "static BYTE drive_rom4000[DRIVE_ROM4000_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
+#drivedos2000.h: $(EMBEDDED_DEPENDS)
+#	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos2000 drivedos2000.h "static BYTE drive_rom2000[DRIVE_ROM2000_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
+#
+#drivedos4000.h: $(EMBEDDED_DEPENDS)
+#	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos4000 drivedos4000.h "static BYTE drive_rom4000[DRIVE_ROM4000_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
 drivedos2031.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/DRIVES/dos2031 drivedos2031.h "static BYTE drive_rom2031[DRIVE_ROM2031_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
@@ -627,6 +1118,27 @@ petkernal2.h: $(EMBEDDED_DEPENDS)
 petkernal4.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/kernal4 petkernal4.h "BYTE petkernal4_embedded[0x1000]" $(CROSS) $(SHELL) $(top_srcdir)
 
+superpet_char.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/characters.901640-01.bin superpet_char.h "BYTE superpet_char_embedded[0x1000]" $(CROSS) $(SHELL) $(top_srcdir)
+
+superpet_waterloo_a000.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/waterloo-a000.901898-01.bin superpet_waterloo_a000.h "BYTE superpet_waterloo_a000_embedded[0x1000]" $(CROSS) $(SHELL) $(top_srcdir)
+
+superpet_waterloo_b000.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/waterloo-b000.901898-02.bin superpet_waterloo_b000.h "BYTE superpet_waterloo_b000_embedded[0x1000]" $(CROSS) $(SHELL) $(top_srcdir)
+
+superpet_waterloo_c000.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/waterloo-c000.901898-03.bin superpet_waterloo_c000.h "BYTE superpet_waterloo_c000_embedded[0x1000]" $(CROSS) $(SHELL) $(top_srcdir)
+
+superpet_waterloo_d000.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/waterloo-d000.901898-04.bin superpet_waterloo_d000.h "BYTE superpet_waterloo_d000_embedded[0x1000]" $(CROSS) $(SHELL) $(top_srcdir)
+
+superpet_waterloo_e000.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/waterloo-e000.901897-01.bin superpet_waterloo_e000.h "BYTE superpet_waterloo_e000_embedded[0x800]" $(CROSS) $(SHELL) $(top_srcdir)
+
+superpet_waterloo_f000.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PET/waterloo-f000.901898-05.bin superpet_waterloo_f000.h "BYTE superpet_waterloo_f000_embedded[0x1000]" $(CROSS) $(SHELL) $(top_srcdir)
+
 plus43plus1hi.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/PLUS4/3plus1hi plus43plus1hi.h "BYTE extromhi1[PLUS4_KERNAL_ROM_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
@@ -654,63 +1166,97 @@ vic20chargen.h: $(EMBEDDED_DEPENDS)
 vic20kernal.h: $(EMBEDDED_DEPENDS)
 	$(SHELL) $(srcdir)/bin2c.sh $(top_srcdir)/data/VIC20/kernal vic20kernal.h "BYTE vic20memrom_kernal_rom[VIC20_KERNAL_ROM_SIZE]" $(CROSS) $(SHELL) $(top_srcdir)
 
-c128_vdc_comp_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C128/vdc_comp.vpl c128_vdc_comp_vpl.h "unsigned char c128_vdc_comp_vpl[]"
+vdc_comp_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C128/vdc-comp.vpl vdc_comp_vpl.h "unsigned char vdc_comp_vpl[]"
 
-c128_vdc_deft_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C128/vdc_deft.vpl c128_vdc_deft_vpl.h "unsigned char c128_vdc_deft_vpl[]"
+vdc_deft_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C128/vdc-deft.vpl vdc_deft_vpl.h "unsigned char vdc_deft_vpl[]"
 
-c64_c64hq_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/c64hq.vpl c64_c64hq_vpl.h "unsigned char c64_c64hq_vpl[]"
+vicii_c64hq_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/c64hq.vpl vicii_c64hq_vpl.h "unsigned char vicii_c64hq_vpl[]"
 
-c64_c64s_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/c64s.vpl c64_c64s_vpl.h "unsigned char c64_c64s_vpl[]"
+vicii_c64s_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/c64s.vpl vicii_c64s_vpl.h "unsigned char vicii_c64s_vpl[]"
 
-c64_ccs64_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/ccs64.vpl c64_ccs64_vpl.h "unsigned char c64_ccs64_vpl[]"
+vicii_ccs64_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/ccs64.vpl vicii_ccs64_vpl.h "unsigned char vicii_ccs64_vpl[]"
 
-c64_default_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/default.vpl c64_default_vpl.h "unsigned char c64_default_vpl[]"
+vicii_community_colors_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/community-colors.vpl vicii_community_colors_vpl.h "unsigned char vicii_community_colors_vpl[]"
 
-c64_frodo_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/frodo.vpl c64_frodo_vpl.h "unsigned char c64_frodo_vpl[]"
+vicii_deekay_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/deekay.vpl vicii_deekay_vpl.h "unsigned char vicii_deekay_vpl[]"
 
-c64_godot_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/godot.vpl c64_godot_vpl.h "unsigned char c64_godot_vpl[]"
+vicii_frodo_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/frodo.vpl vicii_frodo_vpl.h "unsigned char vicii_frodo_vpl[]"
 
-c64_pc64_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/pc64.vpl c64_pc64_vpl.h "unsigned char c64_pc64_vpl[]"
+vicii_godot_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/godot.vpl vicii_godot_vpl.h "unsigned char vicii_godot_vpl[]"
 
-c64_vice_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/vice.vpl c64_vice_vpl.h "unsigned char c64_vice_vpl[]"
+vicii_pc64_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/pc64.vpl vicii_pc64_vpl.h "unsigned char vicii_pc64_vpl[]"
 
-pet_amber_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PET/amber.vpl pet_amber_vpl.h "unsigned char pet_amber_vpl[]"
+vicii_pepto_ntsc_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/pepto-ntsc.vpl vicii_pepto_ntsc_vpl.h "unsigned char vicii_pepto_ntsc_vpl[]"
 
-pet_green_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PET/green.vpl pet_green_vpl.h "unsigned char pet_green_vpl[]"
+vicii_pepto_ntsc_sony_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/pepto-ntsc-sony.vpl vicii_pepto_ntsc_sony_vpl.h "unsigned char vicii_pepto_ntsc_sony_vpl[]"
 
-pet_white_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PET/white.vpl pet_white_vpl.h "unsigned char pet_white_vpl[]"
+vicii_pepto_pal_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/pepto-pal.vpl vicii_pepto_pal_vpl.h "unsigned char vicii_pepto_pal_vpl[]"
 
-plus4_default_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PLUS4/default.vpl plus4_default_vpl.h "unsigned char plus4_default_vpl[]"
+vicii_pepto_palold_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/pepto-palold.vpl vicii_pepto_palold_vpl.h "unsigned char vicii_pepto_palold_vpl[]"
 
-vic20_default_vpl.h: $(EMBEDDED_DEPENDS)
-	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/VIC20/default.vpl vic20_default_vpl.h "unsigned char vic20_default_vpl[]"
+vicii_ptoing_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/ptoing.vpl vicii_ptoing_vpl.h "unsigned char vicii_ptoing_vpl[]"
+
+vicii_rgb_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/rgb.vpl vicii_rgb_vpl.h "unsigned char vicii_ptoing_vpl[]"
+
+vicii_vice_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64/vice.vpl vicii_vice_vpl.h "unsigned char vicii_vice_vpl[]"
+
+viciidtv_spiff_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/C64DTV/spiff.vpl viciidtv_spiff_vpl.h "unsigned char viciidtv_spiff_vpl[]"
+
+crtc_amber_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PET/amber.vpl crtc_amber_vpl.h "unsigned char crtc_amber_vpl[]"
+
+crtc_green_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PET/green.vpl crtc_green_vpl.h "unsigned char crtc_green_vpl[]"
+
+crtc_white_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PET/white.vpl crtc_white_vpl.h "unsigned char crtc_white_vpl[]"
+
+ted_vice_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/PLUS4/vice.vpl ted_vice_vpl.h "unsigned char ted_vice_vpl[]"
+
+vic_mike_ntsc_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/VIC20/mike-ntsc.vpl vic_mike_ntsc_vpl.h "unsigned char vic_mike_ntsc_vpl[]"
+
+vic_mike_pal_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/VIC20/mike-pal.vpl vic_mike_pal_vpl.h "unsigned char vic_mike_pal_vpl[]"
+
+vic_vice_vpl.h: $(EMBEDDED_DEPENDS)
+	$(SHELL) $(srcdir)/palette2c.sh <$(top_srcdir)/data/VIC20/vice.vpl vic_vice_vpl.h "unsigned char vic_vice_vpl[]"
+endif
 
 c128_lib = $(top_builddir)/src/c128/libc128.a
 c64_lib = $(top_builddir)/src/c64/libc64.a
 c64sc_lib = $(top_builddir)/src/c64/libc64sc.a
+scpu64_lib = $(top_builddir)/src/scpu64/libscpu64.a
 c64dtv_lib = $(top_builddir)/src/c64dtv/libc64dtv.a
 c64dtvstubs_lib = $(top_builddir)/src/c64dtv/libc64dtvstubs.a
 c64c128_lib = $(top_builddir)/src/c64/libc64c128.a
+c64scpu64_lib = $(top_builddir)/src/c64/libc64scpu64.a
 c64c64dtv_lib = $(top_builddir)/src/c64/libc64c64dtv.a
 c64cart_lib = $(top_builddir)/src/c64/cart/libc64cart.a
 c64cartsystem_lib = $(top_builddir)/src/c64/cart/libc64cartsystem.a
 c64commoncart_lib = $(top_builddir)/src/c64/cart/libc64commoncart.a
 core_lib = $(top_builddir)/src/core/libcore.a
 crtc_lib = $(top_builddir)/src/crtc/libcrtc.a
+diag_lib = $(top_builddir)/src/diag/libdiag.a
 diskimage_lib = $(top_builddir)/src/diskimage/libdiskimage.a
 drive_lib = $(top_builddir)/src/drive/libdrive.a
 driveiec_lib = $(top_builddir)/src/drive/iec/libdriveiec.a
@@ -725,8 +1271,10 @@ fileio_lib = $(top_builddir)/src/fileio/libfileio.a
 gfxoutputdrv_lib = $(top_builddir)/src/gfxoutputdrv/libgfxoutputdrv.a
 iecbus_lib = $(top_builddir)/src/iecbus/libiecbus.a
 imagecontents_lib = $(top_builddir)/src/imagecontents/libimagecontents.a
+joyport_lib = $(top_builddir)/src/joyport/libjoyport.a
 mascuerade_lib = $(top_builddir)/src/vic20/cart/libmascuerade.a
 monitor_lib = $(top_builddir)/src/monitor/libmonitor.a
+p64_lib = $(top_builddir)/src/lib/p64/libp64.a
 parallel_lib = $(top_builddir)/src/parallel/libparallel.a
 pet_lib = $(top_builddir)/src/pet/libpet.a
 platform_lib = $(top_builddir)/src/platform/libplatform.a
@@ -735,10 +1283,12 @@ printerdrv_lib = $(top_builddir)/src/printerdrv/libprinterdrv.a
 rs232drv_lib = $(top_builddir)/src/rs232drv/librs232drv.a
 raster_lib = $(top_builddir)/src/raster/libraster.a
 rtc_lib = $(top_builddir)/src/rtc/librtc.a
+samplerdrv_lib = $(top_builddir)/src/samplerdrv/libsamplerdrv.a
 serial_lib = $(top_builddir)/src/serial/libserial.a
 sid_lib = $(top_builddir)/src/sid/libsid.a
 sounddrv_lib = $(top_builddir)/src/sounddrv/libsounddrv.a
 tape_lib = $(top_builddir)/src/tape/libtape.a
+tapeport_lib = $(top_builddir)/src/tapeport/libtapeport.a
 userport_lib = $(top_builddir)/src/userport/libuserport.a
 vdc_lib = $(top_builddir)/src/vdc/libvdc.a
 vdrive_lib = $(top_builddir)/src/vdrive/libvdrive.a
@@ -747,20 +1297,21 @@ vic20cart_lib = $(top_builddir)/src/vic20/cart/libvic20cart.a
 vicii_lib = $(top_builddir)/src/vicii/libvicii.a
 viciidtv_lib = $(top_builddir)/src/vicii/libviciidtv.a
 viciisc_lib = $(top_builddir)/src/viciisc/libviciisc.a
+viciivsid_lib = $(top_builddir)/src/viciivsid/libviciivsid.a
 video_lib = $(top_builddir)/src/video/libvideo.a
 vsid_lib = $(top_builddir)/src/c64/libvsid.a
 xcbm2_lib = $(top_builddir)/src/cbm2/libcbm2.a
 xcbm5x0_lib = $(top_builddir)/src/cbm2/libcbm5x0.a
-p64_lib = $(top_builddir)/src/lib/p64/libp64.a
 
 common_libs = @ARCH_LIBS@ @LIBOBJS@ @READLINE@
-resid_libs = @RESID_LIBS@ @RESID_FP_LIBS@
-resid_dtv_libs = @RESID_DTV_LIBS@ @RESID_FP_LIBS@
+resid_libs = @RESID_LIBS@
+resid_dtv_libs = @RESID_DTV_LIBS@
+ffmpeg_libs = @FFMPEG_LIBS@
 
 # external libraries required for all emulators
-emu_extlibs = @X_LIBS@ @UI_LIBS@ @SDL_EXTRA_LIBS@ @INTLLIBS@ @SOUND_LIBS@ @FFMPEG_LIBS@ @QUICKTIME_LIBS@ @JOY_LIBS@ @GFXOUTPUT_LIBS@ @ZLIB_LIBS@ @DYNLIB_LIBS@ @EDITLINE_LIBS@
+emu_extlibs = @X_LIBS@ @UI_LIBS@ @SDL_EXTRA_LIBS@ @INTLLIBS@ @SOUND_LIBS@ @QUICKTIME_LIBS@ @JOY_LIBS@ @GFXOUTPUT_LIBS@ @ZLIB_LIBS@ @DYNLIB_LIBS@ @EDITLINE_LIBS@ @ARCH_LIBS@
 
-driver_libs = $(sounddrv_lib) $(gfxoutputdrv_lib) $(printerdrv_lib) $(rs232drv_lib) $(diskimage_lib) $(fsdevice_lib) $(tape_lib) $(fileio_lib) $(serial_lib) $(core_lib)
+driver_libs = $(joyport_lib) $(samplerdrv_lib) $(sounddrv_lib) $(gfxoutputdrv_lib) $(printerdrv_lib) $(rs232drv_lib) $(diskimage_lib) $(fsdevice_lib) $(tape_lib) $(fileio_lib) $(serial_lib) $(core_lib)
 
 if HAVE_RAWDRIVE
 blockdev_lib = @ARCH_DIR@/blockdev.o
@@ -790,6 +1341,14 @@ x64sc_owbin =
 x64sc_bin =
 endif
 
+if SUPPORT_XSCPU64
+xscpu64_owbin = xscpu64ow
+xscpu64_bin = xscpu64
+else
+xscpu64_owbin =
+xscpu64_bin =
+endif
+
 if SUPPORT_CMDLINE_TOOLS
 c1541 = c1541
 petcat = petcat
@@ -804,6 +1363,7 @@ endif
 vsidow_SOURCES = maincpu.c
 x128ow_SOURCES = maincpu.c
 x64ow_SOURCES = maincpu.c
+xscpu64ow_SOURCES = maincpu.c
 x64dtvow_SOURCES = maincpu.c
 x64scow_SOURCES = maincpu.c
 xcbm2ow_SOURCES = maincpu.c
@@ -813,16 +1373,14 @@ xplus4ow_SOURCES = maincpu.c
 xvicow_SOURCES = maincpu.c
 
 if OWCC
-OW_progs = vsidow x64ow $(x64sc_owbin) x128ow $(x64dtv_owbin) xvicow xpetow xplus4ow xcbm2ow xcbm5x0ow
+OW_progs = vsidow x64ow $(x64sc_owbin) x128ow $(x64dtv_owbin) xvicow xpetow xplus4ow xcbm2ow xcbm5x0ow $(xscpu64_owbin)
 else
 OW_progs =
 endif
 
-bin_PROGRAMS = vsid x64 $(x64sc_bin) x128 $(x64dtv_bin) xvic xpet xplus4 xcbm2 xcbm5x0 $(c1541) $(petcat) $(cartconv) $(OW_progs)
+bin_PROGRAMS = vsid x64 $(x64sc_bin) x128 $(x64dtv_bin) xvic xpet xplus4 xcbm2 xcbm5x0 $(xscpu64_bin) $(c1541) $(petcat) $(cartconv) $(OW_progs)
 
 EXTRA_PROGRAMS =
-
-bla = 
 
 # vsid
 vsid_libs =  \
@@ -833,15 +1391,17 @@ vsid_libs =  \
 	$(sounddrv_lib) \
 	$(serial_lib) \
 	$(core_lib) \
-	$(vicii_lib) \
+	$(viciivsid_lib) \
 	$(raster_lib) \
 	$(video_lib) \
 	$(common_libs) \
 	$(resid_libs) \
+	$(ffmpeg_libs) \
+	$(joyport_lib) \
 	$(platform_lib)
 
-vsid_SOURCES = $(base_sources) $(maincpu_sources) $(mouse_sources) $(midi_sources)
-vsid_LDADD = $(vsid_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+vsid_SOURCES = $(base_sources) $(midi_sources)
+vsid_LDADD = $(vsid_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 vsid_DEPENDENCIES = $(vsid_libs)
 vsid_LDFLAGS = @vsid_LDFLAGS@
 
@@ -849,24 +1409,27 @@ vsid_LDFLAGS = @vsid_LDFLAGS@
 vsid-all: \
 	$(BUILT_SOURCES) \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	libvsid \
 	libraster \
 	libsid \
 	libsounddrv \
-	libvicii \
+	libviciivsid \
 	libvideo \
 	libarch \
 	libmonitor \
 	libserial \
 	libcore \
+	libjoyport \
 	libplatform \
 	vsid$(EXEEXT)
 
 # x64
 x64_libs =  \
 	@X64_WINRES@ \
+	$(tapeport_lib) \
 	$(c64_lib) \
+	$(tapeport_lib) \
 	$(c64cartsystem_lib) \
 	$(c64cart_lib) \
 	$(c64commoncart_lib) \
@@ -875,8 +1438,9 @@ x64_libs =  \
 	$(driveiecc64exp_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
-	$(p64_lib) \
+	$(drivetcbm_lib) \
 	$(iecbus_lib) \
+	$(p64_lib) \
 	$(parallel_lib) \
 	$(vdrive_lib) \
 	$(sid_lib) \
@@ -885,15 +1449,17 @@ x64_libs =  \
 	$(vicii_lib) \
 	$(raster_lib) \
 	$(userport_lib) \
+	$(diag_lib) \
 	$(rtc_lib) \
 	$(video_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
 	$(resid_libs) \
+	$(ffmpeg_libs) \
 	$(platform_lib)
 
-x64_SOURCES = $(base_sources) $(maincpu_sources) $(mouse_sources) $(midi_sources)
-x64_LDADD = $(x64_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+x64_SOURCES = $(base_sources) $(midi_sources)
+x64_LDADD = $(x64_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 x64_DEPENDENCIES = $(x64_libs)
 x64_LDFLAGS = @x64_LDFLAGS@
 
@@ -901,21 +1467,25 @@ x64_LDFLAGS = @x64_LDFLAGS@
 x64-all: \
 	$(BUILT_SOURCES) \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	libc64 \
 	libc64cartsystem \
 	libc64cart \
 	libc64commoncart \
+	libdiag \
 	libdriveiec \
 	libdriveiecieee \
 	libdriveiecc64exp \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
 	libraster \
 	libsid \
+	libsamplerdrv \
+	libjoyport \
 	libsounddrv \
 	libgfxoutputdrv \
 	libprinterdrv \
@@ -934,13 +1504,16 @@ x64-all: \
 	libcore \
 	librtc \
 	libuserport \
+	libtapeport \
 	libplatform \
 	x64$(EXEEXT)
 
 # x64sc
 x64sc_libs =  \
 	@X64_WINRES@ \
+	$(tapeport_lib) \
 	$(c64sc_lib) \
+	$(tapeport_lib) \
 	$(c64cartsystem_lib) \
 	$(c64cart_lib) \
 	$(c64commoncart_lib) \
@@ -949,6 +1522,7 @@ x64sc_libs =  \
 	$(driveiecc64exp_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
+	$(drivetcbm_lib) \
 	$(p64_lib) \
 	$(iecbus_lib) \
 	$(parallel_lib) \
@@ -959,15 +1533,17 @@ x64sc_libs =  \
 	$(viciisc_lib) \
 	$(raster_lib) \
 	$(userport_lib) \
+	$(diag_lib) \
 	$(rtc_lib) \
 	$(video_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
 	$(resid_libs) \
+	$(ffmpeg_libs) \
 	$(platform_lib)
 
-x64sc_SOURCES = $(base_sources) $(mouse_sources) $(midi_sources)
-x64sc_LDADD = $(x64sc_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+x64sc_SOURCES = $(base_sources) $(midi_sources)
+x64sc_LDADD = $(x64sc_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 x64sc_DEPENDENCIES = $(x64sc_libs)
 x64sc_LDFLAGS = @x64_LDFLAGS@
 
@@ -975,21 +1551,25 @@ x64sc_LDFLAGS = @x64_LDFLAGS@
 x64sc-all: \
 	$(BUILT_SOURCES) \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	libc64sc \
 	libc64cartsystem \
 	libc64cart \
 	libc64commoncart \
+	libdiag \
 	libdriveiec \
 	libdriveiecieee \
 	libdriveiecc64exp \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
 	libraster \
 	libsid \
+	libsamplerdrv \
+	libjoyport \
 	libsounddrv \
 	libgfxoutputdrv \
 	libprinterdrv \
@@ -1008,6 +1588,7 @@ x64sc-all: \
 	libcore \
 	librtc \
 	libuserport \
+	libtapeport \
 	libplatform \
 	x64sc$(EXEEXT)
 
@@ -1021,10 +1602,12 @@ x64dtv_libs =  \
 	$(driveiecc64exp_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
+	$(drivetcbm_lib) \
 	$(p64_lib) \
 	$(iecbus_lib) \
 	$(parallel_lib) \
 	$(userport_lib) \
+	$(diag_lib) \
 	$(vdrive_lib) \
 	$(sid_lib) \
 	$(monitor_lib) \
@@ -1036,11 +1619,13 @@ x64dtv_libs =  \
 	$(common_libs) \
 	$(imagecontents_lib) \
 	$(resid_dtv_libs) \
+	$(ffmpeg_libs) \
 	$(c64dtvstubs_lib) \
+	$(joyport_lib) \
 	$(platform_lib)
 
 x64dtv_SOURCES = $(base_sources) $(ps2mouse_sources)
-x64dtv_LDADD = $(x64dtv_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+x64dtv_LDADD = $(x64dtv_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 x64dtv_DEPENDENCIES = $(x64dtv_libs)
 x64dtv_LDFLAGS = @x64_LDFLAGS@
 
@@ -1048,20 +1633,24 @@ x64dtv_LDFLAGS = @x64_LDFLAGS@
 x64dtv-all: \
 	$(BUILT_SOURCES) \
 	@RESID_DTV_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	libc64dtv \
 	libc64dtvstubs \
 	libc64c64dtv \
+	libdiag \
 	libdriveiec \
 	libdriveiecieee \
 	libdriveiecc64exp \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
 	libraster \
 	libsid \
+	libsamplerdrv \
+	libjoyport \
 	libsounddrv \
 	libgfxoutputdrv \
 	libprinterdrv \
@@ -1083,10 +1672,95 @@ x64dtv-all: \
 	libplatform \
 	x64dtv$(EXEEXT)
 
+# xscpu64
+xscpu64_libs =  \
+	@XSCPU64_WINRES@ \
+	$(scpu64_lib) \
+	$(c64cartsystem_lib) \
+	$(c64cart_lib) \
+	$(c64commoncart_lib) \
+	$(c64scpu64_lib) \
+	$(driveiec_lib) \
+	$(driveiecieee_lib) \
+	$(driveiecc64exp_lib) \
+	$(driveieee_lib) \
+	$(drive_lib) \
+	$(drivetcbm_lib) \
+	$(p64_lib) \
+	$(iecbus_lib) \
+	$(parallel_lib) \
+	$(vdrive_lib) \
+	$(sid_lib) \
+	$(monitor_lib) \
+	$(driver_libs) \
+	$(viciisc_lib) \
+	$(raster_lib) \
+	$(userport_lib) \
+	$(diag_lib) \
+	$(rtc_lib) \
+	$(video_lib) \
+	$(common_libs) \
+	$(imagecontents_lib) \
+	$(resid_libs) \
+	$(ffmpeg_libs) \
+	$(platform_lib)
+
+xscpu64_SOURCES = $(base_sources) $(midi_sources)
+xscpu64_LDADD = $(xscpu64_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
+xscpu64_DEPENDENCIES = $(xscpu64_libs)
+xscpu64_LDFLAGS = @xscpu64_LDFLAGS@
+
+.PHONY: xscpu64-all
+xscpu64-all: \
+	$(BUILT_SOURCES) \
+	libscpu64 \
+	libc64scpu64 \
+	libc64cartsystem \
+	libc64cart \
+	libc64commoncart \
+	libsamplerdrv \
+	libjoyport \
+	libsounddrv \
+	libgfxoutputdrv \
+	libprinterdrv \
+	librs232drv \
+	libdiag \
+	libdriveiec \
+	libdriveiecieee \
+	libdriveiecc64exp \
+	libdriveieee \
+	libdrive \
+	libdrivetcbm \
+	libp64 \
+	libparallel \
+	libvdrive \
+	libarch \
+	libsid \
+	libviciisc \
+	libvideo \
+	libraster \
+	libmonitor \
+	libdiskimage \
+	libiecbus \
+	libserial \
+	libfsdevice \
+	libtape \
+	libimagecontents \
+	libfileio \
+	libcore \
+	librtc \
+	libuserport \
+	libplatform \
+	@RESID_DEP@ \
+	@FFMPEG_DEP@ \
+	xscpu64$(EXEEXT)
+
 # x128
 x128_libs =  \
 	@X128_WINRES@ \
+	$(tapeport_lib) \
 	$(c128_lib) \
+	$(tapeport_lib) \
 	$(c64cartsystem_lib) \
 	$(c64cart_lib) \
 	$(c64commoncart_lib) \
@@ -1097,6 +1771,7 @@ x128_libs =  \
 	$(driveiecc64exp_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
+	$(drivetcbm_lib) \
 	$(p64_lib) \
 	$(iecbus_lib) \
 	$(parallel_lib) \
@@ -1108,15 +1783,17 @@ x128_libs =  \
 	$(vdc_lib) \
 	$(raster_lib) \
 	$(userport_lib) \
+	$(diag_lib) \
 	$(rtc_lib) \
 	$(video_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
 	$(resid_libs) \
+	$(ffmpeg_libs) \
 	$(platform_lib)
 
-x128_SOURCES = $(base_sources) $(mouse_sources) $(midi_sources)
-x128_LDADD = $(x128_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+x128_SOURCES = $(base_sources) $(midi_sources)
+x128_LDADD = $(x128_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 x128_DEPENDENCIES = $(x128_libs)
 x128_LDFLAGS = @x128_LDFLAGS@
 
@@ -1128,16 +1805,20 @@ x128-all: \
 	libc64cartsystem \
 	libc64cart \
 	libc64commoncart \
+	libsamplerdrv \
+	libjoyport \
 	libsounddrv \
 	libgfxoutputdrv \
 	libprinterdrv \
 	librs232drv \
+	libdiag \
 	libdriveiec \
 	libdriveiec128dcr \
 	libdriveiecieee \
 	libdriveiecc64exp \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
@@ -1158,22 +1839,25 @@ x128-all: \
 	libcore \
 	librtc \
 	libuserport \
+	libtapeport \
 	libplatform \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	x128$(EXEEXT)
 
 # xvic
 xvic_libs =  \
 	@XVIC_WINRES@ \
-	$(vic20_lib) \
+	$(tapeport_lib) \
 	$(vic20cart_lib) \
+	$(vic20_lib) \
 	$(c64commoncart_lib) \
 	$(mascuerade_lib) \
 	$(driveiec_lib) \
 	$(driveiecieee_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
+	$(drivetcbm_lib) \
 	$(p64_lib) \
 	$(iecbus_lib) \
 	$(parallel_lib) \
@@ -1181,31 +1865,37 @@ xvic_libs =  \
 	$(monitor_lib) \
 	$(driver_libs) \
 	$(raster_lib) \
-	$(rtc_lib) \
 	$(userport_lib) \
+	$(diag_lib) \
+        $(rtc_lib) \
 	$(sid_lib) \
 	$(video_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
 	$(resid_libs) \
+	$(ffmpeg_libs) \
 	$(platform_lib)
 
-xvic_SOURCES = $(base_sources) $(mouse_sources) $(midi_sources)
-xvic_LDADD = $(xvic_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+xvic_SOURCES = $(base_sources) $(midi_sources)
+xvic_LDADD = $(xvic_libs) $(emu_extlibs) $(mascuerade_lib) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 xvic_DEPENDENCIES = $(xvic_libs)
 xvic_LDFLAGS = @xvic_LDFLAGS@
 
 .PHONY: xvic-all
 xvic-all: \
 	$(BUILT_SOURCES) \
+	libdiag \
 	libdriveiec \
 	libdriveiecieee \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
 	libraster \
+	libsamplerdrv \
+	libjoyport \
 	libsounddrv \
 	libgfxoutputdrv \
 	libprinterdrv \
@@ -1228,18 +1918,23 @@ xvic-all: \
 	libcore \
 	librtc \
 	libuserport \
+	libtapeport \
 	libplatform \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	xvic$(EXEEXT)
 
 # xpet
 xpet_libs =  \
 	@XPET_WINRES@ \
+	$(tapeport_lib) \
 	$(pet_lib) \
+	$(diag_lib) \
 	$(driveiecieee_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
+	$(driveiec_lib) \
+	$(drivetcbm_lib) \
 	$(p64_lib) \
 	$(parallel_lib) \
 	$(vdrive_lib) \
@@ -1247,26 +1942,31 @@ xpet_libs =  \
 	$(driver_libs) \
 	$(crtc_lib) \
 	$(raster_lib) \
-	$(rtc_lib) \
 	$(userport_lib) \
 	$(video_lib) \
 	$(sid_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
+	$(joyport_lib) \
 	$(resid_libs) \
-	$(platform_lib)
+	$(ffmpeg_libs) \
+	$(platform_lib) \
+	$(rtc_lib)
 
-xpet_SOURCES = $(base_sources) $(mouse_sources)
-xpet_LDADD = $(xpet_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+xpet_SOURCES = $(base_sources)
+xpet_LDADD = $(xpet_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 xpet_DEPENDENCIES = $(xpet_libs) 
 xpet_LDFLAGS = @xpet_LDFLAGS@
 
 .PHONY: xpet-all
 xpet-all: \
 	$(BUILT_SOURCES) \
+	libdiag \
+	libdriveiec \
 	libdriveiecieee \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
@@ -1290,20 +1990,27 @@ xpet-all: \
 	libcore \
 	librtc \
 	libuserport \
+	libtapeport \
+	libjoyport \
 	libplatform \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	xpet$(EXEEXT)
 
 # xplus4
 xplus4_libs =  \
 	@XPLUS4_WINRES@ \
+	$(tapeport_lib) \
 	$(plus4_lib) \
+	$(diag_lib) \
 	$(driveiec_lib) \
 	$(driveiecieee_lib) \
 	$(driveiecplus4exp_lib) \
 	$(drivetcbm_lib) \
 	$(drive_lib) \
+	$(driveieee_lib) \
+	$(parallel_lib) \
+	$(driveieee_lib) \
 	$(p64_lib) \
 	$(iecbus_lib) \
 	$(vdrive_lib) \
@@ -1316,25 +2023,32 @@ xplus4_libs =  \
 	$(video_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
+	$(joyport_lib) \
 	$(resid_libs) \
+	$(ffmpeg_libs) \
 	$(platform_lib)
 
-xplus4_SOURCES = $(base_sources) $(mouse_sources)
-xplus4_LDADD = $(xplus4_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+xplus4_SOURCES = $(base_sources)
+xplus4_LDADD = $(xplus4_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 xplus4_DEPENDENCIES = $(xplus4_libs)
 xplus4_LDFLAGS = @xplus4_LDFLAGS@
 
 .PHONY: xplus4-all
 xplus4-all: \
 	$(BUILT_SOURCES) \
+	libdiag \
 	libdriveiec \
 	libdriveiecieee \
 	libdriveiecplus4exp \
 	libdrivetcbm \
 	libdrive \
+	libdriveieee \
+	libparallel \
 	libp64 \
 	libvdrive \
 	libraster \
+	libsamplerdrv \
+	libjoyport \
 	libsounddrv \
 	libgfxoutputdrv \
 	libprinterdrv \
@@ -1354,18 +2068,23 @@ xplus4-all: \
 	libcore \
 	librtc \
 	libuserport \
+	libtapeport \
 	libplatform \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
 	xplus4$(EXEEXT)
 
 # xcbm2
 xcbm2_libs = \
 	@XCBM2_WINRES@ \
+	$(tapeport_lib) \
 	$(xcbm2_lib) \
+	$(diag_lib) \
 	$(driveiecieee_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
+	$(driveiec_lib) \
+	$(drivetcbm_lib) \
 	$(p64_lib) \
 	$(parallel_lib) \
 	$(vdrive_lib) \
@@ -1374,16 +2093,18 @@ xcbm2_libs = \
 	$(sid_lib) \
 	$(crtc_lib) \
 	$(raster_lib) \
-	$(rtc_lib) \
 	$(video_lib) \
 	$(userport_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
+	$(joyport_lib) \
 	$(resid_libs) \
-	$(platform_lib)
+	$(ffmpeg_libs) \
+	$(platform_lib) \
+	$(rtc_lib)
 
-xcbm2_SOURCES = $(base_sources) $(mouse_sources)
-xcbm2_LDADD = $(xcbm2_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+xcbm2_SOURCES = $(base_sources)
+xcbm2_LDADD = $(xcbm2_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 xcbm2_DEPENDENCIES = $(xcbm2_libs) 
 xcbm2_LDFLAGS = @xcbm2_LDFLAGS@
 
@@ -1398,10 +2119,13 @@ xcbm2-all: \
 	libarch \
 	libsid \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
+	libdiag \
+	libdriveiec \
 	libdriveiecieee \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
@@ -1418,16 +2142,22 @@ xcbm2-all: \
 	libcore \
 	librtc \
 	libuserport \
+	libtapeport \
+	libjoyport \
 	libplatform \
 	xcbm2$(EXEEXT)
 
 # xcbm5x0
 xcbm5x0_libs = \
 	@XCBM5X0_WINRES@ \
+	$(tapeport_lib) \
 	$(xcbm5x0_lib) \
+	$(diag_lib) \
 	$(driveiecieee_lib) \
 	$(driveieee_lib) \
 	$(drive_lib) \
+	$(drivetcbm_lib) \
+	$(driveiec_lib) \
 	$(p64_lib) \
 	$(parallel_lib) \
 	$(vdrive_lib) \
@@ -1441,11 +2171,13 @@ xcbm5x0_libs = \
 	$(userport_lib) \
 	$(common_libs) \
 	$(imagecontents_lib) \
+	$(joyport_lib) \
 	$(resid_libs) \
+	$(ffmpeg_libs) \
 	$(platform_lib)
 
-xcbm5x0_SOURCES = $(base_sources) $(mouse_sources)
-xcbm5x0_LDADD = $(xcbm5x0_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@
+xcbm5x0_SOURCES = $(base_sources)
+xcbm5x0_LDADD = $(xcbm5x0_libs) $(emu_extlibs) @TFE_LIBS@ @NETPLAY_LIBS@ @READLINE_LIBS@
 xcbm5x0_DEPENDENCIES = $(xcbm5x0_libs) 
 xcbm5x0_LDFLAGS = @xcbm2_LDFLAGS@
 
@@ -1453,6 +2185,8 @@ xcbm5x0_LDFLAGS = @xcbm2_LDFLAGS@
 xcbm5x0-all: \
 	$(BUILT_SOURCES) \
 	libcbm5x0 \
+	libsamplerdrv \
+	libjoyport \
 	libsounddrv \
 	libgfxoutputdrv \
 	libprinterdrv \
@@ -1460,10 +2194,13 @@ xcbm5x0-all: \
 	libarch \
 	libsid \
 	@RESID_DEP@ \
-	@RESID_FP_DEP@ \
+	@FFMPEG_DEP@ \
+	libdiag \
+	libdriveiec \
 	libdriveiecieee \
 	libdriveieee \
 	libdrive \
+	libdrivetcbm \
 	libp64 \
 	libparallel \
 	libvdrive \
@@ -1479,7 +2216,7 @@ xcbm5x0-all: \
 	libfileio \
 	libcore \
 	librtc \
-	libuserport \
+	libtapeport \
 	libplatform \
 	xcbm5x0$(EXEEXT)
 
@@ -1574,16 +2311,17 @@ cartconv_SOURCES = cartconv.c
 cartconv_LDADD = @INTLLIBS@
 
 # distclean
-DISTCLEANFILES = $(BUILT_SOURCES)
+DISTCLEANFILES = $(BUILT_SOURCES) $(GENFILES)
 
 # Special targets to build libraries in subdirectories.
 
-.PHONY: libvsid libc64 libc64sc libc128 libc64dtv libc64dtvstubs libvic20
-	libpet libplus4 libcbm2 libcbm5x0 libdrive libvdrive libprinterdrv
-	librs232drv libgfxoutputdrv libsounddrv libdiskimage libfsdevice
-	libtape libarch libvicii libviciisc libviciidtv libvdc libsid libcrtc
-	libvideo libserial libparallel libcore libiecbus libfileio librtc
-	libuserport libp64 @RESID_DEP@ @RESID_DTV_DEP@ @RESID_FP_DEP@
+.PHONY: libvsid libc64 libc64sc libc128 libc64dtv libc64dtvstubs libvic20 \
+	libpet libplus4 libcbm2 libcbm5x0 libdrive libvdrive libprinterdrv \
+	librs232drv libgfxoutputdrv libsamplerdrv libjoyport libsounddrv \
+	libdiskimage libfsdevice libtape libarch libvicii libviciisc \
+	libviciidtv libviciivsid libvdc libsid libcrtc libvideo libserial \
+	libparallel libcore libiecbus libfileio librtc libuserport libtapeport \
+	libp64 libscpu64 libdiag @RESID_DEP@ @RESID_DTV_DEP@ @FFMPEG_DEP@
 
 libarch:
 	(cd arch && $(MAKE))
@@ -1591,10 +2329,14 @@ libc128:
 	(cd c128 && $(MAKE))
 libc64:
 	(cd c64 && $(MAKE) libc64.a)
+libscpu64:
+	(cd scpu64 && $(MAKE) libscpu64.a)
 libc64sc:
 	(cd c64 && $(MAKE) libc64sc.a)
 libc64c128:
 	(cd c64 && $(MAKE) libc64c128.a)
+libc64scpu64:
+	(cd c64 && $(MAKE) libc64scpu64.a)
 libc64c64dtv:
 	(cd c64 && $(MAKE) libc64c64dtv.a)
 libc64cart:
@@ -1615,6 +2357,8 @@ libcore:
 	(cd core && $(MAKE))
 libcrtc:
 	(cd crtc && $(MAKE))
+libdiag:
+	(cd diag && $(MAKE))
 libdiskimage:
 	(cd diskimage && $(MAKE))
 libdrive:
@@ -1635,12 +2379,14 @@ libdriveieee:
 	(cd drive && $(MAKE) libdriveieee)
 libdrivetcbm:
 	(cd drive && $(MAKE) libdrivetcbm)
-libgfxoutputdrv:
-	(cd gfxoutputdrv && $(MAKE))
+libffmpeg:
+	(cd lib/libffmpeg && $(MAKE) VICEBUILD=1)
 libfileio:
 	(cd fileio && $(MAKE))
 libfsdevice:
 	(cd fsdevice && $(MAKE))
+libgfxoutputdrv:
+	(cd gfxoutputdrv && $(MAKE))
 libiecbus:
 	(cd iecbus && $(MAKE))
 libimagecontents:
@@ -1669,8 +2415,10 @@ libresid:
 	(cd resid && $(MAKE) libresid.a)
 libresiddtv:
 	(cd resid-dtv && $(MAKE) libresiddtv.a)
-libresidfp:
-	(cd resid-fp && $(MAKE) libresidfp.a)
+libsamplerdrv:
+	(cd samplerdrv && $(MAKE))
+libjoyport:
+	(cd joyport && $(MAKE))
 libserial:
 	(cd serial && $(MAKE))
 libsid:
@@ -1681,6 +2429,8 @@ libtape:
 	(cd tape && $(MAKE))
 libuserport:
 	(cd userport && $(MAKE))
+libtapeport:
+	(cd tapeport && $(MAKE))
 libvdc:
 	(cd vdc && $(MAKE))
 libvdrive:
@@ -1695,6 +2445,8 @@ libviciidtv:
 	(cd vicii && $(MAKE) libviciidtv.a)
 libviciisc:
 	(cd viciisc && $(MAKE) libviciisc.a)
+libviciivsid:
+	(cd viciivsid && $(MAKE) libviciivsid.a)
 libvideo:
 	(cd video && $(MAKE))
 libvsid:
@@ -1705,6 +2457,9 @@ x64ow$(EXEEXT): x64$(EXEEXT)
 
 x64dtvow$(EXEEXT): x64dtv$(EXEEXT)
 	wrc -fe=x64dtvow$(EXEEXT) arch/win32/resc64dtv.res x64dtv$(EXEEXT)
+
+xscpu64ow$(EXEEXT): xscpu64$(EXEEXT)
+	wrc -fe=xscpu64ow$(EXEEXT) arch/win32/resscpu64.res xscpu64$(EXEEXT)
 
 x64scow$(EXEEXT): x64sc$(EXEEXT)
 	wrc -fe=x64scow$(EXEEXT) arch/win32/resc64.res x64sc$(EXEEXT)
@@ -1729,3 +2484,44 @@ xvicow$(EXEEXT): xvic$(EXEEXT)
 
 vsidow$(EXEEXT): vsid$(EXEEXT)
 	wrc -fe=vsidow$(EXEEXT) arch/win32/resvsid.res vsid$(EXEEXT)
+
+if HAVE_SHARED_FFMPEG
+$(top_builddir)/src/libffmpeg.a: libffmpeg
+	touch dummy.c
+	$(CC) -o dummy.o -c dummy.c
+	$(AR) cru $(top_builddir)/src/libffmpeg.a dummy.o
+	$(RANLIB) $(top_builddir)/src/libffmpeg.a
+	rm dummy.o dummy.c
+endif
+
+if HAVE_STATIC_FFMPEG
+$(top_builddir)/src/lib/libffmpeg/libavformat/libavformat.a: libffmpeg
+
+$(top_builddir)/src/lib/libffmpeg/libavcodec/libavcodec.a: libffmpeg
+
+$(top_builddir)/src/lib/libffmpeg/libavutil/libavutil.a: libffmpeg
+
+$(top_builddir)/src/lib/libffmpeg/libswscale/libswscale.a: libffmpeg
+
+$(top_builddir)/src/lib/libffmpeg/libswresample/libswresample.a: libffmpeg
+
+$(top_builddir)/src/lib/libffmpeg/lib/libmp3lame.a: libffmpeg
+
+$(top_builddir)/src/lib/libffmpeg/lib/libx264.a: libffmpeg
+endif
+
+clean-ffmpeg:
+	rm -f $(top_builddir)/src/libffmpeg.a
+
+if HAVE_SHARED_FFMPEG
+EXTRA_CLEAN = clean-ffmpeg
+else
+if HAVE_STATIC_FFMPEG
+EXTRA_CLEAN = clean-ffmpeg
+else
+EXTRA_CLEAN =
+endif
+endif
+
+clean: clean-recursive $(EXTRA_CLEAN)
+	

@@ -3,6 +3,7 @@
  *
  * Written by
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -72,7 +73,7 @@ static log_t mmu_log = LOG_ERR;
 
 static int set_column4080_key(int val, void *param)
 {
-    mmu_column4080_key = val;
+    mmu_column4080_key = val ? 1 : 0;
 
 #ifdef HAS_SINGLE_CANVAS
     vdc_set_canvas_refresh(mmu_column4080_key ? 0 : 1);
@@ -83,7 +84,7 @@ static int set_column4080_key(int val, void *param)
 
 static int set_force_c64_mode(int val, void *param)
 {
-    force_c64_mode_res = val;
+    force_c64_mode_res = val ? 1 : 0;
 
     return 0;
 }
@@ -157,7 +158,7 @@ static void mmu_switch_cpu(int value)
 static void mmu_set_ram_bank(BYTE value)
 {
     if (c128_full_banks) {
-        ram_bank = mem_ram +(((long)value & 0xc0) << 10);
+        ram_bank = mem_ram + (((long)value & 0xc0) << 10);
     } else {
         ram_bank = mem_ram + (((long)value & 0x40) << 10);
     }
@@ -185,7 +186,7 @@ static void mmu_switch_to_c64mode(void)
     }
     machine_tape_init_c64();
     mem_update_config(0x80 + mmu_config64);
-#ifndef __OS2__
+#ifdef COMMON_KBD
     keyboard_alternative_set(1);
 #endif
     machine_kbdbuf_reset_c64();
@@ -205,7 +206,7 @@ static void mmu_switch_to_c128mode(void)
                       ((mmu[0] & 0x40) ? 32 : 0) |
                       ((mmu[0] & 0x1) ? 0 : 64));
     z80mem_update_config((((mmu[0] & 0x1)) ? 0 : 1) | ((mmu[0] & 0x40) ? 2 : 0) | ((mmu[0] & 0x80) ? 4 : 0));
-#ifndef __OS2__
+#ifdef COMMON_KBD
     keyboard_alternative_set(0);
 #endif
     machine_kbdbuf_reset_c128();
@@ -344,7 +345,10 @@ BYTE mmu_ffxx_read(WORD addr)
     if ((mmu[0] & 0x30) == 0x10) {
         return internal_function_rom_read(addr);
     }
- 
+    if ((mmu[0] & 0x30) == 0x20) {
+        return external_function_rom_read(addr);
+    }
+
     return top_shared_read(addr);
 }
 
@@ -373,7 +377,7 @@ void mmu_ffxx_store(WORD addr, BYTE value)
     }
 }
 
-int mmu_dump(void)
+int mmu_dump(void *context, WORD addr)
 {
     mon_out("CR: bank: %d, $4000-$7FFF: %s, $8000-$BFFF: %s, $C000-$CFFF: %s, $D000-$DFFF: %s, $E000-$FFFF: %s\n",
             (mmu[0] & 0xc0) >> 6,

@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -34,7 +35,7 @@
 
 #include "archdep.h"
 #include "cmdline.h"
-#include "drivecpu.h"
+#include "drive.h"
 #include "fullscreenarch.h"
 #include "interrupt.h"
 #include "ioutil.h"
@@ -55,6 +56,12 @@
 #include "util.h"
 #include "vice-event.h"
 #include "vsync.h"
+#include "vsyncapi.h"
+#include "vicemaxpath.h"
+
+#ifdef USE_GNOMEUI
+extern int ui_open_manual(const char *path);
+#endif
 
 static UI_CALLBACK(change_working_directory)
 {
@@ -103,31 +110,10 @@ static UI_CALLBACK(activate_monitor)
     }
 }
 
-static UI_CALLBACK(run_c1541)
-{
-#ifdef HAVE_FULLSCREEN
-    fullscreen_suspend(0);
-#endif
-    vsync_suspend_speed_eval();
-    sound_close();
-    switch (system("xterm -sb -rightbar -e c1541 &")) {
-        case 127:
-            ui_error(_("Couldn't run /bin/sh???"));
-            break;
-        case -1:
-            ui_error(_("Couldn't run xterm"));
-            break;
-        case 0:
-            break;
-        default:
-            ui_error(_("Unknown error while running c1541"));
-    }
-}
-
-static UI_CALLBACK(drive_reset)
+static UI_CALLBACK(drive_trigger_reset)
 {
     vsync_suspend_speed_eval();
-    drivecpu_trigger_reset(vice_ptr_to_uint(UI_MENU_CB_PARAM));
+    drive_cpu_trigger_reset(vice_ptr_to_uint(UI_MENU_CB_PARAM));
 }
 
 static UI_CALLBACK(reset)
@@ -142,9 +128,40 @@ static UI_CALLBACK(powerup_reset)
     machine_trigger_reset(MACHINE_RESET_MODE_HARD);
 }
 
+static UI_CALLBACK(browse_set_browser_cmd)
+{
+    char *command_text = util_concat(_("Command"), ":", NULL);
+
+    uilib_select_string((char *)UI_MENU_CB_PARAM, _("Command to execute for browsing html files"), command_text);
+    lib_free(command_text);
+}
+
 static UI_CALLBACK(browse_manual)
 {
     const char *bcommand = NULL;
+
+    /* first try to open the manual using desktop mechanisms */
+#ifdef USE_GNOMEUI
+    const char *path;
+    int res;
+
+#ifdef MACOSX_BUNDLE
+    /* On Macs the manual path is relative to the bundle. */
+    path = util_concat(archdep_boot_path(), "/../doc/", NULL);
+#else
+    path = util_concat(DOCDIR, "/", NULL);
+#endif
+    res = ui_open_manual(path);
+    lib_free(path);
+    if (res == 0) {
+        return;
+    }
+#endif
+
+    /* FIXME: desktop neutral ways to find the default application may be used
+              here first (xdg-open) */
+
+    /* as a last resort, use HTMLBrowserCommand */
 
     resources_get_string("HTMLBrowserCommand", &bcommand);
 
@@ -236,9 +253,11 @@ static UI_CALLBACK(do_exit)
 
 /* ------------------------------------------------------------------------- */
 
+UI_MENU_DEFINE_TOGGLE(WarpMode)
+
 static UI_CALLBACK(toggle_pause)
 {
-    static int pause = 0;
+    int pause = ui_emulation_is_paused();
 
     if (!CHECK_MENUS) {
         pause = !pause;
@@ -248,6 +267,19 @@ static UI_CALLBACK(toggle_pause)
     }
 
     ui_menu_set_tick(w, pause);
+}
+
+static UI_CALLBACK(do_frame_advance)
+{
+    if (!CHECK_MENUS) {
+        ui_update_menus();
+        if (ui_emulation_is_paused()) {
+            vsyncarch_advance_frame();
+        } else {
+            ui_pause_emulation(1);
+            ui_update_menus();
+        }
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -278,7 +310,7 @@ static void load_snapshot_trap(WORD unused_addr, void *data)
     util_fname_split(filename, &load_snapshot_last_dir, NULL);
 
     if (machine_read_snapshot(filename, 0) < 0) {
-        ui_error(_("Cannot load snapshot file\n`%s'"), filename);
+        snapshot_display_error();
     }
     ui_update_menus();
 
@@ -296,7 +328,12 @@ static UI_CALLBACK(load_snapshot)
 
 static UI_CALLBACK(load_quicksnap)
 {
-    char *fname = util_concat(archdep_home_path(), "/", VICEUSERDIR, "/", machine_name, ".vsf", NULL);
+    char *fname;
+    if (machine_class == VICE_MACHINE_C64SC) {
+        fname = util_concat(archdep_home_path(), "/", VICEUSERDIR, "/", "c64sc.vsf", NULL);
+    } else {
+        fname = util_concat(archdep_home_path(), "/", VICEUSERDIR, "/", machine_name, ".vsf", NULL);
+    }
 
     if (!ui_emulation_is_paused()) {
         interrupt_maincpu_trigger_trap(load_snapshot_trap, (void *)fname);
@@ -311,7 +348,7 @@ static void save_snapshot_trap(WORD unused_addr, void *data)
         /* quick snapshot, save ROMs & disks (??) */
         log_debug("Quicksaving file %s.", (char *)data);
         if (machine_write_snapshot(data, 1, 1, 0) < 0) {
-            ui_error(_("Cannot write snapshot file\n`%s'\n"), data);
+            snapshot_display_error();
         }
         lib_free(data);
     } else {
@@ -328,8 +365,12 @@ static UI_CALLBACK(save_snapshot)
 
 static UI_CALLBACK(save_quicksnap)
 {
-    char *fname = util_concat(archdep_home_path(), "/", VICEUSERDIR, "/", machine_name, ".vsf", NULL);
-
+    char *fname;
+    if (machine_class == VICE_MACHINE_C64SC) {
+        fname = util_concat(archdep_home_path(), "/", VICEUSERDIR, "/", "c64sc.vsf", NULL);
+    } else {
+        fname = util_concat(archdep_home_path(), "/", VICEUSERDIR, "/", machine_name, ".vsf", NULL);
+    }
     interrupt_maincpu_trigger_trap(save_snapshot_trap, (void *)fname);
 }
 
@@ -369,14 +410,16 @@ static UI_CALLBACK(events_return_ms)
     event_record_reset_milestone();
 }
 
-static void sound_record_stop(void)
+void uicommands_sound_record_stop(void)
 {
     char *retval;
 
-    resources_set_string("SoundRecordDeviceName", "");
-    retval = util_concat(_("Sound Recording stopped"), "...", NULL);
-    ui_display_statustext(retval, 10);
-    lib_free(retval);
+    if (sound_is_recording()) {
+        sound_stop_recording();
+        retval = util_concat(_("Media Recording stopped"), "...", NULL);
+        ui_display_statustext(retval, 10);
+        lib_free(retval);
+    }
 }
 
 static char *soundrecordpath = NULL;
@@ -389,7 +432,7 @@ static void sound_record_start(char *format, uilib_file_filter_enum_t extension)
 
     vsync_suspend_speed_eval();
 
-    resources_set_string("SoundRecordDeviceName", "");
+    sound_stop_recording();
     s = ui_select_file(_("Record sound to file"), NULL, 0, soundrecordpath, &extension, 1, &button, 0, NULL, UI_FC_SAVE);
     if (button == UI_BUTTON_OK && s != NULL) {
         lib_free(soundrecordpath);
@@ -432,7 +475,22 @@ static UI_CALLBACK(sound_record_mp3)
 }
 #endif
 
+#ifdef USE_FLAC
+static UI_CALLBACK(sound_record_flac)
+{
+    sound_record_start("flac", UILIB_FILTER_FLAC);
+}
+#endif
+
+#ifdef USE_VORBIS
+static UI_CALLBACK(sound_record_vorbis)
+{
+    sound_record_start("ogg", UILIB_FILTER_VORBIS);
+}
+#endif
+
 /* ------------------------------------------------------------------------- */
+UI_MENU_DEFINE_RADIO(JAMAction)
 
 static ui_menu_entry_t reset_submenu[] = {
     { N_("Soft"), UI_MENU_TYPE_NORMAL,
@@ -443,13 +501,29 @@ static ui_menu_entry_t reset_submenu[] = {
       KEYSYM_F12, UI_HOTMOD_META },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Unit #8"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)drive_reset, (ui_callback_data_t)0, NULL },
+      (ui_callback_t)drive_trigger_reset, (ui_callback_data_t)0, NULL },
     { N_("Unit #9"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)drive_reset, (ui_callback_data_t)1, NULL },
+      (ui_callback_t)drive_trigger_reset, (ui_callback_data_t)1, NULL },
     { N_("Unit #10"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)drive_reset, (ui_callback_data_t)2, NULL },
+      (ui_callback_t)drive_trigger_reset, (ui_callback_data_t)2, NULL },
     { N_("Unit #11"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)drive_reset, (ui_callback_data_t)3, NULL },
+      (ui_callback_t)drive_trigger_reset, (ui_callback_data_t)3, NULL },
+    { NULL }
+};
+
+static ui_menu_entry_t jam_submenu[] = {
+    { N_("Ask"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_JAMAction, (ui_callback_data_t)MACHINE_JAM_ACTION_DIALOG, NULL },
+    { N_("Continue"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_JAMAction, (ui_callback_data_t)MACHINE_JAM_ACTION_CONTINUE, NULL },
+    { N_("Start monitor"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_JAMAction, (ui_callback_data_t)MACHINE_JAM_ACTION_MONITOR, NULL },
+    { N_("Reset"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_JAMAction, (ui_callback_data_t)MACHINE_JAM_ACTION_RESET, NULL },
+    { N_("Hard reset"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_JAMAction, (ui_callback_data_t)MACHINE_JAM_ACTION_HARD_RESET, NULL },
+    { N_("Quit emulator"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)radio_JAMAction, (ui_callback_data_t)MACHINE_JAM_ACTION_QUIT, NULL },
     { NULL }
 };
 
@@ -488,7 +562,7 @@ ui_menu_entry_t ui_snapshot_commands_submenu[] = {
       (ui_callback_t)save_quicksnap, NULL, NULL,
       KEYSYM_F11, UI_HOTMOD_META },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Select history directory"), UI_MENU_TYPE_NORMAL,
+    { N_("Select history directory"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)events_select_dir, NULL, NULL },
     { N_("Start recording events"), UI_MENU_TYPE_NORMAL,
       (ui_callback_t)record_events_start, NULL, NULL },
@@ -505,11 +579,6 @@ ui_menu_entry_t ui_snapshot_commands_submenu[] = {
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("Recording start mode"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, set_event_start_mode_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-#ifdef HAVE_NETWORK
-    { N_("Netplay (experimental)"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, netplay_submenu },
-#endif
     { NULL }
 };
 
@@ -519,7 +588,7 @@ ui_menu_entry_t ui_snapshot_commands_menu[] = {
     { NULL }
 };
 
-ui_menu_entry_t ui_sound_record_commands_menu[] = {
+ui_menu_entry_t ui_sound_record_commands_submenu[] = {
     { N_("Sound record WAV"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)sound_record_wav, NULL, NULL },
     { N_("Sound record AIFF"), UI_MENU_TYPE_DOTS,
@@ -532,22 +601,28 @@ ui_menu_entry_t ui_sound_record_commands_menu[] = {
     { N_("Sound record MP3"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)sound_record_mp3, NULL, NULL },
 #endif
+#ifdef USE_FLAC
+    { N_("Sound record FLAC"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)sound_record_flac, NULL, NULL },
+#endif
+#ifdef USE_VORBIS
+    { N_("Sound record ogg/vorbis"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)sound_record_vorbis, NULL, NULL },
+#endif
     { N_("Stop Sound record"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)sound_record_stop, NULL, NULL },
+      (ui_callback_t)uicommands_sound_record_stop, NULL, NULL },
+    { NULL }
+};
+
+ui_menu_entry_t ui_sound_record_commands_menu[] = {
+    { N_("Sound recording"), UI_MENU_TYPE_NORMAL,
+      NULL,  NULL, ui_sound_record_commands_submenu },
     { NULL }
 };
 
 static UI_CALLBACK(monitor_select_addr)
 {
-    const char *wd = NULL;
-    int len = 40;
-
-    resources_get_string("MonitorServerAddress", &wd);
-    vsync_suspend_speed_eval();
-    if (ui_input_string(_("VICE setting"), _("Select server address"), (char*)wd, len) == UI_BUTTON_OK) {
-        resources_set_string("MonitorServerAddress", wd);
-    }
-    lib_free(wd);
+    uilib_select_string((char *)UI_MENU_CB_PARAM, _("VICE setting"), _("Select server address"));
 }
 
 UI_MENU_DEFINE_TOGGLE(KeepMonitorOpen)
@@ -560,7 +635,8 @@ ui_menu_entry_t ui_monitor_commands_menu[] = {
     { N_("Enable remote monitor server"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_MonitorServer, NULL, NULL },
     { N_("Set remote monitor server address"), UI_MENU_TYPE_DOTS,
-      (ui_callback_t)monitor_select_addr, NULL, NULL },
+      (ui_callback_t)monitor_select_addr,
+      (ui_callback_data_t)"MonitorServerAddress", NULL },
     { NULL }
 };
 
@@ -570,8 +646,6 @@ ui_menu_entry_t ui_tool_commands_menu[] = {
       KEYSYM_h, UI_HOTMOD_META },
     { N_("Monitor settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ui_monitor_commands_menu },
-    { N_("Run C1541"), UI_MENU_TYPE_NORMAL,
-      (ui_callback_t)run_c1541, NULL, NULL },
     { NULL }
 };
 
@@ -629,15 +703,25 @@ ui_menu_entry_t ui_help_commands_menu[] = {
       (ui_callback_t)ui_about_cmdline, NULL, NULL },
     { N_("About VICE"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)ui_about, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Set browser command"), UI_MENU_TYPE_DOTS, (ui_callback_t)browse_set_browser_cmd,
+      (ui_callback_data_t)"HTMLBrowserCommand", NULL },
     { NULL }
 };
 
 ui_menu_entry_t ui_run_commands_menu[] = {
-    { N_("Reset"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, reset_submenu },
+    { N_("Reset"), UI_MENU_TYPE_NORMAL, NULL, NULL, reset_submenu },
+    { N_("Action on CPU JAM"), UI_MENU_TYPE_NORMAL, NULL, NULL, jam_submenu },
+    { NULL }
+};
+
+ui_menu_entry_t ui_runmode_commands_menu[] = {
     { N_("Pause"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)toggle_pause, NULL, NULL,
-      KEYSYM_p, UI_HOTMOD_META },
+      (ui_callback_t)toggle_pause, NULL, NULL, KEYSYM_p, UI_HOTMOD_META },
+    { N_("Advance frame"), UI_MENU_TYPE_NORMAL, (ui_callback_t)do_frame_advance,
+      NULL, NULL, KEYSYM_p, UI_HOTMOD_META | UI_HOTMOD_SHIFT },
+    { N_("Enable warp mode"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_WarpMode, NULL, NULL, KEYSYM_w, UI_HOTMOD_META },
     { NULL }
 };
 

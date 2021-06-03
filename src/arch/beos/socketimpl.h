@@ -2,7 +2,7 @@
  *  \author Spiro Trikaliotis\n
  *  \brief  Abstraction from network sockets.
  *
- * socketimpl.h - Abstraction from network sockets. Unix implementation.
+ * socketimpl.h - Abstraction from network sockets. BeOS implementation.
  *
  * Written by
  *  Spiro Trikaliotis <spiro.trikaliotis@gmx.de>
@@ -35,13 +35,36 @@
 
 #ifdef HAVE_NETWORK
  
-#include <socket.h>
+#include <sys/time.h> 
+#include <sys/socket.h>
 #include <netdb.h>
-#include <byteorder.h>
+#include <ByteOrder.h>
 
-typedef unsigned int SOCKET;
+#ifdef __HAIKU__
+#include <arpa/inet.h>
+#endif
+
+#ifdef HAVE_NETINET_TCP_H
+#include <netinet/tcp.h>
+#endif
+
+typedef int SOCKET;
 typedef struct timeval TIMEVAL;
+
+/* HACK: Haiku doesn't declare closesocket() in any standard header, so the
+ *       following hack takes care of that. Since Haiku is fairly POSIX
+ *       compatible this works. But feel free to solve this properly (compyx)
+ */
+#ifdef __HAIKU__
+#  ifndef closesocket
+#    include <unistd.h>
+#    define closesocket(FD) close(FD)
+#  endif
+#endif
+
+#ifndef __HAIKU__
 typedef unsigned long in_addr_t;
+#endif
 
 #define PF_INET AF_INET
 #define INVALID_SOCKET (SOCKET)(~0)

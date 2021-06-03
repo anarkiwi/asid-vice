@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -40,10 +41,15 @@
 #include "tuifs.h"
 #include "tuimenu.h"
 #include "ui.h"
+#include "uidrive.h"
+#include "uiiocollisions.h"
 #include "uipetdww.h"
+#include "uipethre.h"
 #include "uipetmodel.h"
 #include "uipetreu.h"
 #include "uisidcart.h"
+#include "uitapeport.h"
+#include "uiuserport.h"
 #include "uivideo.h"
 
 static TUI_MENU_CALLBACK(video_size_callback)
@@ -158,27 +164,6 @@ TUI_MENU_DEFINE_TOGGLE(SuperPET)
 TUI_MENU_DEFINE_TOGGLE(Ram9)
 TUI_MENU_DEFINE_TOGGLE(RamA)
 
-static TUI_MENU_CALLBACK(set_keyboard_callback)
-{
-    int value;
-
-    resources_get_int("KeymapIndex", &value);
-
-    if (been_activated) {
-        value = (value == 2) ? 0 : 2;
-        resources_set_int("KeymapIndex", value);
-    }
-
-    switch (value) {
-        case 0:
-            return "Business (UK)";
-        case 2:
-            return "Graphics";
-        default:
-            return "Unknown";
-    }
-}
-
 static tui_menu_item_def_t special_menu_items[] = {
     { "  _Video Width:",
       "Specify CRTC video size",
@@ -208,10 +193,6 @@ static tui_menu_item_def_t special_menu_items[] = {
       "Enable RAM at $A000-$AFFF (only available on 8296)",
       toggle_RamA_callback, NULL, 3,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "  _Keyboard Type:",
-      "Specify keyboard type (graphics or business)",
-      set_keyboard_callback, NULL, 13,
-      TUI_MENU_BEH_CONTINUE, NULL, NULL },
     { NULL }
 };
 
@@ -236,27 +217,52 @@ static TUI_MENU_CALLBACK(load_rom_file_callback)
 
 static tui_menu_item_def_t rom_menu_items[] = {
     { "--" },
-    { "Load new _Kernal ROM...",
+    { "Load new Kernal ROM...",
       "Load new Kernal ROM",
       load_rom_file_callback, "KernalName", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _Editor ROM...",
-      "Load new Editor ROM",
-      load_rom_file_callback, "EditorName", 0,
-      TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _BASIC ROM...",
+    { "Load new BASIC ROM...",
       "Load new BASIC ROM",
       load_rom_file_callback, "BasicName", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _Character ROM...",
+    { "Load new Character ROM...",
       "Load new Character ROM",
       load_rom_file_callback, "ChargenName", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _2031 ROM...",
+    { "Load new Editor ROM...",
+      "Load new Editor ROM",
+      load_rom_file_callback, "EditorName", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new ROM 9...",
+      "Load new ROM 9",
+      load_rom_file_callback, "RomModule9Name", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new ROM A...",
+      "Load new ROM A",
+      load_rom_file_callback, "RomModuleAName", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new ROM B...",
+      "Load new ROM B",
+      load_rom_file_callback, "RomModuleBName", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "--" },
+    { "Load new 2031 ROM...",
       "Load new 2031 ROM",
       load_rom_file_callback, "DosName2031", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
-    { "Load new _1001 ROM...",
+    { "Load new 2040 ROM...",
+      "Load new 2040 ROM",
+      load_rom_file_callback, "DosName2040", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 3040 ROM...",
+      "Load new 3040 ROM",
+      load_rom_file_callback, "DosName3040", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 4040 ROM...",
+      "Load new 4040 ROM",
+      load_rom_file_callback, "DosName4040", 0,
+      TUI_MENU_BEH_CONTINUE, NULL, NULL },
+    { "Load new 1001 ROM...",
       "Load new 1001 ROM",
       load_rom_file_callback, "DosName1001", 0,
       TUI_MENU_BEH_CONTINUE, NULL, NULL },
@@ -266,13 +272,11 @@ static tui_menu_item_def_t rom_menu_items[] = {
 
 /* ------------------------------------------------------------------------- */
 
-TUI_MENU_DEFINE_TOGGLE(UserportDAC)
-
 int petui_init(void)
 {
     tui_menu_t ui_ioextensions_submenu;
 
-    ui_create_main_menu(1, 1, 0, 2, 1);
+    ui_create_main_menu(1, 1, 0, 6, 1, driveieee_settings_submenu);
 
     tui_menu_add_separator(ui_video_submenu);
 
@@ -292,17 +296,19 @@ int petui_init(void)
 
     tui_menu_add(ui_rom_submenu, rom_menu_items);
 
+    uiiocollisions_init(ui_ioextensions_submenu);
+
     uipetdww_init(ui_ioextensions_submenu);
+
+    uipethre_init(ui_ioextensions_submenu);
 
     uipetreu_init(ui_ioextensions_submenu);
 
-    uisidcart_init(ui_ioextensions_submenu, "$8F00", "$E900", "PET");
+    uisidcart_init(ui_ioextensions_submenu, "$8F00", "$E900", "PET", 0x8f00, 0xe900);
 
-    tui_menu_add_item(ui_ioextensions_submenu, "Enable Userport DAC",
-                      "Enable Userport DAC",
-                      toggle_UserportDAC_callback,
-                      NULL, 3,
-                      TUI_MENU_BEH_CONTINUE);
+    uiuserport_pet_vic20_init(ui_ioextensions_submenu);
+
+    uitapeport_init(ui_ioextensions_submenu);
 
     return 0;
 }

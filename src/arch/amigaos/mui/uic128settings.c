@@ -30,6 +30,7 @@
 #endif
 #include "mui.h"
 
+#include "c128.h"
 #include "uic128settings.h"
 #include "intl.h"
 #include "translate.h"
@@ -44,19 +45,21 @@ static int ui_c128_machine_type_translate[] = {
     IDMS_LANGUAGE_ITALIAN,
     IDMS_LANGUAGE_NORWEGIAN,
     IDMS_LANGUAGE_SWEDISH,
+    IDMS_LANGUAGE_SWISS,
     0
 };
 
 static char *ui_c128_machine_type[countof(ui_c128_machine_type_translate)];
 
 static const int ui_c128_machine_type_values[] = {
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
+    C128_MACHINE_INT,
+    C128_MACHINE_FINNISH,
+    C128_MACHINE_FRENCH,
+    C128_MACHINE_GERMAN,
+    C128_MACHINE_ITALIAN,
+    C128_MACHINE_NORWEGIAN,
+    C128_MACHINE_SWEDISH,
+    C128_MACHINE_SWISS,
     -1
 };
 
@@ -74,7 +77,7 @@ static const int ui_c128_enable_values[] = {
     -1
 };
 
-static char *ui_internal_function_rom[] = {
+static char *ui_function_rom[] = {
     NULL,	/* place holder for 'none' */
     "ROM",
     "RAM",
@@ -82,7 +85,7 @@ static char *ui_internal_function_rom[] = {
     NULL
 };
 
-static const int ui_internal_function_rom_values[] = {
+static const int ui_function_rom_values[] = {
     0,
     1,
     2,
@@ -92,10 +95,12 @@ static const int ui_internal_function_rom_values[] = {
 
 static ui_to_from_t ui_to_from[] = {
     { NULL, MUI_TYPE_CYCLE, "MachineType", ui_c128_machine_type, ui_c128_machine_type_values, NULL },
-    { NULL, MUI_TYPE_CYCLE, "InternalFunctionROM", ui_internal_function_rom, ui_internal_function_rom_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "InternalFunctionROM", ui_function_rom, ui_function_rom_values, NULL },
     { NULL, MUI_TYPE_FILENAME, "InternalFunctionName", NULL, NULL, NULL },
-    { NULL, MUI_TYPE_CYCLE, "ExternalFunctionROM", ui_c128_enable, ui_c128_enable_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "InternalFunctionROMRTCSave", ui_c128_enable, ui_c128_enable_values, NULL },
+    { NULL, MUI_TYPE_CYCLE, "ExternalFunctionROM", ui_function_rom, ui_function_rom_values, NULL },
     { NULL, MUI_TYPE_FILENAME, "ExternalFunctionName", NULL, NULL, NULL },
+    { NULL, MUI_TYPE_CYCLE, "ExternalFunctionROMRTCSave", ui_c128_enable, ui_c128_enable_values, NULL },
     { NULL, MUI_TYPE_CYCLE, "C128FullBanks", ui_c128_enable, ui_c128_enable_values, NULL },
     UI_END /* mandatory */
 };
@@ -120,7 +125,7 @@ static ULONG BrowseExternal(struct Hook *hook, Object *obj, APTR arg)
     fname = BrowseFile(translate_text(IDS_SELECT_EXTERNAL_FUNCTION_ROM_FILENAME), "#?", c128_canvas);
 
     if (fname != NULL) {
-        set(ui_to_from[4].object, MUIA_String_Contents, fname);
+        set(ui_to_from[5].object, MUIA_String_Contents, fname);
     }
 
     return 0;
@@ -142,11 +147,13 @@ static APTR build_gui(void)
 
     ui = GroupObject,
            CYCLE(ui_to_from[0].object, translate_text(IDS_MACHINE_TYPE), ui_c128_machine_type)
-           CYCLE(ui_to_from[1].object, translate_text(IDS_INTERNAL_FUNCTION_ROM), ui_internal_function_rom)
+           CYCLE(ui_to_from[1].object, translate_text(IDS_INTERNAL_FUNCTION_ROM), ui_function_rom)
            FILENAME(ui_to_from[2].object, translate_text(IDS_INTERNAL_FUNCTION_ROM_FILENAME), browse_button1)
-           CYCLE(ui_to_from[3].object, translate_text(IDS_EXTERNAL_FUNCTION_ROM), ui_c128_enable)
-           FILENAME(ui_to_from[4].object, translate_text(IDS_EXTERNAL_FUNCTION_ROM_FILENAME), browse_button2)
-           CYCLE(ui_to_from[5].object, translate_text(IDS_RAM_BANKS_2_AND_3), ui_c128_enable)
+           CYCLE(ui_to_from[3].object, translate_text(IDS_INTERNAL_FUNCTION_RTC_SAVE), ui_c128_enable)
+           CYCLE(ui_to_from[4].object, translate_text(IDS_EXTERNAL_FUNCTION_ROM), ui_function_rom)
+           FILENAME(ui_to_from[5].object, translate_text(IDS_EXTERNAL_FUNCTION_ROM_FILENAME), browse_button2)
+           CYCLE(ui_to_from[6].object, translate_text(IDS_EXTERNAL_FUNCTION_RTC_SAVE), ui_c128_enable)
+           CYCLE(ui_to_from[7].object, translate_text(IDS_RAM_BANKS_2_AND_3), ui_c128_enable)
            OK_CANCEL_BUTTON
          End;
 
@@ -175,7 +182,7 @@ void ui_c128_settings_dialog(video_canvas_t *canvas)
 
     intl_convert_mui_table(ui_c128_machine_type_translate, ui_c128_machine_type);
     intl_convert_mui_table(ui_c128_enable_translate, ui_c128_enable);
-    ui_internal_function_rom[0] = translate_text(IDS_NONE);
+    ui_function_rom[0] = translate_text(IDS_NONE);
 
     window = mui_make_simple_window(build_gui(), translate_text(IDS_C128_SETTINGS));
 

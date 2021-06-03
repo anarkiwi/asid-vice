@@ -3,7 +3,7 @@
  *
  * Written by
  *  Jouko Valta <jopi@stekt.oulu.fi>
- *  Andre' Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -27,7 +27,7 @@
 
 #include "vice.h"
 
-#include "drivecpu.h"
+#include "drive.h"
 #include "interrupt.h"
 #include "maincpu.h"
 #include "parallel.h"
@@ -85,7 +85,8 @@ static void pia_set_cb2(int a)
 
 static void pia_reset(void)
 {
-    parallel_cpu_set_bus(0xff); /* all data lines high, because of input mode */}
+    parallel_cpu_set_bus(0xff); /* all data lines high, because of input mode */
+}
 
 
 /*
@@ -120,14 +121,15 @@ static BYTE read_pa(void)
 {
     BYTE byte;
 
-    drivecpu_execute_all(maincpu_clk);
+    drive_cpu_execute_all(maincpu_clk);
 
-    if (parallel_debug)
+    if (parallel_debug) {
         log_message(mypia_log,
-                "read pia2 port A %x, parallel_bus=%x, gives %x.",
-                mypia.port_a, parallel_bus,
-                ((parallel_bus & ~mypia.ddr_a)
-                | (mypia.port_a & mypia.ddr_a)));
+                    "read pia2 port A %x, parallel_bus=%x, gives %x.",
+                    mypia.port_a, parallel_bus,
+                    ((parallel_bus & ~mypia.ddr_a)
+                     | (mypia.port_a & mypia.ddr_a)));
+    }
 
     byte = (parallel_bus & ~mypia.ddr_a) | (mypia.port_a & mypia.ddr_a);
     return byte;
@@ -139,4 +141,3 @@ static BYTE read_pb(void)
 }
 
 #include "piacore.c"
-

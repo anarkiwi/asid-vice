@@ -4,6 +4,7 @@
  * Written by
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Andreas Boose <viceteam@t-online.de>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -31,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cartio.h"
 #include "cartridge.h"
 #include "debug.h"
 #include "icon.h"
@@ -43,6 +45,9 @@
 #include "uiapi.h"
 #include "uiattach.h"
 #include "uicommands.h"
+#ifdef HAVE_PCAP
+#include "uics8900.h"
+#endif
 #include "uidatasette.h"
 #include "uidigimax.h"
 #include "uidrive.h"
@@ -50,27 +55,41 @@
 #include "uidrivevic20.h"
 #include "uids12c887rtc.h"
 #include "uiedit.h"
+
+#ifdef HAVE_PCAP
+#include "uiethernetcart.h"
+#endif
+
 #include "uigeoram.h"
+#include "uijoyport.h"
 #include "uijoystick2.h"
 #include "uikeyboard.h"
 #include "uilib.h"
 #include "uimenu.h"
 #include "uimidi.h"
 #include "uimouse.h"
-#include "uilightpen.h"
+#include "uinetplay.h"
 #include "uiperipheraliec.h"
+#include "uiprinteriec.h"
 #include "uiram.h"
 #include "uiromset.h"
+
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
 #include "uirs232c64c128.h"
+#endif
+
+#include "uisampler.h"
 #include "uiscreenshot.h"
 #include "uisettings.h"
 #include "uisid.h"
 #include "uisound.h"
 #include "uisoundexpander.h"
 #include "uisoundsampler.h"
-#include "uitfe.h"
+#include "uitapeport.h"
+#include "uiuserport.h"
 #include "uivic.h"
 #include "util.h"
+#include "vic20model.h"
 #include "vsync.h"
 
 enum {
@@ -133,9 +152,9 @@ UI_MENU_DEFINE_RADIO(SidAddress)
 
 static ui_menu_entry_t sidcart_address_submenu[] = {
     { "$9800", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)0, NULL },
+      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)0x9800, NULL },
     { "$9C00", UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)1, NULL },
+      (ui_callback_t)radio_SidAddress, (ui_callback_data_t)0x9c00, NULL },
     { NULL }
 };
 
@@ -162,6 +181,10 @@ static ui_menu_entry_t sidcart_submenu[] = {
     /* Translators: "SID clock" as in "CPU Frequency" */
     { N_("SID clock"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, sidcart_clock_submenu },
+#ifdef HAVE_RESID
+    { N_("ReSID sampling method"), UI_MENU_TYPE_NORMAL,
+        NULL, NULL, sid_resid_sampling_submenu },
+#endif
     { NULL }
 };
 
@@ -186,9 +209,6 @@ static ui_menu_entry_t vic20_romset_submenu[] = {
       NULL, NULL, vic20ui_main_romset_submenu },
     { N_("Load new drive ROM"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ui_drivec64vic20_romset_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("ROM set type"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, uiromset_type_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("ROM set archive"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiromset_archive_submenu },
@@ -246,12 +266,13 @@ static ui_menu_entry_t memory_settings_submenu[] = {
 
 /* ------------------------------------------------------------------------- */
 
+static char *last_dir;
+
 static UI_CALLBACK(attach_cartridge)
 {
     int type = vice_ptr_to_int(UI_MENU_CB_PARAM);
     char *filename;
     ui_button_t button;
-    static char *last_dir;
     uilib_file_filter_enum_t filter[] = { UILIB_FILTER_VIC20CART, UILIB_FILTER_ALL };
 
     vsync_suspend_speed_eval();
@@ -309,12 +330,18 @@ static ui_menu_entry_t attach_cartridge_image_submenu[] = {
     { N_("Attach generic image"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)attach_cartridge,
       (ui_callback_data_t)CARTRIDGE_VIC20_GENERIC, NULL },
+    { N_("Attach Behr Bonz image"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)attach_cartridge,
+      (ui_callback_data_t)CARTRIDGE_VIC20_BEHRBONZ, NULL },
     { N_("Attach Mega-Cart image"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)attach_cartridge,
       (ui_callback_data_t)CARTRIDGE_VIC20_MEGACART, NULL },
     { N_("Attach Final Expansion image"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)attach_cartridge,
       (ui_callback_data_t)CARTRIDGE_VIC20_FINAL_EXPANSION, NULL },
+    { N_("Attach UltiMem image"), UI_MENU_TYPE_DOTS,
+      (ui_callback_t)attach_cartridge,
+      (ui_callback_data_t)CARTRIDGE_VIC20_UM, NULL },
     { N_("Attach Vic Flash Plugin image"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)attach_cartridge,
       (ui_callback_data_t)CARTRIDGE_VIC20_FP, NULL },
@@ -330,7 +357,11 @@ static ui_menu_entry_t attach_cartridge_image_submenu[] = {
 UI_MENU_DEFINE_TOGGLE(CartridgeReset)
 UI_MENU_DEFINE_TOGGLE(FinalExpansionWriteBack)
 UI_MENU_DEFINE_TOGGLE(VicFlashPluginWriteBack)
+UI_MENU_DEFINE_TOGGLE(UltiMemWriteBack)
 UI_MENU_DEFINE_TOGGLE(MegaCartNvRAMWriteBack)
+
+UI_MENU_DEFINE_TOGGLE(IO2RAM)
+UI_MENU_DEFINE_TOGGLE(IO3RAM)
 
 UI_CALLBACK(set_mc_nvram_image_name)
 {
@@ -349,12 +380,26 @@ static ui_menu_entry_t vicflash_submenu[] = {
     { NULL }
 };
 
+static ui_menu_entry_t ultimem_submenu[] = {
+    { N_("Enable image write back"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_UltiMemWriteBack, NULL, NULL },
+    { NULL }
+};
+
 static ui_menu_entry_t megacart_submenu[] = {
     { N_("Enable NvRAM image write back"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_MegaCartNvRAMWriteBack, NULL, NULL },
     { N_("NvRAM image file"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)set_mc_nvram_image_name,
       (ui_callback_data_t)"MegaCartNvRAMfilename", NULL },
+    { NULL }
+};
+
+static ui_menu_entry_t io_ram_submenu[] = {
+    { N_("Enable I/O-2 RAM"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_IO2RAM, NULL, NULL },
+    { N_("Enable I/O-3 RAM"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_IO3RAM, NULL, NULL },
     { NULL }
 };
 
@@ -383,13 +428,6 @@ static UI_CALLBACK(set_joystick_device)
     }
 }
 #endif
-/*------------------------------------------------------------*/
-
-static ui_menu_entry_t rs232_settings_menu[] = {
-    { N_("RS232 settings"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, uirs232_vic20_submenu },
-    { NULL }
-};
 
 /*------------------------------------------------------------*/
 
@@ -417,6 +455,36 @@ static ui_menu_entry_t ui_screenshot_commands_menu[] = {
 
 UI_MENU_DEFINE_RADIO(MachineVideoStandard)
 
+static UI_CALLBACK(radio_vic20model)
+{
+    int model, selected;
+
+    selected = vice_ptr_to_int(UI_MENU_CB_PARAM);
+
+    if (!CHECK_MENUS) {
+        vic20model_set(selected);
+        ui_update_menus();
+    } else {
+        model = vic20model_get();
+
+        if (selected == model) {
+            ui_menu_set_tick(w, 1);
+        } else {
+            ui_menu_set_tick(w, 0);
+        }
+    }
+}
+
+static ui_menu_entry_t set_vic20_model_submenu[] = {
+    { "VIC20 PAL", UI_MENU_TYPE_TICK, (ui_callback_t)radio_vic20model,
+      (ui_callback_data_t)VIC20MODEL_VIC20_PAL, NULL },
+    { "VIC20 NTSC", UI_MENU_TYPE_TICK, (ui_callback_t)radio_vic20model,
+      (ui_callback_data_t)VIC20MODEL_VIC20_NTSC, NULL },
+    { "VIC21", UI_MENU_TYPE_TICK, (ui_callback_t)radio_vic20model,
+      (ui_callback_data_t)VIC20MODEL_VIC21, NULL },
+    { NULL }
+};
+
 static ui_menu_entry_t set_vic_model_submenu[] = {
     { "PAL-G", UI_MENU_TYPE_TICK, (ui_callback_t)radio_MachineVideoStandard,
       (ui_callback_data_t)MACHINE_SYNC_PAL, NULL },
@@ -426,6 +494,9 @@ static ui_menu_entry_t set_vic_model_submenu[] = {
 };
 
 static ui_menu_entry_t vic20_model_submenu[] = {
+    { N_("Model"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, set_vic20_model_submenu },
+    { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("VIC model"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, set_vic_model_submenu },
     { N_("Memory expansions"), UI_MENU_TYPE_NORMAL,
@@ -437,13 +508,16 @@ UI_MENU_DEFINE_RADIO(IOCollisionHandling)
 
 static ui_menu_entry_t iocollision_submenu[] = {
     { N_("detach all"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)0, NULL },
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_ALL, NULL },
     { N_("detach last"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)1, NULL },
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_DETACH_LAST, NULL },
     { N_("AND values"), UI_MENU_TYPE_TICK,
-      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)2, NULL },
+      (ui_callback_t)radio_IOCollisionHandling, (ui_callback_data_t)IO_COLLISION_METHOD_AND_WIRES, NULL },
     { NULL }
 };
+
+UI_MENU_DEFINE_TOGGLE(IEEE488)
+UI_MENU_DEFINE_TOGGLE(VFLImod)
 
 static ui_menu_entry_t io_extensions_submenu[] = {
     { CARTRIDGE_VIC20_NAME_MEGACART, UI_MENU_TYPE_NORMAL,
@@ -452,8 +526,16 @@ static ui_menu_entry_t io_extensions_submenu[] = {
       NULL, NULL, fexp_submenu },
     { CARTRIDGE_VIC20_NAME_FP, UI_MENU_TYPE_NORMAL,
       NULL, NULL, vicflash_submenu },
+    { CARTRIDGE_VIC20_NAME_UM, UI_MENU_TYPE_NORMAL,
+      NULL, NULL, ultimem_submenu },
     { N_("SID cartridge"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, sidcart_submenu },
+    { N_("VIC-1112 IEEE488 interface"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_IEEE488, NULL, NULL },
+    { N_("I/O RAM"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, io_ram_submenu },
+    { N_("VFLI modification"), UI_MENU_TYPE_TICK,
+      (ui_callback_t)toggle_VFLImod, NULL, NULL },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { CARTRIDGE_NAME_DIGIMAX " (MasC=uerade)", UI_MENU_TYPE_NORMAL,
       NULL, NULL, digimax_vic20_submenu },
@@ -465,40 +547,26 @@ static ui_menu_entry_t io_extensions_submenu[] = {
       NULL, NULL, soundexpander_vic20_submenu },
     { CARTRIDGE_NAME_SFX_SOUND_SAMPLER " (MasC=uerade)", UI_MENU_TYPE_NORMAL,
       NULL, NULL, soundsampler_submenu },
-#ifdef HAVE_TFE
-    { N_("Ethernet emulation (MasC=uerade)"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, tfe_vic20_submenu },
+#ifdef HAVE_PCAP
+    { "--", UI_MENU_TYPE_SEPARATOR },
+
+    { N_("Ethernet cartridge (MasC=uerade)"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, ethernetcart_vic20_submenu },
 #endif
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("Paddle emulation"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, mouse_vic20_submenu },
-#if defined(HAVE_MOUSE)
-    { N_("Lightpen emulation"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, lightpen_submenu },
-#endif
 #ifdef HAVE_MIDI
     { N_("MIDI emulation"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, midi_vic20_submenu },
 #endif
+    { "Userport devices", UI_MENU_TYPE_NORMAL,
+      NULL, NULL, userport_pet_vic20_submenu },
+    { "Tape port devices", UI_MENU_TYPE_NORMAL,
+      NULL, NULL, tapeport_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("I/O collision handling"), UI_MENU_TYPE_NORMAL,
+    { N_("I/O collision handling ($9000-$93FF / $9800-$9FFF)"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, iocollision_submenu },
     { N_("Reset on cart change"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_CartridgeReset, NULL, NULL },
-    { NULL }
-};
-
-/* ------------------------------------------------------------------------- */
-
-static ui_menu_entry_t keymap_sym_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap, (ui_callback_data_t)"x11_sym.vkm", NULL },
-/*    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap, (ui_callback_data_t)"x11_symger.vkm", NULL }, */
-    { NULL }
-};
-
-static ui_menu_entry_t keymap_pos_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap, (ui_callback_data_t)"x11_pos.vkm", NULL },
-/*    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap, (ui_callback_data_t)"x11_posger.vkm", NULL }, */
     { NULL }
 };
 
@@ -515,20 +583,26 @@ static ui_menu_entry_t vic20_menu[] = {
       NULL, NULL, vic_submenu },
     { N_("I/O extensions"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, io_extensions_submenu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, rs232_settings_menu },
+#if defined(HAVE_RS232DEV) || defined(HAVE_RS232NET)
+    { N_("RS232 settings"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, uirs232_vic20_submenu },
+#endif
+#ifdef HAVE_PCAP
+    { N_("Ethernet settings"), UI_MENU_TYPE_NORMAL,
+        NULL, NULL, uics8900_submenu },
+#endif
     { NULL }
 };
 
 static ui_menu_entry_t vic20_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, uiattach_smart_attach_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uiattach_disk_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uiattach_tape_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_datasette_commands_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uiattach_smart_attach_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, vic20_cartridge_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -540,41 +614,21 @@ static ui_menu_entry_t vic20_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_record_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_tool_commands_menu },
+      NULL, NULL, ui_edit_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_help_commands_menu },
+      NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
 #if defined(USE_XAWUI)
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_edit_commands_submenu },
+      NULL, NULL, ui_help_commands_menu },
 #endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_exit_commands_menu },
-    { NULL }
-};
-
-static ui_menu_entry_t vic20_right_menu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uikeyboard_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_drivevic20_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheraliec_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, joystick_settings_vic20_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, vic20_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_settings_settings_menu },
-#ifdef DEBUG
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_debug_settings_menu },
-#endif
     { NULL }
 };
 
@@ -601,6 +655,10 @@ static ui_menu_entry_t vic20_file_menu[] = {
       NULL, NULL, ui_directory_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -626,29 +684,41 @@ static ui_menu_entry_t vic20_snapshot_menu[] = {
     { NULL }
 };
 
-static ui_menu_entry_t vic20_options_menu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, io_extensions_submenu },
-    { NULL }
-};
+UI_MENU_DEFINE_TOGGLE(VirtualDevices)
 
 static ui_menu_entry_t vic20_settings_menu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_performance_settings_menu },
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_runmode_commands_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uikeyboard_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_settings_menu },
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_sampler_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_drivevic20_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheraliec_settings_menu },
+    { N_("Printer settings"), UI_MENU_TYPE_NORMAL, 
+      NULL, NULL, printeriec_settings_menu },
+    { N_("Enable Virtual Devices"), UI_MENU_TYPE_TICK, 
+      (ui_callback_t)toggle_VirtualDevices, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_joyport_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, joystick_settings_vic20_menu },
+#ifdef HAVE_MOUSE
+    { N_("Mouse emulation"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, mouse_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, vic20_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_settings_settings_menu },
+#ifdef DEBUG
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_debug_settings_menu },
+#endif
     { NULL }
 };
 
@@ -661,8 +731,6 @@ static ui_menu_entry_t vic20_top_menu[] = {
 #endif
     { N_("Snapshot"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, vic20_snapshot_menu },
-    { N_("Options"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, vic20_options_menu },
     { N_("Settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, vic20_settings_menu },
 #ifdef DEBUG
@@ -676,19 +744,38 @@ static ui_menu_entry_t vic20_top_menu[] = {
     { NULL }
 };
 
+static ui_menu_entry_t vic20_speed_menu[] = {
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_performance_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_runmode_commands_menu },
+    { NULL }
+};
+
 static void vic20ui_dynamic_menu_create(void)
 {
     uisound_menu_create();
+    uisampler_menu_create();
     uivic_menu_create();
-
-    memcpy(uikeymap_sym_submenu, keymap_sym_submenu, sizeof(keymap_sym_submenu));
-    memcpy(uikeymap_pos_submenu, keymap_pos_submenu, sizeof(keymap_pos_submenu));
+    uikeyboard_menu_create();
+    uijoyport_menu_create(1, 0, 1, 1, 0);
+    uisid_model_menu_create();
+#ifdef HAVE_PCAP
+    uiethernetcart_menu_create();
+#endif
 }
 
 static void vic20ui_dynamic_menu_shutdown(void)
 {
     uivic_menu_shutdown();
     uisound_menu_shutdown();
+    uisampler_menu_shutdown();
+    uikeyboard_menu_shutdown();
+    uijoyport_menu_shutdown();
+    uisid_model_menu_shutdown();
+#ifdef HAVE_PCAP
+    uiethernetcart_menu_shutdown();
+#endif
 }
 
 int vic20ui_init(void)
@@ -697,11 +784,11 @@ int vic20ui_init(void)
     vic20ui_dynamic_menu_create();
     ui_set_left_menu(vic20_left_menu);
 
-    ui_set_right_menu(vic20_right_menu);
+    ui_set_right_menu(vic20_settings_menu);
 
     ui_set_tape_menu(vic20_tape_menu);
     ui_set_topmenu(vic20_top_menu);
-    ui_set_speedmenu(ui_performance_settings_menu);
+    ui_set_speedmenu(vic20_speed_menu);
 
     ui_set_drop_callback(uiattach_autostart_file);
 
@@ -712,5 +799,8 @@ int vic20ui_init(void)
 
 void vic20ui_shutdown(void)
 {
+    if (last_dir != NULL) {
+        lib_free(last_dir);
+    }
     vic20ui_dynamic_menu_shutdown();
 }

@@ -1,3 +1,5 @@
+SUBDIRS = building html readmes
+
 @ALTERNATE_DOCDIR_TRUE@realdocdir = $(prefix)/share/doc/vice
 @ALTERNATE_DOCDIR_FALSE@realdocdir = $(VICEDIR)/doc
 
@@ -8,29 +10,12 @@ MISC_DOX = \
 	coding-guidelines.txt \
 	Documentation-Howto.txt \
 	Doxygen-Howto.txt \
+	hardware-sids.txt \
 	iec-bus.txt \
 	MacOSX-ResourceTree.txt \
-	NLS-Howto.txt
-
-BUILDING_DOX = \
-	building/GP2X-Howto.txt \
-	building/MacOSX-Howto.txt \
-	building/Minix-Howto.txt \
-	building/MSDOS-Howto.txt \
-	building/MSDOS-Ethernet-Howto.txt \
-	building/OpenVMS-Howto.txt \
-	building/SDL-Howto.txt \
-	building/Win32-Cygwin-Howto.txt \
-	building/Win32-Mingw32-Howto.txt \
-	building/Linux-Mingw32-Howto.txt
-
-READMES = \
-	readmes/Readme-Amiga.txt \
-	readmes/Readme-BeOS.txt \
-	readmes/Readme-DOS.txt \
-	readmes/Readme-MacOSX.txt \
-	readmes/Readme-OS2.txt \
-	readmes/Readme-SDL.txt
+	NLS-Howto.txt \
+	ports-status.txt \
+	WinNT-Unicode.txt
 
 TEXI_TOOLS = \
 	fixdox.sh \
@@ -41,7 +26,6 @@ TEXI_TOOLS = \
 DOC_TOOLS = \
 	checkdoc.c \
 	checkdoc.mak \
-	checkdoc.mon \
 	Doxyfile \
 	mainpage.dox \
 	mkdoxy.sh \
@@ -64,25 +48,23 @@ VICE_DOX = \
 	
 info_TEXINFOS = vice.texi
 
-dist_doc_DATA = $(MISC_DOX) $(VICE_DOX) $(BUILDING_DOX) $(READMES)
+dist_doc_DATA = $(MISC_DOX) $(VICE_DOX)
 
 EXTRA_DIST = $(DOC_TOOLS) $(TEXI_TOOLS) $(STYLE_TOOLS)
-
-SUBDIRS = html
 
 AM_MAKEINFOHTMLFLAGS = 
 AM_MAKEINFOFLAGS = --no-split
 
 $(builddir)/vice.txt:		$(srcdir)/vice.texi
 	touch vicetmp.txt
-	LANG=C $(MAKEINFO) -o vicetmp.txt --no-headers $(srcdir)/vice.texi
+	LANG=C $(MAKEINFO) -D$(PLATFORM_DOX_FLAGS) -o vicetmp.txt --no-headers $(srcdir)/vice.texi
 	$(srcdir)/fixdox.sh txt <vicetmp.txt | sed 's/ \+$$//' >$(builddir)/vice.txt
 	rm -f vicetmp.txt
 
 $(builddir)/vice.pdf:	$(srcdir)/vice.texi
 if BUILD_PDF
 	sed 's/@heading NO WARRANTY/@center NO WARRANTY/g' <$(srcdir)/vice.texi >vicepdf.texi
-	$(TEXI2DVI) -q --clean --pdf -o $(builddir)/vice.pdf vicepdf.texi
+	$(TEXI2DVI) -q --clean --pdf "--texinfo=@set $(PLATFORM_DOX_FLAGS) " -o $(builddir)/vice.pdf vicepdf.texi
 	rm -f vicepdf.texi
 
 PDF_DEPS=$(builddir)/vice.pdf
@@ -94,7 +76,10 @@ endif
 
 $(builddir)/vice.guide:	$(srcdir)/vice.texi
 if BUILD_AMIGAGUIDE
-	$(srcdir)/texi2guide.sh $(MAKEGUIDE) $(builddir)/vice.guide $(srcdir)/vice.texi
+	cp $(srcdir)/vice.texi tmp.texi
+	$(srcdir)/fixdox.sh guide
+	$(srcdir)/texi2guide.sh $(MAKEGUIDE) $(builddir)/vice.guide vicetmp.texi $(host_cpu) $(host_os)
+	rm -f tmp.texi vicetmp.texi
 
 GUIDE_DEPS=$(builddir)/vice.guide
 else
@@ -107,7 +92,7 @@ $(builddir)/vice.hlp:	$(srcdir)/vice.texi
 if BUILD_HLP
 	cp $(srcdir)/vice.texi tmp.texi
 	$(srcdir)/fixdox.sh hlp
-	$(MAKERTF) --hpj=vice.hpj --output=vice.rtf vicetmp.texi
+	$(MAKERTF) -Dplatformwindows --hpj=vice.hpj --output=vice.rtf vicetmp.texi
 	$(HCRTF) -o VICE.HLP -xn vice.hpj
 	rm -f vice.hpj vice.rtf vicetmp.texi
 	mv VICE.HLP $(builddir)/vice.hlp
@@ -132,10 +117,12 @@ endif
 
 $(builddir)/vice.inf:	$(srcdir)/vice.texi
 if BUILD_IPF
-	$(TEXI2IPF) $(srcdir)/vice.texi >temp.ipf
+	cp $(srcdir)/vice.texi tmp.texi
+	$(srcdir)/fixdox.sh ipf
+	$(TEXI2IPF) $(srcdir)/vicetmp.texi >temp.ipf
 	$(IPFC) -i temp.ipf
 	mv temp.inf $(builddir)/vice.inf
-	rm -f temp.ipf
+	rm -f temp.ipf vicetmp.texi
 
 IPF_DEPS=$(builddir)/vice.inf
 else
@@ -146,6 +133,8 @@ endif
 
 $(builddir)/vice.info:	$(srcdir)/vice.texi
 	touch $(builddir)/vice.info
-	$(MAKEINFO) -o $(builddir)/vice.info --no-split $(srcdir)/vice.texi
+	$(MAKEINFO) -D$(PLATFORM_DOX_FLAGS) -o $(builddir)/vice.info --no-split $(srcdir)/vice.texi
 
 INFO_DEPS = $(builddir)/vice.txt $(builddir)/vice.info $(PDF_DEPS) $(GUIDE_DEPS) $(HLP_DEPS) $(CHM_DEPS) $(IPF_DEPS)
+
+.texi.pdf:

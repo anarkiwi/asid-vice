@@ -5,6 +5,7 @@
  *  Andreas Boose <viceteam@t-online.de>
  *  Ettore Perazzoli <ettore@comm2000.it>
  *  Tibor Biczo <crown@axelero.hu>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -40,26 +41,21 @@
 #include "ui.h"
 #include "uic64dtv.h"
 #include "uic64dtvmodel.h"
-#include "uidrivec64.h"
+#include "uidrivec64dtv.h"
+#include "uijoyport.h"
 #include "uijoystick.h"
 #include "uikeyboard.h"
+#include "uikeymap.h"
 #include "uilib.h"
 #include "uirom.h"
 #include "uirs232user.h"
+#include "uisampler.h"
 #include "uisiddtv.h"
 #include "uivicii.h"
 #include "uivideo.h"
-
-static const unsigned int romset_dialog_resources[UIROM_TYPE_MAX] = {
-    IDD_C64ROM_RESOURCE_DIALOG,
-    IDD_C64ROMDRIVE_RESOURCE_DIALOG,
-    0
-};
+#include "videoarch.h"
 
 static const ui_menu_toggle_t c64dtv_ui_menu_toggles[] = {
-    { "VICIIDoubleSize", IDM_TOGGLE_DOUBLESIZE },
-    { "VICIIDoubleScan", IDM_TOGGLE_DOUBLESCAN },
-    { "VICIIVideoCache", IDM_TOGGLE_VIDEOCACHE },
     { "PS2Mouse", IDM_PS2MOUSE },
     { "Mouse", IDM_MOUSE },
     { "FlashTrueFS", IDM_TOGGLE_FLASH_TRUE_FILESYSTEM },
@@ -68,105 +64,28 @@ static const ui_menu_toggle_t c64dtv_ui_menu_toggles[] = {
 
 static const uirom_settings_t uirom_settings[] = {
     { UIROM_TYPE_MAIN, TEXT("Kernal"), "KernalName",
-      IDC_C64ROM_KERNAL_FILE, IDC_C64ROM_KERNAL_BROWSE,
-      IDC_C64ROM_KERNAL_RESOURCE },
+      IDC_C64ROM_KERNAL_FILE, IDC_C64ROM_KERNAL_BROWSE },
     { UIROM_TYPE_MAIN, TEXT("Basic"), "BasicName",
-      IDC_C64ROM_BASIC_FILE, IDC_C64ROM_BASIC_BROWSE,
-      IDC_C64ROM_BASIC_RESOURCE },
+      IDC_C64ROM_BASIC_FILE, IDC_C64ROM_BASIC_BROWSE },
     { UIROM_TYPE_MAIN, TEXT("Character"), "ChargenName",
-      IDC_C64ROM_CHARGEN_FILE, IDC_C64ROM_CHARGEN_BROWSE,
-      IDC_C64ROM_CHARGEN_RESOURCE },
+      IDC_C64ROM_CHARGEN_FILE, IDC_C64ROM_CHARGEN_BROWSE },
+    { UIROM_TYPE_DRIVE, TEXT("1540"), "DosName1540",
+      IDC_DRIVEROM_1540_FILE, IDC_DRIVEROM_1540_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("1541"), "DosName1541",
-      IDC_DRIVEROM_1541_FILE, IDC_DRIVEROM_1541_BROWSE,
-      IDC_DRIVEROM_1541_RESOURCE },
+      IDC_DRIVEROM_1541_FILE, IDC_DRIVEROM_1541_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("1541-II"), "DosName1541ii",
-      IDC_DRIVEROM_1541II_FILE, IDC_DRIVEROM_1541II_BROWSE,
-      IDC_DRIVEROM_1541II_RESOURCE },
+      IDC_DRIVEROM_1541II_FILE, IDC_DRIVEROM_1541II_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("1570"), "DosName1570",
-      IDC_DRIVEROM_1570_FILE, IDC_DRIVEROM_1570_BROWSE,
-      IDC_DRIVEROM_1570_RESOURCE },
+      IDC_DRIVEROM_1570_FILE, IDC_DRIVEROM_1570_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("1571"), "DosName1571",
-      IDC_DRIVEROM_1571_FILE, IDC_DRIVEROM_1571_BROWSE,
-      IDC_DRIVEROM_1571_RESOURCE },
+      IDC_DRIVEROM_1571_FILE, IDC_DRIVEROM_1571_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("1581"), "DosName1581",
-      IDC_DRIVEROM_1581_FILE, IDC_DRIVEROM_1581_BROWSE,
-      IDC_DRIVEROM_1581_RESOURCE },
+      IDC_DRIVEROM_1581_FILE, IDC_DRIVEROM_1581_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("2000"), "DosName2000",
-      IDC_DRIVEROM_2000_FILE, IDC_DRIVEROM_2000_BROWSE,
-      IDC_DRIVEROM_2000_RESOURCE },
+      IDC_DRIVEROM_2000_FILE, IDC_DRIVEROM_2000_BROWSE },
     { UIROM_TYPE_DRIVE, TEXT("4000"), "DosName4000",
-      IDC_DRIVEROM_4000_FILE, IDC_DRIVEROM_4000_BROWSE,
-      IDC_DRIVEROM_4000_RESOURCE },
-    { 0, NULL, NULL, 0, 0, 0 }
-};
-
-#define C64DTVUI_KBD_NUM_MAP 3
-
-static const uikeyboard_mapping_entry_t mapping_entry[C64DTVUI_KBD_NUM_MAP] = {
-    { IDC_C64KBD_MAPPING_SELECT_SYM, IDC_C64KBD_MAPPING_SYM,
-      IDC_C64KBD_MAPPING_SYM_BROWSE, "KeymapSymFile" },
-    { IDC_C64KBD_MAPPING_SELECT_POS, IDC_C64KBD_MAPPING_POS,
-      IDC_C64KBD_MAPPING_POS_BROWSE, "KeymapPosFile" },
-    { IDC_C64KBD_MAPPING_SELECT_SYMDE, IDC_C64KBD_MAPPING_SYMDE,
-      IDC_C64KBD_MAPPING_SYMDE_BROWSE, "KeymapSymDeFile" }
-};
-
-static uilib_localize_dialog_param c64dtv_kbd_trans[] = {
-    { IDC_C64KBD_MAPPING_SELECT_SYM, IDS_SYMBOLIC_US, 0 },
-    { IDC_C64KBD_MAPPING_SELECT_SYMDE, IDS_SYMBOLIC_DE, 0 },
-    { IDC_C64KBD_MAPPING_SELECT_POS, IDS_POSITIONAL, 0 },
-    { IDC_C64KBD_MAPPING_SYM_BROWSE, IDS_BROWSE, 0 },
-    { IDC_C64KBD_MAPPING_SYMDE_BROWSE, IDS_BROWSE, 0 },
-    { IDC_C64KBD_MAPPING_POS_BROWSE, IDS_BROWSE, 0 },
-    { IDC_C64KBD_MAPPING_DUMP, IDS_DUMP_KEYSET, 0 },
-    { IDC_KBD_SHORTCUT_DUMP, IDS_DUMP_SHORTCUTS, 0 },
-    { 0, 0, 0 }
-};
-
-static uilib_dialog_group c64dtv_kbd_left_group[] = {
-    { IDC_C64KBD_MAPPING_SELECT_SYM, 1 },
-    { IDC_C64KBD_MAPPING_SELECT_SYMDE, 1 },
-    { IDC_C64KBD_MAPPING_SELECT_POS, 1 },
-    { 0, 0 }
-};
-
-static uilib_dialog_group c64dtv_kbd_middle_group[] = {
-    { IDC_C64KBD_MAPPING_SYM, 0 },
-    { IDC_C64KBD_MAPPING_SYMDE, 0 },
-    { IDC_C64KBD_MAPPING_POS, 0 },
-    { 0, 0 }
-};
-
-static uilib_dialog_group c64dtv_kbd_right_group[] = {
-    { IDC_C64KBD_MAPPING_SYM_BROWSE, 0 },
-    { IDC_C64KBD_MAPPING_SYMDE_BROWSE, 0 },
-    { IDC_C64KBD_MAPPING_POS_BROWSE, 0 },
-    { 0, 0 }
-};
-
-static uilib_dialog_group c64dtv_kbd_buttons_group[] = {
-    { IDC_C64KBD_MAPPING_DUMP, 1 },
-    { IDC_KBD_SHORTCUT_DUMP, 1 },
-    { 0, 0 }
-};
-
-static int c64dtv_kbd_move_buttons_group[] = {
-    IDC_C64KBD_MAPPING_DUMP,
-    IDC_KBD_SHORTCUT_DUMP,
-    0
-};
-
-static uikeyboard_config_t uikeyboard_config = {
-    IDD_C64KBD_MAPPING_SETTINGS_DIALOG,
-    C64DTVUI_KBD_NUM_MAP,
-    mapping_entry,
-    IDC_C64KBD_MAPPING_DUMP,
-    c64dtv_kbd_trans,
-    c64dtv_kbd_left_group,
-    c64dtv_kbd_middle_group,
-    c64dtv_kbd_right_group,
-    c64dtv_kbd_buttons_group,
-    c64dtv_kbd_move_buttons_group
+      IDC_DRIVEROM_4000_FILE, IDC_DRIVEROM_4000_BROWSE },
+    { 0, NULL, NULL, 0, 0 }
 };
 
 ui_menu_translation_table_t c64dtvui_menu_translation_table[] = {
@@ -174,6 +93,7 @@ ui_menu_translation_table_t c64dtvui_menu_translation_table[] = {
     { IDM_ABOUT, IDS_MI_ABOUT },
     { IDM_HELP, IDS_MP_HELP },
     { IDM_PAUSE, IDS_MI_PAUSE },
+    { IDM_SINGLE_FRAME_ADVANCE, IDS_MI_SINGLE_FRAME_ADVANCE },
     { IDM_EDIT_COPY, IDS_MI_EDIT_COPY },
     { IDM_EDIT_PASTE, IDS_MI_EDIT_PASTE },
     { IDM_AUTOSTART, IDS_MI_AUTOSTART_DISK },
@@ -200,7 +120,6 @@ ui_menu_translation_table_t c64dtvui_menu_translation_table[] = {
     { IDM_TOGGLE_DOUBLESCAN, IDS_MI_TOGGLE_DOUBLESCAN },
     { IDM_TOGGLE_DRIVE_TRUE_EMULATION, IDS_MI_DRIVE_TRUE_EMULATION },
     { IDM_TOGGLE_DRIVE_SOUND_EMULATION, IDS_MI_DRIVE_SOUND_EMULATION },
-    { IDM_TOGGLE_AUTOSTART_HANDLE_TDE, IDS_MI_AUTOSTART_HANDLE_TDE },
     { IDM_TOGGLE_FLASH_TRUE_FILESYSTEM, IDS_MI_FLASH_TRUE_FILESYSTEM },
     { IDM_TOGGLE_VIDEOCACHE, IDS_MI_TOGGLE_VIDEOCACHE },
     { IDM_DRIVE_SETTINGS, IDS_MI_DRIVE_SETTINGS },
@@ -233,6 +152,12 @@ ui_menu_translation_table_t c64dtvui_menu_translation_table[] = {
     { IDM_EVENT_START_MODE_RESET, IDS_MI_EVENT_START_MODE_RESET },
     { IDM_EVENT_START_MODE_PLAYBACK, IDS_MI_EVENT_START_MODE_PLAYBCK },
     { IDM_EVENT_DIRECTORY, IDS_MI_EVENT_DIRECTORY },
+    { IDM_JAM_ACTION_ASK, IDS_MI_JAM_ACTION_ASK },
+    { IDM_JAM_ACTION_CONTINUE, IDS_MI_JAM_ACTION_CONTINUE },
+    { IDM_JAM_ACTION_START_MONITOR, IDS_MI_JAM_ACTION_START_MONITOR },
+    { IDM_JAM_ACTION_RESET, IDS_MI_JAM_ACTION_RESET },
+    { IDM_JAM_ACTION_HARD_RESET, IDS_MI_JAM_ACTION_HARD_RESET },
+    { IDM_JAM_ACTION_QUIT_EMULATOR, IDS_MI_JAM_ACTION_QUIT_EMULATOR },
     { IDM_MEDIAFILE, IDS_MI_MEDIAFILE },
     { IDM_SOUND_RECORD_START, IDS_MI_SOUND_RECORD_START },
     { IDM_SOUND_RECORD_STOP, IDS_MI_SOUND_RECORD_STOP },
@@ -240,10 +165,9 @@ ui_menu_translation_table_t c64dtvui_menu_translation_table[] = {
     { IDM_MAXIMUM_SPEED_NO_LIMIT, IDS_MI_MAXIMUM_SPEED_NO_LIMIT },
     { IDM_MAXIMUM_SPEED_CUSTOM, IDS_MI_MAXIMUM_SPEED_CUSTOM },
     { IDM_TOGGLE_WARP_MODE, IDS_MI_TOGGLE_WARP_MODE },
-    { IDM_TOGGLE_DX9DISABLE, IDS_MI_TOGGLE_DX9DISABLE },
     { IDM_TOGGLE_ALWAYSONTOP, IDS_MI_TOGGLE_ALWAYSONTOP },
+    { IDM_TOGGLE_CPU_AFFINITY, IDS_MI_TOGGLE_CPU_AFFINITY },
     { IDM_SWAP_JOYSTICK, IDS_MI_SWAP_JOYSTICK },
-    { IDM_SWAP_EXTRA_JOYSTICK, IDS_MI_SWAP_EXTRA_JOYSTICK },
     { IDM_ALLOW_JOY_OPPOSITE_TOGGLE, IDS_MI_ALLOW_JOY_OPPOSITE },
     { IDM_JOYKEYS_TOGGLE, IDS_MI_JOYKEYS_TOGGLE },
     { IDM_TOGGLE_VIRTUAL_DEVICES, IDS_MI_TOGGLE_VIRTUAL_DEVICES },
@@ -252,10 +176,12 @@ ui_menu_translation_table_t c64dtvui_menu_translation_table[] = {
     { IDM_AUTOSTART_SETTINGS, IDS_MI_AUTOSTART_SETTINGS },
     { IDM_VIDEO_SETTINGS, IDS_MI_VIDEO_SETTINGS },
     { IDM_DEVICEMANAGER, IDS_MI_DEVICEMANAGER },
+    { IDM_JOYPORT_SETTINGS, IDS_MI_JOYPORT_SETTINGS },
     { IDM_JOY_SETTINGS, IDS_MI_JOY_SETTINGS },
     { IDM_EXTRA_JOY_SETTINGS, IDS_MI_USERPORT_JOY_SETTINGS },
     { IDM_KEYBOARD_SETTINGS, IDS_MI_KEYBOARD_SETTINGS },
     { IDM_SOUND_SETTINGS, IDS_MI_SOUND_SETTINGS },
+    { IDM_SAMPLER_SETTINGS, IDS_MI_SAMPLER_SETTINGS },
     { IDM_ROM_SETTINGS, IDS_MI_ROM_SETTINGS },
     { IDM_RAM_SETTINGS, IDS_MI_RAM_SETTINGS },
     { IDM_VICII_SETTINGS, IDS_MI_VICII_SETTINGS },
@@ -281,37 +207,45 @@ ui_menu_translation_table_t c64dtvui_menu_translation_table[] = {
     { IDM_LANG_SV, IDS_MI_LANG_SV },
     { IDM_LANG_TR, IDS_MI_LANG_TR },
     { IDM_CMDLINE, IDS_MI_CMDLINE },
+    { IDM_FEATURES, IDS_MI_FEATURES },
     { IDM_CONTRIBUTORS, IDS_MI_CONTRIBUTORS },
     { IDM_LICENSE, IDS_MI_LICENSE },
     { IDM_WARRANTY, IDS_MI_WARRANTY },
+#ifdef HAVE_D3D9_H
     { IDM_TOGGLE_FULLSCREEN, IDS_MI_TOGGLE_FULLSCREEN },
+#endif
     { IDM_PS2MOUSE, IDS_MI_PS2MOUSE },
     { IDM_C64DTV_SETTINGS, IDS_MI_C64DTV_SETTINGS },
+    { IDM_NETWORK_SETTINGS, IDS_MI_NETWORK_SETTINGS },
     { 0, 0 }
 };
 
 ui_popup_translation_table_t c64dtvui_popup_translation_table[] = {
-    { 1, IDS_MP_FILE },
-    { 2, IDS_MP_ATTACH_DISK_IMAGE },
-    { 2, IDS_MP_DETACH_DISK_IMAGE },
-    { 2, IDS_MP_DTV_FLASH_ROM_IMAGE },
-    { 2, IDS_MP_FLIP_LIST },
-    { 2, IDS_MP_RESET },
+    { 1, IDS_MP_FILE, NULL },
+    { 2, IDS_MP_ATTACH_DISK_IMAGE, NULL },
+    { 2, IDS_MP_DETACH_DISK_IMAGE, NULL },
+    { 2, IDS_MP_FLIP_LIST, NULL },
+    { 2, IDS_MP_DTV_FLASH_ROM_IMAGE, NULL },
+    { 2, IDS_MP_RESET, NULL },
+    { 2, IDS_MP_DEFAULT_CPU_JAM_ACTION, NULL },
 #ifdef DEBUG
-    { 2, IDS_MP_DEBUG },
-    { 3, IDS_MP_MODE },
+    { 2, IDS_MP_DEBUG, NULL },
+    { 3, IDS_MP_MODE, NULL },
 #endif
-    { 1, IDS_MP_EDIT },
-    { 1, IDS_MP_SNAPSHOT },
-    { 2, IDS_MP_RECORDING_START_MODE },
-    { 1, IDS_MP_OPTIONS },
-    { 2, IDS_MP_REFRESH_RATE },
-    { 2, IDS_MP_MAXIMUM_SPEED },
-    { 2, IDS_MP_VIDEO_STANDARD },
-    { 1, IDS_MP_SETTINGS },
-    { 1, IDS_MP_LANGUAGE },
-    { 1, IDS_MP_HELP },
-    { 0, 0 }
+    { 1, IDS_MP_EDIT, NULL },
+    { 1, IDS_MP_SNAPSHOT, NULL },
+    { 2, IDS_MP_RECORDING_START_MODE, NULL },
+/*    { 1, IDS_MP_OPTIONS, NULL },*/
+    { 1, IDS_MP_SETTINGS, NULL },
+    { 2, IDS_MP_REFRESH_RATE, NULL },
+    { 2, IDS_MP_MAXIMUM_SPEED, NULL },
+    { 2, IDS_MP_SOUND_SETTINGS, NULL },
+    { 2, IDS_MP_DRIVE_SETTINGS, NULL },
+    { 2, IDS_MP_JOYSTICK_SETTINGS, NULL },
+    { 2, IDS_MP_MOUSE_SETTINGS, NULL },
+    { 1, IDS_MP_LANGUAGE, NULL },
+    { 1, IDS_MP_HELP, NULL },
+    { 0, 0, NULL }
 };
 
 static uilib_localize_dialog_param c64dtv_main_trans[] = {
@@ -325,6 +259,7 @@ static uilib_localize_dialog_param c64dtv_main_trans[] = {
 };
 
 static uilib_localize_dialog_param c64dtv_drive_trans[] = {
+    { IDC_DRIVEROM_1540_BROWSE, IDS_BROWSE, 0 },
     { IDC_DRIVEROM_1541_BROWSE, IDS_BROWSE, 0 },
     { IDC_DRIVEROM_1541II_BROWSE, IDS_BROWSE, 0 },
     { IDC_DRIVEROM_1570_BROWSE, IDS_BROWSE, 0 },
@@ -332,17 +267,6 @@ static uilib_localize_dialog_param c64dtv_drive_trans[] = {
     { IDC_DRIVEROM_1581_BROWSE, IDS_BROWSE, 0 },
     { IDC_DRIVEROM_2000_BROWSE, IDS_BROWSE, 0 },
     { IDC_DRIVEROM_4000_BROWSE, IDS_BROWSE, 0 },
-    { 0, 0, 0 }
-};
-
-static uilib_localize_dialog_param c64dtv_main_res_trans[] = {
-    { 0, IDS_COMPUTER_RESOURCES_CAPTION, -1 },
-    { IDC_COMPUTER_RESOURCES, IDS_COMPUTER_RESOURCES, 0 },
-    { IDC_C64ROM_KERNAL_RESOURCE, IDS_KERNAL, 0 },
-    { IDC_C64ROM_BASIC_RESOURCE, IDS_BASIC, 0 },
-    { IDC_C64ROM_CHARGEN_RESOURCE, IDS_CHARACTER, 0 },
-    { IDOK, IDS_OK, 0 },
-    { IDCANCEL, IDS_CANCEL, 0 },
     { 0, 0, 0 }
 };
 
@@ -368,6 +292,7 @@ static uilib_dialog_group c64dtv_main_right_group[] = {
 };
 
 static uilib_dialog_group c64dtv_drive_left_group[] = {
+    { IDC_1540, 0 },
     { IDC_1541, 0 },
     { IDC_1541_II, 0 },
     { IDC_1570, 0 },
@@ -379,6 +304,7 @@ static uilib_dialog_group c64dtv_drive_left_group[] = {
 };
 
 static uilib_dialog_group c64dtv_drive_middle_group[] = {
+    { IDC_DRIVEROM_1540_FILE, 0 },
     { IDC_DRIVEROM_1541_FILE, 0 },
     { IDC_DRIVEROM_1541II_FILE, 0 },
     { IDC_DRIVEROM_1570_FILE, 0 },
@@ -390,6 +316,7 @@ static uilib_dialog_group c64dtv_drive_middle_group[] = {
 };
 
 static uilib_dialog_group c64dtv_drive_right_group[] = {
+    { IDC_DRIVEROM_1540_BROWSE, 0 },
     { IDC_DRIVEROM_1541_BROWSE, 0 },
     { IDC_DRIVEROM_1541II_BROWSE, 0 },
     { IDC_DRIVEROM_1570_BROWSE, 0 },
@@ -401,24 +328,14 @@ static uilib_dialog_group c64dtv_drive_right_group[] = {
 };
 
 static generic_trans_table_t c64dtv_generic_trans[] = {
-    { IDC_1541, "1541" },
-    { IDC_1541_II, "1541-II" },
-    { IDC_1570, "1570" },
-    { IDC_1571, "1571" },
-    { IDC_1581, "1581" },
-    { IDC_2000, "2000" },
-    { IDC_4000, "4000" },
-    { 0, NULL }
-};
-
-static generic_trans_table_t c64dtv_generic_res_trans[] = {
-    { IDC_DRIVEROM_1541_RESOURCE, "1541" },
-    { IDC_DRIVEROM_1541II_RESOURCE, "1541-II" },
-    { IDC_DRIVEROM_1570_RESOURCE, "1570" },
-    { IDC_DRIVEROM_1571_RESOURCE, "1571" },
-    { IDC_DRIVEROM_1581_RESOURCE, "1581" },
-    { IDC_DRIVEROM_2000_RESOURCE, "2000" },
-    { IDC_DRIVEROM_4000_RESOURCE, "4000" },
+    { IDC_1540,    TEXT("1540") },
+    { IDC_1541,    TEXT("1541") },
+    { IDC_1541_II, TEXT("1541-II") },
+    { IDC_1570,    TEXT("1570") },
+    { IDC_1571,    TEXT("1571") },
+    { IDC_1581,    TEXT("1581") },
+    { IDC_2000,    TEXT("2000") },
+    { IDC_4000,    TEXT("4000") },
     { 0, NULL }
 };
 
@@ -436,20 +353,19 @@ static void c64dtv_ui_specific(WPARAM wparam, HWND hwnd)
             break;
         case IDM_ROM_SETTINGS:
             uirom_settings_dialog(hwnd, IDD_C64ROM_SETTINGS_DIALOG, IDD_C64DRIVEROM_SETTINGS_DIALOG,
-                                  romset_dialog_resources, uirom_settings,
+                                  uirom_settings,
                                   c64dtv_main_trans, c64dtv_drive_trans, c64dtv_generic_trans,
                                   c64dtv_main_left_group, c64dtv_main_middle_group, c64dtv_main_right_group,
-                                  c64dtv_drive_left_group, c64dtv_drive_middle_group, c64dtv_drive_right_group,
-                                  c64dtv_main_res_trans, c64dtv_generic_res_trans);
+                                  c64dtv_drive_left_group, c64dtv_drive_middle_group, c64dtv_drive_right_group);
             break;
         case IDM_VIDEO_SETTINGS:
             ui_video_settings_dialog(hwnd, UI_VIDEO_CHIP_VICII, UI_VIDEO_CHIP_NONE);
             break;
         case IDM_DRIVE_SETTINGS:
-            uidrivec64_settings_dialog(hwnd);
+            uidrivec64dtv_settings_dialog(hwnd);
             break;
         case IDM_KEYBOARD_SETTINGS:
-            uikeyboard_settings_dialog(hwnd, &uikeyboard_config);
+            ui_keymap_settings_dialog(hwnd);
             break;
         case IDM_ATTACH_DTV_FLASH:
             ui_c64dtv_attach_flash_dialog(hwnd);
@@ -460,6 +376,9 @@ static void c64dtv_ui_specific(WPARAM wparam, HWND hwnd)
         case IDM_CREATE_DTV_FLASH:
             ui_c64dtv_create_flash_dialog(hwnd);
             break;
+        case IDM_JOYPORT_SETTINGS:
+            ui_joyport_settings_dialog(hwnd, 1, 1, 1, 0, 0);
+            break;
         case IDM_JOY_SETTINGS:
             ui_joystick_settings_dialog(hwnd);
             break;
@@ -468,6 +387,9 @@ static void c64dtv_ui_specific(WPARAM wparam, HWND hwnd)
             break;
         case IDM_C64DTV_SETTINGS:
             ui_c64dtv_settings_dialog(hwnd);
+            break;
+        case IDM_SAMPLER_SETTINGS:
+            ui_sampler_settings_dialog(hwnd);
             break;
     }
 }

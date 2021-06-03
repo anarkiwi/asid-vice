@@ -30,6 +30,7 @@
 #include "c64dtv-resources.h"
 #include "c64dtvmodel.h"
 #include "menu_common.h"
+#include "menu_joyport.h"
 #include "menu_joystick.h"
 #include "menu_ram.h"
 #include "menu_rom.h"
@@ -57,6 +58,8 @@ static UI_MENU_CALLBACK(custom_DTVModel_callback)
     return NULL;
 }
 
+UI_MENU_DEFINE_TOGGLE(VICIINewLuminances)
+
 static const ui_menu_entry_t dtv_model_submenu[] = {
     { "DTV2 PAL",
       MENU_ENTRY_RESOURCE_RADIO,
@@ -78,6 +81,11 @@ static const ui_menu_entry_t dtv_model_submenu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       custom_DTVModel_callback,
       (ui_callback_data_t)DTVMODEL_HUMMER_NTSC },
+    SDL_MENU_ITEM_SEPARATOR,
+    { "Colorfix",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_VICIINewLuminances_callback,
+      NULL },
     SDL_MENU_LIST_END
 };
 
@@ -98,6 +106,10 @@ const ui_menu_entry_t c64dtv_hardware_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)dtv_model_submenu },
+    { "Joyport settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)joyport_menu },
     { "Joystick settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,

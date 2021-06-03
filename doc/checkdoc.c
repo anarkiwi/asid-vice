@@ -118,10 +118,14 @@ int getstr(FILE *f, char *str)
 #define IS_VSID         (1<<7)
 #define IS_C64          (1<<8)
 #define IS_C64SC        (1<<9)
+#define IS_SCPU64       (1<<10)
 
-#define IS_CARTCONV     (1<<10)
-#define IS_PETCAT       (1<<11)
-#define IS_C1541        (1<<12)
+#define IS_CARTCONV     (1<<11)
+#define IS_PETCAT       (1<<12)
+#define IS_C1541        (1<<13)
+
+#define NUMPROGS 14
+#define NUMEMUS 11
 
 const char *emustring[0x10] = {
     "PLUS4",
@@ -134,6 +138,7 @@ const char *emustring[0x10] = {
     "VSID",
     "C64",
     "C64SC",
+    "SCPU64",
     "cartconv",
     "petcat",
     "c1541"
@@ -150,16 +155,17 @@ ITEM optlisttex2 = { NULL, NULL, 0};
 ITEM optlisttexitm = { NULL, NULL, 0};
 ITEM optlistnew = { NULL, NULL, 0};
 
-int readtexi(FILE *tf)
+
+static char tmp[0x200];
+static char tmp1[0x20][0x200];
+static char tmp2[0x200];
+static char tmpc[0x200];
+static char tmpmsg[0x200];
+
+void readtexi(FILE *tf)
 {
-    int c,cl = 0;
-    char tmp[0x100];
-    char tmp1[0x20][0x100];
-    char tmp2[0x100];
-    char tmpc[0x100];
-    char tmpmsg[0x100];
-    char *msg,*str;
-    char *t;
+    int c;
+    char *msg;
     int status = 0;
     ITEM *itm, *itm1, *itm2;
     int itmcnt;
@@ -174,8 +180,9 @@ int readtexi(FILE *tf)
         if (newline && (c == '@')) {
             newline = 0;
             fscanf(tf, "%s", tmp);
-            cl = 0;
+            /*DBG(("[%s]\n",tmp));*/
             if (!strcmp(tmp, "vindex")) {
+#if 1
                 fscanf(tf, " ");
                 itmcnt = 0;
                 c = getstr(tf, tmp1[itmcnt]);
@@ -191,7 +198,9 @@ int readtexi(FILE *tf)
                 itmcnt++;
                 aliasitm = NULL;
                 newline = 1;
-            } else if (!strcmp(tmp, "cindex")) {
+#endif
+            } else if (/* !strcmp(tmp, "cindex") || */ !strcmp(tmp, "findex")) {
+#if 1
                 fscanf(tf, " ");
                 c = getstr(tf, tmp1[itmcnt]);
                 if ((tmp1[itmcnt][0] == '-') || (tmp1[itmcnt][0] == '+')) {
@@ -209,6 +218,8 @@ int readtexi(FILE *tf)
                 } else {
                     list_addstr(&optlisttex2, tmpc);
                 }
+#endif
+#if 1
                 if (c != '\n') {
                     c = skipuntil(tf, '\n');
                 }
@@ -218,6 +229,7 @@ int readtexi(FILE *tf)
                 status = 0x02;
                 aliasitm = NULL;
                 newline = 1;
+#endif
             } else if (!strcmp(tmp, "item")) {
                 fscanf(tf, " ");
                 c = getstr(tf, tmp2);
@@ -270,14 +282,14 @@ int readtexi(FILE *tf)
                 } 
                 aliasitm = itm;
                 newline = 1;
-            } else if (!strcmp(tmp, "end")) {
+            } else if (!strcmp(tmp, "end") || !strcmp(tmp, "bye")) {
                 c = skipuntil(tf, '\n');
                 if ((c == ' ') || (c == '\n') || (c == '\r') || (c == '\t')) {
                     c = skipblank(tf);
                 }
                 status = 0;
                 newline = 1;
-            } 
+            }
 #if 0
             else if (!strcmp(tmp, "c")) {
                 c = skipuntil(tf, '\n');
@@ -343,7 +355,7 @@ checkmsg:
     }
 }
 
-int readvicerc(FILE *tf, char *emu, int tag)
+void readvicerc(FILE *tf, char *emu, int tag)
 {
     char tmp[0x100];
     int c;
@@ -377,7 +389,7 @@ int readvicerc(FILE *tf, char *emu, int tag)
 
 }
 
-int readviceopt(FILE *tf, char *emu, int tag)
+void readviceopt(FILE *tf, char *emu, int tag)
 {
     char tmp[0x100];
     int c;
@@ -448,6 +460,7 @@ int printlist(ITEM *list, char *hdr, int flags)
                     && (list->flags != IS_B500)
                     && (list->flags != IS_PLUS4)
                     && (list->flags != IS_CBM2)
+                    && (list->flags != IS_SCPU64)
                     && (list->flags != IS_CARTCONV)
                     && (list->flags != IS_PETCAT)
                     && (list->flags != IS_C1541)
@@ -456,7 +469,7 @@ int printlist(ITEM *list, char *hdr, int flags)
                         printf("\n%s\n\n", hdr);i++;
                     }
                     printf("%-40s", list->string);
-                    for (i=0;i<10;i++) {
+                    for (i=0;i<NUMEMUS;i++) {
                         if (list->flags & (1<<i)) {
                             printf("%s  ", emustring[i]);
                         } else {
@@ -493,7 +506,7 @@ void checkresources(void)
 
     printf("\n** checking resources...\n\n");
 
-    printf("The following resources are incorrectly marked '@cindex'\n"
+    printf("The following resources are incorrectly marked '@findex'\n"
            "fix them first to use '@vindex' and then check again:\n\n");
 
     list1 = &reslistrc;
@@ -570,6 +583,7 @@ void checkresources(void)
     i += printlist(&reslistnew, "CBM-II-5x0", IS_B500);
     i += printlist(&reslistnew, "CBM-II", IS_CBM2);
     i += printlist(&reslistnew, "PLUS4", IS_PLUS4);
+    i += printlist(&reslistnew, "SCPU64", IS_SCPU64);
 
     if (i == 0) {
         printf("none - well done.\n");
@@ -642,7 +656,7 @@ void checkresources(void)
 
 void printresources(void)
 {
-    ITEM *list1, *itm, *itm2;
+    ITEM *list1;
     int num, miss;
 
     printf("\n** listing resources...\n\n");
@@ -673,7 +687,7 @@ void printresources(void)
 
 void printoptions(void)
 {
-    ITEM *list1, *itm, *itm2;
+    ITEM *list1;
     int num, miss;
 
     printf("\n** listing options...\n\n");
@@ -712,8 +726,8 @@ void checkoptions(void)
 
     printf("\n** checking command line options...\n\n");
 
-    printf("The following look like options, but they do not appear in '@cindex'.\n"
-           "fix them first to use '@cindex' and then check again:\n\n");
+    printf("The following look like options, but they do not appear in '@findex'.\n"
+           "fix them first to use '@findex' and then check again:\n\n");
 
     list1 = &optlisttexitm;
     i = 0;
@@ -779,6 +793,7 @@ void checkoptions(void)
         printlist(&optlistnew, "CBM-II-5x0", IS_B500);
         printlist(&optlistnew, "CBM-II", IS_CBM2);
         printlist(&optlistnew, "PLUS4", IS_PLUS4);
+        printlist(&optlistnew, "SCPU64", IS_SCPU64);
 
         printlist(&optlistnew, "petcat", IS_PETCAT);
         printlist(&optlistnew, "cartconv", IS_CARTCONV);
@@ -862,13 +877,20 @@ int printres = 0;
 int main(int argc, char *argv[])
 {
 FILE *tf;
-    
+/*int n;*/
+
     if (argc != 5) {
         printf("checkdoc - scan vice.texi for some common problems\n\n");
         printf("usage: checkdoc [-all | -opt | -res] texifile vicerc optsfile\n");
         exit(-1);
     }
-
+#if 0
+    n = 0; while (n != 5) {
+        printf("<%s> ", argv[n]);
+        n++;
+    }
+    printf("\n");
+#endif
     if (!strcmp(argv[1],"-all")) {
         checkopt++;
         checkres++;
@@ -894,8 +916,7 @@ FILE *tf;
 
     printf("** initializing...\n\n");
 
-    tf = fopen(vicetexiname,"rb");
-    if (!tf) {
+    if ((tf = fopen(vicetexiname,"rb")) == NULL) {
         fprintf(stderr, "error: couldn't open %s.\n", vicetexiname);
         exit(-1);
     }
@@ -903,12 +924,12 @@ FILE *tf;
     readtexi(tf);
     fclose(tf);
 
-    tf = fopen(vicercname,"rb");
-    if (!tf) {
+    if ((tf = fopen(vicercname,"rb")) == NULL) {
         fprintf(stderr, "error: couldn't open %s.\n", vicercname);
         exit(-1);
     }
     printf("reading %s.\n", vicercname);
+
     readvicerc(tf,"PLUS4", IS_PLUS4);
     readvicerc(tf,"CBM-II", IS_CBM2);
     readvicerc(tf,"CBM-II-5x0", IS_B500);
@@ -919,6 +940,7 @@ FILE *tf;
     readvicerc(tf,"VSID", IS_VSID);
     readvicerc(tf,"C64", IS_C64);
     readvicerc(tf,"C64SC", IS_C64SC);
+    readvicerc(tf,"SCPU64", IS_SCPU64);
     fclose(tf);
 
     tf = fopen(viceoptname,"rb");
@@ -937,6 +959,7 @@ FILE *tf;
     readviceopt(tf,"VSID", IS_VSID);
     readviceopt(tf,"C64", IS_C64);
     readviceopt(tf,"C64SC", IS_C64SC);
+    readviceopt(tf,"SCPU64", IS_SCPU64);
     readviceopt(tf,"petcat", IS_PETCAT);
     readviceopt(tf,"cartconv", IS_CARTCONV);
     readviceopt(tf,"c1541", IS_C1541);

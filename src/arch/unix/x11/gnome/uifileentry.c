@@ -29,10 +29,10 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <gtk/gtk.h>
 
 #include "ui.h"
 #include "uiapi.h"
+#include "uiarch.h"
 #include "uifileentry.h"
 #include "uilib.h"
 #include "util.h"
@@ -48,6 +48,7 @@ static uilib_file_filter_t snapshot_filter[] = { { "*.vsf", 0 }, { NULL } };
 
 static uilib_file_filter_t disk_image_filter[] = {
     { "*.d64", 0 },
+    { "*.d67", 0 },
     { "*.d71", 0 },
     { "*.d80", 0 },
     { "*.d81", 0 },
@@ -75,8 +76,10 @@ static uilib_file_filter_t voc_filter[] = { { "*.voc", 0 }, { NULL } };
 static uilib_file_filter_t iff_filter[] = { { "*.iff", 0 }, { NULL } };
 static uilib_file_filter_t aiff_filter[] = { { "*.aiff", 0 }, { NULL } };
 static uilib_file_filter_t mp3_filter[] = { { "*.mp3", 0 }, { NULL } };
+static uilib_file_filter_t flac_filter[] = { { "*.flac", 0 }, { NULL } };
+static uilib_file_filter_t vorbis_filter[] = { { "*.ogg", 0 }, { NULL } };
 static uilib_file_filter_t serial_filter[] = { { "ttyS*", 1 }, { NULL } };
-static uilib_file_filter_t vic20cart_filter[] = { { "*.prg", 0 }, { NULL } };
+static uilib_file_filter_t vic20cart_filter[] = { { "*.prg", 0 }, { "*.bin", 0 }, { NULL } };
 static uilib_file_filter_t sid_filter[] = { { "*.psid", 0 }, { "*.sid", 0 }, { NULL } };
 static uilib_file_filter_t dtvrom_filter[] = { { "*.bin", 0 }, { NULL } };
 static uilib_file_filter_t compressed_filter[] = {
@@ -88,7 +91,7 @@ static uilib_file_filter_t compressed_filter[] = {
 static uilib_file_filter_t eth_filter[] = { { "eth*", 1 }, { NULL } };
 static uilib_file_filter_t midi_filter[] = { { "mi*", 1 }, { NULL } }; /* FIXME */
 static uilib_file_filter_t hd_image_filter[] = {
-    { "*.bin", 0 },
+    { "*.hdd", 0 },
     { "*.iso", 0 },
     { "*.fdd", 0 },
     { "*.cfa", 0 },
@@ -117,6 +120,8 @@ struct {
     { "IFF files", iff_filter },
     { "AIFF files", aiff_filter },
     { "MP3 files", mp3_filter },
+    { "FLAC files", flac_filter },
+    { "ogg/vorbis files", vorbis_filter },
     { "Serial ports", serial_filter },
     { "VIC20 cartridges", vic20cart_filter },
     { "SID files", sid_filter },

@@ -51,7 +51,7 @@
 #endif
 
 /* Expansion port signals. */
-export_t export = { 0, 0};
+export_t export = { 0, 0 };
 
 /* global options for the cart system */
 static int cbm2cartridge_reset; /* (resource) hardreset system after cart was attached/detached */
@@ -160,32 +160,36 @@ int cartridge_cmdline_options_init(void)
 
 static int set_cart1_rom_name(const char *val, void *param)
 {
-    if (util_string_set(&cart_1_name, val))
+    if (util_string_set(&cart_1_name, val)) {
         return 0;
+    }
 
     return cbm2rom_load_cart_1(cart_1_name);
 }
 
 static int set_cart2_rom_name(const char *val, void *param)
 {
-    if (util_string_set(&cart_2_name, val))
+    if (util_string_set(&cart_2_name, val)) {
         return 0;
+    }
 
     return cbm2rom_load_cart_2(cart_2_name);
 }
 
 static int set_cart4_rom_name(const char *val, void *param)
 {
-    if (util_string_set(&cart_4_name, val))
+    if (util_string_set(&cart_4_name, val)) {
         return 0;
+    }
 
     return cbm2rom_load_cart_4(cart_4_name);
 }
 
 static int set_cart6_rom_name(const char *val, void *param)
 {
-    if (util_string_set(&cart_6_name, val))
+    if (util_string_set(&cart_6_name, val)) {
         return 0;
+    }
 
     return cbm2rom_load_cart_6(cart_6_name);
     /* only does something after mem_load() */
@@ -193,48 +197,56 @@ static int set_cart6_rom_name(const char *val, void *param)
 
 static int set_cart08_ram(int val, void *param)
 {
-    cart08_ram = val;
+    cart08_ram = val ? 1 : 0;
+
     mem_initialize_memory_bank(15);
     return 0;
 }
 
 static int set_cart1_ram(int val, void *param)
 {
-    cart1_ram = val;
+    cart1_ram = val ? 1 : 0;
+
     mem_initialize_memory_bank(15);
     return 0;
 }
 
 static int set_cart2_ram(int val, void *param)
 {
-    cart2_ram = val;
+    cart2_ram = val ? 1 : 0;
+
     mem_initialize_memory_bank(15);
     return 0;
 }
 
 static int set_cart4_ram(int val, void *param)
 {
-    cart4_ram = val;
+    cart4_ram = val ? 1 : 0;
+
     mem_initialize_memory_bank(15);
     return 0;
 }
 
 static int set_cart6_ram(int val, void *param)
 {
-    cart6_ram = val;
+    cart6_ram = val ? 1 : 0;
+
     mem_initialize_memory_bank(15);
     return 0;
 }
 
 static int set_cartC_ram(int val, void *param)
 {
-    cartC_ram = val;
+    cartC_ram = val ? 1 : 0;
+
     mem_initialize_memory_bank(15);
     return 0;
 }
 
-static int set_cartridge_reset(int val, void *param)
+static int set_cartridge_reset(int value, void *param)
 {
+    int val = value ? 1 : 0;
+
 /*    DBG(("cbm2cartridge_reset: %d", val)); */
     if (cbm2cartridge_reset != val) {
         DBG(("cbm2cartridge_reset changed: %d", val));
@@ -284,10 +296,18 @@ int cartridge_resources_init(void)
 
 void cartridge_resources_shutdown(void)
 {
-    lib_free(cart_1_name);
-    lib_free(cart_2_name);
-    lib_free(cart_4_name);
-    lib_free(cart_6_name);
+    if (cart_1_name != NULL) {
+        lib_free(cart_1_name);
+    }
+    if (cart_2_name != NULL) {
+        lib_free(cart_2_name);
+    }
+    if (cart_4_name != NULL) {
+        lib_free(cart_4_name);
+    }
+    if (cart_6_name != NULL) {
+        lib_free(cart_6_name);
+    }
 }
 
 /* ---------------------------------------------------------------------*/

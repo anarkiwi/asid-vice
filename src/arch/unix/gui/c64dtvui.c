@@ -42,18 +42,22 @@
 #include "uidrivec64dtv.h"
 #include "uidrivec64vic20.h"
 #include "uiedit.h"
+#include "uijoyport.h"
 #include "uijoystick2.h"
 #include "uikeyboard.h"
 #include "uimenu.h"
+#include "uinetplay.h"
 #include "uiperipheraliec.h"
+#include "uiprinteriec.h"
+#include "uiprinter.h"
 #include "uips2mouse.h"
 #include "uiram.h"
 #include "uiromset.h"
+#include "uisampler.h"
 #include "uiscreenshot.h"
 #include "uisettings.h"
 #include "uisid.h"
 #include "uisound.h"
-#include "uitfe.h"
 #include "uivicii.h"
 #include "vsync.h"
 
@@ -73,14 +77,18 @@ static ui_menu_entry_t set_viciimodel_submenu[] = {
 UI_MENU_DEFINE_TOGGLE(SidFilters)
 
 static ui_menu_entry_t sid_submenu[] = {
+    { N_("SID model"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, sid_model_submenu },
     { N_("SID filters"), UI_MENU_TYPE_TICK,
       (ui_callback_t)toggle_SidFilters, NULL, NULL },
 #ifdef HAVE_RESID
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("reSID sampling method"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, sid_resid_sampling_submenu },
+#if !defined(USE_GNOMEUI)
     { N_("reSID resampling passband"), UI_MENU_TYPE_DOTS,
       (ui_callback_t)set_sid_resid_passband, NULL, NULL },
+#endif
 #endif
     { NULL },
 };
@@ -109,9 +117,6 @@ static ui_menu_entry_t c64_romset_submenu[] = {
       NULL, NULL, c64ui_main_romset_submenu },
     { N_("Load new drive ROM"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, ui_drivec64vic20_romset_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR },
-    { N_("ROM set type"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, uiromset_type_submenu },
     { "--", UI_MENU_TYPE_SEPARATOR },
     { N_("ROM set archive"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, uiromset_archive_submenu },
@@ -155,21 +160,9 @@ ui_menu_entry_t c64dtv_model_submenu[] = {
     { N_("VIC-II model"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, set_viciimodel_submenu },
     { N_("SID model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, sid_dtv_model_submenu },
-    { NULL }
-};
-
-/* ------------------------------------------------------------------------- */
-
-static ui_menu_entry_t keymap_sym_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap, (ui_callback_data_t)"x11_sym.vkm", NULL },
-/*    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_SymKeymap, (ui_callback_data_t)"x11_symger.vkm", NULL }, */
-    { NULL }
-};
-
-static ui_menu_entry_t keymap_pos_submenu[] = {
-    { "US", UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap, (ui_callback_data_t)"x11_pos.vkm", NULL },
-/*    { N_("German"), UI_MENU_TYPE_TICK, (ui_callback_t)radio_PosKeymap, (ui_callback_data_t)"x11_posger.vkm", NULL }, */
+      NULL, NULL, sid_model_submenu },
+    { N_("Luma fix"), UI_MENU_TYPE_NORMAL,
+      NULL, NULL, c64dtv_luma_fix_submenu },
     { NULL }
 };
 
@@ -195,10 +188,10 @@ static ui_menu_entry_t c64_menu[] = {
 
 static ui_menu_entry_t x64_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, uiattach_smart_attach_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uiattach_disk_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uiattach_smart_attach_menu },
-    { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_directory_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_snapshot_commands_menu },
@@ -207,41 +200,21 @@ static ui_menu_entry_t x64_left_menu[] = {
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_record_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_tool_commands_menu },
+      NULL, NULL, ui_edit_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_help_commands_menu },
+      NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
 #if defined(USE_XAWUI)
     { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_edit_commands_submenu },
+      NULL, NULL, ui_help_commands_menu },
 #endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_exit_commands_menu },
-    { NULL }
-};
-
-static ui_menu_entry_t x64_right_menu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, uikeyboard_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_sound_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_drivec64dtv_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheraliec_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, joystick_settings_c64dtv_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, c64_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_settings_settings_menu },
-#ifdef DEBUG
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, ui_debug_settings_menu },
-#endif
     { NULL }
 };
 
@@ -254,6 +227,10 @@ static ui_menu_entry_t x64_file_submenu[] = {
       NULL, NULL, ui_directory_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_tool_commands_menu },
+#ifdef HAVE_NETWORK
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, netplay_submenu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_run_commands_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
@@ -279,37 +256,41 @@ static ui_menu_entry_t x64_snapshot_submenu[] = {
     { NULL }
 };
 
-static ui_menu_entry_t x64_options_submenu[] = {
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_performance_settings_menu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, joystick_options_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, NULL },
-    { N_("DTV model"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, c64dtv_setmodel_submenu },
-    { "--", UI_MENU_TYPE_SEPARATOR,
-      NULL, NULL, c64dtv_extension_submenu },
-    { NULL }
-};
-
-
+UI_MENU_DEFINE_TOGGLE(VirtualDevices)
 
 static ui_menu_entry_t x64_settings_submenu[] = {
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_performance_settings_menu },
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_runmode_commands_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, uikeyboard_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_sound_settings_menu },
     { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ui_sampler_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_drivec64dtv_settings_menu },
-    { "", UI_MENU_TYPE_NONE,
-      NULL, NULL, ui_peripheraliec_settings_menu },
+    { N_("Printer settings"), UI_MENU_TYPE_NORMAL, 
+      NULL, NULL, printeriec_settings_menu },
+    { N_("Enable Virtual Devices"), UI_MENU_TYPE_TICK, 
+      (ui_callback_t)toggle_VirtualDevices, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_joyport_settings_menu },
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, joystick_settings_c64dtv_menu },
+#ifdef HAVE_MOUSE
+    { "", UI_MENU_TYPE_NONE,
+      NULL, NULL, ps2_mouse_menu },
+#endif
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, c64_menu },
     { "--", UI_MENU_TYPE_SEPARATOR,
       NULL, NULL, ui_settings_settings_menu },
+#ifdef DEBUG
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_debug_settings_menu },
+#endif
     { NULL }
 };
 
@@ -322,8 +303,6 @@ static ui_menu_entry_t x64_main_menu[] = {
 #endif
     { N_("Snapshot"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, x64_snapshot_submenu },
-    { N_("Options"), UI_MENU_TYPE_NORMAL,
-      NULL, NULL, x64_options_submenu },
     { N_("Settings"), UI_MENU_TYPE_NORMAL,
       NULL, NULL, x64_settings_submenu },
 #ifdef DEBUG
@@ -340,22 +319,54 @@ static ui_menu_entry_t x64_main_menu[] = {
 static ui_menu_entry_t x64_speed_menu[] = {
     { "", UI_MENU_TYPE_NONE,
       NULL, NULL, ui_performance_settings_menu },
+    { "--", UI_MENU_TYPE_SEPARATOR,
+      NULL, NULL, ui_runmode_commands_menu },
     { NULL }
 };
+
+#ifdef DEBUG
+UI_MENU_DEFINE_TOGGLE(DtvBlitterLog)
+UI_MENU_DEFINE_TOGGLE(DtvDMALog)
+UI_MENU_DEFINE_TOGGLE(DtvFlashLog)
+
+static ui_menu_entry_t ui_debug_extra_settings_menu[] = {
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { N_("Blitter Log"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_DtvBlitterLog, NULL, NULL },
+    { N_("DMA Log"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_DtvDMALog, NULL, NULL },
+    { N_("Flash Log"), UI_MENU_TYPE_TICK, (ui_callback_t)toggle_DtvFlashLog, NULL, NULL },
+    { "--", UI_MENU_TYPE_SEPARATOR },
+    { NULL }
+};
+
+static ui_menu_entry_t x64dtv_debug_extra_menu[] = {
+    { "", UI_MENU_TYPE_NONE, NULL, NULL, ui_debug_extra_settings_menu },
+    { NULL }
+};
+#endif
 
 static void c64ui_dynamic_menu_create(void)
 {
     uisound_menu_create();
+    uisampler_menu_create();
     uivicii_menu_create();
 
-    memcpy(uikeymap_sym_submenu, keymap_sym_submenu, sizeof(keymap_sym_submenu));
-    memcpy(uikeymap_pos_submenu, keymap_pos_submenu, sizeof(keymap_pos_submenu));
+#ifdef DEBUG
+    memcpy(&debug_settings_submenu[UI_DEBUG_SETTINGS_SUBMENU_EXTRA_IDX], &x64dtv_debug_extra_menu[0], sizeof(ui_menu_entry_t));
+#endif
+    uiprinter_pruser_enable(0);
+    uikeyboard_menu_create();
+    uijoyport_menu_create(1, 1, 1, 0, 0);
+    uisid_model_menu_create();
 }
 
 static void c64ui_dynamic_menu_shutdown(void)
 {
     uivicii_menu_shutdown();
     uisound_menu_shutdown();
+    uisampler_menu_shutdown();
+    uikeyboard_menu_shutdown();
+    uijoyport_menu_shutdown();
+    uisid_model_menu_shutdown();
 }
 
 int c64dtvui_init(void)
@@ -364,7 +375,7 @@ int c64dtvui_init(void)
     c64ui_dynamic_menu_create();
 
     ui_set_left_menu(x64_left_menu);
-    ui_set_right_menu(x64_right_menu);
+    ui_set_right_menu(x64_settings_submenu);
     ui_set_topmenu(x64_main_menu);
     ui_set_speedmenu(x64_speed_menu);
 

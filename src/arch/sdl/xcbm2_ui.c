@@ -42,11 +42,16 @@
 #include "menu_drive.h"
 #include "menu_ffmpeg.h"
 #include "menu_help.h"
+#include "menu_jam.h"
+#include "menu_joyport.h"
+#include "menu_monitor.h"
 #include "menu_network.h"
 #include "menu_printer.h"
 #include "menu_reset.h"
+#include "menu_sampler.h"
 #include "menu_screenshot.h"
 #include "menu_settings.h"
+#include "menu_sid.h"
 #include "menu_snapshot.h"
 #include "menu_sound.h"
 #include "menu_speed.h"
@@ -98,7 +103,7 @@ static const ui_menu_entry_t xcbm6x0_7x0_main_menu[] = {
     { "Screenshot",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
-      (ui_callback_data_t)screenshot_menu },
+      (ui_callback_data_t)screenshot_crtc_menu },
     { "Speed settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -107,6 +112,10 @@ static const ui_menu_entry_t xcbm6x0_7x0_main_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)reset_menu },
+    { "Action on CPU JAM",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)jam_menu },
 #ifdef HAVE_NETWORK
     { "Network",
       MENU_ENTRY_SUBMENU,
@@ -118,9 +127,9 @@ static const ui_menu_entry_t xcbm6x0_7x0_main_menu[] = {
       pause_callback,
       NULL },
     { "Monitor",
-      MENU_ENTRY_OTHER,
-      monitor_callback,
-      NULL },
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)monitor_menu },
     { "Virtual keyboard",
       MENU_ENTRY_OTHER,
       vkbd_callback,
@@ -179,10 +188,18 @@ static const ui_menu_entry_t xcbm5x0_main_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)sound_output_menu },
+    { "Sampler settings",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)sampler_menu },
     { "Snapshot",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)snapshot_menu },
+    { "Screenshot",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)screenshot_vic_vicii_vdc_menu },
     { "Speed settings",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -191,6 +208,10 @@ static const ui_menu_entry_t xcbm5x0_main_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)reset_menu },
+    { "Action on CPU JAM",
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)jam_menu },
 #ifdef HAVE_NETWORK
     { "Network",
       MENU_ENTRY_SUBMENU,
@@ -202,9 +223,9 @@ static const ui_menu_entry_t xcbm5x0_main_menu[] = {
       pause_callback,
       NULL },
     { "Monitor",
-      MENU_ENTRY_OTHER,
-      monitor_callback,
-      NULL },
+      MENU_ENTRY_SUBMENU,
+      submenu_callback,
+      (ui_callback_data_t)monitor_menu },
     { "Virtual keyboard",
       MENU_ENTRY_OTHER,
       vkbd_callback,
@@ -244,10 +265,10 @@ void cbm2ui_set_menu_params(int index, menu_draw_t *menu_draw)
     resources_get_int("ModelLine", &model);
 
     menu_draw->max_text_x = 80;
-    menu_draw->extra_x = 32;
+    menu_draw->extra_x = 24;
 
     if (model == 0) {
-        menu_draw->extra_y = 16;
+        menu_draw->extra_y = 8;
         for (i = 0; i < 256; i++) {
             for (j = 0; j < 14; j++) {
                 cbm2_font_14[(i * 14) + j] = mem_chargen_rom[(i * 16) + j + 1];
@@ -255,7 +276,7 @@ void cbm2ui_set_menu_params(int index, menu_draw_t *menu_draw)
         }
         sdl_ui_set_menu_font(cbm2_font_14, 8, 14);
     } else {
-        menu_draw->extra_y = 40;
+        menu_draw->extra_y = 32;
         for (i = 0; i < 256; i++) {
             for (j = 0; j < 8; j++) {
                 cbm2_font_8[(i * 8) + j] = mem_chargen_rom[(i * 16) + j];
@@ -270,6 +291,11 @@ int cbm2ui_init(void)
 {
     cbm2_font_8 = lib_malloc(8 * 256);
     cbm2_font_14 = lib_malloc(14 * 256);
+
+    uijoyport_menu_create(0, 0, 1, 1, 0);
+    uikeyboard_menu_create();
+    uipalette_menu_create("Crtc", NULL);
+    uisid_menu_create();
 
     sdl_ui_set_menu_params = cbm2ui_set_menu_params;
     sdl_ui_set_main_menu(xcbm6x0_7x0_main_menu);
@@ -286,7 +312,7 @@ int cbm2ui_init(void)
 void cbm2ui_shutdown(void)
 {
 #ifdef SDL_DEBUG
-    fprintf(stderr,"%s\n",__func__);
+    fprintf(stderr, "%s\n", __func__);
 #endif
 
 #ifdef HAVE_FFMPEG
@@ -302,6 +328,14 @@ int cbm5x0ui_init(void)
     cbm2_font_8 = lib_malloc(8 * 256);
 
     sdl_ui_set_menu_params = NULL;
+
+    uijoyport_menu_create(1, 1, 0, 0, 0);
+    uisampler_menu_create();
+    uidrive_menu_create();
+    uikeyboard_menu_create();
+    uipalette_menu_create("VICII", NULL);
+    uisid_menu_create();
+
     sdl_ui_set_menu_font(mem_chargen_rom + 0x800, 8, 8);
     sdl_ui_set_main_menu(xcbm5x0_main_menu);
     sdl_video_canvas_switch(1);
@@ -317,8 +351,11 @@ int cbm5x0ui_init(void)
 
 void cbm5x0ui_shutdown(void)
 {
+    uikeyboard_menu_shutdown();
+    uisid_menu_shutdown();
+    uipalette_menu_shutdown();
 #ifdef SDL_DEBUG
-    fprintf(stderr,"%s\n",__func__);
+    fprintf(stderr, "%s\n", __func__);
 #endif
 
 #ifdef HAVE_FFMPEG

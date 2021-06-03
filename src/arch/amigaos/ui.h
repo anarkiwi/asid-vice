@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -32,9 +33,6 @@
 #include "uilib.h"
 
 typedef struct ui_resources_s {
-    int fullscreenbitdepth;
-    int fullscreenwidth;
-    int fullscreenheight;
     int fullscreenenabled;
     int statusbarenabled;
 #if defined(HAVE_PROTO_CYBERGRAPHICS_H) && defined(HAVE_XVIDEO)
@@ -42,7 +40,6 @@ typedef struct ui_resources_s {
 #endif
     int save_resources_on_exit;
     int confirm_on_exit;
-    char *monitor_dimensions;
     char *initialdir[UILIB_SELECTOR_STYLES_NUM];
 } ui_resources_t;
 
@@ -50,6 +47,7 @@ extern ui_resources_t ui_resources;
 extern int ui_requester(char *title, char *msg, char *buttons, int defval);
 extern void ui_message(const char *format, ...);
 extern void ui_event_handle(void);
+extern void ui_pause_emulation(int flag);
 
 extern void (*ui_event_handling)(void);
 

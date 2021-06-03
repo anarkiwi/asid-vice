@@ -5,7 +5,7 @@
  *  Andreas Boose <viceteam@t-online.de>
  *  Daniel Sladic <sladic@eecg.toronto.edu>
  *  Ettore Perazzoli <ettore@comm2000.it>
- *  André Fachat <fachat@physik.tu-chemnitz.de>
+ *  Andre Fachat <fachat@physik.tu-chemnitz.de>
  *  Teemu Rantanen <tvr@cs.hut.fi>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
@@ -42,8 +42,8 @@
 void iec_update_cpu_bus(BYTE data)
 {
     iecbus.cpu_bus = (((data << 2) & 0x80)
-                     | ((data << 2) & 0x40)
-                     | ((data << 1) & 0x10));
+                      | ((data << 2) & 0x40)
+                      | ((data << 1) & 0x10));
 }
 
 void iec_update_ports(void)
@@ -51,12 +51,13 @@ void iec_update_ports(void)
     unsigned int unit;
 
     iecbus.cpu_port = iecbus.cpu_bus;
-    for (unit = 4; unit < 8 + DRIVE_NUM; unit++)
+    for (unit = 4; unit < 8 + DRIVE_NUM; unit++) {
         iecbus.cpu_port &= iecbus.drv_bus[unit];
+    }
 
     iecbus.drv_port = (((iecbus.cpu_port >> 4) & 0x4)
-                      | (iecbus.cpu_port >> 7)
-                      | ((iecbus.cpu_bus << 3) & 0x80));
+                       | (iecbus.cpu_port >> 7)
+                       | ((iecbus.cpu_bus << 3) & 0x80));
 }
 
 void iec_update_ports_embedded(void)
@@ -67,8 +68,8 @@ void iec_update_ports_embedded(void)
 void iec_drive_write(BYTE data, unsigned int dnr)
 {
     iecbus.drv_bus[dnr + 8] = (((data << 3) & 0x40)
-                              | ((data << 6) & ((~data ^ iecbus.cpu_bus) << 3)
-                              & 0x80));
+                               | ((data << 6) & ((~data ^ iecbus.cpu_bus) << 3)
+                                  & 0x80));
     iecbus.drv_data[dnr + 8] = data;
     iec_update_ports();
 }
@@ -91,5 +92,18 @@ int iec_available_busses(void)
 
 void c64iec_init(void)
 {
-  iecbus_update_ports = iec_update_ports;
+    iecbus_update_ports = iec_update_ports;
 }
+
+/* KLUDGES: dummy to satisfy linker, unused */
+BYTE plus4tcbm_outputa[2], plus4tcbm_outputb[2], plus4tcbm_outputc[2];
+void plus4tcbm_update_pa(BYTE byte, unsigned int dnr)
+{
+}
+void plus4tcbm_update_pb(BYTE byte, unsigned int dnr)
+{
+}
+void plus4tcbm_update_pc(BYTE byte, unsigned int dnr)
+{
+}
+

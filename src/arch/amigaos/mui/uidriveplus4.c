@@ -3,6 +3,7 @@
  *
  * Written by
  *  Mathias Roslund <vice.emu@amidog.se>
+ *  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -52,6 +53,7 @@ static int drive_type_strings_translate[] = {
 
 static char *drive_type_strings_8[] = {
     NULL,		/* "None" placeholder */
+    "1540",
     "1541",
     "1541-II",
     "1551",
@@ -65,6 +67,7 @@ static char *drive_type_strings_8[] = {
 
 static const int drive_type_values_8[] = {
     DRIVE_TYPE_NONE,
+    DRIVE_TYPE_1540,
     DRIVE_TYPE_1541,
     DRIVE_TYPE_1541II,
     DRIVE_TYPE_1551,
@@ -78,6 +81,7 @@ static const int drive_type_values_8[] = {
 
 static char *drive_type_strings_9[] = {
     NULL,		/* "None" placeholder */
+    "1540",
     "1541",
     "1541-II",
     "1551",
@@ -91,6 +95,7 @@ static char *drive_type_strings_9[] = {
 
 static const int drive_type_values_9[] = {
     DRIVE_TYPE_NONE,
+    DRIVE_TYPE_1540,
     DRIVE_TYPE_1541,
     DRIVE_TYPE_1541II,
     DRIVE_TYPE_1551,
@@ -104,6 +109,7 @@ static const int drive_type_values_9[] = {
 
 static char *drive_type_strings_10[] = {
     NULL,		/* "None" placeholder */
+    "1540",
     "1541",
     "1541-II",
     "1551",
@@ -117,6 +123,7 @@ static char *drive_type_strings_10[] = {
 
 static const int drive_type_values_10[] = {
     DRIVE_TYPE_NONE,
+    DRIVE_TYPE_1540,
     DRIVE_TYPE_1541,
     DRIVE_TYPE_1541II,
     DRIVE_TYPE_1551,
@@ -130,6 +137,7 @@ static const int drive_type_values_10[] = {
 
 static char *drive_type_strings_11[] = {
     NULL,		/* "None" placeholder */
+    "1540",
     "1541",
     "1541-II",
     "1551",
@@ -143,6 +151,7 @@ static char *drive_type_strings_11[] = {
 
 static const int drive_type_values_11[] = {
     DRIVE_TYPE_NONE,
+    DRIVE_TYPE_1540,
     DRIVE_TYPE_1541,
     DRIVE_TYPE_1541II,
     DRIVE_TYPE_1551,
@@ -186,16 +195,29 @@ static const int drive_idle_values[] = {
     -1
 };
 
+static int ui_rpm_range[] = {
+    25000,
+    35000
+};
+
+static int ui_wobble_range[] = {
+    0,
+    1000
+};
+
 #define DECL(device)                                                                                               \
-    { NULL, MUI_TYPE_RADIO, "Drive" #device "Type", drive_type_strings_ ## device, drive_type_values_ ## device, NULL }, \
-    { NULL, MUI_TYPE_RADIO, "Drive" #device "ExtendImagePolicy", drive_extend_strings, drive_extend_values, NULL },      \
-    { NULL, MUI_TYPE_RADIO, "Drive" #device "IdleMethod", drive_idle_strings, drive_idle_values, NULL },                 \
-    { NULL, MUI_TYPE_CHECK, "Drive" #device "RAM2000", NULL, NULL, NULL },                                               \
-    { NULL, MUI_TYPE_CHECK, "Drive" #device "RAM4000", NULL, NULL, NULL },                                               \
-    { NULL, MUI_TYPE_CHECK, "Drive" #device "RAM6000", NULL, NULL, NULL },                                               \
-    { NULL, MUI_TYPE_CHECK, "Drive" #device "RAM8000", NULL, NULL, NULL },                                               \
-    { NULL, MUI_TYPE_CHECK, "Drive" #device "RAMA000", NULL, NULL, NULL },                                               \
-    { NULL, MUI_TYPE_CHECK, "Drive" #device "ParallelCable", NULL, NULL, NULL },
+    { NULL, MUI_TYPE_RADIO,   "Drive" #device "Type", drive_type_strings_ ## device, drive_type_values_ ## device, NULL }, \
+    { NULL, MUI_TYPE_RADIO,   "Drive" #device "ExtendImagePolicy", drive_extend_strings, drive_extend_values, NULL },      \
+    { NULL, MUI_TYPE_RADIO,   "Drive" #device "IdleMethod", drive_idle_strings, drive_idle_values, NULL },                 \
+    { NULL, MUI_TYPE_CHECK,   "Drive" #device "RAM2000", NULL, NULL, NULL },                                               \
+    { NULL, MUI_TYPE_CHECK,   "Drive" #device "RAM4000", NULL, NULL, NULL },                                               \
+    { NULL, MUI_TYPE_CHECK,   "Drive" #device "RAM6000", NULL, NULL, NULL },                                               \
+    { NULL, MUI_TYPE_CHECK,   "Drive" #device "RAM8000", NULL, NULL, NULL },                                               \
+    { NULL, MUI_TYPE_CHECK,   "Drive" #device "RAMA000", NULL, NULL, NULL },                                               \
+    { NULL, MUI_TYPE_CHECK,   "Drive" #device "ParallelCable", NULL, NULL, NULL },                                         \
+    { NULL, MUI_TYPE_CHECK,   "Drive" #device "RTCSave", NULL, NULL, NULL },                                               \
+    { NULL, MUI_TYPE_INTEGER, "Drive" #device "RPM", NULL, ui_rpm_range, NULL },                                           \
+    { NULL, MUI_TYPE_INTEGER, "Drive" #device "Wobble", NULL, ui_wobble_range, NULL },
 
 #define DECL_NUM (9)
 
@@ -238,6 +260,7 @@ static APTR build_gui(void)
                      CHECK(data[5].object, "$6000-$7FFF RAM")
                      CHECK(data[6].object, "$8000-$9FFF RAM")
                      CHECK(data[7].object, "$A000-$BFFF RAM")
+                     CHECK(data[9].object, translate_text(IDS_DRIVE_RTC_SAVE))
                    End,
                  End,
                  Child, GroupObject,
@@ -247,6 +270,18 @@ static APTR build_gui(void)
                      MUIA_Radio_Entries, drive_idle_strings,
                    End,
                    CHECK(data[8].object, translate_text(IDS_PARALLEL_CABLE))
+                 End,
+                 Child, ui_to_from[10].object = StringObject,
+                   MUIA_Frame, MUIV_Frame_String,
+                   MUIA_FrameTitle, translate_text(IDS_DRIVE_RPM),
+                   MUIA_String_Accept, "0123456789",
+                   MUIA_String_MaxLen, 5+1,
+                 End,
+                 Child, ui_to_from[11].object = StringObject,
+                   MUIA_Frame, MUIV_Frame_String,
+                   MUIA_FrameTitle, translate_text(IDS_DRIVE_WOBBLE),
+                   MUIA_String_Accept, "0123456789",
+                   MUIA_String_MaxLen, 5+1,
                  End,
                End;
 

@@ -37,8 +37,10 @@
 #include "types.h"
 #include "vic.h"
 #include "victypes.h"
+#include "vic20-resources.h"
 #include "vic20mem.h"
 #include "vic20memrom.h"
+#include "vic20.h"
 #include "viewport.h"
 
 /* ------------------------------------------------------------------------- */
@@ -65,7 +67,11 @@ static inline void vic_cycle_open_v(void)
     if (vic.text_lines == 0) {
         vic_cycle_close_v();
     } else {
-        vic.raster.display_ystop = vic.screen_height - 1;
+        if (vic.screen_height == VIC20_NTSC_SCREEN_LINES) {
+            vic.raster.display_ystop = vic.screen_height;
+        } else {
+            vic.raster.display_ystop = vic.screen_height - 1;
+        }
     }
 }
 
@@ -209,28 +215,37 @@ static inline void vic_cycle_latch_rows(void)
 /* ------------------------------------------------------------------------- */
 /* Fetch hendling */
 
+extern int vic20_vflihack_userport;
+extern unsigned char vfli_ram[0x4000];
+
 /* Perform actual fetch */
 static inline BYTE vic_cycle_do_fetch(int addr, BYTE *color)
 {
     BYTE b, c;
     int color_addr = 0x9400 + (addr & 0x3ff);
+    int color_addr2 = (addr & 0x03ff) | (vic20_vflihack_userport << 10);
 
     if ((addr & 0x9000) == 0x8000) {
         /* chargen */
         b = vic20memrom_chargen_rom[addr & 0xfff];
-        c = mem_ram[color_addr];
+        c = vflimod_enabled ? vfli_ram[color_addr2] : mem_ram[color_addr];
     } else if ((addr < 0x0400) || ((addr >= 0x1000) && (addr < 0x2000))) {
         /* RAM */
         b = mem_ram[addr];
-        c = mem_ram[color_addr];
+        c = vflimod_enabled ? vfli_ram[color_addr2] : mem_ram[color_addr];
+    } else if (vflimod_enabled && (addr >= 0x0400) && (addr < 0x1000)) {
+        /* only for mike's VFLI hack */
+        /* RAM */
+        b = mem_ram[addr];
+        c = vfli_ram[color_addr2];
     } else if (addr >= 0x9400 && addr < 0x9800) {
         /* color RAM */
-        b = mem_ram[addr];
+        b = vflimod_enabled ? vfli_ram[color_addr2] : mem_ram[color_addr];
         c = b; /* FIXME is this correct? */
     } else {
         /* unconnected */
         b = vic20_v_bus_last_data & (0xf0 | vic20_v_bus_last_high);
-        c = mem_ram[color_addr]; /* FIXME is this correct? */
+        c = vflimod_enabled ? vfli_ram[color_addr2] : mem_ram[color_addr]; /* FIXME: is this correct? */
     }
     *color = vic20_v_bus_last_high = c;
     vic20_v_bus_last_data = b;
@@ -276,9 +291,7 @@ static inline void vic_cycle_fetch(void)
 
         /* fetch from screen/color memomy */
         case VIC_FETCH_MATRIX:
-            addr = (((vic.regs[5] & 0xf0) << 6)
-                 | ((vic.regs[2] & 0x80) << 2))
-                 + ((vic.memptr + vic.buf_offset));
+            addr = (((vic.regs[5] & 0xf0) << 6) | ((vic.regs[2] & 0x80) << 2))+ ((vic.memptr + vic.buf_offset));
 
             vic.vbuf = vic_cycle_do_fetch(vic_cycle_fix_addr(addr), &b);
             vic.cbuf[vic.buf_offset] = b;
@@ -289,8 +302,7 @@ static inline void vic_cycle_fetch(void)
         /* fetch from chargen */
         case VIC_FETCH_CHARGEN:
             b = vic.vbuf;
-            addr = ((vic.regs[5] & 0xf) << 10)
-                 + ((b * vic.char_height + (vic.raster.ycounter & ((vic.char_height >> 1) | 7))));
+            addr = ((vic.regs[5] & 0xf) << 10) + ((b * vic.char_height + (vic.raster.ycounter & ((vic.char_height >> 1) | 7))));
 
             vic.gbuf[vic.buf_offset] = vic_cycle_do_fetch(vic_cycle_fix_addr(addr), &b);
 
@@ -371,4 +383,3 @@ void vic_cycle(void)
     /* Perform fetch */
     vic_cycle_fetch();
 }
-
