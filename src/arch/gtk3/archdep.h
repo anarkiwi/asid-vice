@@ -1,9 +1,13 @@
+/** \file   archdep.h
+ * \brief   Miscellaneous system-specific stuff - header
+ *
+ * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
+ *
+ * \note    Do NOT \#include stdbool.h here, that will lead to weird bugs in
+ *          the monitor code.
+ */
+
 /*
- * archdep.h - Miscellaneous system-specific stuff.
- *
- * Written by
- *  Marco van den Heuvel <blackystardust68@yahoo.com>
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -27,27 +31,27 @@
 #ifndef VICE_ARCHDEP_H
 #define VICE_ARCHDEP_H
 
+/* XXX: do NOT include <stdbool.h>, causes bugs in monitor code */
 #include "vice.h"
-
 #include "sound.h"
 
 /* Extra functions for SDL UI */
-extern char *archdep_default_hotkey_file_name(void);
-extern char *archdep_default_joymap_file_name(void);
+char *archdep_default_hotkey_file_name(void);
+char *archdep_default_joymap_file_name(void);
 
 /* returns a NULL terminated list of strings. Both the list and the strings
  * must be freed by the caller using lib_free(void*) */
-extern char **archdep_list_drives(void);
+char **archdep_list_drives(void);
 
 /* returns a string that corresponds to the current drive. The string must
  * be freed by the caller using lib_free(void*) */
-extern char *archdep_get_current_drive(void);
+char *archdep_get_current_drive(void);
 
 /* sets the current drive to the given string */
-extern void archdep_set_current_drive(const char *drive);
+void archdep_set_current_drive(const char *drive);
 
 /* Virtual keyboard handling */
-extern int archdep_require_vkbd(void);
+int archdep_require_vkbd(void);
 
 /* Video chip scaling.  */
 #define ARCHDEP_VICII_DSIZE   1
@@ -80,7 +84,7 @@ extern int archdep_require_vkbd(void);
 #define ARCHDEP_SOUND_OUTPUT_MODE SOUND_OUTPUT_SYSTEM
 
 /* define if the platform supports the monitor in a seperate window */
-/* #define ARCHDEP_SEPERATE_MONITOR_WINDOW */
+#define ARCHDEP_SEPERATE_MONITOR_WINDOW
 
 #ifdef UNIX_COMPILE
 #include "archdep_unix.h"
@@ -94,9 +98,20 @@ extern int archdep_require_vkbd(void);
  * New additions (since the Gtk3-native port)
  */
 
+/* Get user configuration directory */
+/* FIXME: why does this need to be here as well as in
+ * arch/shared/archdep_user_config_path?
+ */
 char *archdep_user_config_path(void);
+void  archdep_user_config_path_free(void);
+/* Get the absolute path to the directory that contains resources, icons, etc */
+char *archdep_get_vice_datadir(void);
+/* Get the absolute path to the directory that contains the documentation */
+char *archdep_get_vice_docsdir(void);
 
-
-
+/* Register CBM font with the OS without installing */
+int archdep_register_cbmfont(void);
+/* Unregister CBM font */
+void archdep_unregister_cbmfont(void);
 
 #endif

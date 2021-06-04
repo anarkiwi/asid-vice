@@ -1,9 +1,10 @@
+/** \file   joy-win32-dinput-handle.c
+ * \brief   Functionality shared by DirectInput joystick and mouse drivers
+ *
+ * \author  Fabrizio Gennari <fabrizio.ge@tiscali.it>
+ */
+
 /*
- * joy-win32-dinput-handle.c - Functionality shared by DirectInput joystick and mouse drivers.
- *
- * Written by
- *  Fabrizio Gennari <fabrizio.ge@tiscali.it>
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -26,6 +27,8 @@
 
 #include "vice.h"
 
+#include "debug_gtk3.h"
+
 #ifdef WIN32_COMPILE
 
 #ifndef HAVE_GUIDLIB
@@ -43,17 +46,23 @@
 
 #ifdef HAVE_DINPUT
 
-#include "winmain.h"
+/* #include "winmain.h" */
 
 static LPDIRECTINPUT di = NULL;
 
 LPDIRECTINPUT get_directinput_handle(void)
 {
+#if 0 /* FIXME */
+    NOT_IMPLEMENTED();
+#else
 #ifndef HAVE_DINPUT_LIB
     HRESULT res;
 #endif
 
     if (di == NULL) {
+
+        HINSTANCE winmain_instance = GetModuleHandle(NULL); /* FIXME */
+
 #ifdef HAVE_DINPUT_LIB
         if (DirectInputCreate(winmain_instance, 0x0500, &di, NULL) != DI_OK) {
             di = NULL;
@@ -71,8 +80,8 @@ LPDIRECTINPUT get_directinput_handle(void)
         }
 #endif
     }
+#endif /* FIXME */
     return di;
 }
 #endif
 #endif
-

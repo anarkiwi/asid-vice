@@ -1,11 +1,10 @@
+/** \file   coproc.c
+ * \brief   co-process fork
+ *
+ * \author  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
+ */
+
 /*
- * coproc.c - co-process fork
- *
- * Written by
- *  Andre Fachat <a.fachat@physik.tu-chemnitz.de>
- *
- * Patches by
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -54,7 +53,9 @@
 
 #ifdef UNIX_COMPILE
 
-#if !defined(MINIX_SUPPORT) && !defined(OPENSTEP_COMPILE) && !defined(RHAPSODY_COMPILE) && !defined(NEXTSTEP_COMPILE)
+/* to be removed later */
+#if !defined(OPENSTEP_COMPILE) && !defined(RHAPSODY_COMPILE) \
+    && !defined(NEXTSTEP_COMPILE)
 
 #ifdef __svr4__
 #define _POSIX_SOURCE
@@ -70,6 +71,8 @@
 #ifdef OPENSERVER6_COMPILE
 #include <sys/signal.h>
 #endif
+
+#include "archdep.h"
 
 #include "coproc.h"
 
@@ -159,7 +162,7 @@ int fork_coproc(int *fd_wr, int *fd_rd, char *cmd)
            open now...  */
         execl(SHELL, "sh", "-c", cmd, NULL);
 
-        exit(127);              /* child dies on error */
+        archdep_vice_exit(127); /* child dies on error */
     } else {                    /* parent */
         close(fd1[1]);
         close(fd2[0]);

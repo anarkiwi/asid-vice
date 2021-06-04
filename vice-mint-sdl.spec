@@ -1,4 +1,4 @@
-%define version 3.1
+%define version 3.3
 %define rel     1
 %define prefix /usr/
 Summary: VICE, the Versatile Commodore Emulator

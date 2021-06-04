@@ -1,9 +1,10 @@
+/** \file   kbd.h
+ * \brief   Native GTK3 specfic keyboard driver - header
+ *
+ * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
+ */
+
 /*
- * kbd.h - Native GTK3 specfic keyboard driver.
- *
- * Written by
- *  Marco van den Heuvel <blackystardust68@yahoo.com>
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README file for copyright notice.
  *
@@ -27,15 +28,39 @@
 #ifndef VICE_KBD_H
 #define VICE_KBD_H
 
-extern void kbd_arch_init(void);
-extern int kbd_arch_get_host_mapping(void);
-extern void kbd_initialize_numpad_joykeys(int *joykeys);
+#include <gtk/gtk.h>
+
+
+/** \brief  Gtk3 keyboard shortcut to be used without Gtk3's accelerators
+ *
+ * In Gtk3 there is no normal method to create a keyboard shortcut without
+ * it being connected to a G(tk)MenuItem. This object "solves" this problem
+ * by having the kbd_event_handler() function scan a list of these objects
+ * and trigger a callback when a specific key press matches.
+ */
+typedef struct kbd_gtk3_hotkey_s {
+    guint code;                 /**< key code */
+    guint mask;                 /**< key mask bits */
+    void (*callback)(void);     /**< function to call when the key matches */
+} kbd_gtk3_hotkey_t;
+
+
+void kbd_arch_init(void);
+void kbd_arch_shutdown(void);
+int kbd_arch_get_host_mapping(void);
+void kbd_initialize_numpad_joykeys(int *joykeys);
+void kbd_connect_handlers(GtkWidget *widget, void *data);
 
 #define KBD_PORT_PREFIX "gtk3"
 
 /* add more function prototypes as needed below */
 
-extern signed long kbd_arch_keyname_to_keynum(char *keyname);
-extern const char *kbd_arch_keynum_to_keyname(signed long keynum);
+signed long kbd_arch_keyname_to_keynum(char *keyname);
+const char *kbd_arch_keynum_to_keyname(signed long keynum);
+
+void kbd_hotkey_init(void);
+void kbd_hotkey_shutdown(void);
+gboolean kbd_hotkey_add(guint code, guint mask, void (*callback)(void));
+gboolean kbd_hotkey_add_list(kbd_gtk3_hotkey_t *list);
 
 #endif

@@ -28,6 +28,9 @@
 
 #include <stdio.h>
 
+#include "archdep.h"
+
+
 #ifdef HAVE_NETWORK
 
 #ifdef AMIGA_SUPPORT

@@ -47,7 +47,7 @@
 
 /* <sys/select.h> is required for select(2) and fd_set */
 #if defined(HAVE_SYS_SELECT_H) || \
-    defined(MINIX_SUPPORT) || defined(OPENSERVER6_COMPILE) || \
+    defined(OPENSERVER6_COMPILE) || \
     (defined(__QNX__) && !defined(__QNXNTO__))
 #include <sys/select.h>
 #endif
@@ -66,7 +66,6 @@
 #include "log.h"
 #include "mididrv.h"
 #include "resources.h"
-#include "translate.h"
 #include "types.h"
 #include "util.h"
 
@@ -161,7 +160,7 @@ static void mididrv_oss_out_close(void)
 }
 
 /* sends a byte to MIDI-Out */
-static void mididrv_oss_out(BYTE b)
+static void mididrv_oss_out(uint8_t b)
 {
     ssize_t n;
 
@@ -184,7 +183,7 @@ static void mididrv_oss_out(BYTE b)
 }
 
 /* gets a byte from MIDI-In, returns !=0 if byte received, byte in *b. */
-static int mididrv_oss_in(BYTE *b)
+static int mididrv_oss_in(uint8_t *b)
 {
     int ret;
     size_t n;
@@ -200,13 +199,7 @@ static int mididrv_oss_in(BYTE *b)
     FD_SET(fd_in, &rdset);
     ti.tv_sec = ti.tv_usec = 0;
 
-#ifndef MINIXVMD
-    /* for now this change will break MIDI support on Minix-vmd
-       till I can implement the same functionality using the
-       poll() function */
-
     ret = select(fd_in + 1, &rdset, NULL, NULL, &ti);
-#endif
 
     if (ret && (FD_ISSET(fd_in, &rdset))) {
         n = read(fd_in, b, 1);
@@ -286,7 +279,7 @@ static void mididrv_alsa_out_close(void)
 /** this function is called when one MIDI byte needs to be transmitted.
     @param b MIDI byte
  */
-static void mididrv_alsa_out(BYTE b)
+static void mididrv_alsa_out(uint8_t b)
 {
     snd_seq_event_t ev;
 
@@ -315,7 +308,7 @@ static void mididrv_alsa_out(BYTE b)
     }
 }
 
-static BYTE buf[RINGBUFFER_SIZE]; /* a received MIDI event is rendered into this buffer */
+static uint8_t buf[RINGBUFFER_SIZE]; /* a received MIDI event is rendered into this buffer */
 static int bufI = -1;             /* index of next byte to read from buf */
 static int eventSize = -1;        /* size of event in buf */
 
@@ -356,7 +349,7 @@ static void mididrv_alsa_in_close(void)
     @param[out] b if a byte was available, place it in b
     @return 1 if a byte was received and b was set, 0 if no byte available now, -1 upon error
 */
-static int mididrv_alsa_in(BYTE *b)
+static int mididrv_alsa_in(uint8_t *b)
 {
     snd_seq_event_t *ev = NULL;
     int alsa_err;
@@ -506,8 +499,8 @@ static void mididrv_alsa_init(void)
 typedef struct midi_driver_s {
     void (*init)(void);
     void (*shutdown)(void);
-    int (*in)(BYTE *b);
-    void (*out)(BYTE b);
+    int (*in)(uint8_t *b);
+    void (*out)(uint8_t b);
     int (*in_open)(void);
     void (*in_close)(void);
     int (*out_open)(void);
@@ -537,7 +530,7 @@ static midi_driver_t midi_drivers[] = {
         mididrv_alsa_out_close,
     },
 #endif
-    { NULL }
+    { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
 void mididrv_init(void)
@@ -549,12 +542,12 @@ void mididrv_init(void)
     midi_drivers[midi_driver_num].init();
 }
 
-int mididrv_in(BYTE *b)
+int mididrv_in(uint8_t *b)
 {
     return midi_drivers[midi_driver_num].in(b);
 }
 
-void mididrv_out(BYTE b)
+void mididrv_out(uint8_t b)
 {
     midi_drivers[midi_driver_num].out(b);
 }
@@ -666,23 +659,18 @@ void mididrv_resources_shutdown(void)
     lib_free(midi_out_dev);
 }
 
-static const cmdline_option_t cmdline_options[] = {
-    { "-midiin", SET_RESOURCE, -1,
+static const cmdline_option_t cmdline_options[] =
+{
+    { "-midiin", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS | CMDLINE_ATTRIB_NEED_BRACKETS,
       NULL, NULL, "MIDIInDev", NULL,
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("<Name>"), N_("Specify MIDI-In device") },
-    { "-midiout", SET_RESOURCE, -1,
+      "<Name>", "Specify MIDI-In device" },
+    { "-midiout", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS | CMDLINE_ATTRIB_NEED_BRACKETS,
       NULL, NULL, "MIDIOutDev", NULL,
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("<Name>"), N_("Specify MIDI-Out device") },
+      "<Name>", "Specify MIDI-Out device" },
 #ifdef USE_ALSA
-    { "-mididrv", SET_RESOURCE, -1,
+    { "-mididrv", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS | CMDLINE_ATTRIB_NEED_BRACKETS,
       NULL, NULL, "MIDIDriver", NULL,
-      USE_PARAM_STRING, USE_DESCRIPTION_STRING,
-      IDCLS_UNUSED, IDCLS_UNUSED,
-      N_("<Driver>"), N_("Specify MIDI driver (0 = OSS, 1 = ALSA)") },
+      "<Driver>", "Specify MIDI driver (0 = OSS, 1 = ALSA)" },
 #endif
     CMDLINE_LIST_END
 };
