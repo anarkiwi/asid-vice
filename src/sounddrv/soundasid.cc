@@ -94,13 +94,11 @@ std::vector<unsigned char> message;
 
   static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
   {
-    int reg,data;
+    int reg = addr & 0x1f;
 
-    reg=addr & 0x1f;
-    data=byte;
     if(sid_modified[reg]==0)
       {
-	sid_register[reg]=data & 0xff;
+	sid_register[reg]=byte;
 	sid_modified[reg]++;
       }
     else
@@ -109,22 +107,22 @@ std::vector<unsigned char> message;
 	  {
 	  case 0x04:
 	    if(sid_modified[0x19]!=0) sid_register[0x04]=sid_register[0x19]; //if already written to secondary,move back to original one
-	    sid_register[0x19]=data & 0xff;
+	    sid_register[0x19]=byte;
 	    sid_modified[0x19]++;
 	    break;
 	  case 0x0b:
 	    if(sid_modified[0x1a]!=0) sid_register[0x0b]=sid_register[0x1a];
-	    sid_register[0x1a]=data & 0xff;
+	    sid_register[0x1a]=byte;
 	    sid_modified[0x1a]++;
 	    break;
 	  case 0x12:
 	    if(sid_modified[0x1b]!=0) sid_register[0x12]=sid_register[0x1b];
-	    sid_register[0x1b]=data & 0xff;
+	    sid_register[0x1b]=byte;
 	    sid_modified[0x1b]++;
 	    break;
 
 	  default:
-	    sid_register[reg]=data & 0xff;
+	    sid_register[reg]=byte;
 	    sid_modified[reg]++;
 	  }
       }
