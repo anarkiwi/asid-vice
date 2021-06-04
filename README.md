@@ -12,7 +12,7 @@ Hopefully this will be ported forward to the latest VICE.
 ## Building
 
 ```
-LDFLAGS="-lpthread -Wl,--copy-dt-needed-entries" ./configure --with-alsa && aclocal && automake && make -j && sudo make install
+LDFLAGS="-lpthread -Wl,--copy-dt-needed-entries" ./configure --with-alsa && make -j && sudo make install
 ```
 
 ## Running
