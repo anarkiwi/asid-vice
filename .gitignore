@@ -1,0 +1,7 @@
+autom4te.cache/
+config.log
+config.status
+Doxyfile
+Makefile
+*.o
+*.a
