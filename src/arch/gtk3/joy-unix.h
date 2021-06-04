@@ -1,16 +1,13 @@
+/** \file   joy-unix.h
+ * \brief   Joystick support for Linux - header
+ *
+ * \author  Bernhard Kuhn <kuhn@eikon.e-technik.tu-muenchen.de>
+ * \author  Ulmer Lionel <ulmer@poly.polytechnique.fr>
+ * \author  Daniel Sladic <sladic@eecg.toronto.edu>
+ * \author  Luca Montecchiani <m.luca@usa.net> (http://i.am/m.luca)
+ */
+
 /*
- * joy-unix.h - Joystick support for Linux.
- *
- * Written by
- *  Bernhard Kuhn <kuhn@eikon.e-technik.tu-muenchen.de>
- *  Ulmer Lionel <ulmer@poly.polytechnique.fr>
- *
- * Patches by
- *  Daniel Sladic <sladic@eecg.toronto.edu>
- *
- * 1.1.xxx Linux API by
- *  Luca Montecchiani <m.luca@usa.net> (http://i.am/m.luca)
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -34,25 +31,27 @@
 #ifndef VICE_JOY_UNIX_H
 #define VICE_JOY_UNIX_H
 
-extern void joystick_close(void);
-extern void joystick(void);
-extern void old_joystick_init(void);
-extern void old_joystick_close(void);
-extern void old_joystick(void);
-extern void new_joystick_init(void);
-extern void new_joystick_close(void);
-extern void new_joystick(void);
+void joystick_close(void);
+void joystick(void);
+void old_joystick_init(void);
+void old_joystick_close(void);
+void old_joystick(void);
+void new_joystick_init(void);
+void new_joystick_close(void);
+void new_joystick(void);
 
 #ifdef HAS_USB_JOYSTICK
-extern int usb_joystick_init(void);
-extern void usb_joystick_close(void);
-extern void usb_joystick(void);
+int usb_joystick_init(void);
+void usb_joystick_close(void);
+void usb_joystick(void);
 #endif
 
+/* standard devices */
 #define JOYDEV_NONE      0
 #define JOYDEV_NUMPAD    1
 #define JOYDEV_KEYSET1   2
 #define JOYDEV_KEYSET2   3
+/* extra devices */
 #define JOYDEV_ANALOG_0  4
 #define JOYDEV_ANALOG_1  5
 #define JOYDEV_ANALOG_2  6
@@ -79,5 +78,8 @@ extern void usb_joystick(void);
 #else
 #  define JOYDEV_MAX            JOYDEV_KEYSET2
 #endif
+
+void joystick_ui_reset_device_list(void);
+const char *joystick_ui_get_next_device_name(int *id);
 
 #endif

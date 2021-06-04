@@ -11,6 +11,7 @@ doc_DATA = \
 	images/CIPS2008.png \
 	images/new.gif \
 	images/vice-logo.svg \
+	images/vice-logo-black.svg \
 	fonts/Lato-Bold.eot \
 	fonts/Lato-BoldItalic.eot \
 	fonts/Lato-BoldItalic.ttf \
@@ -39,6 +40,7 @@ doc_DATA = \
 	sitemap.xml \
 	solaris.html \
 	sortix.html \
+	unix.html \
 	vice.css \
 	vice_1.html \
 	vice_2.html \

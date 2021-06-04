@@ -1,9 +1,10 @@
+/** \file   signals.c
+ * \brief   Architecture-dependant signal handling
+ *
+ * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
+ */
+
 /*
- * signals.c
- *
- * Written by
- *  Marco van den Heuvel <blackystardust68@yahoo.com>
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -29,8 +30,11 @@
 #include "archdep.h"
 #include "signals.h"
 
-/*
-    used once at init time to setup all signal handlers
+/** \brief  Initialize signal handling
+ *
+ *  Used once at init time to setup all signal handlers.
+ *
+ *  \param[in]  do_core_dumps   do core dumps. appearantly
 */
 void signals_init(int do_core_dumps)
 {
@@ -38,14 +42,21 @@ void signals_init(int do_core_dumps)
 }
 
 /*
-    these two are used for socket send/recv. in this case we might
-    get SIGPIPE if the connection is unexpectedly closed.
-*/
+ * These two are used for socket send/recv. in this case we might
+ * get SIGPIPE if the connection is unexpectedly closed.
+ */
+
+
+/** \brief  Call another function
+ */
 void signals_pipe_set(void)
 {
     archdep_signals_pipe_set();
 }
 
+
+/** \brief  Call another function
+ */
 void signals_pipe_unset(void)
 {
     archdep_signals_pipe_unset();

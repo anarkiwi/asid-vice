@@ -1,10 +1,16 @@
+/** \file   archdep.c
+ * \brief   Wrappers for architecture/OS-specific code
+ *
+ * I've decided to use GLib's use of the XDG specification and the standard
+ * way of using paths on Windows. So some files may not be where the older
+ * ports expect them to be. For example, vicerc will be in $HOME/.config/vice
+ * now, not $HOME/.vice. -- compyx
+ *
+ * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
+ * \author  Bas Wassink <b.wassink@ziggo.nl>
+ */
+
 /*
- * archdep.c - Miscellaneous system-specific stuff.
- *
- * Written by
- *  Marco van den Heuvel <blackystardust68@yahoo.com>
- *  Bas Wassink <b.wassink@ziggo.nl>
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -25,28 +31,31 @@
  *
  */
 
-
-/** \file   src/arch/gtk3/archdep.c
- * \brief   Wrappers for architecture/OS-specific code
- *
- * I've decided to use GLib's use of the XDG specification and the standard
- * way of using paths on Windows. So some files may not be where the older
- * ports expect them to be. For example, vicerc will be in $HOME/.config/vice
- * now, not $HOME/.vice.
- */
-
 #include "vice.h"
 
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 
-#include "log.h"
+#include "debug_gtk3.h"
+#include "findpath.h"
+#include "ioutil.h"
 #include "lib.h"
+#include "log.h"
 #include "machine.h"
 #include "util.h"
+#include "uiapi.h"
 
+/* Will get fixed once the code in this file gets moved to its proper location */
+#include "../shared/archdep_xdg.h"
+#include "../shared/archdep_defs.h"
+#include "../shared/archdep_create_user_config_dir.h"
+#include "../shared/archdep_join_paths.h"
+#include "../shared/archdep_get_vice_docsdir.h"
 
+#if 0
 /** \brief  Prefix used for autostart disk images
  */
 #define AUTOSTART_FILENAME_PREFIX   "autostart-"
@@ -55,14 +64,20 @@
 /** \brief  Suffix used for autostart disk images
  */
 #define AUTOSTART_FILENAME_SUFFIX   ".d64"
-
+#endif
 
 /** \brief  Reference to argv[0]
  *
- * FIXME: this is only used once I think, better pass this as an argument to
- *        the function using it
+ * FIXME: this is only used twice I think, better pass this as an argument to
+ *        the functions using it
  */
 static char *argv0 = NULL;
+
+
+/** \brief  Path to the preferences directory of the emu
+ */
+const char *archdep_pref_path = NULL;
+
 
 #ifdef UNIX_COMPILE
 #include "archdep_unix.c"
@@ -73,183 +88,27 @@ static char *argv0 = NULL;
 #endif
 
 
-/** \brief  Initialize the UI, a stub for now
+#if 0
+/** \brief  Create and open temp file
  *
- * Theoretically, it should not have to matter what system we run on, as long
- * as it has Gtk3.
+ * \param[in]   filename    pointer to object to store name of temp file
+ * \param[in]   mode        mode to open file with (see fopen(3))
+ *
+ * \return  pointer to new file or `NULL` on error
  */
-static void archdep_ui_init(int arg, char **argv)
+FILE *archdep_mkstemp_fd(char **filename, const char *mode)
 {
-    /* do nothing, just like in src/arch/x11/gnome/x11ui.c */
+    GError *err = NULL;
+    /* this function already uses the OS's tmp dir as a prefix, so no need to
+     * do stuff like getenv("TMP")
+     */
+    int fd = g_file_open_tmp("vice.XXXXXX", filename, &err);
+    if (fd < 0) {
+        return NULL;
+    }
+    return fdopen(fd, mode);
 }
-
-
-/** \brief  Get the program name
- *
- * This returns the final part of argv[0], as if basename where used.
- *
- * \return  program name, heap-allocated, free with lib_free()
- */
-char *archdep_program_name(void)
-{
-    return lib_stralloc(g_path_get_basename(argv0));
-
-}
-
-
-/** \brief  Get the absolute path to the VICE dir
- *
- * \return  Path to VICE's directory
- */
-const gchar *archdep_boot_path(void)
-{
-    const char *boot;
-    char *prg_name = archdep_program_name();
-
-    boot = g_path_get_dirname(g_find_program_in_path(prg_name));
-    lib_free(prg_name);
-    return boot;
-}
-
-
-/** \brief  Get the user's home directory
- *
- * \return  current user's home directory
- */
-const char *archdep_home_path(void)
-{
-    return g_get_home_dir();
-}
-
-
-
-char *archdep_user_config_path(void)
-{
-    char *path;
-    gchar *tmp = g_build_path(path_separator, g_get_user_config_dir(),
-            VICEUSERDIR, NULL);
-    path = lib_stralloc(tmp);
-    g_free(tmp);
-    return path;
-}
-
-/** \brief  Determine if \a path is an absolute path
- *
- * \param[in]   path    some path
- *
- * \return  bool
- */
-int archdep_path_is_relative(const char *path)
-{
-    return !g_path_is_absolute(path);
-}
-
-
-/** \brief  Generate path to the default fliplist file
- *
- * On Unix, this will return "$HOME/.config/vice/fliplist-$machine.vfl", on
- * Windows this should return "%APPDATA%\\vice\\fliplist-$machine.vfl".
- *
- * \return  path to defaul fliplist file, must be freed with lib_free()
- */
-char *archdep_default_fliplist_file_name(void)
-{
-    gchar *path;
-    char *name;
-    char *tmp;
-
-    name = util_concat("fliplist-", machine_get_name(), ".vfl", NULL);
-    path = g_build_path(path_separator, g_get_user_config_dir(), VICEUSERDIR,
-            name, NULL);
-    lib_free(name);
-    /* transfer ownership of path to VICE */
-    tmp = lib_stralloc(path);
-    g_free(path);
-    return tmp;
-}
-
-
-/** \brief  Create path(s) used by VICE for user-data
- *
- * \return  0 on success, -1 on failure
- */
-static void archdep_create_user_config_dir(void)
-{
-    char *path = archdep_user_config_path();
-
-    /* create config dir, fail silently if it exists
-     * XXX: perhaps I should stat on failure to see if the directory already
-     * existed, or there was another failure */
-    (void)g_mkdir(path, 0644);
-    lib_free(path);
-}
-
-
-/** \brief  Generate default autostart disk image path
- *
- * The path will be "$cfgdir/autostart-$emu.d64". this needs to be freed with
- * lib_free().
- *
- * \return  path to autostart disk image
- */
-char *archdep_default_autostart_disk_image_file_name(void)
-{
-    char *cfg;
-    gchar *path;
-    char *name;
-    char *tmp;
-
-    cfg = archdep_user_config_path();
-    name = util_concat(AUTOSTART_FILENAME_PREFIX, machine_get_name(),
-            AUTOSTART_FILENAME_SUFFIX, NULL);
-    path = g_build_path(path_separator, cfg, name, NULL);
-    lib_free(name);
-    lib_free(cfg);
-    /* transfer ownership from non/glib to VICE */
-    tmp = lib_stralloc(path);
-    g_free(path);
-    return tmp;
-}
-
-
-/** \brief  Generate path to vice.ini
- *
- * The value returned needs to be freed using lib_free()
- *
- * \return  absolute path to vice.ini
- */
-char *archdep_default_resource_file_name(void)
-{
-    char *cfg;
-    gchar *tmp;
-    char *path;
-
-    cfg = archdep_user_config_path();
-    tmp = g_build_path(path_separator, cfg, "vice.ini", NULL);
-    /* transfer ownership to VICE */
-    path = lib_stralloc(tmp);
-    g_free(tmp);
-    return path;
-}
-
-
-
-/** \brief  Open the default log file
- *
- * XXX: For now, this returns stdout, until I figure out why MacOSX duplicates
- *      fd 0 (stdin)
- */
-FILE *archdep_open_default_log_file(void)
-{
-    INCOMPLETE_IMPLEMENTATION();
-    return stdout;
-}
-
-void archdep_signals_init(int do_core_dumps)
-{
-    /* NOP: Gtk3 should handle any signals, I think */
-}
-
+#endif
 
 
 /** \brief  Arch-dependent init
@@ -261,36 +120,76 @@ void archdep_signals_init(int do_core_dumps)
  */
 int archdep_init(int *argc, char **argv)
 {
-    char *prg_name;
+#ifdef HAVE_DEBUG_GTK3UI
+    const char *prg_name;
     char *cfg_path;
     char *searchpath;
     char *vice_ini;
-
+    char *datadir;
+    char *docsdir;
+# if defined(ARCHDEP_OS_LINUX) || defined(ARCHDEP_OS_BSD)
+    char *xdg_cache;
+    char *xdg_config;
+    char *xdg_data;
+# endif
+#endif
     argv0 = lib_stralloc(argv[0]);
+
+    /* set argv0 for program_name()/boot_path() calls (yes this sucks) */
+    archdep_program_path_set_argv0(argv[0]);
 
     archdep_create_user_config_dir();
 
+#ifdef HAVE_DEBUG_GTK3UI
     /* sanity checks, to remove later: */
     prg_name = archdep_program_name();
-    searchpath = archdep_default_sysfile_pathlist("C64");
+    searchpath = archdep_default_sysfile_pathlist(machine_name);
     cfg_path = archdep_user_config_path();
     vice_ini = archdep_default_resource_file_name();
+    datadir = archdep_get_vice_datadir();
+    docsdir = archdep_get_vice_docsdir();
 
-    printf("progran name    = \"%s\"\n", prg_name);
-    printf("user home dir   = \"%s\"\n", archdep_home_path());
-    printf("user config dir = \"%s\"\n", cfg_path);
-    printf("prg boot path   = \"%s\"\n", archdep_boot_path());
-    printf("VICE searchpath = \"%s\"\n", searchpath);
-    printf("vice.ini path   = \"%s\"\n", vice_ini);
+# if defined(ARCHDEP_OS_LINUX) && defined(ARCHDEP_OS_BSD)
+    xdg_cache = archdep_xdg_cache_home();
+    xdg_config = archdep_xdg_config_home();
+    xdg_data = archdep_xdg_data_home()l
+# endif 
 
-    lib_free(prg_name);
+    debug_gtk3("program name    = \"%s\"", prg_name);
+    debug_gtk3("user home dir   = \"%s\"", archdep_home_path());
+    debug_gtk3("user config dir = \"%s\"", cfg_path);
+    debug_gtk3("prg boot path   = \"%s\"", archdep_boot_path());
+    debug_gtk3("VICE searchpath = \"%s\"", searchpath);
+    debug_gtk3("VICE gui data   = \"%s\"", datadir);
+    debug_gtk3("VICE docs path  = \"%s\"", docsdir);
+    debug_gtk3("vice.ini path   = \"%s\"", vice_ini);
+
+# if defined(ARCHDEP_OS_LINUX) || defined(ARCHDEP_OS_BSD)
+    xdg_cache = archdep_xdg_cache_home();
+    xdg_config = archdep_xdg_config_home();
+    xdg_data = archdep_xdg_data_home();
+
+    debug_gtk3("XDG_CACHE_HOME  = '%s'.", xdg_cache);
+    debug_gtk3("XDG_CONFIG_HOME = '%s'.", xdg_config);
+    debug_gtk3("XDG_DATA_HOME   = '%s'.", xdg_data);
+
+    lib_free(xdg_cache);
+    lib_free(xdg_config);
+    lib_free(xdg_data);
+# endif
+
+    lib_free(searchpath);
     lib_free(vice_ini);
+# if 0
+    lib_free(cfg_path);
+# endif
+    lib_free(datadir);
+    lib_free(docsdir);
+#endif
 
     /* needed for early log control (parses for -silent/-verbose) */
     log_verbose_init(*argc, argv);
 
-    /* initialize the UI */
-    archdep_ui_init(*argc, argv);
     return 0;
 }
 
