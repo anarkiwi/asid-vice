@@ -70,8 +70,8 @@
  */
 gboolean ui_swap_joysticks_callback(GtkWidget *widget, gpointer user_data)
 {
-    int joy1;
-    int joy2;
+    int joy1 = -1;
+    int joy2 = -1;
 
     resources_get_int("JoyDevice1", &joy1);
     resources_get_int("JoyDevice2", &joy2);
@@ -92,8 +92,8 @@ gboolean ui_swap_joysticks_callback(GtkWidget *widget, gpointer user_data)
 gboolean ui_swap_userport_joysticks_callback(GtkWidget *widget,
                                              gpointer user_data)
 {
-    int joy3;
-    int joy4;
+    int joy3 = -1;
+    int joy4 = -1;
 
     resources_get_int("JoyDevice3", &joy3);
     resources_get_int("JoyDevice4", &joy4);
@@ -104,15 +104,57 @@ gboolean ui_swap_userport_joysticks_callback(GtkWidget *widget,
 }
 
 
+/** \brief  Toggle resource 'KeySetEnable'
+ *
+ * \param[in]   widget
+ * \param[in]   data    (unused?)
+ *
+ * \return  TRUE (so the UI eats the event)
+ */
+gboolean ui_toggle_keyset_joysticks(GtkWidget *widget, gpointer data)
+{
+    int enable;
+
+    resources_get_int("KeySetEnable", &enable);
+    resources_set_int("KeySetEnable", !enable);
+
+    return TRUE;    /* don't let any shortcut key end up in the emulated machine */
+}
+
+
+/** \brief  Toggle resource 'Mouse' (mouse-grab)
+ *
+ * \param[in]   widget
+ * \param[in]   data    (unused?)
+ *
+ * \return  TRUE (so the UI eats the event)
+ */
+gboolean ui_toggle_mouse_grab(GtkWidget *widget, gpointer data)
+{
+    int mouse;
+
+    resources_get_int("Mouse", &mouse);
+    resources_set_int("Mouse", !mouse);
+    if (mouse) {
+        ui_mouse_grab_pointer();
+    } else {
+        ui_mouse_ungrab_pointer();
+    }
+
+    return TRUE;    /* don't let any shortcut key end up in the emulated machine */
+}
+
+
 /** \brief  Callback for the soft/hard reset items
  *
  * \param[in]   widget      menu item triggering the event (unused)
  * \param[in]   user_data   MACHINE_RESET_MODE_SOFT/MACHINE_RESET_MODE_HARD
  */
-void ui_machine_reset_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_machine_reset_callback(GtkWidget *widget, gpointer user_data)
 {
-    vsync_suspend_speed_eval();
     machine_trigger_reset(GPOINTER_TO_INT(user_data));
+    ui_pause_disable();
+    return TRUE;
 }
 
 
@@ -121,10 +163,11 @@ void ui_machine_reset_callback(GtkWidget *widget, gpointer user_data)
  * \param[in]   widget      menu item triggering the event (unused)
  * \param[in]   user_data   drive unit number (8-11) (int)
  */
-void ui_drive_reset_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_drive_reset_callback(GtkWidget *widget, gpointer user_data)
 {
     vsync_suspend_speed_eval();
     drive_cpu_trigger_reset(GPOINTER_TO_INT(user_data) - 8);
+    return TRUE;
 }
 
 
@@ -134,7 +177,7 @@ void ui_drive_reset_callback(GtkWidget *widget, gpointer user_data)
  */
 static gboolean confirm_exit(void)
 {
-    int confirm;
+    int confirm = FALSE;
 
     resources_get_int("ConfirmOnExit", &confirm);
     if (!confirm) {
@@ -154,12 +197,15 @@ static gboolean confirm_exit(void)
  *
  * \param[in]   widget      menu item triggering the event (unused)
  * \param[in]   user_data   unused
+ *
+ * \return  TRUE
  */
-void ui_close_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_close_callback(GtkWidget *widget, gpointer user_data)
 {
     if (confirm_exit()) {
         ui_exit();
     }
+    return TRUE;
 }
 
 
@@ -191,7 +237,7 @@ void ui_main_window_destroy_callback(GtkWidget *widget, gpointer user_data)
 {
     GtkWidget *grid;
 
-    debug_gtk3("WINDOW DESTROY called on %p.", widget);
+    debug_gtk3("WINDOW DESTROY called on %p.", (void *)widget);
 
     /*
      * This should not be needed, destroying a GtkWindow should trigger
@@ -240,7 +286,7 @@ gboolean ui_toggle_resource(GtkWidget *widget, gpointer resource)
 
 /** \brief  Open the Manual
  */
-void ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
 {
     GError *error = NULL;
     gboolean res;
@@ -289,15 +335,25 @@ void ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
                 uri);
         g_clear_error(&error);
         lib_free(uri);
-        lib_free(path);
-        return;
+        return FALSE;
     }
 
     debug_gtk3("pdf uri: '%s'.", final_uri);
+
+#ifdef WIN32_COMPILE
+
+    /*
+     * Silly hack: at least Acrobat reader can't make heads or tails from a
+     * URI, so we remove 'file:///C:' here to at least make Acrobat reader
+     * "work"
+     */
+    res = gtk_show_uri_on_window(NULL, final_uri + 8, GDK_CURRENT_TIME, &error);
+#else
     res = gtk_show_uri_on_window(NULL, final_uri, GDK_CURRENT_TIME, &error);
+#endif
     if (!res) {
         vice_gtk3_message_error(
-                "Failed to load PDF: %s.",
+                "Failed to load PDF, (No more joke here, guess the joke about Germans not having a sense of humor is at least partially true)",
                 error != NULL ? error->message : "<no message>");
     }
     lib_free(uri);
@@ -308,7 +364,7 @@ void ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
          * way to determine if actually loading the PDF in that application
          * worked. So we simply exit here to avoid also opening a HTML browser
          * which on Windows at least seems to completely ignore the default and
-         * always starts fucking Internet Explorer.
+         * always starts Internet Explorer (or Edge, even better).
          *
          * Also how do we close the PDF application if we could determine it
          * failed to load the PDF? We don't get any reference to the application
@@ -316,47 +372,66 @@ void ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
          *
          * -- compyx
          */
-        lib_free(path);
-        return;
+        return TRUE;
     }
 
-    /* try opening the html doc */
-#if defined(WIN32_COMPILE)
-    /* HACK: on windows the html files are in a separate directory */
-    uri = archdep_join_paths(path, "..", "html", "vice_toc.html", NULL);
-#else
-    uri = archdep_join_paths(path, "vice_toc.html", NULL);
-#endif
+    /* No HTML for you! */
+    return FALSE;
+}
 
-    final_uri = g_filename_to_uri(uri, NULL, &error);
-    if (final_uri == NULL) {
-        /*
-         * This is a fatal error, if a proper URI can't be built something is
-         * wrong and should be looked at. This is different from failing to
-         * load the PDF or not having a program to show the PDF
+
+/** \brief  Attempt to restore the active window's size to its "natural" size
+ *
+ * Also unmaximizes and unfullscreens the window.
+ *
+ * \param[in]   widget  widget triggering the event (ignored)
+ * \param[in]   data    extra event data (unused)
+ */
+gboolean ui_restore_display(GtkWidget *widget, gpointer data)
+{
+    GtkWindow *window = ui_get_active_window();
+
+    debug_gtk3("called\n");
+
+    if (window != NULL) {
+        /* disable fullscreen if active */
+        if (ui_is_fullscreen()) {
+            ui_fullscreen_callback(widget, data);
+        }
+        /* unmaximize */
+        gtk_window_unmaximize(window);
+        /* requesting a 1x1 window forces the window to resize to its natural
+         * size, ie the minimal size required to display the window's
+         * decorations and contents without wasting space
          */
-        log_error(LOG_ERR,
-                "failed to construct a proper URI from '%s',"
-                " this is an error that should not happen.",
-                uri);
-        g_free(final_uri);
-        lib_free(uri);
-        lib_free(path);
-        return;
+        gtk_window_resize(window, 1, 1);
+    } else {
+        debug_gtk3("ui_get_active_window() returned NULL");
     }
+    return TRUE;
+}
 
-    /*
-     * On Windows this does not respect the user's preferred browser. That is,
-     * it didn't respect my Firefox but decided to use Internet Explorer,
-     * which is an unspeakable act of cruelty.
-     */
-    debug_gtk3("html uri: '%s'.", final_uri);
-    res = gtk_show_uri_on_window(NULL, final_uri, GDK_CURRENT_TIME, &error);
-    if (!res && error != NULL) {
-        vice_gtk3_message_error("Failed to show URI", error->message);
+
+/** \brief  Restore default settings
+ *
+ * Resets settings to their defaults, asking the user to confirm.
+ *
+ * \param[in]   widget  widget triggering event (ignored)
+ * \param[in]   data    extra event data
+ *
+ * \return  TRUE (UI 'consumed' the keypress so it doesn't end up in the emu)
+ */
+gboolean ui_restore_default_settings(GtkWidget *widget, gpointer data)
+{
+    if (vice_gtk3_message_confirm(
+                "Reset all settings to default",
+                "Are you sure you wish to reset all settings to their default"
+                " values?\n\n"
+                "The new settings will not be saved until using the 'Save"
+                " settings' menu item, or having 'Save on exit' enabled and"
+                " exiting VICE.")) {
+        debug_gtk3("Resetting resources to default.");
+        resources_set_defaults();
     }
-    lib_free(uri);
-    g_free(final_uri);
-    g_clear_error(&error);
-    lib_free(path);
+    return TRUE;
 }

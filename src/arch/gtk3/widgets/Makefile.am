@@ -3,7 +3,9 @@
 SUBDIRS = base
 
 AM_CPPFLAGS = \
+	@VICE_CPPFLAGS@ \
 	@ARCH_INCLUDES@ \
+	-I$(top_srcdir)/src/arch/shared \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/drive \
@@ -28,6 +30,10 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/samplerdrv \
 	-I$(top_srcdir)/src/hvsc
 
+AM_CFLAGS = @VICE_CFLAGS@
+
+AM_CXXFLAGS = @VICE_CXXFLAGS@
+
 noinst_LIBRARIES = libwidgets.a
 
 libwidgets_a_SOURCES = \
@@ -37,6 +43,8 @@ libwidgets_a_SOURCES = \
 	c128functionromwidget.c \
 	c128machinetypewidget.c \
 	c64dtvflashsettingswidget.c \
+	canvasrenderbackendwidget.c \
+	canvasrenderfilterwidget.c \
 	cbm2hardwiredswitcheswidget.c \
 	cbm2memorysizewidget.c \
 	cbm2rammappingwidget.c \
@@ -77,6 +85,7 @@ libwidgets_a_SOURCES = \
 	joystickdevicewidget.c \
 	joystickmenupopup.c \
 	joystickuserportadapterwidget.c \
+	kbddebugwidget.c \
 	kbdlayoutwidget.c \
 	kbdmappingwidget.c \
 	kernalrevisionwidget.c \
@@ -140,6 +149,7 @@ libwidgets_a_SOURCES = \
 	sfxsoundexpanderwidget.c \
 	sfxsoundsamplerwidget.c \
 	sidcartwidget.c \
+	sidenginemodelwidget.c \
 	sidmodelwidget.c \
 	sidsoundwidget.c \
 	soundbuffersizewidget.c \
@@ -150,6 +160,7 @@ libwidgets_a_SOURCES = \
 	soundsuspendtimewidget.c \
 	soundsyncwidget.c \
 	speedwidget.c \
+	statusbarrecordingwidget.c \
 	statusbarspeedwidget.c \
 	superpetwidget.c \
 	supersnapshotwidget.c \
@@ -171,6 +182,7 @@ libwidgets_a_SOURCES = \
 	vsidcontrolwidget.c \
 	vsidmainwidget.c \
 	vsidmixerwidget.c \
+	vsidplaylistadddialog.c \
 	vsidplaylistwidget.c \
 	vsidtuneinfowidget.c
 
@@ -184,6 +196,8 @@ EXTRA_DIST = \
 	cbm2hardwiredswitcheswidget.h \
 	cbm2memorysizewidget.h \
 	cbm2rammappingwidget.h \
+	canvasrenderbackendwidget.h \
+	canvasrenderfilterwidget.h \
 	ciamodelwidget.h \
 	contentpreviewwidget.h \
 	cpmwidget.h \
@@ -221,6 +235,7 @@ EXTRA_DIST = \
 	joystickdevicewidget.h \
 	joystickmenupopup.h \
 	joystickuserportadapterwidget.h \
+	kbddebugwidget.h \
 	kbdlayoutwidget.h \
 	kbdmappingwidget.h \
 	kernalrevisionwidget.h \
@@ -284,6 +299,7 @@ EXTRA_DIST = \
 	sfxsoundexpanderwidget.h \
 	sfxsoundsamplerwidget.h \
 	sidcartwidget.h \
+	sidenginemodelwidget.h \
 	sidmodelwidget.h \
 	sidsoundwidget.h \
 	soundbuffersizewidget.h \
@@ -294,6 +310,7 @@ EXTRA_DIST = \
 	soundsuspendtimewidget.h \
 	soundsyncwidget.h \
 	speedwidget.h \
+	statusbarrecordingwidget.h \
 	statusbarspeedwidget.h \
 	superpetwidget.h \
 	supersnapshotwidget.h \
@@ -315,5 +332,6 @@ EXTRA_DIST = \
 	vsidcontrolwidget.h \
 	vsidmainwidget.h \
 	vsidmixerwidget.h \
+	vsidplaylistadddialog.h \
 	vsidplaylistwidget.h \
 	vsidtuneinfowidget.h

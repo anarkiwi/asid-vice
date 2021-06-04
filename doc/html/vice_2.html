@@ -1,7 +1,7 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 19 December 2018 -->
+     from ../../doc/vice.texi on 24 December 2019 -->
 
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <TITLE>VICE Manual - 2  About VICE</TITLE>
@@ -29,7 +29,7 @@ file formats.
 8-bit computer is, or have questions about how these machines are used,
 how the file formats work or anything else that is not strictly
 related to VICE, you should read the appropriate FAQs <EM>first</EM>, as
-that kind of information is not available here.  See section <A HREF="vice_19.html#SEC401">19  Contact information</A>. for
+that kind of information is not available here.  See section <A HREF="vice_19.html#SEC400">19  Contact information</A>. for
 information about how to retrieve the FAQs.
 
 </P>
@@ -57,7 +57,8 @@ be as good as the C64 or VIC20 one, as they are still under construction.
 
 <P>
 As of version 2.3, two C64 emulators are provided: <SAMP>`x64'</SAMP> (fast)
-and <SAMP>`x64sc'</SAMP> (accurate).
+and <SAMP>`x64sc'</SAMP> (accurate). As of version 3.4 <SAMP>`x64'</SAMP> will no more get
+built by default and is not contained in the default binary packages.
 
 </P>
 <P>
@@ -130,16 +131,11 @@ graphical effects will work correctly.
 
 </P>
 <P>
-Sound support is implemented, but is still at an experimental stage.  If
-you think it could be improved and know how to do so, feel
-free to contact us (see section <A HREF="vice_19.html#SEC401">19  Contact information</A>).
-
-</P>
-<P>
-The VIC20 emulator now allows the use of the VIC1112 IEEE488
+The VIC20 emulator allows the use of the VIC1112 IEEE488
 interface. You have to enable the hardware (by menu, resource, or
 commandline option) and then load the IEEE488 ROM (see for
-example <A HREF="http://www.funet.fi/pub/cbm/schematics/cartridges/vic20/ieee-488/325329-04.bin">http://www.funet.fi/pub/cbm/schematics/cartridges/vic20/ieee-488/325329-04.bin</A>, but you have to double the size to 4k for now).
+example <A HREF="http://www.funet.fi/pub/cbm/schematics/cartridges/vic20/ieee-488/325329-04.bin">http://www.funet.fi/pub/cbm/schematics/cartridges/vic20/ieee-488/325329-04.bin</A>, 
+but you have to double the size to 4k for now).
 The IEEE-488 code is then started by <CODE>SYS45065</CODE>.
 
 </P>
@@ -161,11 +157,6 @@ Both the 40 column and 80 column CRTC video chips are emulated (from the
 4032 onward), but a few of the features are not implemented yet (numbers
 of rasterlines per char and lines per screen).  Fortunately, they are
 not very important for average applications.
-
-</P>
-<P>
-Sound is available for the PET as well, but like the VIC20's it is still
-under construction.
 
 </P>
 <P>
@@ -234,7 +225,7 @@ addresses.
 To select which model to run, specify it on the
 command line with the <CODE>-model MODEL</CODE> option, where
 <CODE>MODEL</CODE> can be one of a list of PET model numbers, all
-described in see section <A HREF="vice_7.html#SEC191">7.7.1  Changing PET model settings</A>
+described in see section <A HREF="vice_7.html#SEC189">7.7.1  Changing PET model settings</A>
 
 </P>
 
@@ -291,7 +282,7 @@ emulated as well.
 
 </P>
 <P>
-The different settings are described in see section <A HREF="vice_7.html#SEC210">7.8.1  Changing CBM-II model</A>.
+The different settings are described in see section <A HREF="vice_7.html#SEC208">7.8.1  Changing CBM-II model</A>.
 
 </P>
 
@@ -375,30 +366,28 @@ the <EM>unshifted</EM> <KBD>*</KBD> key pressed (as <KBD>*</KBD> is unshifted on
 C64 keyboard).  Likewise, pressing <KBD>'</KBD> on the same U.S. keyboard
 without any shift key will cause the combination <KBD>Shift-7</KBD> to be
 pressed in the emulated C64.  This way, it becomes quite obvious what
-keys should be typed to obtain all the symbols.
+keys should be typed to obtain all the symbols. <EM>The key printed on the 
+host keyboard will be pressed in the emulator</EM>.
 
 </P>
 <P>
 There is, however, one problem with symbolic mapping: some keys really
-need to be mapped specially regardless.  The most important examples
-being, in the VIC20, C64 and C128 emulators, that <KBD>CTRL</KBD> is mapped
-to <KBD>Tab</KBD> and that the <KBD>Commodore</KBD> key is mapped to the left
-<KBD>Control</KBD>). The <KBD>RUN/STOP</KBD> key is mapped to the <KBD>ESC</KBD> key
-on the PC keyboard. The PET emulator, lacking the <KBD>Commodore</KBD> key
-but having an <KBD>ESC</KBD> key, uses the left <KBD>Control</KBD> key as
-<KBD>RUN/STOP</KBD> and the <KBD>ESC</KBD> key as <KBD>ESC</KBD> of course.
+need to be mapped specially regardless (those that do not exist on a PC
+keyboard).  Some examples are the <KBD>Commodore</KBD> key, <KBD>RUN/STOP</KBD>, 
+<KBD>Clear/Home</KBD>. The exact mapping depends on your host layout, but should
+be easy to find out by try and error :) If in doubt, you can read the keyboard
+mapping files.
 
 </P>
-
 <P>
 The second way (<EM>positional mapping</EM>) is to map every key on the
-"real" keyboard to the key which has the same position on the keyboard
-of the emulated machine.  This way, no <KBD>Shift</KBD> key is forced by the
-program (with the exception of the function keys <KBD>F2</KBD>, <KBD>F4</KBD>,
-<KBD>F6</KBD> and <KBD>F8</KBD>, which require <KBD>Shift</KBD> on the Commodore
-keyboards), and the keyboard is more comfortable to use in those
-programs (such as some games) that require the keys to be in the correct
-positions.
+host keyboard to the key which has the same position on the keyboard
+of the emulated machine.  This way the keyboard is more comfortable to use 
+in those programs (such as some games) that require the keys to be in the 
+correct positions. On the other hand it can be quite confusing if you are not
+very familiar with the original emulated keyboards. Also not all keys can be
+mapped exactly this way either, which means some of them still need to be
+mapped to other keys (see above).
 
 </P>
 <P>
@@ -413,19 +402,30 @@ Yes, we know this is a bug.
 
 </P>
 <P>
-The <KBD>RESTORE</KBD> key is mapped to <KBD>Page Up</KBD> (or <KBD>Prev</KBD>) by
-default.
+We depend a lot on your support to improve the keyboard maps, as we can not
+test all emulators in all possible configurations and using all host keyboard
+mappings. Please report any problems to us so we can fix them!
 
 </P>
+<P>
+If you experience problems with 'accent' keys such as acute, grave, tilde, 
+circumflex, diaresis (and possibly more/other, depending on your host keyboard
+layout) try switching to a "no deadkeys" layout in your OS. In any case, please
+also report these problems so we can fix them!
 
+</P>
+<P>
+To find out the keycodes to use, incase you want to edit the keymaps yourself,
+you can enable showing the keycodes in the status bar in the settings.
+
+</P>
 
 
 <H2><A NAME="SEC14" HREF="vice_toc.html#TOC14">2.9  The joystick emulation</A></H2>
 
 <P>
 Joysticks can be emulated both via the keyboard and via a real joystick
-connected to the host machine (the latter only works on GNU/Linux
-systems).
+connected to the host machine.
 
 </P>
 <P>
@@ -440,12 +440,9 @@ diagonal ones; <KBD>0</KBD> emulates the fire button.
 
 </P>
 <P>
-The <EM>custom</EM> layout uses the keys <KBD>w</KBD>, <KBD>e</KBD>, <KBD>r</KBD>,
-<KBD>s</KBD>, <KBD>d</KBD>, <KBD>f</KBD>, <KBD>x</KBD>, <KBD>c</KBD>, <KBD>v</KBD> for the directions
-and <KBD>space</KBD> for the fire button instead.
+The <EM>custom</EM> layout is configurable to your liking.
 
 </P>
-
 
 
 <H2><A NAME="SEC15" HREF="vice_toc.html#TOC15">2.10  The disk drive emulation</A></H2>
@@ -454,7 +451,7 @@ and <KBD>space</KBD> for the fire button instead.
 All the emulators support up to 4 external disk drives as
 devices 8, 9, 10 and 11.  Each of these devices can emulate virtual
 Commodore 1541, 1541-II, 1571, 1581, 2031, 2040, 3040, 4040, 1001, 8050 and
-8250 drives in one of four ways:
+8250 drives in one of the following ways:
 
 </P>
 
@@ -473,20 +470,9 @@ read and write files in the <CODE>P00</CODE> format (again, consult the
 <CODE>comp.emulators.cbm</CODE> FAQ for more info).
 <LI>
 
-accessing a real device connected to the host machine. As of VICE 1.11
-it is possible to connect real drives like Commodore 1541 to the
-printer port of the host using the XA1541 or XM1541 cable. Currently
-this only works on Linux or Windows using the OpenCBM library. You can
-get it from <A HREF="http://www.lb.shuttle.de/puffin/cbm4linux">http://www.lb.shuttle.de/puffin/cbm4linux</A> (cbm4linux,
-Linux version) or from <A HREF="http://cbm4win.sf.net">http://cbm4win.sf.net</A> (cbm4win, Windows
-version).
+accessing a real device connected to the host machine. This works using the 
+OpenCBM library. You can get it from <A HREF="http://cbm4win.sf.net">http://cbm4win.sf.net</A>.
 
-<LI>
-
-directly using the disk drive of the host. The 3.5" disk drive of the
-host can be used to read or write Commodore 1581 formatted disks.
-Currently this raw drive access feature is only available for Linux
-hosts.
 </UL>
 
 <P>
@@ -496,7 +482,7 @@ emulation.  One of them the <EM>virtual drive</EM> emulation.  It does
 (with the so-called <EM>kernal traps</EM>) so that serial line operations
 can be emulated via C language routines.  This emulation is very fast,
 but only allows use of standard DOS functions (and not even all of
-them).  For real device or raw drive access it is required to enable
+them).  For real device access it is required to enable
 this type of emulation.
 
 </P>
@@ -663,10 +649,14 @@ VICE supports the most popular Commodore file formats:
 
 <CODE>CRT</CODE> C64 cartridge image files
 
+<LI>
+
+<CODE>TCRT</CODE> tapecart image files
+
 </UL>
 
 <P>
-An utility (<CODE>c1541</CODE>, see section <A HREF="vice_13.html#SEC282">13  c1541</A>) is provided to allow transfers
+An utility (<CODE>c1541</CODE>, see section <A HREF="vice_13.html#SEC280">13  c1541</A>) is provided to allow transfers
 and conversions between these formats.
 
 </P>
@@ -686,7 +676,7 @@ dd bs=64 skip=1 if=IMAGE.X64 of=IMAGE.D64
 </PRE>
 
 <P>
-See section <A HREF="vice_16.html#SEC294">16  The emulator file formats</A>. for a technical description of the supported file
+See section <A HREF="vice_16.html#SEC292">16  The emulator file formats</A>. for a technical description of the supported file
 formats.
 
 </P>
@@ -725,39 +715,8 @@ systems).
 
 </P>
 <P>
-Linux, AIX and SGI systems should play sound without any problems; if
-you are running Linux please use a 2.x kernel, as VICE needs some
-features that were not implemented in older versions of the Linux sound
-driver.
-
-</P>
-<P>
-Windows should play sound ok.
-
-</P>
-<P>
-macOS is currently untested.
-
-</P>
-<P>
 All platforms that can run the SDL port (like Amiga, BeOS, etc) should be able
 to play sound via SDL.
-
-</P>
-<P>
-<A NAME="IDX2"></A>
-On the other hand, HP-UX and Solaris machines are known to cause
-troubles.  If you think you can help debugging the code for these
-systems, your help would be really appreciated.  We are having troubles
-finding HP-UX and SUN consoles to work at...
-
-</P>
-<P>
-<A NAME="IDX3"></A>
-Some problems have been reported with the proprietary version of the
-Open Sound System for Linux.  With a Crystal sound card, sound output
-was significantly delayed and, apparently, the allocated buffer size was
-completely wrong.  This is not a VICE bug, but rather an OSS bug.
 
 </P>
 

@@ -37,6 +37,12 @@
 #include <unistd.h>
 #endif
 
+#ifdef MACOSX_SUPPORT
+#include <objc/runtime.h>
+#include <objc/message.h>
+#include <CoreFoundation/CFString.h>
+#endif
+
 #include "debug_gtk3.h"
 
 #include "archdep.h"
@@ -68,9 +74,13 @@
 #include "uismartattach.h"
 #include "uitapeattach.h"
 #include "uimachinewindow.h"
+#include "uimedia.h"
 #include "mixerwidget.h"
 #include "uidata.h"
 #include "archdep.h"
+
+/* for the fullscreen_capability() stub */
+#include "fullscreen.h"
 
 #include "ui.h"
 
@@ -93,6 +103,21 @@ static void ui_toggle_warp(void);
 /*****************************************************************************
  *                  Defines, enums, type declarations                        *
  ****************************************************************************/
+
+
+/** \brief  List of drag targets for the drag-n-drop event handler
+ *
+ * It would appear different OS'es/WM's pass dropped files using various
+ * mime-types.
+ */
+GtkTargetEntry ui_drag_targets[UI_DRAG_TARGETS_COUNT] = {
+    { "text/plain",     0, DT_TEXT },   /* we get this on at least my Linux
+                                           box with Mate */
+    { "text/uri",       0, DT_URI },
+    { "text/uri-list",  0, DT_URI_LIST }    /* we get this using Windows
+                                               Explorer or macOS Finder */
+};
+
 
 /** \brief  Struct holding basic UI rescources
  */
@@ -154,6 +179,19 @@ static kbd_gtk3_hotkey_t default_hotkeys[] = {
      *      recognized (only tested on Win10)
      */
     { GDK_KEY_P, VICE_MOD_MASK|GDK_SHIFT_MASK, (void *)ui_advance_frame },
+
+    { GDK_KEY_F12, VICE_MOD_MASK|GDK_SHIFT_MASK, uimedia_auto_screenshot },
+
+    /* Alt+J = swap joysticks */
+    { GDK_KEY_j, VICE_MOD_MASK,
+        (void *)ui_swap_joysticks_callback },
+    /* Alt+Shift+U = swap userport joysticks */
+    { GDK_KEY_u, VICE_MOD_MASK|GDK_SHIFT_MASK,
+        (void *)ui_swap_userport_joysticks_callback },
+    { GDK_KEY_J, VICE_MOD_MASK|GDK_SHIFT_MASK,
+        (void *)ui_toggle_keyset_joysticks },
+    { GDK_KEY_m, VICE_MOD_MASK,
+        (void *)ui_toggle_mouse_grab },
 
     /* Arnie */
     { 0, 0, NULL }
@@ -263,10 +301,10 @@ static const cmdline_option_t cmdline_options_common[] =
     { "+minimized", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
         NULL, NULL, "StartMinimized", (void *)0,
         NULL, "Do not start VICE minimized" },
-    { "-native-monitor", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+    { "-nativemonitor", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
         NULL, NULL, "NativeMonitor", (void *)1,
         NULL, "Use native monitor on OS terminal" },
-    { "+native-monitor", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+    { "+nativemonitor", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
         NULL, NULL, "NativeMonitor", (void *)0,
         NULL, "Use VICE Gtk3 monitor terminal" },
     { "-fullscreen", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
@@ -277,29 +315,6 @@ static const cmdline_option_t cmdline_options_common[] =
         NULL, "Disable fullscreen" },
 
     CMDLINE_LIST_END
-};
-
-
-/** \brief  Drag-n-drop 'target' types
- */
-enum {
-    DT_TEXT,        /**< simple text (text/plain) */
-    DT_URI,         /**< haven't seen this one get triggered (yet) */
-    DT_URI_LIST     /**< used by Windows Explorer / macOS Finder */
-};
-
-
-/** \brief  List of drag targets for the drag-n-drop event handler
- *
- * It would appear different OS'es/WM's pass dropped files using various
- * mime-types.
- */
-static GtkTargetEntry drag_targets[] = {
-    { "text/plain",     0, DT_TEXT },   /* we get this on at least my Linux
-                                           box with Mate */
-    { "text/uri",       0, DT_URI },
-    { "text/uri-list",  0, DT_URI_LIST }    /* we get this using Windows
-                                               Explorer or macOS Finder */
 };
 
 
@@ -352,8 +367,8 @@ static GtkWidget *(*create_controls_widget_func)(int) = NULL;
  * \param[in]   y       y position of drag event
  * \param[in]   time    (I don't have a clue)
  * \param[in]   data    extra event data (unused)
- */ 
-static gboolean on_drag_drop(
+ */
+static gboolean ui_on_drag_drop(
         GtkWidget *widget,
         GdkDragContext *context,
         gint x,
@@ -368,7 +383,8 @@ static gboolean on_drag_drop(
 
 /** \brief  Handler for the 'drag-data-received' event
  *
- * Autostarts an image/prg when valid
+ * Autostarts an image/prg when valid. Please note that VSID now has its own
+ * drag-n-drop handlers.
  *
  * \param[in]   widget      widget triggering the event (unused)
  * \param[in]   context     drag context (unused)
@@ -381,7 +397,7 @@ static gboolean on_drag_drop(
  * \todo    Once this works properly, remove a lot of debugging calls, perhaps
  *          changing a few into log calls.
  */
-static void on_drag_data_received(
+static void ui_on_drag_data_received(
         GtkWidget *widget,
         GdkDragContext *context,
         int x,
@@ -474,19 +490,11 @@ static void on_drag_data_received(
 
     /* can we attempt autostart? */
     if (filename != NULL) {
-        if (machine_class != VICE_MACHINE_VSID) {
-
-            debug_gtk3("Attempting to autostart '%s'.", filename);
-            if (autostart_autodetect(filename, NULL, 0, AUTOSTART_MODE_RUN) != 0) {
-                debug_gtk3("failed.");
-            } else {
-                debug_gtk3("OK!");
-            }
+        debug_gtk3("Attempting to autostart '%s'.", filename);
+        if (autostart_autodetect(filename, NULL, 0, AUTOSTART_MODE_RUN) != 0) {
+            debug_gtk3("failed.");
         } else {
-            /* try to open SID file, reports error itself */
-            if (handle_dropped_files_func != NULL) {
-                handle_dropped_files_func(filename);
-            }
+            debug_gtk3("OK!");
         }
         g_free(filename);
     }
@@ -560,7 +568,7 @@ video_canvas_t *ui_get_active_canvas(void)
  *
  * \return  window index, or -1 if not a main window
  */
-static int ui_get_window_index(GtkWidget *widget)
+int ui_get_window_index(GtkWidget *widget)
 {
     if (widget == NULL) {
         return -1;
@@ -631,7 +639,7 @@ static gboolean on_focus_out_event(GtkWidget *widget, GdkEventFocus *event,
 /** \brief  Create an icon by loading it from the vice.gresource file
  *
  * \return  Standard C= icon ripped from the internet (but at least scalable)
- *          Which ofcourse sucks on Windows for some reason, *sigh*
+ *          Which of course looks weird on Windows for some reason, *sigh*.
  */
 static GdkPixbuf *get_default_icon(void)
 {
@@ -716,6 +724,21 @@ static gboolean on_window_state_event(GtkWidget *widget,
 }
 
 
+
+/** \brief  Stub to satisfy the various $videochip-resources.c files
+ *
+ * \param[in]   cap_fullscreen  unused
+ */
+void fullscreen_capability(struct cap_fullscreen_s *cap_fullscreen)
+{
+    /*
+     * A NOP for the Gtk3 UI, since we don't support custom fullscreen modes.
+     */
+    return;
+}
+
+
+
 /** \brief  Checks if we're in fullscreen mode
  *
  * \return  nonzero if we're in fullscreen mode
@@ -745,13 +768,15 @@ void ui_trigger_resize(void)
  *
  * \param[in]   widget      the widget that sent the callback (ignored)
  * \param[in]   user_data   extra data for the callback (ignored)
+ *
+ * \return  TRUE
  */
-void ui_fullscreen_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_fullscreen_callback(GtkWidget *widget, gpointer user_data)
 {
     GtkWindow *window;
 
     if (active_win_index < 0) {
-        return;
+        return FALSE;
     }
 
     window = GTK_WINDOW(ui_resources.window_widget[active_win_index]);
@@ -764,17 +789,21 @@ void ui_fullscreen_callback(GtkWidget *widget, gpointer user_data)
     }
 
     ui_update_fullscreen_decorations();
+    return TRUE;
 }
 
 /** \brief Toggles fullscreen window decorations in response to user request
  *
  * \param[in]   widget      the widget that sent the callback (ignored)
  * \param[in]   user_data   extra data for the callback (ignored)
+ *
+ * \return  TRUE
  */
-void ui_fullscreen_decorations_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_fullscreen_decorations_callback(GtkWidget *widget, gpointer user_data)
 {
     fullscreen_has_decorations = !fullscreen_has_decorations;
     ui_update_fullscreen_decorations();
+    return TRUE;
 }
 
 
@@ -1009,24 +1038,109 @@ static gboolean on_window_configure_event(GtkWidget *widget,
                                           gpointer data)
 {
     if (event->type == GDK_CONFIGURE) {
+#if 0
         GdkEventConfigure *cfg = (GdkEventConfigure *)event;
-
+#endif
         /* determine Window index */
         int windex = GPOINTER_TO_INT(data);
 
+        /* DO NOT UNCOMMENT
+         * Uncommenting this will cause the code after it compile just fine.
+         * But it would trigger C99.
+         */
 #if 0
         debug_gtk3("updating window #%d coords and size to (%d,%d)/(%d*%d)"
                 " in resources.",
                 0, cfg->x, cfg->y, cfg->width, cfg->height);
 #endif
         /* set resources, ignore failures */
-        resources_set_int_sprintf("Window%dWidth", cfg->width, windex);
-        resources_set_int_sprintf("Window%dHeight", cfg->height, windex);
-        resources_set_int_sprintf("Window%dXpos", cfg->x, windex);
-        resources_set_int_sprintf("Window%dYpos", cfg->y, windex);
+
+        gint root_x;
+        gint root_y;
+        gint width;
+        gint height;
+
+        gtk_window_get_position(GTK_WINDOW(widget), &root_x, &root_y);
+        gtk_window_get_size(GTK_WINDOW(widget), &width, &height);
+
+        resources_set_int_sprintf("Window%dWidth", width, windex);
+        resources_set_int_sprintf("Window%dHeight", height, windex);
+        resources_set_int_sprintf("Window%dXpos", root_x, windex);
+        resources_set_int_sprintf("Window%dYpos", root_y, windex);
     }
     return FALSE;
 }
+
+#ifdef MACOSX_SUPPORT
+
+/* The proper way to use objc_msgSend is to cast it into the right shape each time */
+#define OBJC_MSGSEND_FUNC_CAST(...) ((id (*)(__VA_ARGS__))objc_msgSend)
+
+void macos_set_dock_icon_workaround(void);
+void macos_activate_application_workaround(void);
+
+/** \brief  Set the macOS dock icon
+ *
+ * Gtk dock icon support doesn't work on macos (last tested with Gtk 3.24.8)
+ * Therefore we get it done via the obj-c API. Except rather than integrate 
+ * support for obj-c into the project, leverage some low level C functionality
+ * to interact with the obj-c runtime.
+ */
+void macos_set_dock_icon_workaround()
+{
+    GBytes *gbytes;
+    gconstpointer bytes;
+    gsize bytesSize;
+    id imageData;
+    id logo;
+    id application;
+
+    gbytes = uidata_get_bytes("Icon-128@2x.png");
+
+    if (!gbytes) {
+        log_error(LOG_ERR, "macos_set_dock_icon_workaround: failed to access icon bytes from gresource file.\n");
+        return;
+    }
+
+    bytes = g_bytes_get_data(gbytes, &bytesSize);
+    imageData =
+        OBJC_MSGSEND_FUNC_CAST(id, SEL, gconstpointer, gsize, BOOL)(
+            (id)objc_getClass("NSData"),
+            sel_getUid("dataWithBytesNoCopy:length:freeWhenDone:"),
+            bytes,
+            bytesSize,
+            NO);
+    logo = OBJC_MSGSEND_FUNC_CAST(id, SEL)((id)objc_getClass("NSImage"), sel_getUid("alloc"));
+    logo = OBJC_MSGSEND_FUNC_CAST(id, SEL, id)(logo, sel_getUid("initWithData:"), imageData);
+
+    if (logo) {
+        application = OBJC_MSGSEND_FUNC_CAST(id, SEL)((id)objc_getClass("NSApplication"), sel_getUid("sharedApplication"));
+        OBJC_MSGSEND_FUNC_CAST(id, SEL, id)(application, sel_getUid("setApplicationIconImage:"), logo);
+        OBJC_MSGSEND_FUNC_CAST(id, SEL)(logo, sel_getUid("release"));
+    } else {
+        log_error(LOG_ERR, "macos_set_dock_icon_workaround: failed to initialise image from resource");
+    }
+}
+
+/** \brief  Bring emulator main window to front on macOS
+ *
+ * On macOS, this Gtk3 app doesn't activate properly on launch.
+ * (last tested with Gtk 3.24.8). This means that the user needs
+ * to click the icon in the dock for the emulator window to appear.
+ *
+ * This workaround is the obj-c runtime equivalent of calling:
+ * [[NSApplication sharedApplication] activateIgnoringOtherApps: YES];
+ */
+void macos_activate_application_workaround()
+{
+    id ns_application;
+
+    /* [[NSApplication sharedApplication] activateIgnoringOtherApps: YES]; */
+    ns_application = OBJC_MSGSEND_FUNC_CAST(id, SEL)((id)objc_getClass("NSApplication"), sel_getUid("sharedApplication"));
+    OBJC_MSGSEND_FUNC_CAST(id, SEL, BOOL)(ns_application, sel_getUid("activateIgnoringOtherApps:"), YES);
+}
+
+#endif
 
 
 /** \brief  Create a toplevel window to represent a video canvas
@@ -1059,6 +1173,10 @@ void ui_create_main_window(video_canvas_t *canvas)
     GtkWidget *crt_controls;
     GtkWidget *mixer_controls;
 
+    GtkWidget *kbd_widget;
+    int kbd_status = 0;
+
+
     GdkPixbuf *icon;
 
     int xpos = -1;
@@ -1076,9 +1194,13 @@ void ui_create_main_window(video_canvas_t *canvas)
 
     /* set a default C= icon for now */
     icon = get_default_icon();
+#ifdef MACOSX_SUPPORT
+    macos_set_dock_icon_workaround();
+#else
     if (icon != NULL) {
         gtk_window_set_icon(GTK_WINDOW(new_window), icon);
     }
+#endif
 
     /* set title */
     g_snprintf(title, 256, "VICE (%s)", machine_get_name());
@@ -1156,20 +1278,23 @@ void ui_create_main_window(video_canvas_t *canvas)
     /*
      * Set up drag-n-drop handling for files
      */
-    gtk_drag_dest_set(
-            new_window,
-            GTK_DEST_DEFAULT_ALL,
-            drag_targets,
-            (int)(sizeof drag_targets / sizeof drag_targets[0]),
-            GDK_ACTION_COPY);
-    g_signal_connect(new_window, "drag-data-received",
-                     G_CALLBACK(on_drag_data_received), NULL);
-    g_signal_connect(new_window, "drag-drop",
-                     G_CALLBACK(on_drag_drop), NULL);
-    if (ui_resources.start_minimized) {
-        gtk_window_iconify(GTK_WINDOW(new_window));
-    }
+    if (machine_class != VICE_MACHINE_VSID) {
+        /* VSID has its own drag-n-drop handlers */
 
+        gtk_drag_dest_set(
+                new_window,
+                GTK_DEST_DEFAULT_ALL,
+                ui_drag_targets,
+                UI_DRAG_TARGETS_COUNT,
+                GDK_ACTION_COPY);
+        g_signal_connect(new_window, "drag-data-received",
+                         G_CALLBACK(ui_on_drag_data_received), NULL);
+        g_signal_connect(new_window, "drag-drop",
+                         G_CALLBACK(ui_on_drag_drop), NULL);
+        if (ui_resources.start_minimized) {
+            gtk_window_iconify(GTK_WINDOW(new_window));
+        }
+    }
     ui_resources.canvas[target_window] = canvas;
     ui_resources.window_widget[target_window] = new_window;
 
@@ -1178,12 +1303,17 @@ void ui_create_main_window(video_canvas_t *canvas)
     /* gtk_window_set_title(GTK_WINDOW(new_window), canvas->viewport->title); */
     ui_display_speed(100.0f, 0.0f, 0); /* initial update of the window status bar */
 
-    /* connect keyboard handlers */
-    kbd_connect_handlers(new_window, NULL);
+    /* Connect keyboard handlers, except for VSID
+     *
+     * TODO:    support hotkeys (if required) for VSID
+     */
+    if (machine_class != VICE_MACHINE_VSID) {
+        kbd_connect_handlers(new_window, NULL);
 
-    /* Add default hotkeys that don't have a menu item */
-    if (!kbd_hotkey_add_list(default_hotkeys)) {
-        debug_gtk3("adding hotkeys failed, see the log for details.");
+        /* Add default hotkeys that don't have a menu item */
+        if (!kbd_hotkey_add_list(default_hotkeys)) {
+            debug_gtk3("adding hotkeys failed, see the log for details.");
+        }
     }
 
     /*
@@ -1215,6 +1345,26 @@ void ui_create_main_window(video_canvas_t *canvas)
             gtk_window_unfullscreen(GTK_WINDOW(new_window));
         }
     }
+
+    if (resources_get_int("KbdStatusbar", &kbd_status) < 0) {
+        debug_gtk3("Failed to get KbdStatusbar resource, defaulting to False.");
+        kbd_status = 0;
+    }
+    kbd_widget = gtk_grid_get_child_at(GTK_GRID(status_bar), 0, 2);
+
+    if (kbd_status) {
+        gtk_widget_show_all(kbd_widget);
+    } else {
+        gtk_widget_hide(kbd_widget);
+    }
+
+
+
+
+
+#ifdef MACOSX_SUPPORT
+    macos_activate_application_workaround();
+#endif
 }
 
 
@@ -1298,6 +1448,7 @@ int ui_init(int *argc, char **argv)
 
     GSettings *settings;
     GVariant *variant;
+    GtkSettings *settings_default;
 
 #if 0
     INCOMPLETE_IMPLEMENTATION();
@@ -1305,6 +1456,16 @@ int ui_init(int *argc, char **argv)
     gtk_init(argc, &argv);
 
     kbd_hotkey_init();
+
+    /*
+     * Make sure F10 doesn't trigger the menu bar
+     *
+     * I tried unmapping via CSS, but according to the Gtk devs, this little
+     * hack works, and it does.
+     */
+    settings_default = gtk_settings_get_default();
+    g_object_set(settings_default, "gtk-menu-bar-accel", "F20", NULL);
+
 
     if (!uidata_init()) {
         log_error(LOG_ERR,
@@ -1323,6 +1484,9 @@ int ui_init(int *argc, char **argv)
      *
      * Perhaps turn this into a resource when people start complaining? Though
      * personally I'm used to having directories sorted before files.
+     *
+     * FIXME:   This alters Gtk/GLib settings globally, ie Wm/Desktop-wide.
+     *          Which probably isn't the correct way.
      */
     settings = g_settings_new("org.gtk.Settings.FileChooser");
     variant = g_variant_new("b", TRUE);
@@ -1381,7 +1545,7 @@ ui_jam_action_t ui_jam_dialog(const char *format, ...)
 
     ui_set_ignore_mouse_hide(TRUE);
 
-    /* XXX: this sucks */
+    /* XXX: this probably needs a variable index into the window_widget array */
     result = jam_dialog(ui_resources.window_widget[PRIMARY_WINDOW], buffer);
     lib_free(buffer);
 
@@ -1465,7 +1629,7 @@ void ui_update_menus(void)
  */
 void ui_dispatch_next_event(void)
 {
-    g_main_context_iteration(g_main_context_default(), FALSE);
+    g_main_context_iteration(NULL, FALSE);
 }
 
 
@@ -1476,8 +1640,8 @@ void ui_dispatch_next_event(void)
  */
 void ui_dispatch_events(void)
 {
-    while (g_main_context_pending(g_main_context_default())) {
-        ui_dispatch_next_event();
+    while (g_main_context_iteration(NULL, FALSE)) {
+        /* NOP */
     }
 }
 
@@ -1596,30 +1760,48 @@ void ui_display_paused(int flag)
 }
 
 
-/** \brief  Pause emulation
+/** \brief  Get pause active state
  *
- * \param[in]   flag    toggle pause state if true
+ * \return  boolean
  */
-void ui_pause_emulation(int flag)
+int ui_pause_active(void)
 {
-    if (flag && !is_paused) {
+    return is_paused;
+}
+
+
+/** \brief  Pause emulation
+ */
+void ui_pause_enable(void)
+{
+    if (!ui_pause_active()) {
         is_paused = 1;
         interrupt_maincpu_trigger_trap(pause_trap, 0);
-    } else {
-        ui_display_paused(0);
-        is_paused = 0;
+        ui_display_paused(1);
     }
 }
 
 
-
-/** \brief  Check if emulation is paused
- *
- * \return  nonzero if emulation is paused
+/** \brief  Unpause emulation
  */
-int ui_emulation_is_paused(void)
+void ui_pause_disable(void)
 {
-    return is_paused;
+    if (ui_pause_active()) {
+        is_paused = 0;
+        ui_display_paused(0);
+    }
+}
+
+
+/** \brief  Toggle pause state
+ */
+void ui_pause_toggle(void)
+{
+    if (ui_pause_active()) {
+        ui_pause_disable();
+    } else {
+        ui_pause_enable();
+    }
 }
 
 
@@ -1633,7 +1815,7 @@ int ui_emulation_is_paused(void)
  */
 gboolean ui_toggle_pause(void)
 {
-    ui_pause_emulation(!is_paused);
+    ui_pause_toggle();
     /* TODO: somehow update the checkmark in the menu without reverting to
      *       weird code like Gtk
      */
@@ -1660,10 +1842,10 @@ static void ui_toggle_warp(void)
  */
 gboolean ui_advance_frame(void)
 {
-    if (ui_emulation_is_paused()) {
+    if (ui_pause_active()) {
         vsyncarch_advance_frame();
     } else {
-        ui_pause_emulation(1);
+        ui_pause_enable();
     }
 
     return TRUE;    /* has to be TRUE to avoid passing Alt+SHIFT+P into the emu */

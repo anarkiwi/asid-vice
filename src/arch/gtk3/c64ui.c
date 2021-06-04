@@ -161,16 +161,17 @@ int c64ui_init(void)
             cartridge_flush_image,
             cartridge_type_enabled,
             cartridge_enable,
-            cartridge_disable);
+            cartridge_disable,
+            cartridge_can_save_image,
+            cartridge_can_flush_image);
 
     /* uicart_set_detect_func(cartridge_detect); only cbm2/plus4 */
     uicart_set_list_func(cartridge_get_info_list);
     uicart_set_attach_func(cartridge_attach_image);
     uicart_set_freeze_func(cartridge_trigger_freeze);
     uicart_set_detach_func(cartridge_detach_image);
-    uicart_set_default_func(cartridge_set_default);
-    uicart_set_filename_func(cartridge_current_filename);
-    uicart_set_wipe_func(cartridge_wipe_filename);
+    uicart_set_set_default_func(cartridge_set_default);
+    uicart_set_unset_default_func(cartridge_unset_default);
 
     /* set tapecart flush function */
     tapeport_devices_widget_set_tapecart_flush_func(tapecart_flush_tcrt);

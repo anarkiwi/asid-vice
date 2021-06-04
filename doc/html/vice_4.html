@@ -1,7 +1,7 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 19 December 2018 -->
+     from ../../doc/vice.texi on 24 December 2019 -->
 
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <TITLE>VICE Manual - 4  System files</TITLE>
@@ -106,7 +106,7 @@ System files can still be installed in a different directory if you
 specify a complete path instead of just a file name.  For example, if
 you specify <TT>`./kernal'</TT> as the kernal image name, the kernal image
 will be loaded from the current directory.  This can be done by using
-command-line options or by modifying resource values (see section <A HREF="vice_6.html#SEC43">6.1  Format of resource files</A>).
+command-line options or by modifying resource values (see section <A HREF="vice_6.html#SEC42">6.1  Format of resource files</A>).
 
 </P>
 
@@ -377,7 +377,7 @@ Also the character generator ROMs have a format different from the
 above.  The other character ROMs have 8 bytes of pixel data per
 character.  Those ROMs have 16 bytes per character instead.  The C6x0
 only uses the first 8 of it, but the C7x0 uses 14 lines per character
-and needs those increased ROMs.  Both ROMs hold, like the PET, two
+and needs those larger ROMs.  Both ROMs hold, like the PET, two
 character sets with 128 characters each.  Again the second half of the
 full (256 char) character set is computed by inverting.
 
@@ -448,7 +448,7 @@ key (or combination of keys) must be mapped to each keysym.
 <P>
 In other words, the keyboard emulation works like this: whenever the
 user presses or releases a key while the emulation window has the input
-focus, the emulator receives an X-Window event with a value that
+focus, the emulator receives an event with a value that
 identifies that key.  That value is called a <EM>keysym</EM> and is unique
 to that key.  The emulator then looks up that keysym in an internal
 table that tells it which key(s) to press or release on the emulated
@@ -474,8 +474,8 @@ Where:
 
 <LI>
 
-<CODE>KEYSYM</CODE> is a string identifying the keysym: you can use the
-<CODE>xev</CODE> utility (shipped with the X Window system) to see what keysym
+<CODE>KEYSYM</CODE> is a string (GTK) or number (SDL) identifying the keysym: you can 
+use the "show keycodes in statusbar" feature to see what keysym
 is bound to any key;
 
 <LI>
@@ -508,6 +508,50 @@ is bound to any key;
 <LI>
 
 <CODE>8</CODE>: the key can be (optionally) shifted by the user.
+
+<LI>
+
+<CODE>16</CODE>: deshift key for this keysym/scancode
+
+<LI>
+
+<CODE>32</CODE>: another definition for this keysym/scancode follows
+
+<LI>
+
+<CODE>64</CODE>: key is shift-lock on emulated machine
+
+<LI>
+
+<CODE>128</CODE>: shift modifier required on host
+
+<LI>
+
+<CODE>256</CODE>: key is used for an alternative keyboard mapping
+
+<LI>
+
+<CODE>512</CODE>: alt-r (alt-gr) modifier required on host
+
+<LI>
+
+<CODE>1024</CODE>: ctrl modifier required on host
+
+<LI>
+
+<CODE>2048</CODE>: key is combined with cbm for this keysym/scancode
+
+<LI>
+
+<CODE>4096</CODE>: key is combined with ctrl for this keysym/scancode
+
+<LI>
+
+<CODE>8192</CODE>: key is (left) cbm on emulated machine
+
+<LI>
+
+<CODE>16384</CODE>: key is (left) ctrl on emulated machine
 
 </UL>
 
@@ -548,6 +592,16 @@ keymap file to override all of the current internal settings;
 
 <LI>
 
+<CODE>!INCLUDE</CODE> followed by "filename" reads (inserts) file as mapping file. This is useful
+when adding local mappings to an otherwise generic file (so you dont have to
+copy the while file, but just add/modify a few keys).
+
+<LI>
+
+<CODE>!UNDEF</CODE> keysym'        remove keysym from table
+
+<LI>
+
 <CODE>!LSHIFT</CODE>, <CODE>!RSHIFT</CODE>, followed by a row and a column
 value, specify where the left and right shift keys are located on the
 emulated keyboard; for example, C64 default keymaps will specify
@@ -557,6 +611,36 @@ emulated keyboard; for example, C64 default keymaps will specify
 !LSHIFT 1 7
 !RSHIFT 6 4
 </PRE>
+
+<LI>
+
+<CODE>!LCTRL</CODE>, followed by a row and a column value, specifiy where the left 
+control key is located on the emulated keyboard.
+
+<LI>
+
+<CODE>!LCBM</CODE>, followed by a row and a column value, specifiy where the left 
+CBM key is located on the emulated keyboard.
+
+<LI>
+
+<CODE>!VSHIFT</CODE>, followed by a shiftkey (RSHIFT or LSHIFT), specify what key will
+be used as a virtual shift key when the shift flag is set.
+
+<LI>
+
+<CODE>!SHIFTL</CODE>, followed by a shiftkey (RSHIFT or LSHIFT), specify what key will
+be used as a virtual shift-lock key.
+
+<LI>
+
+<CODE>!VCTRL</CODE>, followed by a ctrlkey (LCTRL), specify what key will
+be used as a virtual control key.
+
+<LI>
+
+<CODE>!VCBM</CODE>, followed by a cbmkey (LCBM), specify what key will
+be used as a virtual CBM key.
 
 </UL>
 
@@ -675,16 +759,16 @@ resource). This also means that if you have a setting for
 
 <DT><CODE>-romsetfile &#60;File&#62;</CODE>
 <DD>
-<A NAME="IDX36"></A>
+<A NAME="IDX33"></A>
  
 load the given romset file
 
-<A NAME="IDX37"></A>
+<A NAME="IDX34"></A>
 <DT><CODE>-romsetarchive &#60;File&#62;</CODE>
 <DD>
 load the given romset archive
 
-<A NAME="IDX38"></A>
+<A NAME="IDX35"></A>
 <DT><CODE>-romsetarchiveselect &#60;Item number&#62;</CODE>
 <DD>
 select the given item from the current romset archive

@@ -25,7 +25,6 @@
 #define SIZEOF_SHORT 2
 #define SIZEOF_INT   4
 
-#define _WINSOCKAPI_
 #include <fcntl.h>
 
 #include <winsock2.h>
@@ -33,12 +32,8 @@
 #include <time.h>
 #include <io.h>
 
-#if !defined(__MINGW32__) && !defined(WATCOM_COMPILE)
-#include "IP6_misc.h"
+#if !defined(__MINGW32__)
+#include "ip6_misc.h"
 #endif
 
 #define caddr_t char*
-
-#if defined _MSC_VER && _MSC_VER < 1900 
-#define snprintf _snprintf
-#endif

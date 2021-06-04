@@ -94,18 +94,21 @@ int main_program(int argc, char **argv)
     int i, n;
     const char *program_name;
     int ishelp = 0;
+    int loadconfig = 1;
     char term_tmp[TERM_TMP_SIZE];
     size_t name_len;
 
 
     lib_init_rand();
 
-    /* Check for -config and -console before initializing the user interface.
+    /* Check for some options at the beginning of the commandline before 
+       initializing the user interface or loading the config file.
+       -default => use default config, do not load any config
        -config  => use specified configuration file
        -console => no user interface
     */
     DBG(("main:early cmdline(argc:%d)\n", argc));
-    for (i = 0; i < argc; i++) {
+    for (i = 1; i < argc; i++) {
 #ifndef __OS2__
         if ((!strcmp(argv[i], "-console")) || (!strcmp(argv[i], "--console"))) {
             console_mode = 1;
@@ -114,16 +117,34 @@ int main_program(int argc, char **argv)
 #endif
         if ((!strcmp(argv[i], "-config")) || (!strcmp(argv[i], "--config"))) {
             if ((i + 1) < argc) {
-                vice_config_file = lib_stralloc(argv[++i]);
+                vice_config_file = lib_strdup(argv[++i]);
+                loadconfig = 1;
             }
-        } else if ((!strcmp(argv[i], "-help")) ||
+        } else if (!strcmp(argv[i], "-default")) {
+            loadconfig = 0;
+        } else {
+            break;
+        }
+    }
+    /* remove the already handled items from the commandline, else they will
+       get parsed again later, which causes surprising effects. */
+    for (n = 1; i < argc; n++, i++) {
+        argv[n] = argv[i];
+    }
+    argv[n] = NULL;
+    argc = n;
+
+    /* help is also special, but we want it NOT to be ignored by the main
+       commandline handler */
+    for (i = 1; i < argc; i++) {
+        if ((!strcmp(argv[i], "-help")) ||
                    (!strcmp(argv[i], "--help")) ||
                    (!strcmp(argv[i], "-h")) ||
                    (!strcmp(argv[i], "-?"))) {
             ishelp = 1;
         }
     }
-
+    
     DBG(("main:archdep_init(argc:%d)\n", argc));
     if (archdep_init(&argc, argv) != 0) {
         archdep_startup_log_error("archdep_init failed.\n");
@@ -163,7 +184,7 @@ int main_program(int argc, char **argv)
         return -1;
     }
 
-    if (!ishelp) {
+    if ((!ishelp) && (loadconfig)) {
         /* Load the user's default configuration file.  */
         if (resources_load(NULL) < 0) {
             /* The resource file might contain errors, and thus certain

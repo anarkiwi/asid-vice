@@ -12,6 +12,15 @@
  * $VICERES DtvBlitterLog   x64dtv
  * $VICERES DtvDMALog       x64dtv
  * $VICERES DtvFlashLog     x64dtv
+ *
+ * These resources are only available with --enable-debug
+ *
+ * $VICERES MainCPU_TRACE   all
+ * $VICERES IEC_TRACE       -vsid
+ * $VICERES Drive0CPU_TRACE -vsid
+ * $VICERES Drive1CPU_TRACE -vsid
+ * $VICERES Drive2CPU_TRACE -vsid
+ * $VICERES Drive3CPU_TRACE -vsid
  */
 
 /*
@@ -59,6 +68,7 @@
 #include "uidiskattach.h"
 #include "uiedit.h"
 #include "uifliplist.h"
+#include "uihotkeys.h"
 #include "uimachinemenu.h"
 #include "uimedia.h"
 #include "uimenu.h"
@@ -127,13 +137,16 @@ static GtkWidget *help_submenu = NULL;
  *
  * \param[in]   widget  menu item triggering the event (ignored)
  * \param[in]   data    extra even data (ignored)
+ *
+ * \return  TRUE
  */
-static void settings_load_callback(GtkWidget *widget, gpointer data)
+static gboolean settings_load_callback(GtkWidget *widget, gpointer data)
 {
     if (resources_load(NULL) != 0) {
         vice_gtk3_message_error("VICE core error",
                 "Failed to load default settings file");
     }
+    return TRUE;
 }
 
 
@@ -141,8 +154,10 @@ static void settings_load_callback(GtkWidget *widget, gpointer data)
  *
  * \param[in]   widget  menu item triggering the event (ignored)
  * \param[in]   data    extra even data (ignored)
+ *
+ * \return  TRUE
  */
-static void settings_load_custom_callback(GtkWidget *widget, gpointer data)
+static gboolean settings_load_custom_callback(GtkWidget *widget, gpointer data)
 {
     gchar *filename = vice_gtk3_open_file_dialog("Load settings file",
             NULL, NULL, NULL);
@@ -152,6 +167,7 @@ static void settings_load_custom_callback(GtkWidget *widget, gpointer data)
                     "Failed to load settings from '%s'", filename);
         }
     }
+    return TRUE;
 }
 
 
@@ -160,12 +176,13 @@ static void settings_load_custom_callback(GtkWidget *widget, gpointer data)
  * \param[in]   widget  menu item triggering the event (ignored)
  * \param[in]   data    extra even data (ignored)
  */
-static void settings_save_callback(GtkWidget *widget, gpointer data)
+static gboolean settings_save_callback(GtkWidget *widget, gpointer data)
 {
     if (resources_save(NULL) != 0) {
         vice_gtk3_message_error("VICE core error",
                 "Failed to save default settings file");
     }
+    return TRUE;
 }
 
 
@@ -173,8 +190,10 @@ static void settings_save_callback(GtkWidget *widget, gpointer data)
  *
  * \param[in]   widget  menu item triggering the event (ignored)
  * \param[in]   data    extra even data (ignored)
+ *
+ * \return  TRUE
  */
-static void settings_save_custom_callback(GtkWidget *widget, gpointer data)
+static gboolean settings_save_custom_callback(GtkWidget *widget, gpointer data)
 {
     gchar *filename = vice_gtk3_save_file_dialog("Save settings as ...",
             NULL, TRUE, NULL);
@@ -185,6 +204,7 @@ static void settings_save_custom_callback(GtkWidget *widget, gpointer data)
         }
         g_free(filename);
     }
+    return TRUE;
 }
 
 
@@ -194,16 +214,16 @@ static void settings_save_custom_callback(GtkWidget *widget, gpointer data)
 static ui_menu_item_t detach_submenu[] = {
     { "Drive #8", UI_MENU_TYPE_ITEM_ACTION,
         "detach-drive8", ui_disk_detach_callback, GINT_TO_POINTER(8),
-        0, 0 },
+        GDK_KEY_8, VICE_MOD_MASK|GDK_CONTROL_MASK },
     { "Drive #9", UI_MENU_TYPE_ITEM_ACTION,
         "detach-drive9", ui_disk_detach_callback, GINT_TO_POINTER(9),
-        0, 0 },
+        GDK_KEY_9, VICE_MOD_MASK|GDK_CONTROL_MASK },
     { "Drive #10", UI_MENU_TYPE_ITEM_ACTION,
         "detach-drive10", ui_disk_detach_callback, GINT_TO_POINTER(10),
-        0, 0 },
+        GDK_KEY_0, VICE_MOD_MASK|GDK_CONTROL_MASK },
     { "Drive #11", UI_MENU_TYPE_ITEM_ACTION,
         "detach-drive11", ui_disk_detach_callback, GINT_TO_POINTER(11),
-        0, 0 },
+        GDK_KEY_1, VICE_MOD_MASK|GDK_CONTROL_MASK },
 
     { "Detach all", UI_MENU_TYPE_ITEM_ACTION,
         "detach-all", ui_disk_detach_all_callback, NULL,
@@ -395,7 +415,7 @@ static ui_menu_item_t file_menu_tail[] = {
         GDK_KEY_C, VICE_MOD_MASK },
     { "Detach cartridge image(s)", UI_MENU_TYPE_ITEM_ACTION,
         "cart-detach", (void *)uicart_detach, NULL,
-        0, 0 },
+        GDK_KEY_C, VICE_MOD_MASK|GDK_SHIFT_MASK },
     { "Cartridge freeze", UI_MENU_TYPE_ITEM_ACTION,
         "cart-freeze", (void *)uicart_trigger_freeze, NULL,
         GDK_KEY_Z, VICE_MOD_MASK },
@@ -420,7 +440,7 @@ static ui_menu_item_t file_menu_tail[] = {
 #if 0
         "netplay", ui_netplay_dialog_new, NULL,
 #else
-        "netplay", ui_netplay_dialog, NULL,
+        "netplay", ui_netplay_dialog_new, NULL,
 #endif
         0, 0 },
 
@@ -529,6 +549,9 @@ static ui_menu_item_t settings_menu_head[] = {
     { "Toggle fullscreen", UI_MENU_TYPE_ITEM_ACTION,
         "fullscreen", ui_fullscreen_callback, NULL,
         GDK_KEY_D, VICE_MOD_MASK },
+    { "Restore display state", UI_MENU_TYPE_ITEM_ACTION,
+        "restore-display", (void *)ui_restore_display, NULL,
+        GDK_KEY_r, VICE_MOD_MASK },
 #if 1
     { "Show menu/status in fullscreen", UI_MENU_TYPE_ITEM_ACTION,
         "fullscreen-widgets", ui_fullscreen_decorations_callback, NULL,
@@ -571,6 +594,7 @@ static ui_menu_item_t *settings_menu_joy_section = NULL;
  */
 static ui_menu_item_t settings_menu_all_joy[] = {
 
+#if 0
     { "Swap joysticks", UI_MENU_TYPE_ITEM_ACTION,
         "joystick-swap", (void *)(ui_swap_joysticks_callback), NULL,
         GDK_KEY_J, VICE_MOD_MASK },
@@ -584,6 +608,7 @@ static ui_menu_item_t settings_menu_all_joy[] = {
         "mouse", (void *)(ui_toggle_resource), (void *)"Mouse",
         GDK_KEY_M, VICE_MOD_MASK },
 
+#endif
     UI_MENU_TERMINATOR
 };
 
@@ -592,7 +617,7 @@ static ui_menu_item_t settings_menu_all_joy[] = {
  * Only valid for x64dtv/xcbm5x0
  */
 static ui_menu_item_t settings_menu_cbm5x0_joy[] = {
-
+#if 0
     { "Swap joysticks", UI_MENU_TYPE_ITEM_ACTION,
         "joystick-swap", (void *)(ui_swap_joysticks_callback), NULL,
         GDK_KEY_J, VICE_MOD_MASK },
@@ -603,6 +628,7 @@ static ui_menu_item_t settings_menu_cbm5x0_joy[] = {
         "mouse", (void *)(ui_toggle_resource), (void *)"Mouse",
         GDK_KEY_M, VICE_MOD_MASK },
 
+#endif
     UI_MENU_TERMINATOR
 };
 
@@ -611,6 +637,7 @@ static ui_menu_item_t settings_menu_cbm5x0_joy[] = {
  * Only valid for xvic/xpet/xcbm2
  */
 static ui_menu_item_t settings_menu_userport_joy[] = {
+#if 0
     { "Swap userport joysticks", UI_MENU_TYPE_ITEM_ACTION,
         "userportjoy-swap", (void *)(ui_swap_userport_joysticks_callback), NULL,
         GDK_KEY_U, VICE_MOD_MASK | GDK_SHIFT_MASK },
@@ -621,6 +648,7 @@ static ui_menu_item_t settings_menu_userport_joy[] = {
         "mouse", (void *)(ui_toggle_resource), (void *)"Mouse",
         GDK_KEY_M, VICE_MOD_MASK },
 
+#endif
     UI_MENU_TERMINATOR
 };
 
@@ -637,14 +665,17 @@ static ui_menu_item_t settings_menu_tail[] = {
     { "Load settings", UI_MENU_TYPE_ITEM_ACTION,
         "settings-load", settings_load_callback, NULL,
         0, 0 },
-    { "Load custom settings ...", UI_MENU_TYPE_ITEM_ACTION,
+    { "Load settings from ...", UI_MENU_TYPE_ITEM_ACTION,
         "settings-load-custom", settings_load_custom_callback, NULL,
         0, 0 },
     { "Save settings", UI_MENU_TYPE_ITEM_ACTION,
         "settings-save", settings_save_callback, NULL,
         0, 0 },
-    { "Save custom settings ...", UI_MENU_TYPE_ITEM_ACTION,
+    { "Save settings to ...", UI_MENU_TYPE_ITEM_ACTION,
         "settings-save-custom", settings_save_custom_callback, NULL,
+        0, 0 },
+    { "Restore default settings", UI_MENU_TYPE_ITEM_ACTION,
+        "settings-restore", (void *)ui_restore_default_settings, NULL,
         0, 0 },
     UI_MENU_TERMINATOR
 };
@@ -663,6 +694,12 @@ static ui_menu_item_t debug_menu[] = {
 
     { "Main CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-maincpu", (void *)(ui_toggle_resource), (void *)"MainCPU_TRACE",
+        0, 0 },
+
+    UI_MENU_SEPARATOR,
+
+    { "IEC bus trace", UI_MENU_TYPE_ITEM_CHECK,
+        "trace-iec", (void *)(ui_toggle_resource), (void *)"IEC_TRACE",
         0, 0 },
 
     UI_MENU_SEPARATOR,
@@ -708,6 +745,10 @@ static ui_menu_item_t debug_menu_c64dtv[] = {
 
     UI_MENU_SEPARATOR,
 
+    { "IEC bus trace", UI_MENU_TYPE_ITEM_CHECK,
+        "trace-iec", (void *)(ui_toggle_resource), (void *)"IEC_TRACE",
+        0, 0 },
+
     { "Drive #8 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive8", (void *)(ui_toggle_resource), (void *)"Drive0CPU_TRACE",
         0, 0 },
@@ -724,13 +765,13 @@ static ui_menu_item_t debug_menu_c64dtv[] = {
     UI_MENU_SEPARATOR,
 
     { "Blitter log", UI_MENU_TYPE_ITEM_CHECK,
-      "blitter-log", (void *)ui_toggle_resource, (void *)"DtvBlitterLog",
+      "blitter-log", ui_toggle_resource, (void *)"DtvBlitterLog",
       0, 0 },
     { "DMA log", UI_MENU_TYPE_ITEM_CHECK,
-      "dma-log", (void *)ui_toggle_resource, (void *)"DtvDMALog",
+      "dma-log", ui_toggle_resource, (void *)"DtvDMALog",
       0, 0 },
     { "Flash log", UI_MENU_TYPE_ITEM_CHECK,
-      "flash-log", (void *)ui_toggle_resource, (void*)"DtvFlashLog",
+      "flash-log", ui_toggle_resource, (void*)"DtvFlashLog",
       0, 0 },
 
     UI_MENU_SEPARATOR,
@@ -739,7 +780,7 @@ static ui_menu_item_t debug_menu_c64dtv[] = {
         "playframes", uidebug_playback_frames_callback, NULL,
         0, 0 },
     { "Save core dump", UI_MENU_TYPE_ITEM_CHECK,
-        "coredump", (void *)(ui_toggle_resource), (void *)"DoCoreDump",
+        "coredump", ui_toggle_resource, (void *)"DoCoreDump",
         0, 0 },
 
     UI_MENU_TERMINATOR
@@ -759,6 +800,9 @@ static ui_menu_item_t help_menu[] = {
         0, 0 },
     { "Compile time features ...", UI_MENU_TYPE_ITEM_ACTION,
         "features", uicompiletimefeatures_dialog_show, NULL,
+        0, 0 },
+    { "Hotkeys", UI_MENU_TYPE_ITEM_ACTION,
+        "hotkeys", uihotkeys_dialog_show, NULL,
         0, 0 },
     { "About VICE", UI_MENU_TYPE_ITEM_ACTION,
         "about", ui_about_dialog_callback, NULL,
@@ -870,3 +914,12 @@ GtkWidget *ui_machine_menu_bar_create(void)
                                          for this */
     return menu_bar;
 }
+
+
+/** \brief  Add missing settings load/save items
+ */
+void ui_machine_menu_bar_vsid_patch(GtkWidget *menu)
+{
+    ui_menu_add(menu, settings_menu_tail);
+}
+

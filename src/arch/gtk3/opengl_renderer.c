@@ -29,10 +29,11 @@
 
 #ifdef HAVE_GTK3_OPENGL
 
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef MACOSX_SUPPORT
-#include <OpenGL/gl3.h>
+#include <GL/glew.h>
 #else
 #ifdef HAVE_GTK3_GLEW
 #include <GL/glew.h>
@@ -43,9 +44,11 @@
 #endif
 
 #include "lib.h"
+#include "log.h"
 #include "resources.h"
 #include "ui.h"
 #include "video.h"
+#include "vice_gtk3.h"
 
 /** \brief The screen has not changed, so the texture may be used
  *         unchanged */
@@ -89,16 +92,16 @@ typedef struct vice_opengl_renderer_context_s {
      *         takes up (1.0f=entire height). */
     float scale_y;
     /** \brief X coordinate of leftmost pixel that needs to be updated
-     * in the texture. */
+     *         in the texture. */
     unsigned int dirty_x;
     /** \brief Y coordinate of topmost pixel that needs to be updated
-     * in the texture. */
+     *         in the texture. */
     unsigned int dirty_y;
     /** \brief Width of the rectangle that needs to be updated in the
-     * texture. */
+     *         texture. */
     unsigned int dirty_w;
     /** \brief Height of the rectangle that needs to be updated in the
-     * texture. */
+     *         texture. */
     unsigned int dirty_h;
     /** \brief What preprocessing the texture will need pre-rendering.
      *
@@ -106,6 +109,17 @@ typedef struct vice_opengl_renderer_context_s {
      * RENDER_MODE_DIRTY_RECT.
      */
     unsigned int render_mode;
+    /** \brief Which rendering technique we will use to draw the
+     *         display.
+     *
+     * If true, the OpenGL calls will stay restricted to calls
+     * available in OpenGL 1.1. Otherwise, a renderer based on Gtk3's
+     * default of OpenGL 3.2 will be used.
+     */
+    int legacy_renderer;
+    /** \brief The filter used for scaling 
+     */
+    GLint filter;
 } context_t;
 
 /** \brief Raw geometry for the machine screen.
@@ -125,7 +139,7 @@ static float vertexData[] = {
          1.0f,     0.0f
 };
 
-/** \brief Our renderer's vertex shader. 
+/** \brief Our renderer's vertex shader.
  *
  * This simply scales the geometry it is provided and provides
  * smoothly interpolated texture coordinates between each vertex. The
@@ -148,7 +162,7 @@ static const char *fragmentShader = "#version 150\n"
     "uniform sampler2D sampler;\n"
     "smooth in vec2 texCoord;\n"
     "out vec4 outputColor;\n"
-    "void main() { outputColor = texture2D(sampler, texCoord); }\n";
+    "void main() { outputColor = texture(sampler, texCoord); }\n";
 
 /** \brief Compile a shader.
  *
@@ -182,7 +196,7 @@ static GLuint create_shader(GLenum shader_type, const char *text)
         default: shader_type_name = "unknown"; break;
         }
 
-        fprintf(stderr, "Compile failure in %s shader:\n%s\n", shader_type_name, info_log);
+        log_error(LOG_DEFAULT, "Compile failure in %s shader:\n%s\n", shader_type_name, info_log);
         lib_free(info_log);
     }
 
@@ -217,7 +231,7 @@ static void create_shader_program(context_t *ctx)
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
         info_log = lib_malloc(sizeof(GLchar) * (info_log_length + 1));
         glGetProgramInfoLog(program, info_log_length, NULL, info_log);
-        fprintf(stderr, "Linker failure: %s\n", info_log);
+        log_error(LOG_DEFAULT, "Linker failure: %s\n", info_log);
         lib_free(info_log);
     }
 
@@ -242,7 +256,7 @@ static void create_shader_program(context_t *ctx)
  *          some displays will successfully render as a 3.2 context
  *          even when the driver only purports to support up to
  *          2.1. It is not clear exactly what the requirements truly
- *          are. 
+ *          are.
  */
 static void realize_opengl_cb (GtkGLArea *area, gpointer user_data)
 {
@@ -250,15 +264,21 @@ static void realize_opengl_cb (GtkGLArea *area, gpointer user_data)
     context_t *ctx = NULL;
     GError *err = NULL;
     GLenum glErr;
+    GdkGLContext *context;
 
     gtk_gl_area_make_current(area);
     err = gtk_gl_area_get_error(area);
     if (err != NULL) {
-        fprintf(stderr, "CRITICAL: Could not realize GL context: %s\n", err->message);
-        return;
+        log_error(LOG_ERR, "Could not realize GL context: %d: %s\n",
+                err->code, err->message);
+	    vice_gtk3_message_error(
+                "OpenGL",
+                "Error: %d: %s",
+                err->code, err->message);
+        exit(1);
     }
     if (canvas->renderer_context) {
-        fprintf(stderr, "WARNING: Re-realizing the GtkGL area! This will leak.\n");
+        log_warning(LOG_DEFAULT, "WARNING: Re-realizing the GtkGL area! This will leak.\n");
     }
     ctx = lib_malloc(sizeof(context_t));
     memset(ctx, 0, sizeof(context_t));
@@ -267,19 +287,39 @@ static void realize_opengl_cb (GtkGLArea *area, gpointer user_data)
     glewExperimental = GL_TRUE;
     glErr = glewInit();
     if (glErr != GLEW_OK) {
-        fprintf(stderr, "GTKGL: Could not initialize GLEW\n");
+        log_warning(LOG_DEFAULT, "GTKGL: glewInit reported an error: %s. This is not always a real error.", glewGetErrorString(glErr));
     }
     if (!GLEW_VERSION_3_2) {
-        fprintf(stderr, "GTKGL: OpenGL version 3.2 not supported in this context\n");
+        log_warning(LOG_DEFAULT, "GTKGL: OpenGL version 3.2 not supported in this context");
+    }
+    if (!GLEW_VERSION_1_1) {
+        log_error(LOG_DEFAULT, "GTKGL: OpenGL cannot be initialized even in legacy mode");
+        log_error(LOG_ERR, "GTKGL: OpenGL cannot be initialized even in legacy mode");
+        vice_gtk3_message_error(
+                "OpenGL",
+                "OpenGL cannot be initialized even in legacy mode.\n"
+                "Error: %d: %s",
+                glErr, glewGetErrorString(glErr));
+        exit(1);
     }
 #endif
 
-    create_shader_program(ctx);
-    glGenBuffers(1, &ctx->vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glGenVertexArrays(1, &ctx->vao);
+    context = gtk_gl_area_get_context(GTK_GL_AREA(area));
+    ctx->legacy_renderer = gdk_gl_context_is_legacy(context);
+    log_message(LOG_DEFAULT, "GdkGlkContext is in %s mode.",
+            ctx->legacy_renderer ? "legacy (OpenGL 1.1)" : "modern (OpenGL 3.2)");
+
+    if (!ctx->legacy_renderer) {
+        /* Initialize the ancillary data structures the modern renderer uses */
+        create_shader_program(ctx);
+        glGenBuffers(1, &ctx->vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glGenVertexArrays(1, &ctx->vao);
+    }
+    /* The legacy renderer has no data unique to it */
+    /* Initialize the ancillary data structures all renderers use */
     glGenTextures(1, &ctx->texture);
 }
 
@@ -307,10 +347,15 @@ static gboolean render_opengl_cb (GtkGLArea *area, GdkGLContext *unused, gpointe
         /* Nothing else to do */
         return TRUE;
     }
-    glActiveTexture(GL_TEXTURE0);
+    if (!ctx->legacy_renderer) {
+        /* Multitexturing was added in OpenGL 1.3; the legacy renderer
+         * doesn't need it, but the modern one does so that the pixel
+         * shader knows where to grab stuff from */
+        glActiveTexture(GL_TEXTURE0);
+    }
     if (ctx->render_mode == RENDER_MODE_NEW_TEXTURE) {
         if (ctx->texture == 0) {
-            fprintf(stderr, "GTKGL CRITICAL: No texture generated!\n");
+            log_error(LOG_ERR, "GTKGL: No texture generated!");
         }
         glBindTexture(GL_TEXTURE_2D, ctx->texture);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -318,11 +363,10 @@ static gboolean render_opengl_cb (GtkGLArea *area, GdkGLContext *unused, gpointe
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ctx->width, ctx->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, ctx->backbuffer);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        /* These should be selectable as GL_LINEAR or GL_NEAREST */
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, ctx->filter);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, ctx->filter);
         glBindTexture(GL_TEXTURE_2D, 0);
     } else if (ctx->render_mode == RENDER_MODE_DIRTY_RECT) {
         glBindTexture(GL_TEXTURE_2D, ctx->texture);
@@ -332,31 +376,58 @@ static gboolean render_opengl_cb (GtkGLArea *area, GdkGLContext *unused, gpointe
         glBindTexture(GL_TEXTURE_2D, 0);
     }
     ctx->render_mode = RENDER_MODE_STATIC;
-    if (ctx->program) {
-        GLuint scale_uniform, sampler_uniform;
-
-        glUseProgram(ctx->program);
-
-        glBindVertexArray(ctx->vao);
-        glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(ctx->position_index, 4, GL_FLOAT, GL_FALSE, 0, 0);
-        glVertexAttribPointer(ctx->tex_coord_index, 2, GL_FLOAT, GL_FALSE, 0, (void*)64);
-
-        scale_uniform = glGetUniformLocation(ctx->program, "scale");
-        glUniform4f(scale_uniform, ctx->scale_x, ctx->scale_y, 1.0f, 1.0f);
-        sampler_uniform = glGetUniformLocation(ctx->program, "sampler");
-        glUniform1i(sampler_uniform, 0);
-
+    if (ctx->legacy_renderer) {
+        /* Legacy renderer */
         glBindTexture(GL_TEXTURE_2D, ctx->texture);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glDisable(GL_LIGHTING);
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_TEXTURE_2D);
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+        glBegin(GL_TRIANGLE_STRIP);
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex2f(-ctx->scale_x, -ctx->scale_y);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2f(ctx->scale_x, -ctx->scale_y);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2f(-ctx->scale_x, ctx->scale_y);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2f(ctx->scale_x, ctx->scale_y);
+        glEnd();
+        glDisable(GL_TEXTURE_2D);
+    } else {
+        /* Modern renderer */
+        if (ctx->program) {
+            GLuint scale_uniform, sampler_uniform;
 
-        glDisableVertexAttribArray(ctx->position_index);
-        glDisableVertexAttribArray(ctx->tex_coord_index);
-        glUseProgram(0);
+            glUseProgram(ctx->program);
+
+            glBindVertexArray(ctx->vao);
+            glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
+            glEnableVertexAttribArray(0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(ctx->position_index, 4, GL_FLOAT, GL_FALSE, 0, 0);
+            glVertexAttribPointer(ctx->tex_coord_index, 2, GL_FLOAT, GL_FALSE, 0, (void*)64);
+
+            /** \todo cache the uniform locations along with the vertex attributes */
+            scale_uniform = glGetUniformLocation(ctx->program, "scale");
+            glUniform4f(scale_uniform, ctx->scale_x, ctx->scale_y, 1.0f, 1.0f);
+            sampler_uniform = glGetUniformLocation(ctx->program, "sampler");
+            glUniform1i(sampler_uniform, 0);
+
+            glBindTexture(GL_TEXTURE_2D, ctx->texture);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            glDisableVertexAttribArray(ctx->position_index);
+            glDisableVertexAttribArray(ctx->tex_coord_index);
+            glUseProgram(0);
+        }
     }
+
+#ifdef MACOSX_SUPPORT
+    // Without this, all we see is the glClearColor
+    glFinish();
+#endif
 
     return TRUE;
 }
@@ -422,7 +493,10 @@ resize_opengl_cb (GtkGLArea *area, gint width, gint height, gpointer user_data)
  */
 static GtkWidget *vice_opengl_create_widget(video_canvas_t *canvas)
 {
-    GtkWidget *widget = gtk_gl_area_new();
+    GtkWidget *widget;
+
+    log_message(LOG_DEFAULT, "Creating GtkGlArea widget.");
+    widget =  gtk_gl_area_new();
     gtk_widget_set_hexpand(widget, TRUE);
     gtk_widget_set_vexpand(widget, TRUE);
     canvas->drawing_area = widget;
@@ -434,7 +508,7 @@ static GtkWidget *vice_opengl_create_widget(video_canvas_t *canvas)
 }
 
 /** \brief OpenGL implementation of destroy_context.
- * 
+ *
  *  \param canvas The canvas whose renderer_context is to be
  *                deleted
  *  \sa vice_renderer_backend_s::destroy_context
@@ -466,7 +540,7 @@ static void vice_opengl_update_context(video_canvas_t *canvas, unsigned int widt
     context_t *ctx = canvas ? (context_t *)canvas->renderer_context : NULL;
     if (ctx) {
         double aspect = 1.0;
-        int keepaspect = 1, trueaspect = 0;
+        int keepaspect = 1, trueaspect = 0, filter = 0;
         gint widget_width, widget_height;
         if (ctx->width == width && ctx->height == height) {
             return;
@@ -484,6 +558,8 @@ static void vice_opengl_update_context(video_canvas_t *canvas, unsigned int widt
         if (keepaspect && trueaspect) {
             aspect = canvas->geometry->pixel_aspect_ratio;
         }
+        resources_get_int("GTKFilter", &filter);
+        ctx->filter = filter ? GL_LINEAR : GL_NEAREST;
 
         /* Configure the matrix to fit it in the widget as it exists */
         widget_width = gtk_widget_get_allocated_width(canvas->drawing_area);
@@ -516,7 +592,7 @@ static void vice_opengl_refresh_rect(video_canvas_t *canvas,
 
     if (((xi + w) > ctx->width) || ((yi + h) > ctx->height)) {
         /* Trying to draw outside canvas? */
-        fprintf(stderr, "Attempt to draw outside canvas!\nXI%u YI%u W%u H%u CW%u CH%u\n", xi, yi, w, h, ctx->width, ctx->height);
+        log_warning(LOG_DEFAULT, "Attempt to draw outside canvas!\nXI%u YI%u W%u H%u CW%u CH%u", xi, yi, w, h, ctx->width, ctx->height);
         return;
     }
 
@@ -554,6 +630,19 @@ static void vice_opengl_refresh_rect(video_canvas_t *canvas,
     /* Render mode NEW_TEXTURE has no effect; it stays just as new */
 
     gtk_widget_queue_draw(canvas->drawing_area);
+    {
+        /* This block of code is a workaround for an issue we started
+         * seeing with Mesa 18.2 on Intel integrated GPUs on
+         * Debianoids, but, weirdly, nowhere else. The emulated screen
+         * would simply stop updating, even though we were queuing
+         * draw requests on it. This tries to force a redraw by
+         * invalidating the canvas's top level widget, in case
+         * something isn't propagating properly. */
+        GtkWidget *toplevel = gtk_widget_get_toplevel(canvas->drawing_area);
+        if (GTK_IS_WINDOW(toplevel)) {
+            gtk_widget_queue_draw(toplevel);
+        }
+    }
 }
 
 /** \brief OpenGL implementation of set_palette.

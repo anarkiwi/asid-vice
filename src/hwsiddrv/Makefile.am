@@ -1,12 +1,18 @@
 # Makefile.am for `libhwsiddrv.a'.
 
 AM_CPPFLAGS = \
+	@VICE_CPPFLAGS@ \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/sid \
 	-I$(top_srcdir)/src/platform \
-	-I$(top_srcdir)/src/iodrv
+	-I$(top_srcdir)/src/iodrv \
+	-I$(top_srcdir)/src/arch/shared
+
+AM_CFLAGS = @VICE_CFLAGS@
+
+AM_CXXFLAGS = @VICE_CXXFLAGS@
 
 noinst_LIBRARIES = libhwsiddrv.a
 

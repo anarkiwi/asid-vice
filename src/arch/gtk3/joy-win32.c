@@ -28,9 +28,9 @@
 
 #include "vice.h"
 
-#include "debug_gtk3.h"
-
 #ifdef WIN32_COMPILE
+
+#include "debug_gtk3.h"
 
 #include "cmdline.h"
 #include "resources.h"
@@ -40,12 +40,13 @@
 #endif
 
 #include <windows.h>
+#include <mmsystem.h>
 
-#include "lib.h"
 #include "joy.h"
 #include "joyport.h"
 #include "joystick.h"
 #include "keyboard.h"
+#include "lib.h"
 #include "maincpu.h"
 #include "types.h"
 #include "ui.h"
@@ -112,7 +113,7 @@ static BOOL CALLBACK EnumJoyAxes(LPCDIDEVICEOBJECTINSTANCE lpddoi, LPVOID pvRef)
     axis = lib_malloc(sizeof(JoyAxis));
     axis->next = NULL;
     axis->id = DIDFT_GETINSTANCE(lpddoi->dwType);
-    axis->name = lib_stralloc(lpddoi->tszName);
+    axis->name = lib_strdup(lpddoi->tszName);
     axis->dwOffs = lpddoi->dwOfs;
 
     //  Link axis into list for this joystick
@@ -140,7 +141,7 @@ static BOOL CALLBACK EnumJoyButtons(LPCDIDEVICEOBJECTINSTANCE lpddoi, LPVOID pvR
     button = lib_malloc(sizeof(JoyButton));
     button->next = NULL;
     button->id = DIDFT_GETINSTANCE(lpddoi->dwType);
-    button->name = lib_stralloc(lpddoi->tszName);
+    button->name = lib_strdup(lpddoi->tszName);
     button->dwOffs = lpddoi->dwOfs;
 
     //  Link button into list for this joystick
@@ -376,6 +377,8 @@ int joy_arch_set_device(int port_idx, int new_dev)
     return 0;
 }
 
+
+#if 0
 static int set_joystick_fire_speed(int speed, void *param)
 {
     int port_idx = vice_ptr_to_int(param);
@@ -430,6 +433,7 @@ static int set_joystick_fire_button(int button, void *param)
 
     return 0;
 }
+
 
 static const resource_int_t joy1_resources_int[] = {
     { "JoyAutofire1Speed", 16, RES_EVENT_NO, NULL,
@@ -490,8 +494,19 @@ static const resource_int_t joy5_resources_int[] = {
       &joystick_fire_button[4], set_joystick_fire_button, (void *)4 },
     RESOURCE_INT_LIST_END
 };
+#endif
 
+
+/** \brief  Stub, required by src/joystick.c
+ *
+ * \return 0
+ */
 int joy_arch_resources_init(void)
+{
+    /* NOP */
+    return 0;
+}
+#if 0
 {
     if (joyport_get_port_name(JOYPORT_1)) {
         if (resources_register_int(joy1_resources_int) < 0) {
@@ -518,90 +533,19 @@ int joy_arch_resources_init(void)
             return -1;
         }
     }
-
     return 0;
 }
+#endif
+
 
 /* ------------------------------------------------------------------------- */
 
-/* FIXME: fix the resource references */
-
-/* These don't appear to used anywhere */
-#if 0
-static const cmdline_option_t joydev1cmdline_options[] = {
-    { "-joydev1", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
-      NULL, NULL, "JoyDevice1", NULL,
-      /* FIXME */
-      NULL, NULL },
-    CMDLINE_LIST_END
-};
-
-static const cmdline_option_t joydev2cmdline_options[] = {
-    { "-joydev2", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
-      NULL, NULL, "JoyDevice2", NULL,
-      /* FIXME */
-      NULL, NULL },
-    CMDLINE_LIST_END
-};
-
-static const cmdline_option_t joydev3cmdline_options[] = {
-    { "-extrajoydev1", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
-      NULL, NULL, "JoyDevice3", NULL,
-      /* FIXME */
-      NULL, NULL },
-    CMDLINE_LIST_END
-};
-
-static const cmdline_option_t joydev4cmdline_options[] = {
-    { "-extrajoydev2", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
-      NULL, NULL, "JoyDevice4", NULL,
-      /* FIXME */
-      NULL, NULL },
-    CMDLINE_LIST_END
-};
-
-static const cmdline_option_t joydev5cmdline_options[] = {
-    { "-extrajoydev3", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
-      NULL, NULL, "JoyDevice5", NULL,
-      /* FIXME */
-      NULL, NULL },
-    CMDLINE_LIST_END
-};
-#endif
-
 int joy_arch_cmdline_options_init(void)
 {
-#if 0 /* FIXME */
-    if (joyport_get_port_name(JOYPORT_1)) {
-        if (cmdline_register_options(joydev1cmdline_options) < 0) {
-            return -1;
-        }
-    }
-    if (joyport_get_port_name(JOYPORT_2)) {
-        if (cmdline_register_options(joydev2cmdline_options) < 0) {
-            return -1;
-        }
-    }
-    if (joyport_get_port_name(JOYPORT_3)) {
-        if (cmdline_register_options(joydev3cmdline_options) < 0) {
-            return -1;
-        }
-    }
-    if (joyport_get_port_name(JOYPORT_4)) {
-        if (cmdline_register_options(joydev4cmdline_options) < 0) {
-            return -1;
-        }
-    }
-    if (joyport_get_port_name(JOYPORT_5)) {
-        if (cmdline_register_options(joydev5cmdline_options) < 0) {
-            return -1;
-        }
-    }
-#else
-    NOT_IMPLEMENTED_WARN_ONLY();
-#endif /* FIXME */
+    /* NOP */
     return 0;
 }
+
 
 /* ------------------------------------------------------------------------- */
 
@@ -613,7 +557,7 @@ static BOOL CALLBACK EnumCallBack(LPCDIDEVICEINSTANCE lpddi, LPVOID pvref)
     new_joystick = lib_malloc(sizeof(JoyInfo));
     new_joystick->next = NULL;
     memcpy(&new_joystick->guid, &lpddi->guidInstance, sizeof(GUID));
-    new_joystick->name = lib_stralloc(lpddi->tszInstanceName);
+    new_joystick->name = lib_strdup(lpddi->tszInstanceName);
     new_joystick->axes = NULL;
     new_joystick->buttons = NULL;
     new_joystick->numPOVs = 0;
@@ -863,7 +807,7 @@ static BYTE joystick_di5_update(int joy_no)
 }
 #endif
 
-void joystick_update(void)
+void joystick(void)
 {
     BYTE value;
     MMRESULT result;
@@ -1153,4 +1097,3 @@ int joystick_uses_direct_input(void)
 #endif
 }
 #endif
-

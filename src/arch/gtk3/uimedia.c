@@ -44,20 +44,22 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "debug_gtk3.h"
-#include "lib.h"
-#include "resources.h"
-#include "machine.h"
-#include "sound.h"
-#include "screenshot.h"
-#include "widgethelpers.h"
-#include "basewidgets.h"
 #include "basedialogs.h"
-#include "openfiledialog.h"
-#include "savefiledialog.h"
-#include "selectdirectorydialog.h"
-#include "ui.h"
+#include "basewidgets.h"
+#include "debug_gtk3.h"
+#include "filechooserhelpers.h"
 #include "gfxoutput.h"
+#include "lib.h"
+#include "machine.h"
+#include "openfiledialog.h"
+#include "resources.h"
+#include "savefiledialog.h"
+#include "screenshot.h"
+#include "selectdirectorydialog.h"
+#include "sound.h"
+#include "ui.h"
+#include "uiapi.h"
+#include "widgethelpers.h"
 
 #ifdef HAVE_FFMPEG
 #include "ffmpegwidget.h"
@@ -114,14 +116,28 @@ static video_driver_info_t *video_driver_list = NULL;
 static int video_driver_count = 0;
 
 
+/** \brief  Index of currently selected screenshot driver
+ *
+ * Initially set to -1 to select PNG as default in the screenshot driver list.
+ * Set to last selected driver on subsequent uses of the dialog.
+ */
+static int screenshot_driver_index = -1;
+
+
+#ifdef HAVE_FFMPEG
 /** \brief  Index of currently selected video driver
+ *
  */
 static int video_driver_index = 0;
+#endif  /* HAVE_FFMPEG */
 
 
 /** \brief  Index of currently selected audio driver
+ *
+ * Initially set to -1 to select WAV as default in the audio driver list.
+ * Set to last selected driver on subsequent uses of the dialog.
  */
-static int audio_driver_index = 0;
+static int audio_driver_index = -1;
 
 
 /** \brief  List of available audio recording drivers
@@ -129,20 +145,20 @@ static int audio_driver_index = 0;
  * This list is dependent on compile-time options
  */
 static audio_driver_info_t audio_driver_list[] = {
-    { "WAV", "wav", "wav" },
-    { "AIFF", "aiff", "aif" },
-    { "VOC", "voc", "voc" },
-    { "IFF", "iff", "iff" },
+    { "WAV",        "wav",  "wav" },
+    { "AIFF",       "aiff", "aif" },
+    { "VOC",        "voc",  "voc" },
+    { "IFF",        "iff",  "iff" },
 #ifdef USE_LAMEMP3
-    { "MP3", "mp3", "mp3" },
+    { "MP3",        "mp3",  "mp3" },
 #endif
 #ifdef USE_FLAC
-    { "FLAC", "flac", "flac" },
+    { "FLAC",       "flac", "flac" },
 #endif
 #ifdef USE_VORBIS
-    { "Ogg/Vorbis", "ogg", "ogg" },
+    { "Ogg/Vorbis", "ogg",  "ogg" },
 #endif
-    { NULL, NULL, NULL }
+    { NULL,         NULL,   NULL }
 };
 
 
@@ -156,7 +172,7 @@ static vice_gtk3_combo_entry_int_t oversize_modes[] = {
     { "crop left center", 4 },
     { "crop center", 5 },
     { "crop right center", 6 },
-    { "crop left bottom (huhu)", 7 },
+    { "crop left bottom", 7 },
     { "crop center bottom", 8 },
     { "crop right bottom", 9 },
     { NULL, -1 }
@@ -203,11 +219,24 @@ static const vice_gtk3_combo_entry_int_t crtc_colors[] = {
 };
 
 
+/* forward declarations of helper functions */
+static GtkWidget *create_screenshot_param_widget(const char *prefix);
+static void save_screenshot_handler(void);
+static void save_audio_recording_handler(void);
+static void save_video_recording_handler(void);
+
+
 /** \brief  Reference to the GtkStack containing the media types
  *
  * Used in the dialog response callback to determine recording mode and params
  */
 static GtkWidget *stack;
+
+
+/** \brief  Pause state when activating the dialog
+ */
+static int old_pause_state = 0;
+
 
 /* references to widgets, used from various event handlers */
 static GtkWidget *screenshot_options_grid = NULL;
@@ -216,14 +245,9 @@ static GtkWidget *undersize_widget = NULL;
 static GtkWidget *multicolor_widget = NULL;
 static GtkWidget *ted_luma_widget = NULL;
 static GtkWidget *crtc_textcolor_widget = NULL;
+#ifdef HAVE_FFMPEG
 static GtkWidget *video_driver_options_grid = NULL;
-
-
-/* forward declarations of helper functions */
-static GtkWidget *create_screenshot_param_widget(const char *prefix);
-static void save_screenshot_handler(void);
-static void save_audio_recording_handler(void);
-static void save_video_recording_handler(void);
+#endif
 
 
 /*****************************************************************************
@@ -241,7 +265,11 @@ static void on_dialog_destroy(GtkWidget *widget, gpointer data)
         debug_gtk3("called: cleaning up driver list.");
         lib_free(video_driver_list);
     }
-    ui_pause_emulation(FALSE);
+
+    /* only unpause when the emu wasn't paused when activating the dialog */
+    if (!old_pause_state) {
+        ui_pause_disable();
+    }
 }
 
 
@@ -253,12 +281,15 @@ static void on_dialog_destroy(GtkWidget *widget, gpointer data)
  */
 static void update_screenshot_options_grid(GtkWidget *new)
 {
-    GtkWidget *old = gtk_grid_get_child_at(GTK_GRID(screenshot_options_grid),
-            0, 1);
-    if (old != NULL) {
-        gtk_widget_destroy(old);
+    GtkWidget *old;
+
+    if (new != NULL) {
+        old = gtk_grid_get_child_at(GTK_GRID(screenshot_options_grid), 0, 1);
+        if (old != NULL) {
+            gtk_widget_destroy(old);
+        }
+        gtk_grid_attach(GTK_GRID(screenshot_options_grid), new, 0, 1, 1, 1);
     }
-    gtk_grid_attach(GTK_GRID(screenshot_options_grid), new, 0, 1, 1, 1);
 }
 
 
@@ -289,22 +320,28 @@ static void on_response(GtkDialog *dialog, gint response_id, gpointer data)
 
                 if (strcmp(child_name, CHILD_SCREENSHOT) == 0) {
                     debug_gtk3("Screenshot requested, driver %d.",
-                            video_driver_index);
+                            screenshot_driver_index);
                     save_screenshot_handler();
                 } else if (strcmp(child_name, CHILD_SOUND) == 0) {
                     debug_gtk3("Audio recording requested, driver %d.",
                             audio_driver_index);
                     save_audio_recording_handler();
+                    ui_display_recording(1);
                 } else if (strcmp(child_name, CHILD_VIDEO) == 0) {
+#ifdef HAVE_FFMPEG
                     debug_gtk3("Video recording requested, driver %d.",
                             video_driver_index);
+#endif
                     save_video_recording_handler();
+                    ui_display_recording(1);
                 }
             } else {
                 debug_gtk3("Audio recording requested, driver %d.",
                         audio_driver_index);
                 save_audio_recording_handler();
+                ui_display_recording(1);
             }
+            gtk_widget_destroy(GTK_WIDGET(dialog));
             break;
 
 
@@ -325,7 +362,7 @@ static void on_screenshot_driver_toggled(GtkWidget *widget, gpointer data)
         int index = GPOINTER_TO_INT(data);
         debug_gtk3("screenshot driver %d (%s) selected.",
                 index, video_driver_list[index].name);
-        video_driver_index = index;
+        screenshot_driver_index = index;
         update_screenshot_options_grid(
                 create_screenshot_param_widget(video_driver_list[index].name));
     }
@@ -353,7 +390,7 @@ static void on_audio_driver_toggled(GtkWidget *widget, gpointer data)
  *                              Helpers functions                            *
  ****************************************************************************/
 
-/** \brief  Create a string in the format 'yyyymmddHHMM' of the current time
+/** \brief  Create a string in the format 'yyyymmddHHMMss' of the current time
  *
  * \return  string owned by GLib, free with g_free()
  */
@@ -363,7 +400,7 @@ static gchar *create_datetime_string(void)
     gchar *s;
 
     d = g_date_time_new_now_local();
-    s = g_date_time_format(d, "%Y%m%d%H%M");
+    s = g_date_time_format(d, "%Y%m%d%H%M%S");
     g_date_time_unref(d);
     return s;
 }
@@ -440,24 +477,25 @@ static void save_screenshot_handler(void)
     char *title;
     char *proposed;
 
-    display = video_driver_list[video_driver_index].display;
-    name = video_driver_list[video_driver_index].name;
-    ext = video_driver_list[video_driver_index].ext;
+    display = video_driver_list[screenshot_driver_index].display;
+    name = video_driver_list[screenshot_driver_index].name;
+    ext = video_driver_list[screenshot_driver_index].ext;
 
     title = lib_msprintf("Save %s file", display);
     proposed = create_proposed_screenshot_name(ext);
 
     filename = vice_gtk3_save_file_dialog(title, proposed, TRUE, NULL);
     if (filename != NULL) {
+
+        gchar *filename_locale = file_chooser_convert_to_locale(filename);
+
         /* TODO: add extension if not present? */
-        if (screenshot_save(name, filename, ui_get_active_canvas()) < 0) {
+        if (screenshot_save(name, filename_locale, ui_get_active_canvas()) < 0) {
             vice_gtk3_message_error("VICE Error",
                     "Failed to write screenshot file '%s'", filename);
-        } else {
-            vice_gtk3_message_info("VICE Info",
-                    "Saved screenshot as '%s'", filename);
         }
         g_free(filename);
+        g_free(filename_locale);
     }
     lib_free(proposed);
     lib_free(title);
@@ -475,6 +513,7 @@ static void save_audio_recording_handler(void)
     const char *name;
     const char *ext;
     gchar *filename;
+    gchar *filename_locale;
     char *title;
     char *proposed;
 
@@ -486,11 +525,14 @@ static void save_audio_recording_handler(void)
     proposed = create_proposed_audio_recording_name(ext);
 
     filename = vice_gtk3_save_file_dialog(title, proposed, TRUE, NULL);
+    filename_locale = file_chooser_convert_to_locale(filename);
+
     if (filename != NULL) {
         /* XXX: setting resources doesn't exactly help with catching errors */
-        resources_set_string("SoundRecordDeviceArg", filename);
+        resources_set_string("SoundRecordDeviceArg", filename_locale);
         resources_set_string("SoundRecordDeviceName", name);
         g_free(filename);
+        g_free(filename_locale);
     }
 }
 
@@ -511,14 +553,15 @@ static void save_video_recording_handler(void)
     gchar *filename;
     char *title;
     char *proposed;
-
+#ifdef HAVE_FFMPEG
     debug_gtk3("video driver index = %d.", video_driver_index);
+#endif
 
 #if 0
     display = video_driver_list[video_driver_index].display;
     name = video_driver_list[video_driver_index].name;
 #endif
-    /* we dont' have a format->extension mapping, so the format name itself is 
+    /* we don't have a format->extension mapping, so the format name itself is
        better than `video_driver_list[video_driver_index].ext' */
     resources_get_string("FFMPEGFormat", &ext);
 
@@ -533,6 +576,7 @@ static void save_video_recording_handler(void)
         int vc;
         int ab;
         int vb;
+        gchar *filename_locale;
 
         resources_get_string("FFMPEGFormat", &driver);
         resources_get_int("FFMPEGVideoCodec", &vc);
@@ -545,14 +589,18 @@ static void save_video_recording_handler(void)
         debug_gtk3("Audio = %d, bitrate %d.", ac, ab);
 
 
-        ui_pause_emulation(FALSE);
+        ui_pause_disable();
+
+
+        filename_locale = file_chooser_convert_to_locale(filename);
 
         /* TODO: add extension if not present? */
-        if (screenshot_save("FFMPEG", filename, ui_get_active_canvas()) < 0) {
+        if (screenshot_save("FFMPEG", filename_locale, ui_get_active_canvas()) < 0) {
             vice_gtk3_message_error("VICE Error",
                     "Failed to write video file '%s'", filename);
         }
         g_free(filename);
+        g_free(filename_locale);
     }
     lib_free(proposed);
     lib_free(title);
@@ -582,8 +630,8 @@ static void create_video_driver_list(void)
         driver = gfxoutput_drivers_iter_init();
         while (driver != NULL) {
             debug_gtk3(".. adding driver '%s'. ext: %s.",
-			    driver->name,
-			    driver->default_extension);
+                    driver->name,
+                    driver->default_extension);
             video_driver_list[index].display = driver->displayname;
             video_driver_list[index].name = driver->name;
             video_driver_list[index].ext = driver->default_extension;
@@ -607,7 +655,16 @@ static void create_video_driver_list(void)
  */
 static int driver_is_video(const char *name)
 {
-    return strcmp(name, "FFMPEG") == 0 || strcmp(name, "QuickTime") == 0;
+    int result;
+
+    debug_gtk3("Got driver '%s'.", name);
+#if 0
+    result =  strcmp(name, "FFMPEG") == 0 || strcmp(name, "QuickTime") == 0;
+#else
+    result = strcmp(name, "FFMPEG") == 0;
+#endif
+    debug_gtk3("Result = %s", result ? "TRUE" : "FALSE");
+    return result;
 }
 
 
@@ -755,6 +812,29 @@ static GtkWidget *create_screenshot_widget(void)
                     GTK_RADIO_BUTTON(last));
             gtk_grid_attach(GTK_GRID(drv_grid), radio, 0, grid_index, 1, 1);
 
+            /* Make PNG default (doesn't look we have any numeric define to
+             * indicate PNG, so a strcmp() will have to do)
+             * Also trigger the event handler to set the driver index (by
+             * connecting it before this call), so I don't have to manually
+             * set it here, though all this text could have been used to set it.
+             *
+             * Only set PNG first time the dialog is created, on second time
+             * it should use whatever was used before
+             */
+            if (screenshot_driver_index < 0) {
+                if (strcmp(name, "PNG") == 0) {
+                    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
+                    screenshot_driver_index = index; /* set this driver as
+                                                        currently selected one */
+                }
+            } else {
+                if (screenshot_driver_index == index) {
+                    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
+                }
+            }
+
+            /* connect signal *after* setting a radio button's state, to avoid
+             * triggering the handler before the UI is properly set up. */
             g_signal_connect(radio, "toggled",
                     G_CALLBACK(on_screenshot_driver_toggled),
                     GINT_TO_POINTER(index));
@@ -807,6 +887,21 @@ static GtkWidget *create_sound_widget(void)
                 GTK_RADIO_BUTTON(last));
         gtk_grid_attach(GTK_GRID(drv_grid), radio, 0, index + 1, 1, 1);
 
+        /*
+         * Set default audio driver, or restore previously selected audio
+         * driver.
+         */
+        if (audio_driver_index < 0) {
+            if (index == 0) {   /* 0 == WAV */
+                gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
+                audio_driver_index = index;
+            }
+        } else {
+            if (index == audio_driver_index) {
+                gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
+            }
+        }
+
         g_signal_connect(radio, "toggled",
                 G_CALLBACK(on_audio_driver_toggled),
                 GINT_TO_POINTER(index));
@@ -829,16 +924,18 @@ static GtkWidget *create_video_widget(void)
 {
     GtkWidget *grid;
     GtkWidget *label;
+#ifdef HAVE_FFMPEG
     GtkWidget *combo;
     int index;
-
     GtkWidget *selection_grid;
     GtkWidget *options_grid;
-
+#endif
     grid = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
     gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
 
+
+#ifdef HAVE_FFMPEG
     label = gtk_label_new("Video driver");
     g_object_set(label, "margin-left", 16, NULL);
 
@@ -850,6 +947,16 @@ static GtkWidget *create_video_widget(void)
         if (driver_is_video(name)) {
             gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo), name, display);
         }
+
+        if (video_driver_index < 0) {
+            video_driver_index = 0;
+            gtk_combo_box_set_active(GTK_COMBO_BOX(combo), index);
+        } else {
+            if (video_driver_index == index) {
+                gtk_combo_box_set_active(GTK_COMBO_BOX(combo), index);
+            }
+        }
+
     }
     gtk_widget_set_hexpand(combo, TRUE);
     gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
@@ -871,16 +978,26 @@ static GtkWidget *create_video_widget(void)
 /* XXX: this obviously needs a cleaner solution which also handles QuickTime
  *      on MacOS
  */
-#ifdef HAVE_FFMPEG
     gtk_grid_attach(GTK_GRID(options_grid), ffmpeg_widget_create(), 0, 1, 1,1);
-#endif
     video_driver_options_grid = options_grid;
 
-
-
     gtk_grid_attach(GTK_GRID(grid), options_grid, 0, 1, 1, 1);
+#else
+    label = gtk_label_new(NULL);
+    gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_WORD);
+    g_object_set(G_OBJECT(label),
+            "margin-left", 16,
+            "margin-right", 16,
+            "margin-top", 16, NULL);
+    gtk_label_set_markup(GTK_LABEL(label),
+            "Video recording is unavailable due to VICE having being compiled"
+            " without FFMPEG support.\nPlease recompile with either"
+            " <tt>--enable-static-ffmpeg</tt> or"
+            " <tt>--enable-external-ffmpeg</tt>.\n\n"
+            "If you didn't compile VICE yourself, ask your provider.");
+    gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
 
-
+#endif
     gtk_widget_show_all(grid);
     return grid;
 }
@@ -938,20 +1055,23 @@ static GtkWidget *create_content_widget(void)
  *
  * \param[in]   parent  parent widget (unused)
  * \param[in]   data    extra data (unused)
+ *
+ * \return  TRUE
  */
-void uimedia_dialog_show(GtkWidget *parent, gpointer data)
+gboolean uimedia_dialog_show(GtkWidget *parent, gpointer data)
 {
     GtkWidget *dialog;
     GtkWidget *content;
 
     /*
-     * Pause emulation, the ui_emulation_is_paused() check is required since
-     * the ui_pause_emulation() function is a little weird: when passed FALSE
-     * it unpauses, when passed TRUE it toggles the paused state.
+     * Pause emulation
      */
-    if (!ui_emulation_is_paused()) {
-        ui_pause_emulation(TRUE);
-    }
+
+    /* remember pause state before entering the widget */
+    old_pause_state = ui_pause_active();
+
+    /* pause emulartion */
+    ui_pause_enable();
 
     /* create driver list */
     if (machine_class != VICE_MACHINE_VSID) {
@@ -979,6 +1099,7 @@ void uimedia_dialog_show(GtkWidget *parent, gpointer data)
     g_signal_connect(dialog, "destroy", G_CALLBACK(on_dialog_destroy), NULL);
 
     gtk_widget_show_all(dialog);
+    return TRUE;
 }
 
 
@@ -998,5 +1119,21 @@ gboolean uimedia_stop_recording(GtkWidget *parent, gpointer data)
     if (screenshot_is_recording()) {
         screenshot_stop_recording();
     }
+
+    ui_display_recording(0);
+
     return TRUE;
+}
+
+
+void uimedia_auto_screenshot(void)
+{
+    debug_gtk3("called!");
+    char *filename;
+
+    /* no need for locale bullshit */
+    filename = create_proposed_screenshot_name("png");
+    if (screenshot_save("PNG", filename, ui_get_active_canvas()) < 0) {
+        debug_gtk3("OOPS");
+    }
 }

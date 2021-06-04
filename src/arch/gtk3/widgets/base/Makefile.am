@@ -2,6 +2,7 @@
 
 
 AM_CPPFLAGS = \
+	@VICE_CPPFLAGS@ \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
@@ -22,6 +23,11 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/vic20 \
 	-I$(top_srcdir)/src/userport \
 	-I$(top_srcdir)/src/c64/cart
+
+AM_CFLAGS = @VICE_CFLAGS@
+
+AM_CXXFLAGS = @VICE_CXXFLAGS@
+
 
 noinst_LIBRARIES = libbasewidgets.a
 

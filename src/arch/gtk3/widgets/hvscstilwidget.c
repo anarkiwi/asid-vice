@@ -38,6 +38,7 @@
 #include "debug_gtk3.h"
 #include "hvsc.h"
 #include "vsidtuneinfowidget.h"
+#include "ui.h"
 
 #include "hvscstilwidget.h"
 
@@ -45,7 +46,6 @@
 /** \brief  GtkTextArea used to present the STIL entry
  */
 static GtkWidget *stil_view;
-
 
 
 static int hvsc_stil_widget_create_tags(void)
@@ -166,12 +166,27 @@ GtkWidget *hvsc_stil_widget_create(void)
 
     scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_widget_set_vexpand(scroll, TRUE);
-    gtk_widget_set_size_request(scroll, 400, 500);
+    gtk_widget_set_size_request(scroll, 400, 400);
     gtk_widget_set_hexpand(scroll, TRUE);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
             GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_container_add(GTK_CONTAINER(scroll), stil_view);
     gtk_grid_attach(GTK_GRID(grid), scroll, 0, 1, 1, 1);
+
+    /* XXX: needs to be handled somewhere else */
+#if 0
+    /* set up drag-drop */
+    gtk_drag_dest_set(
+            stil_view,
+            GTK_DEST_DEFAULT_ALL,
+            ui_drag_targets,
+            UI_DRAG_TARGETS_COUNT,
+            GDK_ACTION_COPY);
+    g_signal_connect(stil_view, "drag-data-received",
+                     G_CALLBACK(ui_on_drag_data_received), NULL);
+    g_signal_connect(stil_view, "drag-drop",
+                     G_CALLBACK(ui_on_drag_drop), NULL);
+#endif
 
     gtk_widget_set_vexpand(grid, TRUE);
     gtk_widget_show_all(grid);
@@ -285,12 +300,19 @@ int hvsc_stil_widget_set_psid(const char *psid)
 
                 if (to < 0) {
                     g_snprintf(line, 1024,
-                            "%ld:%02ld\n",
-                            from / 60, from % 60);
+                            "%ld:%02ld.%03ld\n",
+                            from / 60 / 1000,
+                            (from / 1000) % 60,
+                            (from % 1000));
                 } else {
                     g_snprintf(line, 1024,
-                            "%ld:%02ld-%ld:%02ld\n",
-                            from / 60, from % 60, to / 60, to % 60);
+                            "%ld:%02ld.%03ld-%ld:%02ld.%03ld\n",
+                            from / 60 / 1000,
+                            (from / 1000) % 60,
+                            (from % 1000),
+                            to / 60 / 1000,
+                            (to / 1000) % 60,
+                            (to % 1000));
                 }
 
                 gtk_text_buffer_insert_with_tags_by_name(
@@ -326,26 +348,6 @@ int hvsc_stil_widget_set_psid(const char *psid)
                 g_free(utf8);
             }
 
-
-            /* artist? */
-            if (block->fields[f]->type == HVSC_FIELD_ARTIST
-                    && block->fields[f]->text != NULL) {
-
-                gchar *utf8;
-
-                g_snprintf(line, 1024, "%s\n", block->fields[f]->text);
-                utf8 = convert_to_utf8(line);
-
-                gtk_text_buffer_insert_with_tags_by_name(
-                        buffer,
-                        &end,
-                        utf8,
-                        -1,
-                        "artist",
-                        NULL);
-                g_free(utf8);
-            }
-
             /* album? */
             if (block->fields[f]->album != NULL) {
 
@@ -365,6 +367,27 @@ int hvsc_stil_widget_set_psid(const char *psid)
 
                 g_free(utf8);
             }
+
+            /* artist? */
+            if (block->fields[f]->type == HVSC_FIELD_ARTIST
+                    && block->fields[f]->text != NULL) {
+
+                gchar *utf8;
+
+                g_snprintf(line, 1024, "%s\n\n", block->fields[f]->text);
+                utf8 = convert_to_utf8(line);
+
+                gtk_text_buffer_insert_with_tags_by_name(
+                        buffer,
+                        &end,
+                        utf8,
+                        -1,
+                        "artist",
+                        NULL);
+                g_free(utf8);
+            }
+
+            /* gtk_text_buffer_insert(buffer, &end, "\n", -1); */
         }
 
         /* add newlines when not last subtune */
@@ -375,4 +398,16 @@ int hvsc_stil_widget_set_psid(const char *psid)
 
     hvsc_stil_close(&stil);
     return 1;
+}
+
+
+/** \brief  Return reference to the view
+ *
+ * This is currently required to make drag-n-drop on the STIL widget work
+ *
+ * \return  view
+ */
+GtkWidget *hvsc_stil_widget_get_view(void)
+{
+    return stil_view;
 }

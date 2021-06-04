@@ -28,7 +28,9 @@
 
 #include <gtk/gtk.h>
 
+#include "debug_gtk3.h"
 #include "lib.h"
+#include "log.h"
 #include "util.h"
 
 #include "filechooserhelpers.h"
@@ -77,13 +79,13 @@ const char *file_chooser_pattern_tape[] = {
 /** \brief  Patterns for fliplists
  */
 const char *file_chooser_pattern_fliplist[] = {
-    "*.[vV[fF][lL]", NULL
+    "*.[vV][fF][lL]", NULL
 };
 
 /** \brief  Patterns for program files
  */
 const char *file_chooser_pattern_program[] = {
-    "*.[pP][rR]gG]", "*.[pP][0-9][0-9]", NULL
+    "*.[pP][rR][gG]", "*.[pP][0-9][0-9]", NULL
 };
 
 
@@ -211,7 +213,7 @@ GtkFileFilter *create_file_chooser_filter(const ui_file_filter_t filter,
         name = util_concat(filter.name, " (", globs, ")", NULL);
         lib_free(globs);
     } else {
-        name = lib_stralloc(filter.name);
+        name = lib_strdup(filter.name);
     }
 
     ff = gtk_file_filter_new();
@@ -227,3 +229,92 @@ GtkFileFilter *create_file_chooser_filter(const ui_file_filter_t filter,
     return ff;
 }
 
+
+/** \brief  Convert UTF-8 encoded string \a text to the current locale
+ *
+ * \param[in]   text    UTF-8 encoded string
+ *
+ * \return  \a text encoded to the locale, or the original string on failure
+ *
+ * \note    the result must be freed after use with g_free()
+ */
+gchar *file_chooser_convert_to_locale(const gchar *text)
+{
+    GError *err = NULL;
+    gsize br;
+    gsize bw;
+    gchar *result;
+
+#if 0
+#ifdef HAVE_DEBUG_GTK3UI
+    const gchar *charset;
+    gchar *codeset;
+
+    g_get_charset(&charset);
+    codeset = g_get_codeset();
+    debug_gtk3("charset = '%s', codeset = '%s'", charset, codeset);
+    g_free(codeset);
+#endif
+#endif
+
+    result = g_locale_from_utf8(text, -1, &br, &bw, &err);
+#if 0
+    debug_gtk3("bytes read: %"G_GSIZE_FORMAT", bytes written: %"G_GSIZE_FORMAT,
+            br, bw);
+#endif
+    if (result == NULL) {
+        log_warning(LOG_DEFAULT,
+                "warning: failed to convert string to locale: %s",
+                err->message);
+        result = g_strdup(text);
+        if (err != NULL) {
+            g_error_free(err);
+        }
+    }
+    return result;
+}
+
+
+/** \brief  Convert locale encoded string \a text to UTF-8
+ *
+ * \param[in]   text    string in the current locale
+ *
+ * \return  \a text encoded to UTF-8, or the original string on failure
+ *
+ * \note    the result must be freed after use with g_free()
+ */
+gchar *file_chooser_convert_from_locale(const gchar *text)
+{
+    GError *err = NULL;
+    gsize br;
+    gsize bw;
+    gchar *result;
+
+#if 0
+#ifdef HAVE_DEBUG_GTK3UI
+    const gchar *charset;
+    gchar *codeset;
+
+    g_get_charset(&charset);
+    codeset = g_get_codeset();
+    debug_gtk3("charset = '%s', codeset = '%s'", charset, codeset);
+    g_free(codeset);
+#endif
+#endif
+
+    result = g_locale_to_utf8(text, -1, &br, &bw, &err);
+#if 0
+    debug_gtk3("bytes read: %"G_GSIZE_FORMAT", bytes written: %"G_GSIZE_FORMAT,
+            br, bw);
+#endif
+    if (result == NULL) {
+        log_warning(LOG_DEFAULT,
+                "warning: failed to convert string to UTF-8: %s",
+                err->message);
+        result = g_strdup(text);
+        if (err != NULL) {
+            g_error_free(err);
+        }
+    }
+    return result;
+}

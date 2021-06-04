@@ -1,9 +1,14 @@
 # Makefile.am for `libsamplerdrv.a'.
 
 AM_CPPFLAGS = \
+	@VICE_CPPFLAGS@ \
 	@ARCH_INCLUDES@ \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src
+
+AM_CFLAGS = @VICE_CFLAGS@ -Wno-strict-prototypes
+
+AM_CXXFLAGS = @VICE_CXXFLAGS@
 
 noinst_LIBRARIES = libsamplerdrv.a
 

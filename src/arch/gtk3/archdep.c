@@ -39,6 +39,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
+#include "archdep.h"
 #include "debug_gtk3.h"
 #include "findpath.h"
 #include "ioutil.h"
@@ -73,44 +74,6 @@
  */
 static char *argv0 = NULL;
 
-
-/** \brief  Path to the preferences directory of the emu
- */
-const char *archdep_pref_path = NULL;
-
-
-#ifdef UNIX_COMPILE
-#include "archdep_unix.c"
-#endif
-
-#ifdef WIN32_COMPILE
-#include "archdep_win32.c"
-#endif
-
-
-#if 0
-/** \brief  Create and open temp file
- *
- * \param[in]   filename    pointer to object to store name of temp file
- * \param[in]   mode        mode to open file with (see fopen(3))
- *
- * \return  pointer to new file or `NULL` on error
- */
-FILE *archdep_mkstemp_fd(char **filename, const char *mode)
-{
-    GError *err = NULL;
-    /* this function already uses the OS's tmp dir as a prefix, so no need to
-     * do stuff like getenv("TMP")
-     */
-    int fd = g_file_open_tmp("vice.XXXXXX", filename, &err);
-    if (fd < 0) {
-        return NULL;
-    }
-    return fdopen(fd, mode);
-}
-#endif
-
-
 /** \brief  Arch-dependent init
  *
  * \param[in]   argc    pointer to argument count
@@ -133,9 +96,9 @@ int archdep_init(int *argc, char **argv)
     char *xdg_data;
 # endif
 #endif
-    argv0 = lib_stralloc(argv[0]);
+    argv0 = lib_strdup(argv[0]);
 
-    /* set argv0 for program_name()/boot_path() calls (yes this sucks) */
+    /* set argv0 for program_name()/boot_path() calls (yes, not ideal) */
     archdep_program_path_set_argv0(argv[0]);
 
     archdep_create_user_config_dir();
@@ -148,12 +111,6 @@ int archdep_init(int *argc, char **argv)
     vice_ini = archdep_default_resource_file_name();
     datadir = archdep_get_vice_datadir();
     docsdir = archdep_get_vice_docsdir();
-
-# if defined(ARCHDEP_OS_LINUX) && defined(ARCHDEP_OS_BSD)
-    xdg_cache = archdep_xdg_cache_home();
-    xdg_config = archdep_xdg_config_home();
-    xdg_data = archdep_xdg_data_home()l
-# endif 
 
     debug_gtk3("program name    = \"%s\"", prg_name);
     debug_gtk3("user home dir   = \"%s\"", archdep_home_path());
@@ -190,6 +147,37 @@ int archdep_init(int *argc, char **argv)
     /* needed for early log control (parses for -silent/-verbose) */
     log_verbose_init(*argc, argv);
 
+    debug_gtk3("MSYSTEM = '%s'", getenv("MSYSTEM"));
+
     return 0;
+}
+
+
+/** \brief  Architecture-dependent shutdown handler
+ */
+void archdep_shutdown(void)
+{
+    /* free memory used by the exec path */
+    archdep_program_path_free();
+    /* free memory used by the exec name */
+    archdep_program_name_free();
+    /* free memory used by the boot path */
+    archdep_boot_path_free();
+    /* free memory used by the home path */
+    archdep_home_path_free();
+    /* free memory used by the config files path */
+    archdep_user_config_path_free();
+    /* free memory used by the sysfile pathlist */
+    archdep_default_sysfile_pathlist_free();
+
+    /* this should be removed soon */
+    if (argv0 != NULL) {
+        lib_free(argv0);
+        argv0 = NULL;
+    }
+
+#ifndef ARCHDEP_OS_WINDOWS
+    archdep_network_shutdown();
+#endif
 }
 

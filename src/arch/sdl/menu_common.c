@@ -112,10 +112,8 @@ UI_MENU_CALLBACK(autostart_callback)
 
 UI_MENU_CALLBACK(pause_callback)
 {
-    int paused = ui_emulation_is_paused();
-
     if (activated) {
-        ui_pause_emulation(!paused);
+        ui_pause_toggle();
         return sdl_menu_text_exit_ui;
     }
     return NULL;
@@ -123,13 +121,13 @@ UI_MENU_CALLBACK(pause_callback)
 
 UI_MENU_CALLBACK(advance_frame_callback)
 {
-    int paused = ui_emulation_is_paused();
+    int paused = ui_pause_active();
 
     if (activated) {
         if (paused) {
             vsyncarch_advance_frame();
         } else {
-            ui_pause_emulation(1);
+            ui_pause_enable();
         }
         return sdl_menu_text_exit_ui;
     }
@@ -193,14 +191,16 @@ const char *sdl_ui_menu_radio_helper(int activated, ui_callback_data_t param, co
         int v;
         const char *w;
         if (resources_query_type(resource_name) == RES_INTEGER) {
-            resources_get_int(resource_name, &v);
-            if (v == vice_ptr_to_int(param)) {
-                return sdl_menu_text_tick;
+            if (resources_get_int(resource_name, &v) == 0) {
+                if (v == vice_ptr_to_int(param)) {
+                    return sdl_menu_text_tick;
+                }
             }
         } else {
-            resources_get_string(resource_name, &w);
-            if (!strcmp(w, (char *)param)) {
-                return sdl_menu_text_tick;
+            if (resources_get_string(resource_name, &w) == 0) {
+                if (!strcmp(w, (char *)param)) {
+                    return sdl_menu_text_tick;
+                }
             }
         }
     }

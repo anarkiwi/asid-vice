@@ -210,12 +210,13 @@ static GtkWidget *create_tune_num_widget(void)
  */
 static void update_tune_num_widget(void)
 {
-    char *text;
+    gchar buffer[256];
 
-    text = lib_msprintf("%d of %d (Default: %d)",
+    g_snprintf(buffer, 256,
+            "%d of %d (default: %d)",
             tune_current, tune_count, tune_default);
-    gtk_label_set_text(GTK_LABEL(tune_num_widget), text);
-    lib_free(text);
+
+    gtk_label_set_text(GTK_LABEL(tune_num_widget), buffer);
 }
 
 
@@ -273,7 +274,7 @@ static void update_model_widget(int model)
  */
 static GtkWidget *create_runtime_widget(void)
 {
-    GtkWidget *label = gtk_label_new("0:00:00");
+    GtkWidget *label = gtk_label_new("0:00:00.000 / 0:00:00.000");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     return label;
 }
@@ -283,18 +284,20 @@ static GtkWidget *create_runtime_widget(void)
  *
  * Displays the run time of the current (sub)tune in hours, minutes and seconds
  *
- * \param[in]   sec current run time in seconds
+ * \param[in]   dsec    current run time in deciseconds
  */
-static void update_runtime_widget(unsigned int sec)
+static void update_runtime_widget(unsigned int dsec)
 {
     char buffer[256];
+    unsigned int f;
     unsigned int s;
     unsigned int m;
     unsigned int h;
 
-    s = sec % 60;
-    m = sec / 60;
-    h = sec / 60 / 60;
+    f = (dsec % 10) * 100;
+    s = (dsec / 10)  % 60;
+    m = ((dsec / 10) / 60) % 60;
+    h = (dsec / 10) / 60 / 60;
 
     /* don't use lib_msprintf() here, this function gets called a lot and
      * malloc() isn't fast */
@@ -302,15 +305,16 @@ static void update_runtime_widget(unsigned int sec)
     if (song_lengths != NULL) {
 
         unsigned long total = song_lengths[tune_current - 1];
-        unsigned int ts = (unsigned int)(total % 60);
-        unsigned int tm = (unsigned int)(total / 60);
-        unsigned int th = (unsigned int)(total / 60 / 60);
+        unsigned int tf = (unsigned int)(total % 1000);
+        unsigned int ts = (unsigned int)((total /1000) % 60);
+        unsigned int tm = (unsigned int)((total / 1000 / 60) % 60);
+        unsigned int th = (unsigned int)(total / 1000 / 60 / 60);
 
 
-        g_snprintf(buffer, 256, "%u:%02u:%02u / %u:%02u:%02u",
-                h, m, s, th, tm, ts);
+        g_snprintf(buffer, 256, "%u:%02u:%02u.%03u / %u:%02u:%02u.%03u",
+                h, m, s, f, th, tm, ts, tf);
     } else {
-        g_snprintf(buffer, 256, "%u:%02u:%02u", h, m, s);
+        g_snprintf(buffer, 256, "%u:%02u:%02u.%03u", h, m, s, f);
     }
     gtk_label_set_text(GTK_LABEL(runtime_widget), buffer);
 }
@@ -367,7 +371,7 @@ static GtkWidget *create_driver_info_widget(void)
 }
 
 
-/** \brief  Set a label in the driver info grid at \a row to a \addr
+/** \brief  Set a label in the driver info grid at \a row to \a addr
  *
  * \param[in]   row     row in the grid
  * \param[in]   addr    16-bit address
@@ -630,21 +634,21 @@ void vsid_tune_info_widget_set_irq(const char *irq)
  * Also sets progress in current tune and handles skipping to the next tune
  * if HVSC SLDB is found. So it probably does too much.
  *
- * \param[in]   sec run time in seconds
+ * \param[in]   dsec    run time in decaseconds
  */
-void vsid_tune_info_widget_set_time(unsigned int sec)
+void vsid_tune_info_widget_set_time(unsigned int dsec)
 {
     long total;
     gdouble fraction;
 
-    update_runtime_widget(sec);
+    update_runtime_widget(dsec);
 
     /* HVSC support? */
     if (song_lengths != NULL) {
-        /* get song length in seconds */
+        /* get song length in milliseconds */
         total = song_lengths[tune_current - 1];
         /* determine progress bar value */
-        fraction = 1.0 - ((gdouble)(total - sec) / (gdouble)total);
+        fraction = 1.0 - ((gdouble)(total / 100 - dsec) / (gdouble)(total / 100));
         if (fraction < 0.0) {
             fraction = 1.0;
             /* skip to next tune, if repeat is off */
