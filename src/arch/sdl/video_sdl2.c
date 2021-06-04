@@ -568,7 +568,7 @@ static int sdl_window_create(const char *title, unsigned int width, unsigned int
 
         strcat(rendername, info.name);
         strcat(rendername, " ");
-        renderlist[it] = lib_stralloc(info.name);
+        renderlist[it] = lib_strdup(info.name);
     }
     renderlist[it] = NULL;
 
@@ -837,7 +837,7 @@ void video_canvas_resize(struct video_canvas_s *canvas, char resize_canvas)
         canvas->texture = new_texture;
         canvas->videoconfig->hwscale = 1;
 
-        log_message(sdlvideo_log, "%s (%s) %ix%i %ibpp %s", canvas->videoconfig->chip_name, (canvas == sdl_active_canvas) ? "active" : "inactive", width, height, sdl_bitdepth, (canvas->fullscreenconfig->enable) ? " (fullscreen)" : "");
+        log_message(sdlvideo_log, "%s (%s) %ux%u %ibpp %s", canvas->videoconfig->chip_name, (canvas == sdl_active_canvas) ? "active" : "inactive", width, height, sdl_bitdepth, (canvas->fullscreenconfig->enable) ? " (fullscreen)" : "");
 #ifdef SDL_DEBUG
         log_message(sdlvideo_log, "Canvas %ix%i, real %ix%i", new_width, new_height, canvas->real_width, canvas->real_height);
 #endif
@@ -950,7 +950,7 @@ void sdl_ui_init_finalize(void)
     unsigned int width = sdl_active_canvas->width;
     unsigned int height = sdl_active_canvas->height;
     int flags = sdl_active_canvas->fullscreenconfig->enable ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_RESIZABLE;
-    int i;
+    int i, minimized = 0;
 
     if (sdl_gl_aspect_mode == SDL_ASPECT_MODE_CUSTOM) {
         width *= aspect_ratio;
@@ -959,7 +959,19 @@ void sdl_ui_init_finalize(void)
         width *= sdl_active_canvas->geometry->pixel_aspect_ratio;
     }
 
+    /* create window minimized if -minimized was used */
+    resources_get_int("StartMinimized", &minimized);
+    if (minimized) {
+        flags |= SDL_WINDOW_MINIMIZED;
+    }
+
     sdl_window_create(sdl_active_canvas->viewport->title, width, height, flags);
+
+    /* explicitly minimize incase the window was still not created minimized */
+    if (minimized) {
+        SDL_MinimizeWindow(sdl2_window);
+    }
+
     for (i = 0; i < sdl_num_screens; ++i) {
         video_canvas_resize(sdl_canvaslist[i], 1);
     }

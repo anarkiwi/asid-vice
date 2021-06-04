@@ -46,11 +46,15 @@
 #include "vic20memoryexpansionwidget.h"
 
 
+/** \brief  Number of RAM blocks that can be enabled in xvic
+ */
+#define RAM_BLOCK_COUNT 5
+
 /** \brief  Struct containing information on the "common configurations"
  */
 typedef struct common_config_s {
     const char *text;   /**< description */
-    int blocks[5];      /**< enabled/disables states for blocks 0/1/2/3/5 */
+    int blocks[RAM_BLOCK_COUNT];    /**< enabled states for blocks 0/1/2/3/5 */
 } common_config_t;
 
 
@@ -62,7 +66,7 @@ static const vice_gtk3_radiogroup_entry_t ram_blocks[] = {
     { "Block 2 (8KB at $4000-$5FFF)", 2 },
     { "Block 3 (8KB at $6000-$7FFF)", 3 },
     { "Block 5 (8KB at $A000-$BFFF)", 5 },
-    { NULL, -1 }
+    VICE_GTK3_RADIOGROUP_ENTRY_LIST_END
 };
 
 
@@ -88,36 +92,93 @@ static const common_config_t common_configs[] = {
 static GtkWidget *blocks_widget = NULL;
 
 
-/* currently unused */
-#if 0
-/** \brief  Get index of RAM \a block in array
+/** \brief  Reference to the common configs combo box
  *
- * \param[in]   block   VIC20 RAM block
- *
- * \return  index in array or -1 when not found
+ * Used by the toggle buttons to set the proper common config
  */
-static int get_ram_block_index(int block)
+static GtkWidget *configs_combo = NULL;
+
+
+/** \brief  Get index in common configs array
+ *
+ * Inspects the various RAM blocks and tries to find a matching entry in the
+ * common configs array.
+ *
+ * \param[in]   widget  widget containing the check buttons
+ *
+ * \return  index in the common configs array, or -1 when not found
+ *
+ * \note    Probably can remove the \a widget argument, we have a reference to
+ *          that with the 'blocks_widget'.
+ */
+static int get_common_config_index(GtkWidget *widget)
 {
+    int blocks[RAM_BLOCK_COUNT];
     int i;
 
-    for (i = 0; ram_blocks[i].text != NULL; i++) {
-        if (ram_blocks[i].value == block) {
+    /* collect current config */
+    for (i = 0; ram_blocks[i].name != NULL; i++) {
+        GtkWidget *toggle = gtk_grid_get_child_at(
+                GTK_GRID(widget), 0, i + 1);
+        blocks[i] = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle))
+            ? 1 : 0;
+    }
+    debug_gtk3("current config = { %d, %d, %d, %d, %d }.",
+            blocks[0], blocks[1], blocks[2], blocks[3], blocks[4]);
+
+    /* look up current config in list of common configs */
+    for (i = 0; common_configs[i].text != NULL; i++) {
+        int b;
+
+        for (b = 0; b < RAM_BLOCK_COUNT; b++) {
+            if (blocks[b] != common_configs[i].blocks[b]) {
+                /* no match */
+                break;
+            }
+        }
+        if (b == RAM_BLOCK_COUNT) {
+            /* got a match */
             return i;
         }
     }
     return -1;
 }
-#endif
+
+
+/** \brief  Update the common configs combo box when a RAM block toggle changed
+ *
+ * Collects the current configuration of enabled RAM blocks and checks that
+ * against commenly used configs and sets the combo box accordingly.
+ *
+ * \param[in]   widget  RAM block toggle button
+ */
+static void update_common_config_combo(GtkWidget *widget)
+{
+    GtkWidget *parent;
+
+    /* get grid containing the toggle button */
+    debug_gtk3("grabbing parent widget of toggle button.");
+    parent = gtk_widget_get_parent(widget);
+    if (GTK_IS_GRID(parent)) {
+
+        int i = get_common_config_index(parent);
+
+        if (i < 0) {
+            debug_gtk3("Got no match.");
+        }
+        gtk_combo_box_set_active(GTK_COMBO_BOX(configs_combo), i);
+    } else {
+        debug_gtk3("oeps.");
+    }
+}
+
+
 
 
 /** \brief  Handler for the "toggled" event of the check buttons
  *
  * \param[in]   widget      check button triggering the event
  * \param[in]   user_data   RAM block ID (`int`)
- *
- * XXX: perhaps update the "common configurations" combo box depending on the
- *      currently active RAM expansions? (Gtk2 doesn't appear to do it, but it
- *      would be nice addition
  */
 static void on_ram_block_toggled(GtkWidget *widget, gpointer user_data)
 {
@@ -131,6 +192,8 @@ static void on_ram_block_toggled(GtkWidget *widget, gpointer user_data)
         debug_gtk3("setting RamBlock%d to %s.",
                 block, new_state ? "ON" : "OFF");
         resources_set_int_sprintf("RamBlock%d", new_state, block);
+        /* update common configurations combo box */
+        update_common_config_combo(widget);
     }
 }
 
@@ -172,21 +235,20 @@ static void on_common_config_changed(GtkWidget *widget, gpointer user_data)
 static GtkWidget * vic20_common_config_widget_create(void)
 {
     GtkWidget *grid;
-    GtkWidget *combo;
     int i;
 
     grid = uihelpers_create_grid_with_label("Common configurations", 1);
 
-    combo = gtk_combo_box_text_new();
-    g_object_set(combo, "margin-left", 16, NULL);
+    configs_combo = gtk_combo_box_text_new();
+    g_object_set(configs_combo, "margin-left", 16, NULL);
     for (i = 0; common_configs[i].text != NULL; i++) {
-        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo),
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(configs_combo),
                NULL, common_configs[i].text);
     }
-    g_signal_connect(combo, "changed", G_CALLBACK(on_common_config_changed),
-            NULL);
+    g_signal_connect(configs_combo, "changed",
+            G_CALLBACK(on_common_config_changed), NULL);
 
-    gtk_grid_attach(GTK_GRID(grid), combo, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), configs_combo, 0, 1, 1, 1);
     gtk_widget_show_all(grid);
     return grid;
 }
@@ -231,6 +293,7 @@ GtkWidget *vic20_memory_expansion_widget_create(void)
 {
     GtkWidget *grid;
     GtkWidget *common;
+    int cfg_idx;
 
     grid = uihelpers_create_grid_with_label("Memory expansions", 1);
 
@@ -241,6 +304,11 @@ GtkWidget *vic20_memory_expansion_widget_create(void)
     blocks_widget = vic20_ram_blocks_widget_create();
     g_object_set(blocks_widget, "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(grid), blocks_widget, 0, 2, 1, 1);
+
+    /* set proper 'common configs' combobox index */
+    cfg_idx = get_common_config_index(blocks_widget);
+    debug_gtk3("Got common configs index %d.", cfg_idx);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(configs_combo), cfg_idx);
 
     gtk_widget_show_all(grid);
     return grid;

@@ -63,6 +63,11 @@ static char *hotkey_file = NULL;
 /* Menu keys */
 int sdl_ui_menukeys[MENU_ACTION_NUM];
 
+/** \brief  Hotkey filename
+ */
+char *hotkey_filename;
+
+
 /* UI hotkeys: index is the key(combo), value is a pointer to the menu item.
    4 is the number of the supported modifiers: shift, alt, control, meta. */
 #define SDLKBD_UI_HOTKEYS_MAX (SDL_NUM_SCANCODES * (1 << 4))
@@ -93,7 +98,8 @@ static resource_string_t resources_string[] = {
 
 int sdlkbd_init_resources(void)
 {
-    resources_string[0].factory_value = archdep_default_hotkey_file_name();
+    hotkey_filename = archdep_default_hotkey_file_name();
+    resources_string[0].factory_value = hotkey_filename;
 
     if (resources_register_string(resources_string) < 0) {
         return -1;
@@ -103,8 +109,7 @@ int sdlkbd_init_resources(void)
 
 void sdlkbd_resources_shutdown(void)
 {
-    lib_free(resources_string[0].factory_value);
-    resources_string[0].factory_value = NULL;
+    lib_free(hotkey_filename);
     lib_free(hotkey_file);
     hotkey_file = NULL;
 }
@@ -258,29 +263,28 @@ SDLKey SDL1x_to_SDL2x_Keys(SDLKey key)
 }
 #endif
 
+/* get index for the hotkeys lookup table */
 static inline int sdlkbd_key_mod_to_index(SDLKey key, SDLMod mod)
 {
     int i = 0;
-
-    mod &= (KMOD_CTRL | KMOD_SHIFT | KMOD_ALT | KMOD_META);
-
-    if (mod) {
-        if (mod & KMOD_SHIFT) {
-            i |= (1 << 0);
-        }
-
-        if (mod & KMOD_ALT) {
-            i |= (1 << 1);
-        }
-
-        if (mod & KMOD_CTRL) {
-            i |= (1 << 2);
-        }
-
-        if (mod & KMOD_META) {
-            i |= (1 << 3);
-        }
+    
+    if (mod & KMOD_SHIFT) {
+        i |= (1 << 0);
     }
+    /* use only left alt here, because alt-gr would be reported as right alt,
+       and alt-gr might be used in keymaps */
+    if (mod & KMOD_LALT) {
+        i |= (1 << 1);
+    }
+
+    if (mod & KMOD_CTRL) {
+        i |= (1 << 2);
+    }
+
+    if (mod & KMOD_META) {
+        i |= (1 << 3);
+    }
+
     return (i * SDL_NUM_SCANCODES) + key;
 }
 
@@ -297,7 +301,6 @@ void sdlkbd_set_hotkey(SDLKey key, SDLMod mod, ui_menu_entry_t *value)
 static void sdlkbd_keyword_clear(void)
 {
     int i;
-
     for (i = 0; i < SDLKBD_UI_HOTKEYS_MAX; ++i) {
         sdlkbd_ui_hotkeys[i] = NULL;
     }
@@ -332,7 +335,7 @@ static void sdlkbd_parse_entry(char *buffer)
 
     p = strtok(NULL, "\r\n");
     if (p != NULL) {
-        full_path = lib_stralloc(p);
+        full_path = lib_strdup(p);
         action = sdl_ui_hotkey_action(p);
         if (action == NULL) {
             log_warning(sdlkbd_log, "Cannot find menu item \"%s\"!", full_path);
@@ -450,14 +453,53 @@ int sdlkbd_hotkeys_dump(const char *filename)
 
 /* ------------------------------------------------------------------------ */
 
+static int sdlkbd_get_modifier(SDLMod mod)
+{
+    int ret = 0;
+    if (mod & KMOD_LSHIFT) {
+        ret |= KBD_MOD_LSHIFT;
+    }
+    if (mod & KMOD_RSHIFT) {
+        ret |= KBD_MOD_RSHIFT;
+    }
+    if (mod & KMOD_LALT) {
+        ret |= KBD_MOD_LALT;
+    }
+    if (mod & KMOD_RALT) {
+        ret |= KBD_MOD_RALT;
+    }
+    if (mod & KMOD_LCTRL) {
+        ret |= KBD_MOD_LCTRL;
+    }
+    return ret;
+}
+
 ui_menu_action_t sdlkbd_press(SDLKey key, SDLMod mod)
 {
     ui_menu_action_t i, retval = MENU_ACTION_NONE;
     ui_menu_entry_t *hotkey_action = NULL;
 
 #ifdef SDL_DEBUG
-    fprintf(stderr, "%s: %i (%s),%i\n", __func__, key, SDL_GetKeyName(key), mod);
+    log_debug("%s: %i (%s),%04x", __func__, key, SDL_GetKeyName(key), mod);
 #endif
+#ifdef WIN32_COMPILE
+/* HACK: The Alt-Gr Key seems to work differently on windows and linux.
+         On Linux one Keypress "SDLK_RALT" will be produced.
+         On Windows two Keypresses will be produced, first "SDLK_LCTRL"
+         then "SDLK_RALT".
+         The following is a hack to compensate for that and make it
+         always work like on linux.
+*/
+    if (SDL1x_to_SDL2x_Keys(key) == SDLK_RALT) {
+        mod &= ~KMOD_LCTRL;
+        keyboard_key_released(SDL2x_to_SDL1x_Keys(SDLK_LCTRL), KBD_MOD_LCTRL);
+    } else {
+        if ((mod & KMOD_LCTRL) && (mod & KMOD_RALT)) {
+            mod &= ~KMOD_LCTRL;
+        }
+    }
+#endif
+
     if (sdl_menu_state || (sdl_vkbd_state & SDL_VKBD_ACTIVE)) {
         if (key != SDLK_UNKNOWN) {
             for (i = MENU_ACTION_UP; i < MENU_ACTION_NUM; ++i) {
@@ -483,7 +525,7 @@ ui_menu_action_t sdlkbd_press(SDLKey key, SDLMod mod)
         return retval;
     }
 
-    keyboard_key_pressed((unsigned long)key);
+    keyboard_key_pressed((unsigned long)key, sdlkbd_get_modifier(mod));
     return retval;
 }
 
@@ -492,8 +534,21 @@ ui_menu_action_t sdlkbd_release(SDLKey key, SDLMod mod)
     ui_menu_action_t i, retval = MENU_ACTION_NONE_RELEASE;
 
 #ifdef SDL_DEBUG
-    fprintf(stderr, "%s: %i (%s),%i\n", __func__, key, SDL_GetKeyName(key), mod);
+    log_debug("%s: %i (%s),%04x", __func__, key, SDL_GetKeyName(key), mod);
 #endif
+
+#ifdef WIN32_COMPILE
+/* HACK: The Alt-Gr Key seems to work differently on windows and linux.
+         see above */
+    if (SDL1x_to_SDL2x_Keys(key) == SDLK_RALT) {
+        mod &= ~KMOD_LCTRL;
+    } else {
+        if ((mod & KMOD_LCTRL) && (mod & KMOD_RALT)) {
+            mod &= ~KMOD_LCTRL;
+        }
+    }
+#endif
+
     if (sdl_vkbd_state & SDL_VKBD_ACTIVE) {
         if (key != SDLK_UNKNOWN) {
             for (i = MENU_ACTION_UP; i < MENU_ACTION_NUM; ++i) {
@@ -506,7 +561,7 @@ ui_menu_action_t sdlkbd_release(SDLKey key, SDLMod mod)
         return retval + MENU_ACTION_NONE_RELEASE;
     }
 
-    keyboard_key_released((unsigned long)key);
+    keyboard_key_released((unsigned long)key, sdlkbd_get_modifier(mod));
     return retval;
 }
 

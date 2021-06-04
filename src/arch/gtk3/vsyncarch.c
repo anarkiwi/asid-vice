@@ -35,12 +35,7 @@
 #include "vsyncapi.h"
 #include "videoarch.h"
 
-#ifdef HAS_JOYSTICK
 #include "joy.h"
-#endif
-#ifdef WIN32_COMPILE
-#include "joy-win32.h"
-#endif
 
 #ifdef HAVE_NANOSLEEP
 #include <time.h>
@@ -92,7 +87,7 @@ unsigned long vsyncarch_gettime(void)
     uint64_t time = mach_absolute_time();
     if (!factor) {
         mach_timebase_info_data_t info;
-        kern_return_t ret = mach_timebase_info(&info);
+		mach_timebase_info(&info);
         factor = info.numer / info.denom;
     }
     return time * factor;
@@ -176,13 +171,7 @@ void vsyncarch_presync(void)
 {
     ui_update_lightpen();
     kbdbuf_flush();
-#ifdef HAS_JOYSTICK
     joystick();
-#endif
-#ifdef WIN32_COMPILE
-    joystick_update();
-#endif
-
 }
 
 void_hook_t vsync_set_event_dispatcher(void_hook_t hook)
@@ -193,7 +182,9 @@ void_hook_t vsync_set_event_dispatcher(void_hook_t hook)
     return t;
 }
 
-/* FIXME: ui_pause_emulation is not implemented in the OSX port */
+/* FIXME: ui_pause_emulation is not implemented in the OSX port
+ *        (Not true anymore I think)
+ */
 void vsyncarch_postsync(void)
 {
     (*ui_dispatch_hook)();
@@ -201,13 +192,13 @@ void vsyncarch_postsync(void)
     /* this function is called once a frame, so this
        handles single frame advance */
     if (pause_pending) {
-        ui_pause_emulation(1);
+        ui_pause_enable();
         pause_pending = 0;
     }
 }
 
 void vsyncarch_advance_frame(void)
 {
-    ui_pause_emulation(0);
+    ui_pause_disable();
     pause_pending = 1;
 }

@@ -242,19 +242,19 @@ ui_menu_action_t ui_dispatch_events(void)
     }
     if (loadf->abort) {
         loadf->abort = 0;
-        ui_pause_emulation(1);
+        ui_pause_enable();
         ui_sdl_quit();
-        ui_pause_emulation(0);
+        ui_pause_disable(); /* does this even get called after ui_sdl_quit()? */
         return MENU_ACTION_NONE;
     } else if (loader_loadstate) {
         loader_loadstate = 0;
         loader_load_snapshot(savestate_filename);
-        ui_pause_emulation(0);
+        ui_pause_disable();
         return MENU_ACTION_NONE;
     } else if (loader_savestate) {
         loader_savestate = 0;
         loader_save_snapshot(savestate_filename);
-        ui_pause_emulation(0);
+        ui_pause_disable();
         return MENU_ACTION_NONE;
     }
 
@@ -606,6 +606,7 @@ void ui_message(const char* format, ...)
 
 static int save_resources_on_exit;
 static int confirm_on_exit;
+static int start_minimized;
 
 static int set_ui_menukey(int val, void *param)
 {
@@ -636,6 +637,19 @@ static int set_native_monitor(int val, void *param)
     return 0;
 }
 #endif
+
+/** \brief  Set StartMinimized resource (bool)
+ *
+ * \param[in]   val     0: start normal 1: start minimized
+ * \param[in]   param   extra param (ignored)
+ *
+ * \return 0
+ */
+static int set_start_minimized(int val, void *param)
+{
+    start_minimized = val ? 1 : 0;
+    return 0;
+}
 
 #ifdef __sortix__
 #define DEFAULT_MENU_KEY SDLK_END
@@ -684,6 +698,8 @@ static const resource_int_t resources_int[] = {
     { "NativeMonitor", 0, RES_EVENT_NO, NULL,
       &native_monitor, set_native_monitor, NULL },
 #endif
+    { "StartMinimized", 0, RES_EVENT_NO, NULL,
+      &start_minimized, set_start_minimized, NULL },
     RESOURCE_INT_LIST_END
 };
 
@@ -785,6 +801,12 @@ static const cmdline_option_t cmdline_options[] =
       NULL, NULL, "NativeMonitor", (resource_value_t)0,
       NULL, "Disable native monitor" },
 #endif
+    { "-minimized", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+        NULL, NULL, "StartMinimized", (void *)1,
+        NULL, "Start VICE minimized" },
+    { "+minimized", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+        NULL, NULL, "StartMinimized", (void *)0,
+        NULL, "Do not start VICE minimized" },
     CMDLINE_LIST_END
 };
 
@@ -796,12 +818,14 @@ static const cmdline_option_t statusbar_cmdline_options[] =
     { "+statusbar", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
       NULL, NULL, "SDLStatusbar", (resource_value_t)0,
       NULL, "Disable statusbar" },
+#if 0
     { "-kbdstatusbar", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
-      NULL, NULL, "SDLKbdStatusbar", (resource_value_t)1,
+      NULL, NULL, "KbdStatusbar", (resource_value_t)1,
       NULL, "Enable keyboard-status bar" },
     { "+kbdstatusbar", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
-      NULL, NULL, "SDLKbdStatusbar", (resource_value_t)0,
+      NULL, NULL, "KbdStatusbar", (resource_value_t)0,
       NULL, "Disable keyboard-status bar" },
+#endif
     CMDLINE_LIST_END
 };
 

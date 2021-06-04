@@ -445,14 +445,17 @@ static int efe0_dump(void)
     int i;
     int mask = 1;
 
-    mon_out("efe0 = $%02x; previous in = $%02x; odd/even = %d\n", dongle6702.val, dongle6702.prevodd, dongle6702.wantodd);
+    mon_out("efe0 = $%02x; previous in = $%02x; odd/even = %d\n",
+            (unsigned int)dongle6702.val,
+            (unsigned int)dongle6702.prevodd,
+            dongle6702.wantodd);
     for (i = 0; i < 8; i++, mask <<= 1) {
         int j;
         int maskj;
         int sh = dongle6702.shift[i];
         int lm = leftmost[i];
 
-        mon_out("%d %3d: $%02x  %%", i, mask, sh);
+        mon_out("%d %3d: $%02x  %%", i, mask, (unsigned int)sh);
 
         for (j = 7, maskj = 1 << j; j >= 0; j--, maskj >>= 1) {
             if (maskj > lm) {
@@ -1568,12 +1571,33 @@ void mem_set_basic_text(uint16_t start, uint16_t end)
             mem_ram[basicstart + 7] = mem_ram[loadadr + 3] = end >> 8;
 }
 
+/* this function should always read from the screen currently used by the kernal
+   for output, normally this does just return system ram - except when the 
+   videoram is not memory mapped.
+   used by autostart to "read" the kernal messages
+*/
+uint8_t mem_read_screen(uint16_t addr)
+{
+    return ram_read(addr);
+}
+
 void mem_inject(uint32_t addr, uint8_t value)
 {
     /* just call mem_store() to be safe.
        This could possibly be changed to write straight into the
        memory array.  mem_ram[addr & mask] = value; */
     mem_store((uint16_t)(addr & 0xffff), value);
+}
+
+/* In banked memory architectures this will always write to the bank that
+   contains the keyboard buffer and "number of keys in buffer", regardless of
+   what the CPU "sees" currently.
+   In all other cases this just writes to the first 64kb block, usually by
+   wrapping to mem_inject().
+*/
+void mem_inject_key(uint16_t addr, uint8_t value)
+{
+    mem_inject(addr, value);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1698,6 +1722,7 @@ uint8_t mem_bank_read(int bank, uint16_t addr, void *context)
     return mem_ram[addr];
 }
 
+/* used by monitor if sfx off */
 uint8_t mem_bank_peek(int bank, uint16_t addr, void *context)
 {
     switch (bank) {
@@ -1759,6 +1784,13 @@ void mem_bank_write(int bank, uint16_t addr, uint8_t byte, void *context)
     mem_ram[addr] = byte;
 }
 
+/* used by monitor if sfx off */
+void mem_bank_poke(int bank, uint16_t addr, uint8_t byte, void *context)
+{
+    mem_bank_write(bank, addr, byte, context);
+}
+
+
 static int mem_dump_io(void *context, uint16_t addr)
 {
     if ((addr >= 0xe810) && (addr <= 0xe81f)) {
@@ -1794,12 +1826,12 @@ static int mem_dump_io(void *context, uint16_t addr)
                     petres.superpet_cpu_switch == SUPERPET_CPU_6502 ? "6502" :
                     petres.superpet_cpu_switch == SUPERPET_CPU_6809 ? "6809" :
                     "PROG (unimpl)");
-            mon_out("RAM write protect: $%x\n", spet_ramwp);
-            mon_out("diagnostic sense: $%x\n", spet_diag);
+            mon_out("RAM write protect: $%x\n", (unsigned int)spet_ramwp);
+            mon_out("diagnostic sense: $%x\n", (unsigned int)spet_diag);
             return 0;
         } else if (addr == 0xeffc) {
             /* Bank select */
-            mon_out("bank: $%x\n", spet_bank);
+            mon_out("bank: $%x\n", (unsigned int)spet_bank);
             mon_out("control write protect: %d\n", spet_ctrlwp);
             mon_out("flat (super-os9) mode: %d\n", !!spet_flat_mode);
             mon_out("firq disabled: %d\n", !!spet_firq_disabled);
@@ -1861,12 +1893,30 @@ int petmem_get_rom_columns(void)
     return petres.rom_video;
 }
 
+/* FIXME: this is incomplete */
 void mem_get_screen_parameter(uint16_t *base, uint8_t *rows, uint8_t *columns, int *bank)
 {
     *base = 0x8000;
     *rows = 25;
     *columns = (uint8_t)petmem_get_screen_columns();
     *bank = 0;
+}
+
+/* used by autostart to locate and "read" kernal output on the current screen
+ * this function should return whatever the kernal currently uses, regardless
+ * what is currently visible/active in the UI. 
+ */
+void mem_get_cursor_parameter(uint16_t *screen_addr, uint8_t *cursor_column, uint8_t *line_length, int *blinking)
+{
+    /* Cursor Blink enable: 1 = Flash Cursor, 0 = Cursor disabled, -1 = n/a */
+    if (petres.kernal_checksum == PET_KERNAL1_CHECKSUM) {
+        *blinking = mem_ram[0x224] ? 0 : 1;
+    } else {
+        *blinking = mem_ram[0xa7] ? 0 : 1;
+    }
+    *screen_addr = mem_ram[0xc4] + mem_ram[0xc5] * 256; /* Current Screen Line Address */
+    *cursor_column = mem_ram[0xc6];    /* Cursor Column on Current Line */
+    *line_length = petres.rom_video;   /* Physical Screen Line Length */
 }
 
 /************************** PET resource handling ************************/
@@ -1894,3 +1944,12 @@ int cartridge_attach_image(int type, const char *name)
 {
     return -1;
 }
+
+void cartridge_detach_image(int type)
+{
+}
+
+void cartridge_unset_default(void)
+{
+}
+

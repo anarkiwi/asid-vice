@@ -30,6 +30,7 @@
 
 #include "attach.h"
 #include "autostart.h"
+#include "drive.h"
 #include "tape.h"
 #include "debug_gtk3.h"
 #include "basedialogs.h"
@@ -39,6 +40,7 @@
 #include "filechooserhelpers.h"
 #include "driveunitwidget.h"
 #include "ui.h"
+#include "uistatusbar.h"
 #include "uimachinewindow.h"
 #include "lastdir.h"
 
@@ -72,7 +74,7 @@ static gchar *last_dir = NULL;
 
 /** \brief  Unit number to attach disk to
  */
-static int unit_number = 8;
+static int unit_number = DRIVE_UNIT_DEFAULT;
 
 #if 0
 /** \brief  Update the last directory reference
@@ -142,29 +144,40 @@ static void on_update_preview(GtkFileChooser *chooser, gpointer data)
     if (file != NULL) {
         path = g_file_get_path(file);
         if (path != NULL) {
+            gchar *filename_locale = file_chooser_convert_to_locale(path);
+
             debug_gtk3("called with '%s'.", path);
 
-            content_preview_widget_set_image(preview_widget, path);
-           g_free(path);
+            content_preview_widget_set_image(preview_widget, filename_locale);
+            g_free(path);
+            g_free(filename_locale);
         }
         g_object_unref(file);
     }
 }
 
 
-
+/** \brief  Trigger autostarting a disk image
+ *
+ * \param[in,out]   widget      dialog
+ * \param[in]       user_data   file index in the image
+ */
 static void do_autostart(GtkWidget *widget, gpointer user_data)
 {
     gchar *filename;
+    gchar *filename_locale;
     int index = GPOINTER_TO_INT(user_data);
 
     lastdir_update(widget, &last_dir);
     filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));
+    /* convert filename to current locale */
+    filename_locale = file_chooser_convert_to_locale(filename);
+
     debug_gtk3("Autostarting file '%s'.", filename);
     /* if this function exists, why is there no attach_autodetect()
      * or something similar? -- compyx */
     if (autostart_disk(
-                filename,
+                filename_locale,
                 NULL,   /* program name */
                 index,  /* Program number? Probably used when clicking
                            in the preview widget to load the proper
@@ -174,14 +187,17 @@ static void do_autostart(GtkWidget *widget, gpointer user_data)
         debug_gtk3("autostart disk attach failed.");
     }
     g_free(filename);
+    g_free(filename_locale);
     gtk_widget_destroy(widget);
 }
 
 
+#if 0
 static void on_file_activated(GtkWidget *chooser, gpointer data)
 {
     do_autostart(chooser, data);
 }
+#endif
 
 
 
@@ -201,29 +217,42 @@ static void on_response(GtkWidget *widget, gint response_id,
                         gpointer user_data)
 {
     gchar *filename;
-    int index;
+    gchar *filename_locale;
+    gchar buffer[1024];
 
-    index = GPOINTER_TO_INT(user_data);
-
+#ifdef HAVE_DEBUG_GTK3UI
+    int index = GPOINTER_TO_INT(user_data);
     debug_gtk3("got response ID %d, index %d.", response_id, index);
+#endif
 
     switch (response_id) {
 
         /* 'Open' button, double-click on file */
         case GTK_RESPONSE_ACCEPT:
+
             lastdir_update(widget, &last_dir);
             filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));
+            /* convert filename to current locale */
+            filename_locale = file_chooser_convert_to_locale(filename);
+
             /* ui_message("Opening file '%s' ...", filename); */
             debug_gtk3("Attaching file '%s' to unit #%d.",
                     filename, unit_number);
 
             /* copied from Gtk2: I fail to see how brute-forcing your way
              * through file types is 'smart', but hell, it works */
-            if (file_system_attach_disk(unit_number, filename) < 0) {
+            if (file_system_attach_disk(unit_number, filename_locale) < 0) {
                 /* failed */
                 debug_gtk3("disk attach failed.");
+                g_snprintf(buffer, 1024, "Unit #%d: failed to attach '%s'",
+                        unit_number, filename);
+            } else {
+                g_snprintf(buffer, 1024, "Unit #%d: attached '%s'",
+                        unit_number, filename);
             }
+            ui_display_statustext(buffer, 1);
             g_free(filename);
+            g_free(filename_locale);
             gtk_widget_destroy(widget);
             break;
 
@@ -317,8 +346,8 @@ static GtkWidget *create_disk_attach_dialog(GtkWidget *parent, int unit)
     lastdir_set(dialog, &last_dir);
 
     /* add 'extra' widget: 'readony' and 'show preview' checkboxes */
-    if (unit < 8 || unit > 11) {
-        unit = 8;
+    if (unit < DRIVE_UNIT_MIN || unit > DRIVE_UNIT_MAX) {
+        unit = DRIVE_UNIT_DEFAULT;
     }
     gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(dialog),
                                       create_extra_widget(dialog, unit));
@@ -340,8 +369,11 @@ static GtkWidget *create_disk_attach_dialog(GtkWidget *parent, int unit)
             G_CALLBACK(on_response), GINT_TO_POINTER(0));
     g_signal_connect(dialog, "update-preview",
             G_CALLBACK(on_update_preview), NULL);
+#if 0
+    /* Double click: autostart */
     g_signal_connect(dialog, "file-activated",
             G_CALLBACK(on_file_activated), NULL);
+#endif
     return dialog;
 
 }
@@ -354,15 +386,18 @@ static GtkWidget *create_disk_attach_dialog(GtkWidget *parent, int unit)
  * \param[in]   widget      menu item triggering the callback
  * \param[in]   user_data   integer from 8-11 for the default drive to attach
  *                          (for some reason auto-attach always ultra uses #8)
+ *
+ * \return  TRUE
  */
-void ui_disk_attach_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_disk_attach_callback(GtkWidget *widget, gpointer user_data)
 {
     GtkWidget *dialog;
 
     dialog = create_disk_attach_dialog(widget, GPOINTER_TO_INT(user_data));
     gtk_widget_show(dialog);
-
+    return TRUE;
 }
+
 
 /** \brief  Callback for "detach from #%d" menu items
  *
@@ -372,12 +407,16 @@ void ui_disk_attach_callback(GtkWidget *widget, gpointer user_data)
  * \param[in]   widget      menu item triggering the callback
  * \param[in]   user_data   integer from 8-11 for the drive to
  *                          close, or -1 to detach all disks
+ *
+ * \return  TRUE
  */
-void ui_disk_detach_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_disk_detach_callback(GtkWidget *widget, gpointer user_data)
 {
     /* This function does its own interpretation and input validation,
      * so we can simply forward the call directly. */
+    debug_gtk3("Detaching unit #%d.", GPOINTER_TO_INT(user_data));
     file_system_detach_disk(GPOINTER_TO_INT(user_data));
+    return TRUE;
 }
 
 
@@ -385,15 +424,17 @@ void ui_disk_detach_callback(GtkWidget *widget, gpointer user_data)
  *
  * \param[in]   widget  widget (unused)
  * \param[in]   data    extra event data (unused)
+ *
+ * \return  TRUE
  */
-void ui_disk_detach_all_callback(GtkWidget *widget, gpointer data)
+gboolean ui_disk_detach_all_callback(GtkWidget *widget, gpointer data)
 {
     int unit;
 
-    /* TODO: figure out where these integer literals are defined */
-    for (unit = 8; unit < 12; unit++) {
+    for (unit = DRIVE_UNIT_MIN; unit <= DRIVE_UNIT_MAX; unit++) {
         file_system_detach_disk(unit);
     }
+    return TRUE;
 }
 
 

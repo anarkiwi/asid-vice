@@ -89,6 +89,11 @@ extern int cartridge_bin_save(int type, const char *filename);
 extern int cartridge_crt_save(int type, const char *filename);
 extern int cartridge_flush_image(int type);
 
+/* returns 1 when cartridge (ROM) image can be flushed */
+extern int cartridge_can_flush_image(int crtid);
+/* returns 1 when cartridge (ROM) image can be saved */
+extern int cartridge_can_save_image(int crtid);
+
 /* load/write snapshot modules for attached cartridges */
 struct snapshot_s;
 extern int cartridge_snapshot_read_modules(struct snapshot_s *s);
@@ -213,8 +218,9 @@ extern void cartridge_sound_chip_init(void);
 #define CARTRIDGE_RRNETMK3             58 /* rrnetmk3.c */
 #define CARTRIDGE_EASYCALC             59 /* easycalc.c */
 #define CARTRIDGE_GMOD2                60 /* gmod2.c */
+#define CARTRIDGE_MAX_BASIC            61 /* maxbasic.c */
 
-#define CARTRIDGE_LAST                 60 /* cartconv: last cartridge in list */
+#define CARTRIDGE_LAST                 61 /* cartconv: last cartridge in list */
 
 /* list of canonical names for the c64 cartridges:
    note: often it is hard to determine "the" official name, let alone the way it
@@ -277,6 +283,7 @@ extern void cartridge_sound_chip_init(void);
 #define CARTRIDGE_NAME_MAGIC_DESK         "Magic Desk" /* also: "Domark, Hes Australia" */
 #define CARTRIDGE_NAME_MAGIC_FORMEL       "Magic Formel" /* http://rr.pokefinder.org/wiki/Magic_Formel */
 #define CARTRIDGE_NAME_MAGIC_VOICE        "Magic Voice" /* all lowercase on cart ? */
+#define CARTRIDGE_NAME_MAX_BASIC          "MAX Basic"
 #define CARTRIDGE_NAME_MIDI_MAPLIN        "Maplin MIDI"
 #define CARTRIDGE_NAME_MIKRO_ASSEMBLER    "Mikro Assembler"
 #define CARTRIDGE_NAME_MMC64              "MMC64" /* see manual */
@@ -454,10 +461,5 @@ typedef struct {
 #define CARTRIDGE_GROUP_UTIL            0x0010
 
 extern cartridge_info_t *cartridge_get_info_list(void);
-
-
-const char *cartridge_current_filename(void);
-
-void cartridge_wipe_filename(void);
 
 #endif

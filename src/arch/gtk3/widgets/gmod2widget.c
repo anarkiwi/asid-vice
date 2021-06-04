@@ -130,10 +130,14 @@ static GtkWidget *create_cart_image_widget(void)
     g_signal_connect(save_button, "clicked", G_CALLBACK(on_save_clicked),
             NULL);
     gtk_grid_attach(GTK_GRID(grid), save_button, 1, 1, 1, 1);
+    gtk_widget_set_sensitive(save_button,
+            (gboolean)(carthelpers_can_save_func(CARTRIDGE_GMOD2)));
 
     flush_button = gtk_button_new_with_label("Flush image now");
     g_signal_connect(flush_button, "clicked", G_CALLBACK(on_flush_clicked),
             NULL);
+    gtk_widget_set_sensitive(flush_button,
+            (gboolean)(carthelpers_can_flush_func(CARTRIDGE_GMOD2)));
     gtk_grid_attach(GTK_GRID(grid), flush_button, 2, 1, 1, 1);
 
     gtk_widget_show_all(grid);

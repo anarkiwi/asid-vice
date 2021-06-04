@@ -296,22 +296,32 @@ static void machine_vsync_hook(void)
     static unsigned int time = 0;
 
     if (vsid_autostart_delay > 0) {
-        if (-- vsid_autostart_delay == 0) {
+        if (--vsid_autostart_delay == 0) {
             log_message(c64_log, "Triggering VSID autoload");
             psid_init_tune(0);
             for (i = 0; i < vsid_autostart_length; i += 1) {
-                mem_inject((uint16_t)(vsid_autostart_load_addr + i), vsid_autostart_data[i]);
+                mem_inject((uint16_t)(vsid_autostart_load_addr + i),
+                        vsid_autostart_data[i]);
             }
-            mem_set_basic_text(vsid_autostart_load_addr, (uint16_t)(vsid_autostart_load_addr + vsid_autostart_length));
+            mem_set_basic_text(vsid_autostart_load_addr,
+                    (uint16_t)(vsid_autostart_load_addr + vsid_autostart_length));
             kbdbuf_feed_runcmd("RUN\r");
         }
     }
 
-    playtime = (psid_increment_frames() * machine_timing.cycles_per_rfsh) / machine_timing.cycles_per_sec;
+#if 0
+    playtime = (psid_increment_frames() * machine_timing.cycles_per_rfsh)
+        / machine_timing.cycles_per_sec;
+#else
+    /* Count deciseconds */
+    playtime = (double)psid_increment_frames()
+        / machine_timing.rfsh_per_sec * 10.0;
+#endif
     if (playtime != time) {
-        vsid_ui_display_time(playtime);
         time = playtime;
+        vsid_ui_display_time(playtime);
     }
+
     clk_guard_prevent_overflow(maincpu_clk_guard);
 }
 

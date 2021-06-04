@@ -43,7 +43,8 @@ int (*carthelpers_flush_func)(int type);
 int (*carthelpers_is_enabled_func)(int type);
 int (*carthelpers_enable_func)(int type);
 int (*carthelpers_disable_func)(int type);
-
+int (*carthelpers_can_save_func)(int type);
+int (*carthelpers_can_flush_func)(int type);
 
 /** \brief  Placeholder function for functions accepting (int)
  *
@@ -92,19 +93,24 @@ static int null_handler_save(int type, const char *filename)
  * \param[in]   is_enabled_func cartridge enabled state function
  * \param[in]   enable_func     cartridge enable function
  * \param[in]   disable_func    cartridge disable function
+ * \param[in]   filename_func   cartridge filename function
  */
 void carthelpers_set_functions(
         int (*save_func)(int, const char *),
         int (*flush_func)(int),
         int (*is_enabled_func)(int),
         int (*enable_func)(int),
-        int (*disable_func)(int))
+        int (*disable_func)(int),
+        int (*can_save_func)(int),
+        int (*can_flush_func)(int))
 {
     carthelpers_save_func = save_func ? save_func : null_handler_save;
     carthelpers_flush_func = flush_func ? flush_func : null_handler;
     carthelpers_is_enabled_func = is_enabled_func ? is_enabled_func : null_handler;
     carthelpers_enable_func = enable_func ? enable_func : null_handler;
     carthelpers_disable_func = disable_func ? disable_func : null_handler;
+    carthelpers_can_save_func = can_save_func ? can_save_func : null_handler;
+    carthelpers_can_flush_func = can_flush_func ? can_flush_func : null_handler;
 }
 
 
@@ -147,10 +153,10 @@ static void on_cart_enable_check_button_toggled(GtkCheckButton *check,
 
     id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(check), "CartridgeId"));
     state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(check));
-
+#if 0
     debug_gtk3("setting to %s '%s' (%d).", state ? "enable" : "disable",
             name, id);
-
+#endif
     if (state) {
         if (carthelpers_enable_func(id) < 0) {
             debug_gtk3("failed to enable %s cartridge.", name);
@@ -195,7 +201,7 @@ GtkWidget *carthelpers_create_enable_check_button(const char *cart_name,
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check),
             carthelpers_is_enabled_func(cart_id));
 
-    name = lib_stralloc(cart_name);
+    name = lib_strdup(cart_name);
     g_object_set_data(G_OBJECT(check), "CartridgeName", (gpointer)name);
     g_object_set_data(G_OBJECT(check), "CartridgeId", GINT_TO_POINTER(cart_id));
 

@@ -72,8 +72,11 @@ static void on_response(GtkWidget *widget, gint response_id, gpointer data)
         case GTK_RESPONSE_ACCEPT:
             filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));
             if (filename != NULL) {
+                gchar *filename_locale = file_chooser_convert_to_locale(filename);
+
                 /* create tape */
-                status = create_tape_image(filename);
+                status = create_tape_image(filename_locale);
+                g_free(filename_locale);
             }
             g_free(filename);
             if (status) {
@@ -152,7 +155,7 @@ static GtkWidget *create_extra_widget(void)
  * \param[in]   data    extra data (ignored)
  *
  */
-void uitapecreate_dialog_show(GtkWidget *parent, gpointer data)
+gboolean uitapecreate_dialog_show(GtkWidget *parent, gpointer data)
 {
     GtkWidget *dialog;
     GtkFileFilter *filter;
@@ -180,4 +183,5 @@ void uitapecreate_dialog_show(GtkWidget *parent, gpointer data)
     g_signal_connect(dialog, "response", G_CALLBACK(on_response), NULL);
 
     gtk_widget_show(dialog);
+    return TRUE;
 }

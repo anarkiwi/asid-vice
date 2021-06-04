@@ -1,9 +1,8 @@
-/*
- * video.c - SDL video
+/** \brief  video.c
+ * \brief   SDL video (probably needs a more descriptive 'brief')
  *
- * Written by
- *  Hannu Nuotio <hannu.nuotio@tut.fi>
- *  Marco van den Heuvel <blackystardust68@yahoo.com>
+ * \author  Hannu Nuotio <hannu.nuotio@tut.fi>
+ * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
  *
  * Based on code by
  *  Ettore Perazzoli
@@ -332,11 +331,7 @@ static const resource_string_t resources_string[] = {
     RESOURCE_STRING_LIST_END
 };
 
-#if defined(WATCOM_COMPILE)
-#define VICE_DEFAULT_BITDEPTH 32
-#else
 #define VICE_DEFAULT_BITDEPTH 0
-#endif
 
 #ifdef ANDROID_COMPILE
 #define SDLLIMITMODE_DEFAULT     SDL_LIMIT_MODE_MAX
@@ -1192,8 +1187,17 @@ void sdl_ui_init_finalize(void)
 {
     unsigned int width = sdl_active_canvas->draw_buffer->canvas_width;
     unsigned int height = sdl_active_canvas->draw_buffer->canvas_height;
+    int minimized = 0;
+
+    /* unfortunately we cant create the window minimized in SDL1 */
+    resources_get_int("StartMinimized", &minimized);
 
     sdl_canvas_create(sdl_active_canvas, &width, &height); /* set the real canvas size */
+    /* minimize window after it was created */
+    if (minimized) {
+        SDL_WM_IconifyWindow();
+    }
+
     sdl_ui_finalized = 1;
     ui_check_mouse_cursor();
 }

@@ -48,6 +48,7 @@
 #include "uicommands.h"
 #include "uicompiletimefeatures.h"
 #include "uidebug.h"
+#include "uimachinemenu.h"
 #include "uimedia.h"
 #include "uimenu.h"
 #include "uimonarch.h"
@@ -135,7 +136,7 @@ static ui_menu_item_t file_menu[] = {
         GDK_KEY_R, VICE_MOD_MASK | GDK_SHIFT_MASK },
 
     { "Stop sound recording", UI_MENU_TYPE_ITEM_ACTION,
-        "sound-stop", (void *)uimedia_stop_recording, NULL,
+        "sound-stop", uimedia_stop_recording, NULL,
         GDK_KEY_S, VICE_MOD_MASK | GDK_SHIFT_MASK },
 
     UI_MENU_SEPARATOR,
@@ -184,15 +185,8 @@ static ui_menu_item_t settings_menu[] = {
      *      added to the settings dialog
      */
     { "Override PSID settings", UI_MENU_TYPE_ITEM_CHECK,
-        "psid-keep-env", (void *)(ui_toggle_resource), (void *)"PSIDKeepEnv",
+        "psid-keep-env", ui_toggle_resource, (void *)"PSIDKeepEnv",
         0, 0 },
-
-    UI_MENU_SEPARATOR,
-
-    /* the settings dialog */
-    { "Settings ...", UI_MENU_TYPE_ITEM_ACTION,
-        "settings", (void *)ui_settings_dialog_create, NULL,
-        GDK_KEY_O, VICE_MOD_MASK },
 
     UI_MENU_TERMINATOR
 };
@@ -324,10 +318,10 @@ GtkWidget *ui_vsid_menu_bar_create(void)
 
     /* create the top-level 'File' menu */
     file_submenu = ui_menu_submenu_create(menu_bar, "File");
-
+#if 0
     /* create the top-level 'Tune' menu */
     tune_submenu = ui_menu_submenu_create(menu_bar, "Tune");
-
+#endif
     /* create the top-level 'Settings' menu */
     settings_submenu = ui_menu_submenu_create(menu_bar, "Settings");
 
@@ -350,6 +344,8 @@ GtkWidget *ui_vsid_menu_bar_create(void)
 
     /* add items to the Settings menu */
     ui_menu_add(settings_submenu, settings_menu);
+    /* bit of a hack: add load/save */
+    ui_machine_menu_bar_vsid_patch(settings_submenu);
 
 #ifdef DEBUG
     /* add items to the Debug menu */

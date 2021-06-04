@@ -28,28 +28,9 @@
 #define VICE_ARCHDEP_H
 
 #include "vice.h"
-
 #include "vice_sdl.h"
 
 #include "sound.h"
-
-/* Extra functions for SDL UI */
-extern char *archdep_default_hotkey_file_name(void);
-extern char *archdep_default_joymap_file_name(void);
-
-/* returns a NULL terminated list of strings. Both the list and the strings
- * must be freed by the caller using lib_free(void*) */
-extern char **archdep_list_drives(void);
-
-/* returns a string that corresponds to the current drive. The string must
- * be freed by the caller using lib_free(void*) */
-extern char *archdep_get_current_drive(void);
-
-/* sets the current drive to the given string */
-extern void archdep_set_current_drive(const char *drive);
-
-/* Virtual keyboard handling */
-extern int archdep_require_vkbd(void);
 
 #ifndef BEOS_COMPILE
 /* Video chip scaling.  */
@@ -86,8 +67,16 @@ extern int archdep_require_vkbd(void);
 /* define if the platform supports the monitor in a seperate window */
 /* #define ARCHDEP_SEPERATE_MONITOR_WINDOW */
 
+/******************************************************************************/
+
 #ifdef AMIGA_SUPPORT
+/* FIXME: naming? */
+extern int load_libs(void);
+extern void close_libs(void);
+
 #include "archdep_amiga.h"
+/* This platform supports choosing drives. */
+#define SDL_CHOOSE_DRIVES
 #endif
 
 #ifdef BEOS_COMPILE
@@ -96,14 +85,20 @@ extern int archdep_require_vkbd(void);
 
 #ifdef __OS2__
 #include "archdep_os2.h"
+/* This platform supports choosing drives. */
+#define SDL_CHOOSE_DRIVES
 #endif
 
 #if defined(UNIX_COMPILE) && !defined(CEGCC_COMPILE)
 #include "archdep_unix.h"
+/* Allow native monitor code (on host console) */
+#define ALLOW_NATIVE_MONITOR
 #endif
 
 #ifdef WIN32_COMPILE
 #include "archdep_win32.h"
+/* This platform supports choosing drives. */
+#define SDL_CHOOSE_DRIVES
 #endif
 
 #endif

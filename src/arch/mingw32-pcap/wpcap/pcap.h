@@ -1,4 +1,4 @@
-/* -*- Mode: c; tab-width: 8; indent-tabs-mode: 1; c-basic-offset: 8; -*- */
+/* vim: set et ts=4 sw=4 sts=4 smartindent cindent syntax=c.doxygen fdm=marker: */
 /*
  * Copyright (c) 1993, 1994, 1995, 1996, 1997
  *	The Regents of the University of California.  All rights reserved.
@@ -37,12 +37,12 @@
 #ifndef lib_pcap_h
 #define lib_pcap_h
 
-#if defined(WIN32) || defined(__WATCOMC__) || defined(WATCOM_COMPILE)
+#if defined(WIN32)
 #include <pcap-stdinc.h>
-#else /* WIN32 */
+#else /* not WIN32 */
 #include <sys/types.h>
 #include <sys/time.h>
-#endif /* WIN32 */
+#endif /* not WIN32 */
 
 #include <net/bpf.h>
 

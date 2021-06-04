@@ -376,6 +376,7 @@ int machine_resources_init(void)
 
 void machine_resources_shutdown(void)
 {
+    serial_shutdown();
     cbm2_resources_shutdown();
     rs232drv_resources_shutdown();
     printer_resources_shutdown();
@@ -927,12 +928,20 @@ void machine_set_cycles_per_frame(long cpf)
 int machine_write_snapshot(const char *name, int save_roms, int save_disks,
                            int event_mode)
 {
-    return cbm2_snapshot_write(name, save_roms, save_disks, event_mode);
+    int err = cbm2_snapshot_write(name, save_roms, save_disks, event_mode);
+    if ((err < 0) && (snapshot_get_error() == SNAPSHOT_NO_ERROR)) {
+        snapshot_set_error(SNAPSHOT_CANNOT_WRITE_SNAPSHOT);
+    }
+    return err;
 }
 
 int machine_read_snapshot(const char *name, int event_mode)
 {
-    return cbm2_snapshot_read(name, event_mode);
+    int err = cbm2_snapshot_read(name, event_mode);
+    if ((err < 0) && (snapshot_get_error() == SNAPSHOT_NO_ERROR)) {
+        snapshot_set_error(SNAPSHOT_CANNOT_READ_SNAPSHOT);
+    }
+    return err;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -981,8 +990,8 @@ uint8_t machine_tape_behaviour(void)
 
 int machine_addr_in_ram(unsigned int addr)
 {
-    /* FIXME are these correct? */
-    return (addr < 0xe000 && !(addr >= 0xa000 && addr < 0xc000)) ? 1 : 0;
+    /* FIXME: handle the banking */
+    return (addr < 0xe000 && !(addr >= 0x8000 && addr < 0xc000)) ? 1 : 0;
 }
 
 const char *machine_get_name(void)
@@ -1009,11 +1018,11 @@ static void cbm2_userport_set_flag(uint8_t b)
 }
 
 static userport_port_props_t userport_props = {
-    1, /* has pa2 pin */
-    1, /* has pa3 pin */
-    cbm2_userport_set_flag, /* has flag pin */
-    1, /* has pc pin */
-    0  /* NO cnt1, cnt2 or sp pins */
+    1,                      /* port has the pa2 pin */
+    1,                      /* port has the pa3 pin */
+    cbm2_userport_set_flag, /* port has the flag pin, set flag function */
+    1,                      /* port has the pc pin */
+    0                       /* port does NOT have the cnt1, cnt2 or sp pins */
 };
 
 int machine_register_userport(void)

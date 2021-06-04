@@ -100,7 +100,9 @@ void lastdir_update(GtkWidget *widget, char **last)
     gchar *new_dir;
 
     new_dir = gtk_file_chooser_get_current_folder(GTK_FILE_CHOOSER(widget));
+#if 0
     debug_gtk3("new dir = '%s'.", new_dir);
+#endif
     if (new_dir != NULL) {
         /* clean up previous value */
         if (*last != NULL) {
@@ -109,6 +111,16 @@ void lastdir_update(GtkWidget *widget, char **last)
         *last = new_dir;
     }
 }
+
+
+void lastdir_update_raw(char *path, char **last)
+{
+    if (*last != NULL) {
+        g_free(*last);
+    }
+    *last = path;
+}
+
 
 
 /** \brief  Free memory used by *\a last

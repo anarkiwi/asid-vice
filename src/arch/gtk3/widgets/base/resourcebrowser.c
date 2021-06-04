@@ -130,7 +130,9 @@ static void on_resource_browser_browse_clicked(GtkWidget *widget, gpointer data)
     filename = vice_gtk3_open_file_dialog(state->browser_title,
             state->pattern_name, (const char **)(state->patterns), NULL);
     if (filename != NULL) {
+#if 0
         debug_gtk3("got image name '%s'.", filename);
+#endif
         if (!vice_gtk3_resource_entry_full_set(state->entry, filename)){
             log_error(LOG_ERR,
                     "failed to set resource %s to '%s', reverting\n",
@@ -140,7 +142,9 @@ static void on_resource_browser_browse_clicked(GtkWidget *widget, gpointer data)
             gtk_entry_set_text(GTK_ENTRY(state->entry), state->res_orig);
         } else {
             if (state->callback != NULL) {
+#if 0
                 debug_gtk3("triggering user-defined callback.");
+#endif
                 state->callback(widget, (gpointer)filename);
             }
         }
@@ -170,7 +174,7 @@ static char **copy_patterns(const char **patterns)
     arr = lib_malloc((num + 1) * sizeof *arr);
     num = 0;
     while (patterns[num] != NULL) {
-        arr[num] = lib_stralloc(patterns[num]);
+        arr[num] = lib_strdup(patterns[num]);
         num++;
     }
     arr[num] = NULL;
@@ -230,7 +234,7 @@ GtkWidget *vice_gtk3_resource_browser_new(
     state = lib_malloc(sizeof *state);
 
     /* copy resource name */
-    state->res_name = lib_stralloc(resource);
+    state->res_name = lib_strdup(resource);
     resource_widget_set_resource_name(grid, resource);
 
     /* get current value of resource */
@@ -241,7 +245,7 @@ GtkWidget *vice_gtk3_resource_browser_new(
     } else if (orig == NULL) {
         orig = "";
     }
-    state->res_orig = lib_stralloc(orig);
+    state->res_orig = lib_strdup(orig);
 
     /* store optional callback */
     state->callback = callback;
@@ -251,16 +255,16 @@ GtkWidget *vice_gtk3_resource_browser_new(
 
     /* copy pattern name */
     if (pattern_name != NULL && *pattern_name != '\0') {
-        state->pattern_name = lib_stralloc(pattern_name);
+        state->pattern_name = lib_strdup(pattern_name);
     } else {
         state->pattern_name = NULL;
     }
 
     /* copy browser title */
     if (browser_title != NULL && *browser_title != '\0') {
-        state->browser_title = lib_stralloc("Select file");
+        state->browser_title = lib_strdup("Select file");
     } else {
-        state->browser_title = lib_stralloc(browser_title);
+        state->browser_title = lib_strdup(browser_title);
     }
 
     /*

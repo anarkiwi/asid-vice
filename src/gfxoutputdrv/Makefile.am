@@ -1,12 +1,18 @@
 # Makefile.am for `libgfxoutputdrv.a'.
 
 AM_CPPFLAGS = \
+	@VICE_CPPFLAGS@ \
+	-I$(top_srcdir)/src/arch/shared \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/sounddrv \
 	@FFMPEG_INCLUDES@ \
 	@QUICKTIME_INCLUDES@ \
 	@ARCH_INCLUDES@
+
+AM_CFLAGS = @VICE_CFLAGS@
+
+AM_CXXFLAGS = @VICE_CXXFLAGS@
 
 noinst_LIBRARIES = libgfxoutputdrv.a
 

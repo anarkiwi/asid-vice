@@ -1,7 +1,7 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 19 December 2018 -->
+     from ../../doc/vice.texi on 24 December 2019 -->
 
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <TITLE>VICE Manual - 5  Basic operation</TITLE>
@@ -28,7 +28,7 @@ has been fired up.
 
 <P>
 When the emulator is run, the screen of the emulated machine is
-displayed in a standard X Window which we will call the <EM>emulation
+displayed in a window which we will call the <EM>emulation
 window</EM>.  This window will be updated in real time, displaying the same
 contents that a real monitor or TV set would.
 
@@ -62,22 +62,18 @@ track position of the drive's read/write head.
 
 <P>
 It is possible to execute some commands and change emulation parameters
-while the emulator is running: when the pointer is over the emulation
-window, two menus are available by pressing either the left or right
-mouse buttons.  The left mouse button will open the <EM>command menu</EM>
-from which several emulation-related commands can be executed; the right
-mouse button will open the <EM>settings menu</EM> from which emulation
-parameters can be changed.  The basic difference between the command and
-the settings menu is that, while commands have only effect on the
-current session, settings can be saved and later used with the "Save
-settings" and "Load settings" right-button menu items, respectively.
-"Restore default settings" restores the factory defaults.
-See section <A HREF="vice_6.html#SEC42">6  Settings and resources</A>. for more information about how settings
+while the emulator is running: most emulation settings can be changed in
+the <EM>options menu</EM>. Additionally clicking on the various widgets in the
+status bar gives access to related settings.
+Settings can be saved and later used with the "Save settings" and "Load settings" 
+menu items, respectively. Also by default, settings will get saved when exiting
+the emulator. "Restore default settings" restores the factory defaults.
+See See section <A HREF="vice_6.html#SEC41">6  Settings and resources</A> for more information about how settings
 work in VICE.
 
 </P>
 <P>
-Sometimes commands can be reached via <EM>shortcuts</EM> or <EM>hotkeys</EM>,
+A lot of settings and actions can be reached via <EM>shortcuts</EM> or <EM>hotkeys</EM>,
 i.e., it is possible to execute them by pressing a sequence of keys
 instead of going through the menu with the mouse.  Where shortcuts
 exist, they are displayed in parentheses at the right edge of the menu
@@ -92,7 +88,6 @@ Note that no other key presses are passed on to the emulated machine
 while either <KBD>Meta</KBD> or <KBD>Alt</KBD> are held down.
 
 </P>
-
 
 
 <H2><A NAME="SEC34" HREF="vice_toc.html#TOC34">5.3  Getting help</A></H2>
@@ -159,8 +154,7 @@ attached, the emulator is able to use it as a storage media.
 
 </P>
 <P>
-There are five commands (in the left button menu) that deal with disk
-and tape images:
+There are five commands that deal with disk and tape images:
 
 </P>
 
@@ -206,7 +200,7 @@ automatically rewound when you reach its end. For actually emulating tape, the
 <P>
 Another important feature is that raw Commodore BASIC binary files and
 .P00 files can be attached as tapes.  As you can autostart a
-tape image when it is attached (see section <A HREF="vice_5.html#SEC38">5.5.2  "Autostarting" an image</A>), this allows you to
+tape image when it is attached (see section <A HREF="vice_5.html#SEC37">5.5.1  "Autostarting" an image</A>), this allows you to
 autostart these particular files as well.
 
 </P>
@@ -221,27 +215,7 @@ that file, e.g., by doing a <CODE>chmod a-w</CODE>.
 
 
 
-<H3><A NAME="SEC37" HREF="vice_toc.html#TOC37">5.5.1  Previewing the image contents</A></H3>
-
-<P>
-It is possible to examine the directory of a disk or tape image before
-attaching it.  Just press the "Contents" button in the file selector
-window and a new window will pop up with the contents of the selected
-image.
-
-</P>
-<P>
-Notice that this function automatically translates the directory from
-PETSCII to ASCII; but, due to differences in the two encodings, it is
-not always possible to translate all the characters, so you might get
-funny results when "weird" characters such as the semi-graphical ones
-are being used.
-
-</P>
-
-
-
-<H3><A NAME="SEC38" HREF="vice_toc.html#TOC38">5.5.2  "Autostarting" an image</A></H3>
+<H3><A NAME="SEC37" HREF="vice_toc.html#TOC37">5.5.1  "Autostarting" an image</A></H3>
 
 <P>
 If you want to reset the machine and run the first program on a certain
@@ -251,25 +225,19 @@ a proper disk or tape image file.
 
 </P>
 <P>
-Notice that, if true drive emulation is turned on, it will be turned off
-before running the program and then turned on again after it has been
+If true drive emulation is turned on, and the <EM>Handle TDE at Autostart</EM>
+setting is enabled, true drive emulation will be turned off before running 
+the program and then turned on again after it has been
 loaded.  This way, you get the maximum possible speed while loading the
 file, but you do not lose compatibility once the program itself is
-running.
-
-</P>
-<P>
-This method is not completely safe, because some autostarting methods
-might cause the true drive emulation not to be turned on again.  In such
-cases, the best thing to do is to disable kernal traps (which will cause
-true drive emulation to be always kept turned on), or to manually load
-the program with true drive emulation turned on.
+running. This method is not completely safe, because some autostarting methods
+might cause the true drive emulation not to be turned on again, which is why
+it is disabled by default.
 
 </P>
 
 
-
-<H3><A NAME="SEC39" HREF="vice_toc.html#TOC39">5.5.3  Using compressed files</A></H3>
+<H3><A NAME="SEC38" HREF="vice_toc.html#TOC38">5.5.2  Using compressed files</A></H3>
 
 <P>
 It is also possible to attach disk or tape images that have been
@@ -318,7 +286,7 @@ the PATH variable).
 </P>
 
 
-<H3><A NAME="SEC40" HREF="vice_toc.html#TOC40">5.5.4  Using Zipcode and Lynx images</A></H3>
+<H3><A NAME="SEC39" HREF="vice_toc.html#TOC39">5.5.3  Using Zipcode and Lynx images</A></H3>
 
 <P>
 Since version 0.15, the VICE emulators have been able to attach disks
@@ -332,7 +300,7 @@ temporary image read-only.  For this to work, the directory containing
 </P>
 <P>
 This uses the <CODE>-unlynx</CODE> and <CODE>-zcreate</CODE> options of <CODE>c1541</CODE>
-(see section <A HREF="vice_13.html#SEC285">13.3  c1541 commands and options</A>); these commands are not very
+(see section <A HREF="vice_13.html#SEC283">13.3  c1541 commands and options</A>); these commands are not very
 reliable yet, and could fail with certain kinds of Lynx and Zipcode
 images (for example, they cannot deal with <CODE>DEL</CODE> files properly).
 So please use them with caution.
@@ -370,11 +338,11 @@ the name) and then build a disk image using all four.
 
 
 
-<H2><A NAME="SEC41" HREF="vice_toc.html#TOC41">5.6  Resetting the machine</A></H2>
+<H2><A NAME="SEC40" HREF="vice_toc.html#TOC40">5.6  Resetting the machine</A></H2>
 
 <P>
 You can reset the emulated machine at any time by using the "Reset"
-command from the command menu.  There are two types of reset:
+command from the file menu.  There are two types of reset:
 
 </P>
 

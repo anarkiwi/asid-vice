@@ -44,6 +44,7 @@
 #include "vdrive/vdrive.h"
 #include "attach.h"
 #include "autostart.h"
+#include "util.h"
 
 #include "tape.h"
 
@@ -207,15 +208,6 @@ GtkWidget *dir_menu_popup_create(
     /* create new menu */
     menu = gtk_menu_new();
 
-    /* create menu header */
-    if (dev >= 0) {
-        g_snprintf(buffer, 1024, "Directory of unit %d:", dev + 8);
-    } else {
-        g_snprintf(buffer, 1024, "Directory of attached tape:");
-    }
-    item = gtk_menu_item_new_with_label(buffer);
-    gtk_container_add(GTK_CONTAINER(menu), item);
-
     if (dev >= 0) {
         /*
          * The following is complete horseshit, this needs to be implemented in
@@ -229,8 +221,8 @@ GtkWidget *dir_menu_popup_create(
         struct disk_image_s *diskimg = NULL;
         autostart_diskimage = NULL;
 
-        debug_gtk3("Getting vdrive reference for unit #%d.", dev + 8);
-        vdrive = file_system_get_vdrive(dev + 8);
+        debug_gtk3("Getting vdrive reference for unit #%d.", dev + DRIVE_UNIT_MIN);
+        vdrive = file_system_get_vdrive(dev + DRIVE_UNIT_MIN);
         if (vdrive == NULL) {
             debug_gtk3("failed: got NULL.");
         } else {
@@ -261,6 +253,23 @@ GtkWidget *dir_menu_popup_create(
         autostart_diskimage = tape_image_dev1->name;
     }
 
+    tmp = NULL;
+    if (autostart_diskimage) {
+        util_fname_split(autostart_diskimage, NULL, &tmp);        
+    }
+    if (dev >= 0) {
+        g_snprintf(buffer, 1024, "Directory of unit %d: (%s)", 
+                   dev + DRIVE_UNIT_MIN, tmp ? tmp : "n/a");
+    } else {
+        g_snprintf(buffer, 1024, "Directory of attached tape: (%s)",
+            tmp ? tmp : "n/a");
+    }
+    item = gtk_menu_item_new_with_label(buffer);
+    gtk_container_add(GTK_CONTAINER(menu), item);
+    if (tmp) {
+        lib_free(tmp);
+    }
+    
     debug_gtk3("Did we get some image?");
     if (autostart_diskimage != NULL) {
         /* read dir and add them as menu items */

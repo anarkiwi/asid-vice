@@ -1,7 +1,7 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.52
-     from ../../doc/vice.texi on 19 December 2018 -->
+     from ../../doc/vice.texi on 24 December 2019 -->
 
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <TITLE>VICE Manual - 11  Event history</TITLE>
@@ -14,7 +14,7 @@ Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_10.html">previous</A>, 
 <P><HR><P>
 
 
-<H1><A NAME="SEC261" HREF="vice_toc.html#TOC261">11  Event history</A></H1>
+<H1><A NAME="SEC259" HREF="vice_toc.html#TOC259">11  Event history</A></H1>
 
 <P>
 VICE supports recording an arbitrary session on the emulated machine and
@@ -26,16 +26,9 @@ how to solve a game. An example walkthrough for the well known game "Fort Apocal
 available.
 
 </P>
-<P>
-This brief chapter will advise you how to record and playback such a session.
-Although it is based on the WinVICE x64 release and its user interface, histories may be
-transferred to other machines and other ports that support event history, e.g. the
-Unix port.
-
-</P>
 
 
-<H2><A NAME="SEC262" HREF="vice_toc.html#TOC262">11.1  Recommended Settings</A></H2>
+<H2><A NAME="SEC260" HREF="vice_toc.html#TOC260">11.1  Recommended Settings</A></H2>
 
 <P>
 When using the event history feature it is possible that the playback session
@@ -52,7 +45,7 @@ Do not change any settings during recording or playback!
 </P>
 
 
-<H2><A NAME="SEC263" HREF="vice_toc.html#TOC263">11.2  Recorded Events</A></H2>
+<H2><A NAME="SEC261" HREF="vice_toc.html#TOC261">11.2  Recorded Events</A></H2>
 
 <P>
 The following is a list of the user interaction that will be recorded:
@@ -65,7 +58,7 @@ The following is a list of the user interaction that will be recorded:
 </P>
 
 
-<H2><A NAME="SEC264" HREF="vice_toc.html#TOC264">11.3  Recording an Event History</A></H2>
+<H2><A NAME="SEC262" HREF="vice_toc.html#TOC262">11.3  Recording an Event History</A></H2>
 
 <P>
 Recording an event history will create one or two files for a snapshot and
@@ -86,7 +79,7 @@ snapshot files (default ist start.vsf and end.vsf).
 </P>
 
 
-<H2><A NAME="SEC265" HREF="vice_toc.html#TOC265">11.4  Setting and Returning to Milestones</A></H2>
+<H2><A NAME="SEC263" HREF="vice_toc.html#TOC263">11.4  Setting and Returning to Milestones</A></H2>
 
 <P>
 It is difficult to finish a game in one sitting and noone wants to
@@ -109,7 +102,7 @@ event history to the last milestone snapshot so that you can try again.
 </P>
 
 
-<H2><A NAME="SEC266" HREF="vice_toc.html#TOC266">11.5  Continuing an Event History</A></H2>
+<H2><A NAME="SEC264" HREF="vice_toc.html#TOC264">11.5  Continuing an Event History</A></H2>
 
 <P>
 If you have stopped a recording session and want to continue it later, you
@@ -135,7 +128,7 @@ recording via 'Snapshot//Start/Stop Recording History'.
 </P>
 
 
-<H2><A NAME="SEC267" HREF="vice_toc.html#TOC267">11.6  Playing Back an Event History</A></H2>
+<H2><A NAME="SEC265" HREF="vice_toc.html#TOC265">11.6  Playing Back an Event History</A></H2>
 
 <P>
 To play back an event history, select the directory with the history files
@@ -148,7 +141,7 @@ The playback stops when the end of the session is reached or if
 </P>
 
 
-<H2><A NAME="SEC268" HREF="vice_toc.html#TOC268">11.7  Limitations and Suggestions</A></H2>
+<H2><A NAME="SEC266" HREF="vice_toc.html#TOC266">11.7  Limitations and Suggestions</A></H2>
 
 <P>
 a. Snapshot files will be quite big (&#62;1MB) if a disk image has been attached.
@@ -159,37 +152,37 @@ b. Snapshots may not be 100% accurate even with all the recommended settings.
 
 
 
-<H2><A NAME="SEC269" HREF="vice_toc.html#TOC269">11.8  Event history resources</A></H2>
+<H2><A NAME="SEC267" HREF="vice_toc.html#TOC267">11.8  Event history resources</A></H2>
 
 <DL COMPACT>
 
 <DT><CODE>EventSnapshotDir</CODE>
 <DD>
-<A NAME="IDX1748"></A>
+<A NAME="IDX1775"></A>
  
 String specifying the directory used for loading and saving snapshots
 (all emulators except vsid).
 
-<A NAME="IDX1749"></A>
+<A NAME="IDX1776"></A>
 <DT><CODE>EventStartSnapshot</CODE>
 <DD>
 String specifying the filename for the start snapshot
 (all emulators except vsid).
 
-<A NAME="IDX1750"></A>
+<A NAME="IDX1777"></A>
 <DT><CODE>EventEndSnapshot</CODE>
 <DD>
 String specifying the filename for the end snapshot
 (all emulators except vsid).
 
-<A NAME="IDX1751"></A>
+<A NAME="IDX1778"></A>
 <DT><CODE>EventStartMode</CODE>
 <DD>
 Integer specifying how to start event recording
 (all emulators except vsid).
 (0: save new snapshot, 1: load existing snapshot, 2: reset, 3: playback)
 
-<A NAME="IDX1752"></A>
+<A NAME="IDX1779"></A>
 <DT><CODE>EventImageInclude</CODE>
 <DD>
 Boolean specifying whether to include ROM and Disk images in the snapshots
@@ -199,39 +192,39 @@ Boolean specifying whether to include ROM and Disk images in the snapshots
 
 
 
-<H2><A NAME="SEC270" HREF="vice_toc.html#TOC270">11.9  Event history command-line options</A></H2>
+<H2><A NAME="SEC268" HREF="vice_toc.html#TOC268">11.9  Event history command-line options</A></H2>
 
 <DL COMPACT>
 
 <DT><CODE>-playback</CODE>
 <DD>
-<A NAME="IDX1753"></A>
+<A NAME="IDX1780"></A>
  
 Playback recorded events
 (all emulators except vsid).
 
-<A NAME="IDX1754"></A>
+<A NAME="IDX1781"></A>
 <DT><CODE>-eventsnapshotdir &#60;Name&#62;</CODE>
 <DD>
 Set event snapshot directory
 (<CODE>EventSnapshotDir</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX1755"></A>
+<A NAME="IDX1782"></A>
 <DT><CODE>-eventstartsnapshot &#60;Name&#62;</CODE>
 <DD>
 Set event start snapshot filename
 (<CODE>EventStartSnapshot</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX1756"></A>
+<A NAME="IDX1783"></A>
 <DT><CODE>-eventendsnapshot &#60;Name&#62;</CODE>
 <DD>
 Set event end snapshot filename
 (<CODE>EventEndSnapshot</CODE>)
 (all emulators except vsid).
 
-<A NAME="IDX1757"></A>
+<A NAME="IDX1784"></A>
 <DT><CODE>-eventstartmode &#60;Mode&#62;</CODE>
 <DD>
 Set event start mode
@@ -239,7 +232,7 @@ Set event start mode
 (all emulators except vsid).
 (0: save new snapshot, 1: load existing snapshot, 2: reset, 3: playback)
 
-<A NAME="IDX1758"></A>
+<A NAME="IDX1785"></A>
 <DT><CODE>-eventimageinc</CODE>
 <DD>
 <DT><CODE>+eventimageinc</CODE>

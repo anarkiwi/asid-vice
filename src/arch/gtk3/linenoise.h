@@ -41,22 +41,26 @@
 
 #include "vice.h"
 
+/** \brief  Linenoise completions object
+ *
+ * This documentation block is purely guess work.
+ */
 typedef struct linenoiseCompletions {
-  size_t len;
-  char **cvec;
+  size_t len;   /**< probably max or current number of completions in /c cvec */
+  char **cvec;  /**< list of completions */
 } linenoiseCompletions;
 
 struct console_private_s;
 
 typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *);
-void linenoiseSetCompletionCallback(linenoiseCompletionCallback *);
-void linenoiseAddCompletion(linenoiseCompletions *, char *);
+void vte_linenoiseSetCompletionCallback(linenoiseCompletionCallback *);
+void vte_linenoiseAddCompletion(linenoiseCompletions *, char *);
 
-char *linenoise(const char *prompt, struct console_private_s *term);
-int linenoiseHistoryAdd(const char *line);
-int linenoiseHistorySetMaxLen(int len);
-int linenoiseHistorySave(char *filename);
-int linenoiseHistoryLoad(char *filename);
-void linenoiseClearScreen(struct console_private_s *term);
+char *vte_linenoise(const char *prompt, struct console_private_s *term);
+int vte_linenoiseHistoryAdd(const char *line);
+int vte_linenoiseHistorySetMaxLen(int len);
+int vte_linenoiseHistorySave(char *filename);
+int vte_linenoiseHistoryLoad(char *filename);
+void vte_linenoiseClearScreen(struct console_private_s *term);
 
 #endif /* __LINENOISE_H */

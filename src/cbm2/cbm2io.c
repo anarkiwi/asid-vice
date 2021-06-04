@@ -127,7 +127,7 @@ static void io_source_msg_detach_all(uint16_t addr, int amount, io_source_list_t
 
             /* first part of the message "read collision at x from" */
             if (found == 0) {
-                old_msg = lib_stralloc("I/O read collision at %X from ");
+                old_msg = lib_strdup("I/O read collision at %X from ");
                 new_msg = util_concat(old_msg, current->device->name, NULL);
                 lib_free(old_msg);
             }
@@ -199,7 +199,7 @@ static void io_source_msg_detach_last(uint16_t addr, int amount, io_source_list_
 
             /* first part of the message "read collision at x from" */
             if (found == 0) {
-                old_msg = lib_stralloc("I/O read collision at %X from ");
+                old_msg = lib_strdup("I/O read collision at %X from ");
                 new_msg = util_concat(old_msg, current->device->name, NULL);
                 lib_free(old_msg);
             }
@@ -261,7 +261,7 @@ static void io_source_log_collisions(uint16_t addr, int amount, io_source_list_t
 
             /* first part of the message "read collision at x from" */
             if (found == 0) {
-                old_msg = lib_stralloc("I/O read collision at %X from ");
+                old_msg = lib_strdup("I/O read collision at %X from ");
                 new_msg = util_concat(old_msg, current->device->name, NULL);
                 lib_free(old_msg);
             }
@@ -449,7 +449,10 @@ io_source_list_t *io_source_register(io_source_t *device)
             current = &cbm2io_df00_head;
             break;
         default:
-            log_error(LOG_DEFAULT, "io_source_register internal error: I/O range 0x%04x does not exist", device->start_address & 0xff00);
+            log_error(LOG_DEFAULT,
+                    "io_source_register internal error: I/O range 0x%04x "
+                    "does not exist",
+                    device->start_address & 0xff00U);
             archdep_vice_exit(-1);
             break;
     }

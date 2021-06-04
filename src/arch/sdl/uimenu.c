@@ -113,7 +113,7 @@ static const uint8_t sdl_char_to_screen[256] = {
 
     /* 20-7f ascii */
 
-    /* 20-2f  !"#$%&´()*+,-./ */
+    /* 20-2f  !"#$%&'()*+,-./ */
     0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
     /* 30-3f 0123456789:;<=>? */
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
@@ -143,7 +143,7 @@ static const uint8_t sdl_char_to_screen_uppercase[256] = {
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
     0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
 
-    /* 20-2f  !"#$%&´()*+,-./ */
+    /* 20-2f  !"#$%&'()*+,-./ */
     0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 
     /* 30-3f 0123456789:;<=>? */
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 
@@ -179,7 +179,7 @@ static const uint8_t sdl_char_to_screen_monitor[256] = {
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
     0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
 
-    /* 20-2f  !"#$%&´()*+,-./ */
+    /* 20-2f  !"#$%&'()*+,-./ */
     0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 
     /* 30-3f 0123456789:;<=>? */
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 
@@ -355,6 +355,13 @@ int sdl_ui_set_toggle_colors(int state)
     return color;
 }
 
+static int sdl_ui_set_item_colors(int status)
+{
+    uint8_t color = menu_draw.color_front;
+    menu_draw.color_front = (status == MENU_STATUS_INACTIVE) ? menu_draw.color_inactive_grey : menu_draw.color_default_front;
+    return color;
+}
+
 int sdl_ui_set_default_colors(void)
 {
     uint8_t color = menu_draw.color_front;
@@ -416,12 +423,14 @@ static int sdl_ui_display_item(ui_menu_entry_t *item, int y_pos, int value_offse
     }
     i += n;
 
+    /* setup color for the menu item */
     if (!iscursor) {
         sdl_ui_reset_tickmark_colors(oldfg);
-    }
-
-    if (!iscursor && istoggle) {
-        sdl_ui_set_toggle_colors(status);
+        if (istoggle) {
+            sdl_ui_set_toggle_colors(status);
+        } else {
+            sdl_ui_set_item_colors(item->status);
+        }
     }
 
     /* print the actual menu item */
@@ -663,6 +672,10 @@ static ui_menu_retval_t sdl_ui_menu_item_activate(ui_menu_entry_t *item)
 {
     const char *p = NULL;
 
+    if (item->status == MENU_STATUS_INACTIVE) {
+        return MENU_RETVAL_DEFAULT;
+    }
+
     switch (item->type) {
         case MENU_ENTRY_OTHER:
         case MENU_ENTRY_OTHER_TOGGLE:
@@ -717,7 +730,7 @@ static void sdl_ui_trap(uint16_t addr, void *data)
         memset(sdl_active_canvas->draw_buffer_vsid->draw_buffer, 0, width * height);
         sdl_ui_refresh();
     } else {
-        if (ui_emulation_is_paused() && (width == sdl_active_canvas->draw_buffer->draw_buffer_width) && (height == sdl_active_canvas->draw_buffer->draw_buffer_height)) {
+        if (ui_pause_active() && (width == sdl_active_canvas->draw_buffer->draw_buffer_width) && (height == sdl_active_canvas->draw_buffer->draw_buffer_height)) {
             memcpy(sdl_active_canvas->draw_buffer->draw_buffer, draw_buffer_backup, width * height);
             sdl_ui_refresh();
         }
@@ -1402,8 +1415,8 @@ void sdl_ui_invert_char(int pos_x, int pos_y)
 
 void sdl_ui_activate(void)
 {
-    if (ui_emulation_is_paused()) {
-        ui_pause_emulation(0);
+    if (ui_pause_active()) {
+        ui_pause_disable();
     }
     interrupt_maincpu_trigger_trap(sdl_ui_trap, NULL);
 }
@@ -1463,7 +1476,7 @@ char* sdl_ui_readline(const char* previous, int pos_x, int pos_y)
     pc_vkbd_state = archdep_require_vkbd();
 
     if (previous) {
-        new_string = lib_stralloc(previous);
+        new_string = lib_strdup(previous);
         size = strlen(new_string) + 1;
         if (size < max) {
             new_string = lib_realloc(new_string, max);

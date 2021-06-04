@@ -33,6 +33,7 @@
 #include "debug_gtk3.h"
 #include "widgethelpers.h"
 #include "driveunitwidget.h"
+#include "drive.h"
 #include "diskimage.h"
 #include "filechooserhelpers.h"
 #include "util.h"
@@ -85,7 +86,7 @@ static disk_image_type_t disk_image_types[] = {
 
 
 /** \brief  Drive unit to attach image to */
-static int unit_number = 8;
+static int unit_number = DRIVE_UNIT_MIN;
 /** \brief  Disk image type to create */
 static int image_type = 1541;
 
@@ -115,7 +116,11 @@ static void on_response(GtkWidget *widget, gint response_id, gpointer data)
         case GTK_RESPONSE_ACCEPT:
             filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));
             if (filename != NULL) {
-                status = create_disk_image(filename);
+                gchar *filename_locale;
+
+                filename_locale = file_chooser_convert_to_locale(filename);
+                status = create_disk_image(filename_locale);
+                g_free(filename_locale);
             }
             g_free(filename);
             if (status) {
@@ -370,17 +375,20 @@ static GtkWidget *create_extra_widget(GtkWidget *parent, int unit)
 
 /** \brief  Create and show 'attach new disk image' dialog
  *
+ *  \param[in]  parent  parent widget
+ *  \param[in]  data    disk unit
+ *
+ * \return  TRUE;
  */
-void uidiskcreate_dialog_show(GtkWidget *parent, gpointer data)
+gboolean uidiskcreate_dialog_show(GtkWidget *parent, gpointer data)
 {
     GtkWidget *dialog;
     GtkFileFilter *filter;
     int unit;
 
     unit = GPOINTER_TO_INT(data);
-    /* TODO: stuff some UNIT_MIN/UNIT_MAX defines in some file */
-    if (unit < 8 || unit > 11) {
-        unit = 8;
+    if (unit < DRIVE_UNIT_MIN || unit > DRIVE_UNIT_MAX) {
+        unit = DRIVE_UNIT_DEFAULT;
     }
     unit_number = unit;
 
@@ -405,4 +413,6 @@ void uidiskcreate_dialog_show(GtkWidget *parent, gpointer data)
     g_signal_connect(dialog, "response", G_CALLBACK(on_response), NULL);
 
     gtk_widget_show(dialog);
+
+    return TRUE;
 }

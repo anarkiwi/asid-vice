@@ -67,6 +67,7 @@
 #include "tapeportdeviceswidget.h"
 #include "c128model.h"
 #include "settings_model.h"
+#include "crtpreviewwidget.h"
 
 #include "c128ui.h"
 
@@ -78,8 +79,10 @@
 static const char *c128_model_list[] = {
     "C128 PAL",
     "C128D PAL",
+    "C128DCR PAL",
     "C128 NTSC",
     "C128D NTSC",
+    "C128DCR NTSC",
     NULL
 };
 
@@ -150,7 +153,7 @@ int c128ui_init_early(void)
  */
 int c128ui_init(void)
 {
-    int eighty;
+    int forty;
 
     machine_model_widget_getter(c128model_get);
     machine_model_widget_setter(c128model_set);
@@ -169,16 +172,17 @@ int c128ui_init(void)
             cartridge_flush_image,
             cartridge_type_enabled,
             cartridge_enable,
-            cartridge_disable);
+            cartridge_disable,
+            cartridge_can_save_image,
+            cartridge_can_flush_image);
 
     /* uicart_set_detect_func(cartridge_detect); only cbm2/plus4 */
     uicart_set_list_func(cartridge_get_info_list);
     uicart_set_attach_func(cartridge_attach_image);
     uicart_set_freeze_func(cartridge_trigger_freeze);
     uicart_set_detach_func(cartridge_detach_image);
-    uicart_set_default_func(cartridge_set_default);
-    uicart_set_filename_func(cartridge_current_filename);
-    uicart_set_wipe_func(cartridge_wipe_filename);
+    uicart_set_set_default_func(cartridge_set_default);
+    uicart_set_unset_default_func(cartridge_unset_default);
 
     /* set tapecart flush function */
     tapeport_devices_widget_set_tapecart_flush_func(tapecart_flush_tcrt);
@@ -187,23 +191,19 @@ int c128ui_init(void)
     settings_model_widget_set_model_func(c128model_get);
 
     /* push VDC display to front depending on 40/80 key */
-    if (resources_get_int("C128ColumnKey", &eighty) >= 0) {
-        debug_gtk3("got 80 col mode: %d.", eighty);
+    if (resources_get_int("C128ColumnKey", &forty) >= 0) {
+        debug_gtk3("col mode: %d.", forty ? 40 : 80);
 
-        if (!eighty) {
+        if (!forty) {
             GtkWidget *window = ui_get_window_by_index(1); /* VDC */
             if (window != NULL) {
-                /* this is a bit dubious, but it seems any bring-to-front code
-                 * has been removed from gtk3, so we just force the VDC window
-                 * to front and immediately disable this, still keeping the
-                 * VDC window as the top level window, but allowing moving
-                 * the VICII in front of it.
-                 */
-                gtk_window_set_keep_above(GTK_WINDOW(window), TRUE);
-                gtk_window_set_keep_above(GTK_WINDOW(window), FALSE);
+                gtk_window_present(GTK_WINDOW(window));
             }
         }
     }
+    /* crt preview widget functions */
+    crt_preview_widget_set_open_func(crt_open);
+    crt_preview_widget_set_chip_func(crt_read_chip_header);
     return 0;
 }
 

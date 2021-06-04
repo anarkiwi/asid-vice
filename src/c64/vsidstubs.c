@@ -51,6 +51,7 @@
 #include "iecdrive.h"
 #include "imagecontents.h"
 #include "midi.h"
+#include "machine.h"
 #include "machine-bus.h"
 #include "machine-drive.h"
 #include "machine-printer.h"
@@ -58,6 +59,7 @@
 #include "snapshot.h"
 #include "tap.h"
 #include "tape.h"
+#include "tapecart.h"
 #include "tapeport.h"
 #include "imagecontents/tapecontents.h"
 #include "tape-snapshot.h"
@@ -164,6 +166,10 @@ int drive_check_iec(int type)
     return 0;
 }
 
+int drive_check_image_format(unsigned int format, unsigned int dnr)
+{
+    return -1;
+}
 
 /*******************************************************************************
     Cartridge system
@@ -180,6 +186,10 @@ int cartridge_attach_image(int type, const char *filename)
     return -1;
 }
 
+void cartridge_detach_image(int type)
+{
+}
+
 uint8_t *ultimax_romh_phi1_ptr(uint16_t addr)
 {
     return mem_phi;
@@ -188,6 +198,10 @@ uint8_t *ultimax_romh_phi1_ptr(uint16_t addr)
 uint8_t *ultimax_romh_phi2_ptr(uint16_t addr)
 {
     return mem_phi;
+}
+
+void cartridge_unset_default(void)
+{
 }
 
 midi_interface_t midi_interface[] = {
@@ -409,6 +423,21 @@ void tape_get_header(tape_image_t *tape_image, uint8_t *name)
 const char *tape_get_file_name(void)
 {
     return NULL;
+}
+
+
+/*****************************************************************************
+ *  tapecart                                                                 *
+ ****************************************************************************/
+
+int tapecart_is_valid(const char *filename)
+{
+    return 0;   /* FALSE */
+}
+
+int tapecart_attach_tcrt(const char *filename, void *unused)
+{
+    return -1;
 }
 
 /*******************************************************************************
@@ -919,3 +948,13 @@ int loader_get_drive_true_emulation()
     return loader_true_drive;
 }
 #endif
+
+int machine_get_num_keyboard_types(void)
+{
+    return 0;
+}
+
+kbdtype_info_t *machine_get_keyboard_info_list(void)
+{
+    return NULL;
+}

@@ -70,9 +70,14 @@
 #include "vsync.h"
 #include "uidata.h"
 
+
+/** \brief  Monitor console window object
+ *
+ * Again, guess work. Someone, not me, should have documented this.
+ */
 struct console_private_s {
-    GtkWidget *window;
-    GtkWidget *term;
+    GtkWidget *window;  /**< windows */
+    GtkWidget *term;    /**< could be a VTE instance? */
     char *input_buffer;
 } fixed = {NULL, NULL, NULL};
 
@@ -387,7 +392,7 @@ static void screen_resize_window_cb2 (VteTerminal *terminal,
 /** \brief  Create an icon by loading it from the vice.gresource file
  *
  * \return  Standard C= icon ripped from the internet (but at least scalable)
- *          Which ofcourse sucks on Windows for some reason, *sigh*
+ *          Which of course looks weird on Windows for some reason, *sigh*.
  */
 static GdkPixbuf *get_default_icon(void)
 {
@@ -470,13 +475,28 @@ console_t *uimon_window_open(void)
 
 console_t *uimon_window_resume(void)
 {
+    GtkWindow *active;
+
     if (native_monitor()) {
         return uimonfb_window_resume();
     }
 
     gtk_widget_show_all(fixed.window);
     screen_resize_window_cb (VTE_TERMINAL(fixed.term), NULL);
+
+    /*
+     * Make the monitor window appear on top of the active emulated machine
+     * window. This makes the monitor window show when the emulated machine
+     * window is in fullscreen mode. (only tested on Windows 10)
+     */
+    active = ui_get_active_window();
+    if (active != GTK_WINDOW(fixed.window)) {
+        debug_gtk3("setting monitor window transient for emulator window.");
+        gtk_window_set_transient_for(GTK_WINDOW(fixed.window), active);
+    }
+
     gtk_window_present(GTK_WINDOW(fixed.window));
+
     ui_dispatch_events();
     return &vte_console;
 }
@@ -556,7 +576,7 @@ static void fill_completions(const char *string_so_far, int initial_chars, int t
         }
         if (i == token_len && possible_lc->cvec[word_index][token_len] != 0) {
             char *string_to_append = concat_strings(string_so_far, initial_chars, possible_lc->cvec[word_index]);
-            linenoiseAddCompletion(lc, string_to_append);
+            vte_linenoiseAddCompletion(lc, string_to_append);
             lib_free(string_to_append);
         }
     }
@@ -610,7 +630,7 @@ static void monitor_completions(const char *string_so_far, linenoiseCompletions 
         for (start_of_token += token_len; string_so_far[start_of_token] && isspace((int)(string_so_far[start_of_token])); start_of_token++);
         if (string_so_far[start_of_token] != '"') {
             char *string_to_append = concat_strings(string_so_far, start_of_token, "\"");
-            linenoiseAddCompletion(lc, string_to_append);
+            vte_linenoiseAddCompletion(lc, string_to_append);
             lib_free(string_to_append);
             return;
         }
@@ -635,7 +655,7 @@ static void monitor_completions(const char *string_so_far, linenoiseCompletions 
             for (direntry = readdir(dir); direntry; direntry = readdir(dir)) {
                 if (strcmp(direntry->d_name, ".") && strcmp(direntry->d_name, "..")) {
                     char *entryname = lib_msprintf("%s%s", direntry->d_name, is_dir(direntry) ? "/" : "\"");
-                    linenoiseAddCompletion(&files_lc, entryname);
+                    vte_linenoiseAddCompletion(&files_lc, entryname);
                     lib_free(entryname);
                 }
             }
@@ -657,17 +677,17 @@ char *uimon_get_in(char **ppchCommandLine, const char *prompt)
         return uimonfb_get_in(ppchCommandLine, prompt);
     }
 
-    fixed.input_buffer = lib_stralloc("");;
-    linenoiseSetCompletionCallback(monitor_completions);
-    p = linenoise(prompt, &fixed);
+    fixed.input_buffer = lib_strdup("");;
+    vte_linenoiseSetCompletionCallback(monitor_completions);
+    p = vte_linenoise(prompt, &fixed);
     if (p) {
         if (*p) {
-            linenoiseHistoryAdd(p);
+            vte_linenoiseHistoryAdd(p);
         }
-        ret_string = lib_stralloc(p);
+        ret_string = lib_strdup(p); /* LEAKS */
         free(p);
     } else {
-        ret_string = lib_stralloc("x");
+        ret_string = lib_strdup("x");
     }
     lib_free(fixed.input_buffer);
     fixed.input_buffer = NULL;
@@ -681,21 +701,24 @@ int console_init(void)
     char *full_name;
     char *short_name;
     int takes_filename_as_arg;
-    
+
     if (native_monitor()) {
         return consolefb_init();
     }
-    
-    while (mon_get_nth_command(i++, (const char **)&full_name, (const char **)&short_name, &takes_filename_as_arg)) {
+
+    while (mon_get_nth_command(i++,
+                &full_name,
+                &short_name,
+                &takes_filename_as_arg)) {
         if (strlen(full_name)) {
-            linenoiseAddCompletion(&command_lc, full_name);
+            vte_linenoiseAddCompletion(&command_lc, full_name);
             if (strlen(short_name)) {
-                linenoiseAddCompletion(&command_lc, short_name);
+                vte_linenoiseAddCompletion(&command_lc, short_name);
             }
             if (takes_filename_as_arg) {
-                linenoiseAddCompletion(&need_filename_lc, full_name);
+                vte_linenoiseAddCompletion(&need_filename_lc, full_name);
                 if (strlen(short_name)) {
-                    linenoiseAddCompletion(&need_filename_lc, short_name);
+                    vte_linenoiseAddCompletion(&need_filename_lc, short_name);
                 }
             }
         }
@@ -724,8 +747,10 @@ int console_close_all(void)
  *
  * \param[in,out]   widget      widget triggering the event
  * \param[in]       user_data   data for the event (unused)
+ *
+ * \return  TRUE
  */
-void ui_monitor_activate_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_monitor_activate_callback(GtkWidget *widget, gpointer user_data)
 {
     int v;
     int native = 0;
@@ -742,9 +767,6 @@ void ui_monitor_activate_callback(GtkWidget *widget, gpointer user_data)
     resources_get_int("MonitorServer", &v);
 
     if (v == 0) {
-#ifdef HAVE_FULLSCREEN
-        fullscreen_suspend(0);
-#endif
         vsync_suspend_speed_eval();
         /* ui_autorepeat_on(); */
 
@@ -752,14 +774,12 @@ void ui_monitor_activate_callback(GtkWidget *widget, gpointer user_data)
         /* FIXME: restore mouse in case it was grabbed */
         /* ui_restore_mouse(); */
 #endif
-        if (!ui_emulation_is_paused()) {
+        if (!ui_pause_active()) {
             monitor_startup_trap();
         } else {
             monitor_startup(e_default_space);
-#ifdef HAVE_FULLSCREEN
-            fullscreen_resume();
-#endif
         }
     }
+    return TRUE;
 }
 

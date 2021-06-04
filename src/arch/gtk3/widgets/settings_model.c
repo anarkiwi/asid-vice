@@ -266,6 +266,33 @@ static void machine_model_handler_c64(int model)
 }
 
 
+/** \brief  Callback triggered on changing machine model
+ *
+ * \param[in]   model   machine model
+ */
+static void machine_model_handler_c128(int model)
+{
+    GtkWidget *sid_group;
+
+    debug_gtk3("Got model change for C128: %d.", model);
+
+    /* sync video chip (VICIIe) widget */
+    video_model_widget_update(video_widget);
+
+    /* sync VDC widget */
+    vdc_model_widget_update(vdc_widget);
+
+    /* sync SID chip widget */
+    sid_group = gtk_grid_get_child_at(GTK_GRID(sid_widget), 0, 1);
+    if (sid_group != NULL) {
+        vice_gtk3_resource_radiogroup_sync(sid_group);
+    }
+
+    /* synchronize CIA widget */
+    cia_model_widget_sync(cia_widget);
+}
+
+
 /*
  * C64DTV widget glue logic
  */
@@ -430,6 +457,19 @@ static void cbm5x0_video_callback(int model)
 }
 
 
+/** \brief  Callback for the CBM-II 6x0/7x0 CRTC model (sync factor)
+ *
+ * Calls model widget update
+ *
+ * \param[in]   model   new VIC-II model
+ */
+static void cbm2_video_callback(int model)
+{
+    debug_gtk3("got video model %d.", model);
+    machine_model_widget_update(machine_widget);
+}
+
+
 static void cbm2_switches_callback(GtkWidget *widget, int model_line)
 {
     debug_gtk3("called with model_line %d.", model_line);
@@ -453,6 +493,7 @@ static void machine_model_handler_cbm5x0(int model)
 
 static void machine_model_handler_cbm6x0(int model)
 {
+    video_model_widget_update(video_widget);
     cbm2_memory_size_widget_update(ram_widget);
 }
 
@@ -499,6 +540,9 @@ static void machine_model_callback(int model)
             break;
         case VICE_MACHINE_PET:
             machine_model_handler_pet(model);
+            break;
+        case VICE_MACHINE_C128:
+            machine_model_handler_c128(model);
             break;
         default:
             debug_gtk3("unsupported machine_class %d.", machine_class);
@@ -747,13 +791,17 @@ static GtkWidget *create_c128_layout(GtkWidget *grid)
     video_widget = video_model_widget_create(machine_widget);
     video_model_widget_set_callback(video_widget, video_model_callback);
     gtk_grid_attach(GTK_GRID(video_wrapper), video_widget, 0, 0, 1, 1);
+
     /* VDC model widget */
     vdc_widget = vdc_model_widget_create();
     /* XXX: I'm sure I had/have a reason for this: */
     vdc_model_widget_connect_signals(vdc_widget);
     vdc_model_widget_set_revision_callback(vdc_widget, vdc_revision_callback);
     vdc_model_widget_set_ram_callback(vdc_widget, vdc_ram_callback);
+    /* align with other widgets */
+    g_object_set(vdc_widget, "margin-left", 8, NULL);
     gtk_grid_attach(GTK_GRID(video_wrapper), vdc_widget, 0, 1, 1, 1);
+
     /* CIA1 & CIA2 widget */
     cia_widget = cia_model_widget_create(machine_widget, 2);
     cia_model_widget_set_callback(cia_widget, cia_model_callback);
@@ -992,6 +1040,11 @@ static GtkWidget *create_cbm6x0_layout(GtkWidget *grid)
     GtkWidget *switches_widget;
     GtkWidget *bank15_widget;
 
+    /* add video widget */
+    video_widget = video_model_widget_create(machine_widget);
+    video_model_widget_set_callback(video_widget, cbm2_video_callback);
+    gtk_grid_attach(GTK_GRID(grid), video_widget, 0, 3, 1, 1);
+
     /* add machine widget */
     gtk_grid_attach(GTK_GRID(grid), machine_widget, 0, 0, 1, 2);
 
@@ -1118,9 +1171,11 @@ GtkWidget *settings_model_widget_create(GtkWidget *parent)
      * Connect signal handlers
      */
     machine_model_widget_connect_signals(machine_widget);
-    if ((machine_class != VICE_MACHINE_CBM6x0)
-            && (machine_class != VICE_MACHINE_PET)) {
-        /* CBM6x0 and PET only have a simple CRTC, so no video widget used */
+    if ((machine_class != VICE_MACHINE_PET)) {
+        /*
+         * PET only has a simple CRTC, so no video widget used
+         * (Is this still valid? I had to remove the cbm2 from this branch)
+         */
         video_model_widget_connect_signals(video_widget);
     }
 

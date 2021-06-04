@@ -154,12 +154,6 @@ static ui_menu_entry_t sound_output_driver_menu[] = {
       radio_SoundDeviceName_callback,
       (ui_callback_data_t)"ahi" },
 #endif
-#ifdef USE_AIX_AUDIO
-    { "AIX",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_SoundDeviceName_callback,
-      (ui_callback_data_t)"aix" },
-#endif
 #if defined(__MSDOS__) && !defined(USE_MIDAS_SOUND)
     { "Allegro",
       MENU_ENTRY_RESOURCE_RADIO,
@@ -171,12 +165,6 @@ static ui_menu_entry_t sound_output_driver_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_SoundDeviceName_callback,
       (ui_callback_data_t)"alsa" },
-#endif
-#ifdef USE_ARTS
-    { "aRts",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_SoundDeviceName_callback,
-      (ui_callback_data_t)"arts" },
 #endif
 #ifdef BEOS_COMPILE
     { "BeOS GameSound",
@@ -209,12 +197,6 @@ static ui_menu_entry_t sound_output_driver_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       radio_SoundDeviceName_callback,
       (ui_callback_data_t)"dx" },
-#endif
-#ifdef HAVE_SYS_AUDIO_H
-    { "HPUX",
-      MENU_ENTRY_RESOURCE_RADIO,
-      radio_SoundDeviceName_callback,
-      (ui_callback_data_t)"hpux" },
 #endif
 #if defined(__MSDOS__) && defined(USE_MIDAS_SOUND)
     { "Midas",
