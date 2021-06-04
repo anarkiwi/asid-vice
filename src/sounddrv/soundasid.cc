@@ -40,9 +40,10 @@ extern "C" {
 #include "types.h"
 
 const uint8_t regmap[]={0,1,2,3,5,6,7,8,9,10,12,13,14,15,16,17,19,20,21,22,23,24,4,11,18,25,26,27};
-RtMidiOut *midiout;
 uint8_t sid_register[sizeof(regmap)];
 uint8_t sid_modified[sizeof(regmap)];
+
+RtMidiOut *midiout = NULL;
 std::vector<unsigned char> message;
 
 
@@ -52,17 +53,28 @@ std::vector<unsigned char> message;
     /* No stereo capability. */
     *channels = 1;
     int i,nports,asidport=0;
-    log_message(LOG_DEFAULT,"asid open, available ports:");
-     
-    asidport=atoi(param);
+
     midiout = new RtMidiOut();
     nports=midiout->getPortCount();
+
+    if (nports == 0) {
+      log_message(LOG_DEFAULT, "No MIDI ports available");
+      return -1;
+    }
+
+    log_message(LOG_DEFAULT,"asid open, available ports:");
     for(i=0;i<nports;i++)
       log_message(LOG_DEFAULT,"Port %d : %s",i,midiout->getPortName(i).c_str());
 
-    log_message(LOG_DEFAULT,"Using port: %d %s",asidport,midiout->getPortName(asidport).c_str());
+    asidport=atoi(param);
+    if (asidport < 0 or asidport > (nports - 1)) {
+      log_message(LOG_DEFAULT, "invalid MIDI port");
+      return -1;
+    }
 
+    log_message(LOG_DEFAULT,"Using port: %d %s",asidport,midiout->getPortName(asidport).c_str());
     midiout->openPort(asidport);
+
     memset(sid_register, 0, sizeof(sid_register));
     memset(sid_modified, 0, sizeof(sid_modified));
     message.clear();
@@ -83,12 +95,12 @@ std::vector<unsigned char> message;
   static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
   {
     int reg,data;
-    
+
     reg=addr & 0x1f;
     data=byte;
     if(sid_modified[reg]==0)
       {
-        sid_register[reg]=data & 0xff;
+	sid_register[reg]=data & 0xff;
 	sid_modified[reg]++;
       }
     else
@@ -96,17 +108,17 @@ std::vector<unsigned char> message;
 	switch(reg)
 	  {
 	  case 0x04:
-	    if(sid_modified[0x19]!=0) sid_register[0x04]=sid_register[0x19]; //if already written to secondary,move back to original one 
+	    if(sid_modified[0x19]!=0) sid_register[0x04]=sid_register[0x19]; //if already written to secondary,move back to original one
 	    sid_register[0x19]=data & 0xff;
 	    sid_modified[0x19]++;
 	    break;
 	  case 0x0b:
-	    if(sid_modified[0x1a]!=0) sid_register[0x0b]=sid_register[0x1a]; 
+	    if(sid_modified[0x1a]!=0) sid_register[0x0b]=sid_register[0x1a];
 	    sid_register[0x1a]=data & 0xff;
 	    sid_modified[0x1a]++;
 	    break;
 	  case 0x12:
-	    if(sid_modified[0x1b]!=0) sid_register[0x12]=sid_register[0x1b]; 
+	    if(sid_modified[0x1b]!=0) sid_register[0x12]=sid_register[0x1b];
 	    sid_register[0x1b]=data & 0xff;
 	    sid_modified[0x1b]++;
 	    break;
@@ -117,7 +129,7 @@ std::vector<unsigned char> message;
 	  }
       }
 
-    
+
     return 0;
   }
 
