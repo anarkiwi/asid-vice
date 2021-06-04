@@ -46,8 +46,11 @@ unsigned char sid_register[28];
 unsigned char sid_modified[28];
 std::vector<unsigned char> message;
 
+#define BYTE uint8_t
+#define WORD uint16_t
+#define SWORD int16_t
 
-static FILE *dump_fd = NULL;
+
 
 static int asid_init(const char *param, int *speed,
 		     int *fragsize, int *fragnr, int *channels)
@@ -56,11 +59,6 @@ static int asid_init(const char *param, int *speed,
     *channels = 1;
     int i,nports,asidport=0;
     log_message(LOG_DEFAULT,"asid open, available ports:");
-    //printf("asid open: %s \n",param);
-    //dump_fd = fopen(param?param:"vicesnd.sid", "w");
-    //return !dump_fd;
-    //
-    //
      
     asidport=atoi(param);
     midiout = new RtMidiOut();
@@ -130,14 +128,12 @@ static int asid_dump(WORD addr, BYTE byte, CLOCK clks)
 	}
 
     
-    //printf("%d %d %d |", (int)clks, addr, byte) < 0;
     return 0;
 }
 
 static int asid_flush(char *state)
 {
     int i,j;
-	unsigned int r=0;
 	unsigned int mask=0;
 	unsigned int msb=0;
 
@@ -183,18 +179,11 @@ static int asid_flush(char *state)
 	}
 
 
-    //printf("\n");
-    //if (printf("*%s\n", state) < 0)
-    //    return 1;
-    
     return 0;
-    //return fflush(dump_fd);
 }
 
 static void asid_close(void)
 {
-    //printf("asidclose!\n");
-    
     message.clear();
     message.push_back(0xf0);
     message.push_back(0x2d);
@@ -202,9 +191,6 @@ static void asid_close(void)
     message.push_back(0xf7);
     midiout->sendMessage(&message);
     delete midiout;
-
-    //fclose(dump_fd);
-    //dump_fd = NULL;
 }
 
 static sound_device_t asid_device =
