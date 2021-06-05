@@ -6,7 +6,6 @@
 
 /*
  * $VICERES SpeechEnabled   xplus4
- * $VICERES SpeechImage     xplus4
  */
 
 /*
@@ -34,47 +33,47 @@
 
 #include <gtk/gtk.h>
 
-#include "lib.h"
-#include "widgethelpers.h"
-#include "debug_gtk3.h"
-#include "resources.h"
 #include "basewidgets.h"
-#include "openfiledialog.h"
+#include "debug_gtk3.h"
+#include "lib.h"
 #include "machine.h"
+#include "openfiledialog.h"
+#include "resources.h"
+#include "ui.h"
+#include "widgethelpers.h"
 
 #include "v364speechwidget.h"
 
 
-static GtkWidget *entry;
-static GtkWidget *browse;
+/** \brief  Reference to the Plus4 v364 speech widget
+ *
+ * We can get away with this since there will only ever be a single Plus4
+ * Speech widget active in the UI.
+ */
+static GtkWidget *instance = NULL;
+
+
+/** \brief  User callback to trigger on widget value changes
+ *
+ * Optional, set via v364_speech_widget_add_callback()
+ */
+static void (*user_callback)(GtkWidget *, int value) = NULL;
+
 
 
 /** \brief  Handler for the "toggled" event of the Enable check button
  *
- * \param[in]   widget      check button
- * \param[in]   user_data   unused
+ * \param[in]   button      check button
+ * \param[in]   data        unused
  */
-static void on_enable_toggled(GtkWidget *widget, gpointer user_data)
+static void on_enable_toggled(GtkToggleButton *button, gpointer data)
 {
-    int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+    int active = gtk_toggle_button_get_active(button);
 
-    gtk_widget_set_sensitive(entry, state);
-    gtk_widget_set_sensitive(browse, state);
-}
-
-
-/** \brief  Handler for the "clicked" event of the browse button
- *
- * \param[in]   widget      browse button
- * \param[in]   user_data   text entry to update
- */
-static void on_browse_clicked(GtkWidget *widget, gpointer user_data)
-{
-    gchar *filename = vice_gtk3_open_file_dialog("Open V364 ROM file",
-            NULL, NULL, NULL);
-    if (filename != NULL) {
-        vice_gtk3_resource_entry_full_set(GTK_WIDGET(user_data), filename);
-        g_free(filename);
+    debug_gtk3("v364 widget toggled: %s", active ? "TRUE" : "FALSE");
+    if (user_callback != NULL) {
+        debug_gtk3("Triggering v364 user callback");
+        user_callback(GTK_WIDGET(button), active);
     }
 }
 
@@ -83,40 +82,34 @@ static void on_browse_clicked(GtkWidget *widget, gpointer user_data)
  *
  * \return  GtkGrid
  */
-GtkWidget *v364_speech_widget_create(GtkWidget *parent)
+GtkWidget *v364_speech_widget_create(void)
 {
-    GtkWidget *grid;
-    GtkWidget *enable;
-    GtkWidget *label;
+    instance = vice_gtk3_resource_check_button_new("SpeechEnabled",
+                                                   "Enable V364 Speech");
+
+    g_signal_connect(instance, "toggled", G_CALLBACK(on_enable_toggled), NULL);
+
+    user_callback = NULL;
+    return instance;
+}
 
 
-    grid = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+/** \brief  Synchronize v364 widget's state with its resource
+ */
+void v364_speech_widget_sync(void)
+{
+    vice_gtk3_resource_check_button_sync(instance);
+}
 
-    enable = vice_gtk3_resource_check_button_new("SpeechEnabled",
-            "Enable V364 Speech");
 
-    gtk_grid_attach(GTK_GRID(grid), enable, 0, 0, 3, 1);
-
-    label = gtk_label_new("ROM image");
-    gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-left", 16, NULL);
-    entry = vice_gtk3_resource_entry_full_new("SpeechImage");
-    gtk_widget_set_hexpand(entry, TRUE);
-    browse = gtk_button_new_with_label("Browse ...");
-
-    gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry, 1, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), browse, 2, 1, 1, 1);
-
-    g_signal_connect(browse, "clicked", G_CALLBACK(on_browse_clicked),
-            (gpointer)entry);
-
-    g_signal_connect(enable, "toggled", G_CALLBACK(on_enable_toggled), NULL);
-
-    on_enable_toggled(enable, NULL);
-
-    gtk_widget_show_all(grid);
-    return grid;
+/** \brief  Add user callback to trigger on widget changes
+ *
+ * When the state of the v364 widget changes, the callback is called with two
+ * arguments: the v364 widget and the new value (bool).
+ *
+ * \param[in]   callback    user callback function
+ */
+void v364_speech_widget_add_callback(void (*callback)(GtkWidget *, int value))
+{
+    user_callback = callback;
 }

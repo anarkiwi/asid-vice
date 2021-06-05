@@ -25,13 +25,15 @@
  */
 
 #include "vice.h"
+#include "config.h"
 
 #include <stdlib.h>
 
-#include "archdep_defs.h"
-#include "lib.h"
 #include "archdep_boot_path.h"
+#include "archdep_defs.h"
+#include "archdep_is_macos_bindist.h"
 #include "archdep_join_paths.h"
+#include "lib.h"
 
 #include "archdep_get_vice_docsdir.h"
 
@@ -43,16 +45,26 @@
 char *archdep_get_vice_docsdir(void)
 {
     char *path;
+    printf("VICE_DOCDIR = '%s'\n", VICE_DOCDIR);
 
-#ifdef ARCHDEP_OS_UNIX
-# ifdef ARCHDEP_OS_OSX
-    /* this would work on Linux, too. */
-    path = archdep_join_paths(archdep_boot_path(), "..", "lib", "vice", "doc", NULL);
-# else
-    path = lib_strdup(DOCDIR);
-# endif
-#else
+#ifdef ARCHDEP_OS_WINDOWS
+    /* Cannot use VICE_DOCDIR here since Windows installs assume any file to
+     * be relative to the emu binary.
+     */
+# if defined(USE_SDLUI) || defined(USE_SDLUI2)
     path = archdep_join_paths(archdep_boot_path(), "doc", NULL);
+# else
+    path = archdep_join_paths(archdep_boot_path(), "..", "doc", NULL);
+# endif
+#elif defined(ARCHDEP_OS_MACOS)
+    if (archdep_is_macos_bindist()) {
+        path = archdep_join_paths(archdep_boot_path(), "..", "share", "vice", "doc", NULL);
+    } else {
+        path = lib_strdup(VICE_DOCDIR);
+    }
+#else
+    path = lib_strdup(VICE_DOCDIR);
 #endif
+
     return path;
 }

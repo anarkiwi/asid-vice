@@ -11,6 +11,9 @@
  * $VICERES JoyPort4Device  x64 x64sc xscpu64 x128 xcbm2 xpet xvice
  * $VICERES JoyPort5Device  xplus4
  * $VICERES BBRTCSave
+ * $VICERES ps2mouse            x64dtv
+ * $VICERES SmartMouseRTCSave   x64 x64sc xscpu64 x128 xvic xplus4 xcbm5x0
+ * $VICERES UserportJoy     -xcbm5x0 -vsid
  */
 
 /*
@@ -46,7 +49,6 @@
 #include "machine.h"
 #include "resources.h"
 #include "joyport.h"
-#include "resourcewidgetmanager.h"
 #include "uisettings.h"
 
 #include "settings_controlport.h"
@@ -60,11 +62,6 @@ static void joyport_devices_list_shutdown(void);
 static void free_combo_list(int port);
 
 
-/** \brief  Resource widget manager object
- */
-resource_widget_manager_t manager;
-
-
 
 /** \brief  Lists of valid devices for each joyport
  */
@@ -74,6 +71,9 @@ static joyport_desc_t *joyport_devices[JOYPORT_MAX_PORTS];
 /** \brief  Combo box entry lists for each joyport
  */
 static vice_gtk3_combo_entry_int_t *joyport_combo_lists[JOYPORT_MAX_PORTS];
+
+
+static GtkWidget *userportjoy_widget = NULL;
 
 
 /** \brief  Handler for the "destroy" event of the main widget
@@ -89,10 +89,40 @@ static void on_destroy(GtkWidget *widget, gpointer user_data)
     for (port = 0; port < JOYPORT_MAX_PORTS; port++) {
         free_combo_list(port);
     }
-
-    vice_resource_widget_manager_exit(&manager);
 }
 
+
+/** \brief  Handler for the "toggled" event of the "Userport adapter" checkbox
+ *
+ * \param[in]   check       check button
+ * \param[in]   user_data   extra event data (unused)
+ */
+static void on_userportjoy_enable_toggled(GtkWidget *check, gpointer user_data)
+{
+#if 0
+    if (machine_class != VICE_MACHINE_C64DTV) {
+        int state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(check));
+        gtk_widget_set_sensitive(adapter_widget, state ? TRUE: FALSE);
+    }
+#endif
+}
+
+
+/** \brief  Create a check button to enable "Userport joystick adapter"
+ *
+ * \return  GtkCheckButton
+ */
+static GtkWidget *create_userportjoy_enable_checkbox(void)
+{
+    GtkWidget *check;
+
+    check = vice_gtk3_resource_check_button_new("UserportJoy",
+            "Enable userport joysticks");
+    /* extra handler to enable/disable the userport adapter widget */
+    g_signal_connect(check, "toggled",
+            G_CALLBACK(on_userportjoy_enable_toggled), NULL);
+    return check;
+}
 
 
 static gboolean create_combo_list(int port)
@@ -210,10 +240,6 @@ static GtkWidget *create_joyport_widget(int port, const char *title)
     gtk_widget_set_hexpand(combo, TRUE);
 
     gtk_grid_attach(GTK_GRID(grid), combo, 0, 1, 1, 1);
-
-    /* add widget to the resource manager */
-    vice_resource_widget_manager_add_widget(&manager, combo, NULL,
-            NULL, NULL, NULL);
 
     gtk_widget_show_all(grid);
     return grid;
@@ -439,12 +465,11 @@ static int create_cbm6x0_layout(GtkGrid *grid)
 GtkWidget *settings_controlport_widget_create(GtkWidget *parent)
 {
     GtkWidget *layout;
+    GtkWidget *mouse_save;
+    GtkWidget *ps2_enable;
     int rows = 0;
 
     joyport_devices_list_init();
-
-    vice_resource_widget_manager_init(&manager);
-    ui_settings_set_resource_widget_manager(&manager);
 
     layout = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(layout), 8);
@@ -482,13 +507,46 @@ GtkWidget *settings_controlport_widget_create(GtkWidget *parent)
     /* add BBRTC checkbox */
     if (rows > 0) {
         GtkWidget *bbrtc_widget = create_bbrtc_widget();
-
         gtk_grid_attach(GTK_GRID(layout), bbrtc_widget, 0, rows, 2, 1);
-        vice_resource_widget_manager_add_widget(&manager, bbrtc_widget, NULL,
-                NULL, NULL, NULL);
+        rows++;
     }
 
-    g_signal_connect(layout, "destroy", G_CALLBACK(on_destroy), NULL);
+    /* add SmartMouseRTCSave checkbox */
+    switch (machine_class) {
+        case VICE_MACHINE_C64:      /* fall through */
+        case VICE_MACHINE_C64SC:    /* fall through */
+        case VICE_MACHINE_SCPU64:   /* fall through */
+        case VICE_MACHINE_C128:     /* fall through */
+        case VICE_MACHINE_VIC20:    /* fall through */
+        case VICE_MACHINE_PLUS4:    /* fall through */
+        case VICE_MACHINE_CBM5x0:
+            mouse_save = vice_gtk3_resource_check_button_new(
+                    "SmartMouseRTCSave", "Enable SmartMouse RTC Saving");
+            gtk_grid_attach(GTK_GRID(layout), mouse_save, 0, rows, 2, 1);
+            g_object_set(mouse_save, "margin-left", 16, NULL);
+            rows++;
+            break;
+        default:
+            /* No SmartMouse support */
+            break;
+    }
+
+    /* PS/2 mouse on DTV */
+    if (machine_class == VICE_MACHINE_C64DTV) {
+        ps2_enable = vice_gtk3_resource_check_button_new("ps2mouse",
+                "Enable PS/2 mouse on Userport");
+        gtk_grid_attach(GTK_GRID(layout), ps2_enable, 0, rows, 2, 1);
+        g_object_set(ps2_enable, "margin-left", 16, NULL);
+        rows++;
+    }
+
+    if (machine_class != VICE_MACHINE_CBM5x0) {
+        userportjoy_widget = create_userportjoy_enable_checkbox();
+        g_object_set(userportjoy_widget, "margin-left", 16, NULL);
+        gtk_grid_attach(GTK_GRID(layout), userportjoy_widget, 0, rows, 2, 1);
+    }
+
+    g_signal_connect_unlocked(layout, "destroy", G_CALLBACK(on_destroy), NULL);
     gtk_widget_show_all(layout);
     return layout;
 }

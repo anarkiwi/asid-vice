@@ -31,8 +31,8 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-GtkWidget *plus4_memory_expansion_widget_create(void);
-
-void plus4_memory_expansion_widget_set_callback(void (*callback)(int, int));
+GtkWidget * plus4_memory_expansion_widget_create(void);
+void        plus4_memory_expansion_widget_add_callback(void (*cb)(GtkWidget *, int));
+gboolean    plus4_memory_expansion_widget_sync(void);
 
 #endif

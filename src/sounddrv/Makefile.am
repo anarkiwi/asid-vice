@@ -11,6 +11,9 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
+AM_LDFLAGS = @VICE_LDFLAGS@
+
+
 noinst_LIBRARIES = libsounddrv.a
 
 # These sources are linked only under certain circumstances.
@@ -20,7 +23,6 @@ EXTRA_libsounddrv_a_SOURCES = \
 	soundbeos.cc \
 	soundbsp.cc \
 	soundcoreaudio.c \
-	sounddart.c \
 	sounddx.c \
 	soundflac.c \
 	soundmp3.c \

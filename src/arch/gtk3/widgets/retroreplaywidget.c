@@ -61,17 +61,16 @@ static const vice_gtk3_combo_entry_int_t rr_revisions[] = {
 };
 
 
-
-/** \brief  Handler for the "clicked" event of the "Save As" button
+/** \brief  Callback for the save-dialog response handler
  *
- * \param[in]   widget      button
- * \param[in]   user_data   extra event data (unused)
+ * \param[in,out]   dialog      save-file dialog
+ * \param[in,out]   filename    filename
+ * \param[in]       data        extra data (unused)
  */
-static void on_save_clicked(GtkWidget *widget, gpointer user_data)
+static void save_filename_callback(GtkDialog *dialog,
+                                   gchar *filename,
+                                   gpointer data)
 {
-    gchar *filename;
-
-    filename = vice_gtk3_save_file_dialog("Save image as", NULL, TRUE, NULL);
     if (filename != NULL) {
         debug_gtk3("writing RR image file as '%s'.", filename);
         if (carthelpers_save_func(CARTRIDGE_RETRO_REPLAY, filename) < 0) {
@@ -80,6 +79,22 @@ static void on_save_clicked(GtkWidget *widget, gpointer user_data)
         }
         g_free(filename);
     }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+
+/** \brief  Handler for the "clicked" event of the "Save As" button
+ *
+ * \param[in]   widget      button
+ * \param[in]   user_data   extra event data (unused)
+ */
+static void on_save_clicked(GtkWidget *widget, gpointer user_data)
+{
+    vice_gtk3_save_file_dialog("Save image as",
+                               NULL, TRUE, NULL,
+                               save_filename_callback,
+                               NULL);
 }
 
 

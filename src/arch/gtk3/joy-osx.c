@@ -74,24 +74,6 @@ typedef struct device_info_s {
     int         id;     /**< device ID (\see joy.h) */
 } device_info_t;
 
-static device_info_t predefined_device_list[] = {
-    { "Analog joystick 0",  JOYDEV_ANALOG_0 },
-    { "Analog joystick 1",  JOYDEV_ANALOG_1 },
-    { "Analog joystick 2",  JOYDEV_ANALOG_2 },
-    { "Analog joystick 3",  JOYDEV_ANALOG_3 },
-    { "Analog joystick 4",  JOYDEV_ANALOG_4 },
-    { "Analog joystick 5",  JOYDEV_ANALOG_5 },
-#ifdef HAS_DIGITAL_JOYSTICK
-    { "Digital joystick 0", JOYDEV_DIGITAL_0 },
-    { "Digital joystick 1", JOYDEV_DIGITAL_1 },
-#endif
-#ifdef HAS_USB_JOYSTICK
-    { "USB joystick 0",     JOYDEV_USB_0 },
-    { "USB joystick 1",     JOYDEV_USB_1 },
-#endif
-    { NULL, -1 }
-};
-
 static int joystickdeviceidx = 0;
 
 void joystick_ui_reset_device_list(void)
@@ -102,14 +84,21 @@ void joystick_ui_reset_device_list(void)
 const char *joystick_ui_get_next_device_name(int *id)
 {
     const char *name;
-    if ((name = predefined_device_list[joystickdeviceidx].name)) {
-        *id = predefined_device_list[joystickdeviceidx].id;
-        joystickdeviceidx++;
-        return name;
+    const joy_hid_device_array_t *devices;
+    
+    devices = joy_hid_get_devices();
+    if (joystickdeviceidx >= devices->num_devices) {
+        return NULL;
     }
-    return NULL;
+
+    name = devices->devices[joystickdeviceidx].product_name;
+    *id = JOYDEV_HID_0 + joystickdeviceidx;
+
+    joystickdeviceidx++;
+    
+    return name;
 }
-#if 0
+
 /* HID settings */
 
 static int set_joy_a_device_name(const char *val,void *param)
@@ -503,17 +492,14 @@ static const resource_int_t resources_int[] = {
       &joy_b.hat_switch.id, set_joy_b_hat_switch, NULL },
     RESOURCE_INT_LIST_END
 };
-#endif
+
 int joy_arch_resources_init(void)
 {
-    return 0;
-#if 0
     if (resources_register_string(resources_string) < 0) {
         return -1;
     }
 
     return resources_register_int(resources_int);
-#endif
 }
 
 /* ----- VICE Command-line options ----- */

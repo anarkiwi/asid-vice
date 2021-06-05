@@ -29,17 +29,17 @@
 
 #include "vice.h"
 #include <gtk/gtk.h>
+#include <stdbool.h>
 
 #include "basewidget_types.h"
 
 #ifdef MACOSX_SUPPORT
 
-/** \brief  Unicode text for the VICE_MOD_MASK (Alt/Command) modifier
- * TODO: figure out actual codepoint for the MacOS command symbol
+/** \brief  Unicode text for the VICE_MOD_MASK (Command/⌘) modifier
  */
-# define VICE_MOD_MASK_TEXT "Bloemkool"
+# define VICE_MOD_MASK_TEXT "⌘"
 
-/** \brief  HTML text for the MOD1_MASK (Winkey/Command) modifier
+/** \brief  HTML text for the VICE_MOD_MASK (Command/⌘) modifier
  */
 # define VICE_MOD_MASK_HTML "&#8984;"
 
@@ -54,21 +54,10 @@
 #endif
 
 
-/* XXX: either deprecated or needs renaming */
-
-
 GtkWidget *uihelpers_create_grid_with_label(const gchar *text, gint columns);
-
-GtkWidget *uihelpers_radiogroup_create(
-        const gchar *label,
-        const vice_gtk3_radiogroup_entry_t *data,
-        void (*callback)(GtkWidget *, gpointer),
-        int active);
-
 
 /* only useful for custom built radio groups, don't use on resourceradiogroup.c
  * generated stuff */
-
 int vice_gtk3_radiogroup_get_list_index(
         const vice_gtk3_radiogroup_entry_t *list,
         int value);
@@ -88,5 +77,9 @@ GtkWidget *vice_gtk3_grid_new_spaced_with_label(int column_spacing,
                                                 int row_spacing,
                                                 const char *label,
                                                 int span);
+
+unsigned char *vice_gtk3_petscii_to_utf8(unsigned char *s,
+                                         bool inverted,
+                                         bool lowercase);
 
 #endif

@@ -9,10 +9,6 @@
  *  - Windows
  *  - MacOS
  *  - BeOS/Haiku
- *  - AmigaOS (untested)
- *  - OS/2 (untested)
- *  - MS-DOS (untested)
- *
  */
 
 /*
@@ -46,10 +42,6 @@
 #include "lib.h"
 #include "log.h"
 
-#ifdef AMIGA_SUPPORT
-/* some includes */
-#endif
-
 /* for readlink(2) */
 #ifdef UNIX_COMPILE
 # include <unistd.h>
@@ -64,7 +56,7 @@
 # include "windows.h"
 #endif
 
-#include "archdep_atexit.h"
+#include "archdep_exit.h"
 #include "archdep_program_path.h"
 
 #include "archdep_program_name.h"
@@ -78,15 +70,16 @@
 static char *program_name = NULL;
 
 
-#if defined(WIN32_COMPILE) || defined(OS2_COMPILE) || \
-    defined(MSDOS) || defined(_MSDOS) || defined(__MSDOS__) || defined(__DOS__)
-/** \brief  Helper function for Windows and OS/2
+#ifdef ARCHDEP_OS_WINDOWS
+/** \brief  Helper function for Windows
  *
  * \param[in]   buf string to parse binary name from
  *
  * \return  heap-allocated binary name, free with lib_free()
+ *
+ * \todo    Rename!
  */
-static char *prg_name_win32_os2(const char *buf)
+static char *prg_name_win32(const char *buf)
 {
     const char *s;
     const char *e;
@@ -158,18 +151,6 @@ const char *archdep_program_name(void)
         archdep_vice_exit(1);
     }
 
-#ifdef AMIGA_SUPPORT
-    char *p;
-
-    p = FilePart(execpath);
-    if (p != NULL) {
-        program_name = lib_strdup(p);
-    } else {
-        log_error(LOG_ERR, "failed to retrieve program name.");
-        archdep_vice_exit(1);
-    }
-#endif
-
 #ifdef UNIX_COMPILE
     /* XXX: Only works on Linux, support for *BSD, Solaris and MacOS to be
      *      added later:
@@ -185,9 +166,8 @@ const char *archdep_program_name(void)
     program_name = prg_name_unix(execpath);
 #endif
 
-#if defined(WIN32_COMPILE) || defined(OS2_COMPILE) || \
-    defined(MSDOS) || defined(_MSDOS) || defined(__MSDOS__) || defined(__DOS__)
-    program_name = prg_name_win32_os2(execpath);
+#ifdef ARCHDEP_OS_WINDOWS
+    program_name = prg_name_win32(execpath);
 #endif
 
 #ifdef BEOS_COMPILE

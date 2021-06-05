@@ -6,8 +6,6 @@
 
 /*
  * $VICERES SuperPET        xpet
- * $VICERES Ram9            xpet
- * $VICERES RamA            xpet
  * $VICERES CPUswitch       xpet
  * $VICERES H6809RomAName   xpet
  * $VICERES H6809RomBName   xpet
@@ -44,22 +42,28 @@
 
 #include <gtk/gtk.h>
 
-#include "basewidgets.h"
-#include "widgethelpers.h"
-#include "debug_gtk3.h"
-#include "resources.h"
-#include "openfiledialog.h"
 #include "aciawidget.h"
+#include "basedialogs.h"
+#include "basewidgets.h"
+#include "debug_gtk3.h"
+#include "openfiledialog.h"
+#include "resources.h"
+#include "ui.h"
+#include "widgethelpers.h"
 
 #include "superpetwidget.h"
+
+
+#define SUPERPET_ROM_COUNT ('F' - 'A' + 1)
 
 
 static GtkWidget *superpet_enable_widget = NULL;
 static GtkWidget *acia1_widget = NULL;
 static GtkWidget *cpu_widget = NULL;
 static GtkWidget *rom_widget = NULL;
-static GtkWidget *ram_9xxx_widget = NULL;
-static GtkWidget *ram_axxx_widget = NULL;
+
+static GtkWidget *rom_entry_list[SUPERPET_ROM_COUNT];
+
 
 
 /** \brief  List of baud rates for the ACIA widget
@@ -92,6 +96,31 @@ static void on_superpet_rom_changed(GtkWidget *widget, gpointer user_data)
 }
 
 
+/** \brief  Callback for the SuperPet $A000-$F000 ROMS
+ *
+ * \param[in,out]   dialog      open-file dialog
+ * \param[in]       filename    ROM filename
+ * \param[in]       data        ROM "index"
+ */
+static void browse_superpet_rom_filename_callback(GtkDialog *dialog,
+                                                  gchar *filename,
+                                                  gpointer data)
+{
+    int rom_index = GPOINTER_TO_INT(data);
+
+    debug_gtk3("ROM index = %d ($%c000), filename = '%s'",
+            rom_index, rom_index + 'A', filename);
+
+    if (filename != NULL) {
+        GtkWidget *entry = rom_entry_list[rom_index];
+        /* update text entry, forcing update of the related resource */
+        gtk_entry_set_text(GTK_ENTRY(entry), filename);
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
 /** \brief  Handler for the "clicked" event of the ROM browse buttons
  *
  * \param[in]   widget      button
@@ -100,27 +129,15 @@ static void on_superpet_rom_changed(GtkWidget *widget, gpointer user_data)
 static void on_superpet_rom_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
     int rom = GPOINTER_TO_INT(user_data);
-    gchar *filename;
     char title[256];
 
-    g_snprintf(title, 256, "Select $%cXXX ROM", rom);
+    g_snprintf(title, sizeof(title), "Select $%cXXX ROM", rom);
 
-    filename = vice_gtk3_open_file_dialog(title, NULL, NULL, NULL);
-    if (filename != NULL) {
-        GtkWidget *grid;
-        GtkWidget *entry;
-        int row;
-
-        /* determine location of related text entry */
-        row = rom - 'A' + 1;
-        grid = gtk_widget_get_parent(widget);
-        entry = gtk_grid_get_child_at(GTK_GRID(grid), 1, row);
-
-        /* update text entry, forcing update of the related resource */
-        gtk_entry_set_text(GTK_ENTRY(entry), filename);
-
-        g_free(filename);
-    }
+    vice_gtk3_open_file_dialog(
+            title,
+            NULL, NULL, NULL,
+            browse_superpet_rom_filename_callback,
+            GINT_TO_POINTER(rom - 'A'));
 }
 
 
@@ -178,7 +195,7 @@ static GtkWidget *create_superpet_rom_widget(void)
     grid = uihelpers_create_grid_with_label("6809 ROMs", 3);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
 
-    for (bank = 0; bank < 6; bank++) {
+    for (bank = 0; bank < SUPERPET_ROM_COUNT; bank++) {
 
         GtkWidget *label;
         GtkWidget *entry;
@@ -187,7 +204,7 @@ static GtkWidget *create_superpet_rom_widget(void)
         const char *path;
 
         /* assumes ASCII, should be safe, except for old IBM main frames */
-        g_snprintf(buffer, 64, "$%cxxx", bank + 'A');
+        g_snprintf(buffer, sizeof(buffer), "$%cxxx", bank + 'A');
         label = gtk_label_new(buffer);
         g_object_set(label, "margin-left", 16, NULL);
 
@@ -209,30 +226,11 @@ static GtkWidget *create_superpet_rom_widget(void)
                 G_CALLBACK(on_superpet_rom_browse_clicked),
                 GINT_TO_POINTER(bank + 'A'));
 
+        rom_entry_list[bank] = entry;
     }
 
     gtk_widget_show_all(grid);
     return grid;
-}
-
-
-/** \brief  Create check button for the Ram9 resource
- *
- * \return  GtkCheckButton
- */
-static GtkWidget *create_superpet_9xxx_ram_widget(void)
-{
-    return vice_gtk3_resource_check_button_new("Ram9", "$9XXX as RAM");
-}
-
-
-/** \brief  Create check button for the RamA resource
- *
- * \return  GtkCheckButton
- */
-static GtkWidget *create_superpet_axxx_ram_widget(void)
-{
-    return vice_gtk3_resource_check_button_new("RamA", "$AXXX as RAM");
 }
 
 
@@ -263,17 +261,6 @@ GtkWidget *superpet_widget_create(void)
 
     rom_widget = create_superpet_rom_widget();
     gtk_grid_attach(GTK_GRID(grid), rom_widget, 1 ,3 , 2, 3);
-
-    ram_9xxx_widget = create_superpet_9xxx_ram_widget();
-    g_object_set(ram_9xxx_widget, "margin-left", 8, NULL);
-    gtk_widget_set_vexpand(ram_9xxx_widget, TRUE);
-    gtk_widget_set_valign(ram_9xxx_widget, GTK_ALIGN_END);
-    ram_axxx_widget = create_superpet_axxx_ram_widget();
-    g_object_set(ram_axxx_widget, "margin-left", 8, NULL);
-    gtk_widget_set_valign(ram_axxx_widget, GTK_ALIGN_END);
-
-    gtk_grid_attach(GTK_GRID(grid), ram_9xxx_widget, 0, 4, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), ram_axxx_widget, 0, 5, 1, 1);
 
     gtk_widget_show_all(grid);
     return grid;

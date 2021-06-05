@@ -51,8 +51,8 @@ static char read_name[SNAPSHOT_MACHINE_NAME_LEN];
 static char *current_machine_name = NULL;
 static char *current_filename = NULL;
 
-char snapshot_magic_string[] = "VICE Snapshot File\032";
-char snapshot_version_magic_string[] = "VICE Version\032";
+static const char snapshot_magic_string[] = "VICE Snapshot File\032";
+static const char snapshot_version_magic_string[] = "VICE Version\032";
 
 #define SNAPSHOT_MAGIC_LEN              19
 #define SNAPSHOT_VERSION_MAGIC_LEN      13
@@ -585,7 +585,7 @@ snapshot_module_t *snapshot_module_create(snapshot_t *s, const char *name, uint8
         return NULL;
     }
 
-    m->size = ftell(s->file) - m->offset;
+    m->size = (uint32_t)(ftell(s->file) - m->offset);
     m->size_offset = ftell(s->file) - sizeof(uint32_t);
 
     return m;

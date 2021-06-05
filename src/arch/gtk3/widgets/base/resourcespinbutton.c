@@ -200,12 +200,11 @@ static GtkWidget *resource_spin_int_new_helper(GtkWidget *spin)
             spin,
             vice_gtk3_resource_spin_int_reset,
             vice_gtk3_resource_spin_int_factory,
-            vice_gtk3_resource_spin_int_sync,
-            vice_gtk3_resource_spin_int_apply);
+            vice_gtk3_resource_spin_int_sync);
 
     g_signal_connect(spin, "value-changed",
             G_CALLBACK(on_spin_button_value_changed),NULL);
-    g_signal_connect(spin, "destroy",
+    g_signal_connect_unlocked(spin, "destroy",
             G_CALLBACK(on_spin_button_destroy), NULL);
 
     gtk_widget_show(spin);
@@ -295,8 +294,8 @@ void vice_gtk3_resource_spin_int_set_fake_digits(
     }
     resource_widget_set_int(spin, "FakeDigits", digits);
     gtk_spin_button_set_digits(GTK_SPIN_BUTTON(spin), digits);
-    g_signal_connect(spin, "input", G_CALLBACK(on_spin_button_input), NULL);
-    g_signal_connect(spin, "output", G_CALLBACK(on_spin_button_output), NULL);
+    g_signal_connect_unlocked(spin, "input", G_CALLBACK(on_spin_button_input), NULL);
+    g_signal_connect_unlocked(spin, "output", G_CALLBACK(on_spin_button_output), NULL);
 }
 
 
@@ -399,17 +398,4 @@ gboolean vice_gtk3_resource_spin_int_sync(GtkWidget *widget)
         return vice_gtk3_resource_spin_int_set(widget, resource_val);
     }
     return TRUE;
-}
-
-
-/** \brief  Set resource to the widget's value
- *
- * \param[in,out]   widget  resource integer spin button
- *
- * \return  bool
- */
-gboolean vice_gtk3_resource_spin_int_apply(GtkWidget *widget)
-{
-    NOT_IMPLEMENTED_WARN_ONLY();
-    return FALSE;
 }

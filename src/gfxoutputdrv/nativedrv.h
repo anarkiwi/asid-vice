@@ -3,6 +3,7 @@
  *
  * Written by
  *  Marco van den Heuvel <blackystardust68@yahoo.com>
+ *  groepaz <groepaz@gmx.net>
  *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
@@ -43,41 +44,29 @@ typedef struct native_color_sort_s {
     int amount;
 } native_color_sort_t;
 
-extern void gfxoutput_init_doodle(int help);
+extern void gfxoutput_init_artstudio(int help);
 extern void gfxoutput_init_koala(int help);
 
-extern void native_smooth_scroll_borderize_colormap(native_data_t *source, uint8_t bordercolor, uint8_t xcover, uint8_t ycover);
+/* extern void native_smooth_scroll_borderize_colormap(native_data_t *source, uint8_t bordercolor, uint8_t xcover, uint8_t ycover); */
 extern native_data_t *native_borderize_colormap(native_data_t *source, uint8_t bordercolor, int xsize, int ysize);
 extern native_data_t *native_crop_and_borderize_colormap(native_data_t *source, uint8_t bordercolor, int xsize, int ysize, int oversize_handling);
 extern native_data_t *native_scale_colormap(native_data_t *source, int xsize, int ysize);
 extern native_data_t *native_resize_colormap(native_data_t *source, int xsize, int ysize, uint8_t bordercolor, int oversize_handling, int undersize_handling);
 extern native_color_sort_t *native_sort_colors_colormap(native_data_t *source, int color_amount);
+extern int native_is_colormap_multicolor(native_data_t *source);
 
 extern void vicii_color_to_vicii_bw_colormap(native_data_t *source);
 extern void vicii_color_to_vicii_gray_colormap(native_data_t *source);
 extern void vicii_color_to_nearest_vicii_color_colormap(native_data_t *source, native_color_sort_t *colors);
 
 extern void ted_color_to_vicii_color_colormap(native_data_t *source, int ted_lum_handling);
-
 extern void vic_color_to_vicii_color_colormap(native_data_t *source);
-
 extern void vdc_color_to_vicii_color_colormap(native_data_t *source);
 
-extern native_data_t *native_vicii_text_mode_render(screenshot_t *screenshot, const char *filename);
-extern native_data_t *native_vicii_extended_background_mode_render(screenshot_t *screenshot, const char *filename);
-extern native_data_t *native_vicii_multicolor_text_mode_render(screenshot_t *screenshot, const char *filename);
-extern native_data_t *native_vicii_hires_bitmap_mode_render(screenshot_t *screenshot, const char *filename);
-extern native_data_t *native_vicii_multicolor_bitmap_mode_render(screenshot_t *screenshot, const char *filename);
-
-extern native_data_t *native_ted_text_mode_render(screenshot_t *screenshot, const char *filename);
-extern native_data_t *native_ted_extended_background_mode_render(screenshot_t *screenshot, const char *filename);
-extern native_data_t *native_ted_hires_bitmap_mode_render(screenshot_t *screenshot, const char *filename);
-extern native_data_t *native_ted_multicolor_bitmap_mode_render(screenshot_t *screenshot, const char *filename);
-
+extern native_data_t *native_vicii_render(screenshot_t *screenshot, const char *filename);
+extern native_data_t *native_ted_render(screenshot_t *screenshot, const char *filename);
 extern native_data_t *native_vic_render(screenshot_t *screenshot, const char *filename);
-
-extern native_data_t *native_crtc_render(screenshot_t *screenshot, const char *filename, int crtc_fgcolor);
-
-extern native_data_t *native_vdc_text_mode_render(screenshot_t *screenshot, const char *filename);
+extern native_data_t *native_vdc_render(screenshot_t *screenshot, const char *filename);
+extern native_data_t *native_crtc_render(screenshot_t *screenshot, const char *filename);
 
 #endif

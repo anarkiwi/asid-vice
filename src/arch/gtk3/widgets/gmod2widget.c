@@ -34,15 +34,43 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-#include "vice_gtk3.h"
+#include "carthelpers.h"
+#include "cartimagewidget.h"
+#include "cartridge.h"
 #include "debug_gtk3.h"
 #include "machine.h"
 #include "resources.h"
-#include "cartridge.h"
-#include "cartimagewidget.h"
-#include "carthelpers.h"
+#include "vice_gtk3.h"
+#include "ui.h"
 
 #include "gmod2widget.h"
+
+
+/** \brief  Text entry used for the EEPROM filename
+ */
+static GtkWidget *eeprom_entry;
+
+
+/** \brief  Callback for the open-file dialog
+ *
+ * \param[in,out]   dialog      open-file dialog
+ * \param[in,out]   filename    filename or NULL on cancel
+ * \param[in]       data        extra data (unused)
+ */
+static void save_filename_callback(GtkDialog *dialog,
+                                   gchar *filename,
+                                   gpointer data)
+{
+    if (filename != NULL) {
+        if (carthelpers_save_func(CARTRIDGE_GMOD2, filename) < 0) {
+            vice_gtk3_message_error("Saving failed",
+                    "Failed to save cartridge image '%s'",
+                    filename);
+        }
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
 
 
 /** \brief  Handler for the "clicked" event of the Save Image button
@@ -53,17 +81,11 @@
 static void on_save_clicked(GtkWidget *widget, gpointer user_data)
 {
     /* TODO: retrieve filename of cart image */
-    gchar *filename = vice_gtk3_save_file_dialog("Save Cartridge image",
-            NULL, TRUE, NULL);
-    if (filename != NULL) {
-        debug_gtk3("saving GMod2 cart image as '%s'.", filename);
-        if (carthelpers_save_func(CARTRIDGE_GMOD2, filename) < 0) {
-            vice_gtk3_message_error("Saving failed",
-                    "Failed to save cartridge image '%s'",
-                    filename);
-        }
-        g_free(filename);
-    }
+
+    vice_gtk3_save_file_dialog("Save cartridge image",
+                               NULL, TRUE, NULL,
+                               save_filename_callback,
+                               NULL);
 }
 
 
@@ -75,11 +97,29 @@ static void on_save_clicked(GtkWidget *widget, gpointer user_data)
 static void on_flush_clicked(GtkWidget *widget, gpointer user_data)
 {
     if (carthelpers_flush_func(CARTRIDGE_GMOD2) < 0) {
-        debug_gtk3("Flusing GMod2 cart image.");
         vice_gtk3_message_error("Flushing failed",
                     "Failed to fush cartridge image");
     }
 }
+
+
+static void eeprom_filename_callback(GtkDialog *dialog,
+                                     gchar *filename,
+                                     gpointer data)
+{
+    if (filename != NULL) {
+        if (resources_set_string("GMOD2EEPROMImage", filename) < 0) {
+            vice_gtk3_message_error("Failed to load EEPROM file",
+                    "Failed to load EEPROM image file '%s'",
+                    filename);
+        } else {
+            gtk_entry_set_text(GTK_ENTRY(eeprom_entry), filename);
+        }
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
 
 
 /** \brief  Handler for the "clicked" event of the EEPROM browse button
@@ -89,20 +129,11 @@ static void on_flush_clicked(GtkWidget *widget, gpointer user_data)
  */
 static void on_eeprom_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
-    gchar *filename = vice_gtk3_open_file_dialog("Open EEMPROM image",
-                NULL, NULL, NULL);
-
-    if (filename != NULL) {
-        debug_gtk3("Loading GMod2 EEPROM image '%s'.", filename);
-        if (resources_set_string("GMOD2EEPROMImage", filename) < 0) {
-            vice_gtk3_message_error("Failed to load EEPROM file",
-                    "Failed to load EEPROM image file '%s'",
-                    filename);
-        } else {
-            gtk_entry_set_text(GTK_ENTRY(user_data), filename);
-        }
-        g_free(filename);
-    }
+    vice_gtk3_open_file_dialog(
+            "Open EEMPROM image",
+             NULL, NULL, NULL,
+             eeprom_filename_callback,
+             NULL);
 }
 
 
@@ -153,7 +184,6 @@ static GtkWidget *create_eeprom_image_widget(void)
 {
     GtkWidget *grid;
     GtkWidget *label;
-    GtkWidget *entry;
     GtkWidget *browse;
     GtkWidget *write_enable;
 
@@ -165,15 +195,15 @@ static GtkWidget *create_eeprom_image_widget(void)
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     g_object_set(label, "margin-left", 16, NULL);
 
-    entry = vice_gtk3_resource_entry_full_new("GMOD2EEPROMImage");
-    gtk_widget_set_hexpand(entry, TRUE);
+    eeprom_entry = vice_gtk3_resource_entry_full_new("GMOD2EEPROMImage");
+    gtk_widget_set_hexpand(eeprom_entry, TRUE);
 
     browse = gtk_button_new_with_label("Browse ...");
     g_signal_connect(browse, "clicked", G_CALLBACK(on_eeprom_browse_clicked),
-            (gpointer)entry);
+            NULL);
 
     gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry, 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), eeprom_entry, 1, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), browse, 2, 1, 1, 1);
 
     write_enable = vice_gtk3_resource_check_button_new("GMOD2EEPROMRW",

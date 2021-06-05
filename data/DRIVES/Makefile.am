@@ -1,4 +1,4 @@
-drvdir = $(VICEDIR)/DRIVES
+drvdir = $(VICE_DATADIR)/DRIVES
 
 drv_DATA = \
 	dos1540 \
@@ -13,6 +13,7 @@ drv_DATA = \
 	dos1001 \
 	dos2040 \
 	dos3040 \
-	dos4040
+	dos4040 \
+	dos9000
 
 EXTRA_DIST = $(drv_DATA)

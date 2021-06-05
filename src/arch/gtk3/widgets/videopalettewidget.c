@@ -46,10 +46,11 @@
 #include <string.h>
 
 #include "debug_gtk3.h"
-#include "widgethelpers.h"
 #include "openfiledialog.h"
-#include "resources.h"
 #include "palette.h"
+#include "resources.h"
+#include "ui.h"
+#include "widgethelpers.h"
 
 #include "videopalettewidget.h"
 
@@ -99,6 +100,25 @@ static void on_combo_changed(GtkComboBox *combo, gpointer user_data)
 }
 
 
+static void browse_filename_callback(GtkDialog *dialog,
+                                     gchar *filename,
+                                     gpointer data)
+{
+    if (filename != NULL) {
+        debug_gtk3("got palette file '%s'.", filename);
+        resources_set_string_sprintf("%sPaletteFile", filename, chip_prefix);
+
+        /* add to combo box */
+        gtk_combo_box_text_insert(GTK_COMBO_BOX_TEXT(combo_external), 0,
+                filename, filename);
+        gtk_combo_box_set_active(GTK_COMBO_BOX(combo_external), 0);
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+
 /** \brief  Handler for the "clicked" event of the "browse ..." button
  *
  * Opens a custom palette file and adds the file name to the combo box.
@@ -108,22 +128,13 @@ static void on_combo_changed(GtkComboBox *combo, gpointer user_data)
  */
 static void on_browse_clicked(GtkButton *button, gpointer user_data)
 {
-    gchar *filename;
     const char *flist[] = { "*.vpl", NULL };
 
-    filename = vice_gtk3_open_file_dialog("Open palette file",
-            "Palette files", flist, NULL);
-    if (filename != NULL) {
-        debug_gtk3("got palette file '%s'.", filename);
-        resources_set_string_sprintf("%sPaletteFile", filename, chip_prefix);
-
-        /* add to combo box */
-        gtk_combo_box_text_insert(GTK_COMBO_BOX_TEXT(combo_external), 0,
-                filename, filename);
-        gtk_combo_box_set_active(GTK_COMBO_BOX(combo_external), 0);
-
-        g_free(filename);
-    }
+    vice_gtk3_open_file_dialog(
+            "Open palette file",
+            "Palette files", flist, NULL,
+            browse_filename_callback,
+            NULL);
 }
 
 
@@ -139,7 +150,7 @@ static GtkWidget *create_combo_box(void)
 {
     GtkWidget *combo;
     int index;
-    palette_info_t *list;
+    const palette_info_t *list;
     int row;
     const char *current;
     gboolean found = FALSE;

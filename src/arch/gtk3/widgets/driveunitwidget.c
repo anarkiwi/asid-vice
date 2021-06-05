@@ -29,9 +29,9 @@
 
 #include <gtk/gtk.h>
 
-#include "widgethelpers.h"
 #include "debug_gtk3.h"
 #include "drive.h"
+#include "widgethelpers.h"
 
 #include "driveunitwidget.h"
 
@@ -63,7 +63,6 @@ static void on_radio_toggled(GtkWidget *widget, gpointer user_data)
     int unit = GPOINTER_TO_INT(user_data);
 
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
-        debug_gtk3("setting unit to %d.", unit);
         if (unit_target != NULL) {
             *unit_target = unit;
         }
@@ -150,7 +149,7 @@ GtkWidget *drive_unit_widget_create(int unit, int *target, void (*callback)(int)
     gtk_grid_attach(GTK_GRID(grid), group, 1, 0, 1, 1);
 
     /* connect signal handlers */
-    for (i = 0; i < DRIVE_NUM; i++) {
+    for (i = 0; i < NUM_DISK_UNITS; i++) {
         GtkWidget *radio = gtk_grid_get_child_at(GTK_GRID(group), i, 0);
         g_signal_connect(radio, "toggled", G_CALLBACK(on_radio_toggled),
             GINT_TO_POINTER(i + 8));

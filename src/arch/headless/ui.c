@@ -189,11 +189,12 @@ int ui_init_finalize(void)
 ui_jam_action_t ui_jam_dialog(const char *format, ...)
 {
     /* printf("%s\n", __func__); */
-    
+
     va_list args;
     char *buffer;
+#if 0
     int result;
-
+#endif
     va_start(args, format);
     buffer = lib_mvsprintf(format, args);
     va_end(args);
@@ -202,7 +203,8 @@ ui_jam_action_t ui_jam_dialog(const char *format, ...)
 
     lib_free(buffer);
 
-    return result;
+    /* the headless UI ignores this */
+    return MACHINE_JAM_ACTION_QUIT; /* quit emulator */
 }
 
 
@@ -228,20 +230,6 @@ void ui_resources_shutdown(void)
 /** \brief Clean up memory used by the UI system itself
  */
 void ui_shutdown(void)
-{
-    /* printf("%s\n", __func__); */
-}
-
-/** \brief  Update all menu item checkmarks on all windows
- *
- * \note    This is called from multiple functions in autostart.c and also
- *          mon_resource_set() in monitor/monitor.c when they change the
- *          value of resources.
- *
- * \todo    This is unimplemented, but will be much easier to implement if we
- *          switch to using a GtkApplication/GMenu based UI.
- */
-void ui_update_menus(void)
 {
     /* printf("%s\n", __func__); */
 }
@@ -321,24 +309,12 @@ static void pause_trap(uint16_t addr, void *data)
 {
     /* printf("%s\n", __func__); */
     
-    // ui_display_paused(1);
     // vsync_suspend_speed_eval();
+    // sound_suspend();
     // while (is_paused) {
     //     ui_dispatch_next_event();
     //     g_usleep(10000);
     // }
-}
-
-
-/** \brief  This should display some 'pause' status indicator on the statusbar
- *
- * \param[in]   flag    pause state
- */
-void ui_display_paused(int flag)
-{
-    /* printf("%s\n", __func__); */
-    
-    ui_display_speed(0.0, 0.0, 0);
 }
 
 
@@ -363,7 +339,6 @@ void ui_pause_enable(void)
     if (!ui_pause_active()) {
         is_paused = 1;
         interrupt_maincpu_trigger_trap(pause_trap, 0);
-        ui_display_paused(1);
     }
 }
 
@@ -376,7 +351,6 @@ void ui_pause_disable(void)
     
     if (ui_pause_active()) {
         is_paused = 0;
-        ui_display_paused(0);
     }
 }
 

@@ -11,6 +11,7 @@
  * $VICERES AutostartPrgDiskImage               -vsid
  * $VICERES AutostartRunWithColon               -vsid
  * $VICERES AutostartBasicLoad                  -vsid
+ * $VICERES AutostartTapeBasicLoad              -vsid
  * $VICERES AutostartWarp                       -vsid
  * $VICERES AutostartHandleTrueDriveEmulation   -vsid
  */
@@ -46,7 +47,6 @@
 #include "machine.h"
 #include "resources.h"
 #include "autostart-prg.h"
-#include "resourcewidgetmanager.h"
 #include "uisettings.h"
 
 #include "settings_autostart.h"
@@ -62,29 +62,9 @@ static const vice_gtk3_radiogroup_entry_t autostart_modes[] = {
 };
 
 
-/** \brief  Keeps track of resources in the UI
- */
-static resource_widget_manager_t manager;
-
-
-
 /*
  * Event handlers
  */
-
-
-/** \brief  Handler for the "destroy" event of the main widget
- *
- * Cleans up resource used by the resource widget manager
- *
- * \param[in]   widget  widget triggering the event (unused)
- * \param[in]   data    extra event data (unused)
- */
-static void on_destroy(GtkWidget *widget, gpointer data)
-{
-    debug_gtk3("calling vice_resource_wiget_manager_exit()");
-    vice_resource_widget_manager_exit(&manager);
-}
 
 
 /*
@@ -111,8 +91,6 @@ static GtkWidget *create_fixed_delay_widget(void)
 
     spin = vice_gtk3_resource_spin_int_new("AutostartDelay",
             0, 1000, 1);
-    /* register with manager */
-    vice_resource_widget_manager_add_widget(&manager, spin, NULL, NULL, NULL, NULL);
 
     gtk_grid_attach(GTK_GRID(layout), label, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(layout), spin, 1, 0, 1, 1);
@@ -145,8 +123,6 @@ static GtkWidget *create_delay_widget(void)
 
     rnd_delay = vice_gtk3_resource_check_button_new( "AutostartDelayRandom",
             "Add random delay");
-    vice_resource_widget_manager_add_widget(&manager, rnd_delay,
-            NULL, NULL, NULL, NULL);
     g_object_set(rnd_delay, "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(grid), rnd_delay, 0, 2, 1, 1);
 
@@ -167,16 +143,14 @@ static GtkWidget *create_prg_diskimage_widget(void)
 {
     GtkWidget *grid;
     GtkWidget *image;
-    const char *patterns[] = { "*.d64", NULL };
 
     grid = vice_gtk3_grid_new_spaced_with_label(
             VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT, "Autostart disk image", 1);
 
     image = vice_gtk3_resource_browser_new("AutostartPrgDiskImage",
-            patterns, "D64 disk images", "Select D64 image",
-            "autostart disk image", NULL);
-    vice_resource_widget_manager_add_widget(&manager, image,
-            NULL, NULL, NULL, NULL);
+            file_chooser_pattern_floppy, "Disk images", "Select disk image",
+            "Path:", NULL);
+    g_object_set(G_OBJECT(image), "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(grid), image, 0, 1, 1, 1);
 
     gtk_widget_show_all(grid);
@@ -193,6 +167,7 @@ static GtkWidget *create_prg_widget(void)
     GtkWidget *grid;
     GtkWidget *colon;
     GtkWidget *basic;
+    GtkWidget *tapebasic;
     GtkWidget *mode;
     GtkWidget *group;
     GtkWidget *image;
@@ -203,31 +178,30 @@ static GtkWidget *create_prg_widget(void)
 
     colon = vice_gtk3_resource_check_button_new("AutostartRunWithColon",
             "Use ':' with RUN");
-    vice_resource_widget_manager_add_widget(&manager, colon,
-            NULL, NULL, NULL, NULL);
     g_object_set(colon, "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(grid), colon, 0, 1, 1, 1);
 
+    tapebasic = vice_gtk3_resource_check_button_new("AutostartTapeBasicLoad",
+            "Load to BASIC start (tape)");
+    g_object_set(tapebasic, "margin-left", 16, NULL);
+    gtk_grid_attach(GTK_GRID(grid), tapebasic, 0, 2, 1, 1);
+
     basic = vice_gtk3_resource_check_button_new("AutostartBasicLoad",
-            "Load to BASIC start");
-    vice_resource_widget_manager_add_widget(&manager, basic,
-            NULL, NULL, NULL, NULL);
+            "Load to BASIC start (disk)");
     g_object_set(basic, "margin-left", 16, NULL);
-    gtk_grid_attach(GTK_GRID(grid), basic, 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), basic, 0, 3, 1, 1);
 
     mode = vice_gtk3_grid_new_spaced_with_label(
             VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT, "Autostart PRG mode", 1);
     group = vice_gtk3_resource_radiogroup_new("AutostartPrgMode",
             autostart_modes, GTK_ORIENTATION_VERTICAL);
-    vice_resource_widget_manager_add_widget(&manager, group,
-            NULL, NULL, NULL, NULL);
     g_object_set(group, "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(mode), group, 0, 1, 1, 1);
 
-    gtk_grid_attach(GTK_GRID(grid), mode, 0, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), mode, 0, 4, 1, 1);
 
     image = create_prg_diskimage_widget();
-    gtk_grid_attach(GTK_GRID(grid), image, 0, 4, 3, 1);
+    gtk_grid_attach(GTK_GRID(grid), image, 0, 5, 3, 1);
 
     gtk_widget_show_all(grid);
     return grid;
@@ -247,12 +221,6 @@ GtkWidget *settings_autostart_widget_create(GtkWidget *parent)
     GtkWidget *tde;
     GtkWidget *warp;
 
-    /* initialize resource widget manager and register with uisettings */
-    debug_gtk3("Initializing resource widget manager and registering it with"
-            " uisettings.c");
-    vice_resource_widget_manager_init(&manager);
-    ui_settings_set_resource_widget_manager(&manager);
-
     grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT);
     g_object_set(grid, "margin", 8, NULL);
 
@@ -260,12 +228,10 @@ GtkWidget *settings_autostart_widget_create(GtkWidget *parent)
             "AutostartHandleTrueDriveEmulation",
             "Handle True Drive Emulation on autostart");
     gtk_grid_attach(GTK_GRID(grid), tde, 0, 0, 1, 1);
-    vice_resource_widget_manager_add_widget(&manager, tde, NULL, NULL, NULL, NULL);
 
     warp = vice_gtk3_resource_check_button_new("AutostartWarp",
             "Warp on autostart");
     gtk_grid_attach(GTK_GRID(grid), warp, 0, 1, 1, 1);
-    vice_resource_widget_manager_add_widget(&manager, warp, NULL, NULL, NULL, NULL);
 
     gtk_grid_attach(GTK_GRID(grid), create_delay_widget(),
             0, 2, 1, 1);
@@ -273,12 +239,6 @@ GtkWidget *settings_autostart_widget_create(GtkWidget *parent)
     gtk_grid_attach(GTK_GRID(grid), create_prg_widget(),
             0, 3, 1, 1);
 
-
-    g_signal_connect(grid, "destroy", G_CALLBACK(on_destroy), NULL);
-
-    vice_resource_widget_manager_dump(&manager);
     gtk_widget_show_all(grid);
-
-
     return grid;
 }

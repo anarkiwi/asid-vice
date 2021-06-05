@@ -1,4 +1,4 @@
-scpu64dir = $(VICEDIR)/SCPU64
+scpu64dir = $(VICE_DATADIR)/SCPU64
 
 roms = \
 	scpu64 \
@@ -31,10 +31,15 @@ gtk3_keymaps = \
 	gtk3_sym.vkm \
 	gtk3_pos.vkm \
 	gtk3_pos_de.vkm \
+	gtk3_pos_se.vkm \
 	gtk3_sym_de.vkm \
 	gtk3_sym_da.vkm \
 	gtk3_sym_nl.vkm \
-	gtk3_sym_se.vkm
+	gtk3_sym_se.vkm \
+	gtk3_sym_it.vkm \
+	gtk3_keyrah.vkm \
+	gtk3_keyrah_de.vkm \
+	gtk3_the64_de.vkm
 
 sdl_keymaps = \
 	sdl_hotkeys.vkm \

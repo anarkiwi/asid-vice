@@ -27,14 +27,26 @@
 
 #include "vice.h"
 
-#include <stdio.h>
+#if defined(MACOSX_SUPPORT)
+#import <CoreGraphics/CGRemoteOperation.h>
+#import <CoreGraphics/CGEvent.h>
+#elif defined(WIN32_COMPILE)
+#include <windows.h>
+#else
+#include <X11/Xlib.h>
+#include <gdk/gdkx.h>
+#endif
 
-#include "debug_gtk3.h"
+
+#include <stdio.h>
+#include <math.h>
 
 #include "log.h"
 #include "vsyncapi.h"
+#include "maincpu.h"
 #include "mouse.h"
 #include "mousedrv.h"
+#include "ui.h"
 #include "uimachinewindow.h"
 
 
@@ -51,76 +63,9 @@ static mouse_func_t mouse_funcs = {
     NULL
 };
 
-/** \brief Current mouse X value.
- *
- *  This is a dead-reckoning sum of left and right motions and does
- *  not necessarily bear any connection to any actual X coordinates.
- *
- *  \sa mousedrv_get_x
- */
-static float mouse_x = 0.0;
-
-/** \brief Current mouse Y value.
- *
- *  This is a dead-reckoning sum of left and right motions and does
- *  not necessarily bear any connection to any actual X coordinates.
- *
- *  \sa mousedrv_get_y
- */
-static float mouse_y = 0.0;
-
-/** \brief Last time the mouse was moved.
- *
- *  \sa mousedrv_get_timestamp
- */
-static unsigned long mouse_timestamp = 0;
-
 int mousedrv_cmdline_options_init(void)
 {
     return 0;
-}
-
-unsigned long mousedrv_get_timestamp(void)
-{
-    return mouse_timestamp;
-}
-
-int mousedrv_get_x(void)
-{
-    return (int)mouse_x;
-}
-
-int mousedrv_get_y(void)
-{
-    return (int)mouse_y;
-}
-
-
-void mouse_move(float dx, float dy)
-{
-#if 0
-    mouse_x += dx;
-    mouse_y -= dy;  /* why ? */
-
-    /* can't this be done with int modulo ? */
-    while (mouse_x < 0.0) {
-        mouse_x += 65536.0;
-    }
-    while (mouse_x >= 65536.0) {
-        mouse_x -= 65536.0;
-    }
-    while (mouse_y < 0.0) {
-        mouse_y += 65536.0;
-    }
-    while (mouse_y >= 65536.0) {
-        mouse_y -= 65536.0;
-    }
-#endif
-
-    mouse_x = (float)((int)(mouse_x + dx) % 0xffff);
-    mouse_y = (float)((int)(mouse_y - dy) % 0xffff);
-
-    mouse_timestamp = vsyncarch_gettime();
 }
 
 void mouse_button(int bnumber, int state)
@@ -183,5 +128,3 @@ int mousedrv_resources_init(mouse_func_t *funcs)
     mouse_funcs.mbd = funcs->mbd;
     return 0;
 }
-
-

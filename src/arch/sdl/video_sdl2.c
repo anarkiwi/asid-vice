@@ -60,6 +60,7 @@
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
+#include "mousedrv.h"
 #include "palette.h"
 #include "raster.h"
 #include "resources.h"
@@ -595,13 +596,13 @@ static int sdl_window_create(const char *title, unsigned int width, unsigned int
 
     sdl2_renderer = SDL_CreateRenderer(sdl2_window, drv_index, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!sdl2_renderer) {
-        log_error(sdlvideo_log, "SDL_CreateRenderer() failed: %s\n", SDL_GetError());
+        log_error(sdlvideo_log, "SDL_CreateRenderer() failed: %s", SDL_GetError());
         SDL_DestroyWindow(sdl2_window);
         sdl2_window = NULL;
         return 0;
     }
     SDL_GetRendererInfo(sdl2_renderer, &info);
-    log_message(sdlvideo_log, "SDL2 renderer driver selected: %s\n", info.name);
+    log_message(sdlvideo_log, "SDL2 renderer driver selected: %s", info.name);
     SDL_SetRenderDrawColor(sdl2_renderer, 0, 0, 0, 255);
     SDL_RenderClear(sdl2_renderer);
     SDL_RenderPresent(sdl2_renderer);
@@ -698,6 +699,7 @@ void video_canvas_refresh(struct video_canvas_s *canvas, unsigned int xs, unsign
             SDL_SetWindowSize(sdl2_window, last_width, last_height);
         }
     }
+    ui_autohide_mouse_cursor();
 }
 
 int video_canvas_set_palette(struct video_canvas_s *canvas, struct palette_s *palette)
@@ -778,7 +780,7 @@ void video_canvas_resize(struct video_canvas_s *canvas, char resize_canvas)
     width = canvas->draw_buffer->canvas_width * canvas->videoconfig->scalex;
     height = canvas->draw_buffer->canvas_height * canvas->videoconfig->scaley;
 
-    DBG(("%s: %ix%i (%i)", __func__, width, height, canvas->index));
+    DBG(("%s: %ux%u (%i)", __func__, width, height, canvas->index));
 
     /* Update the fullscreen status, if any */
     if (sdl2_window) {
@@ -839,7 +841,7 @@ void video_canvas_resize(struct video_canvas_s *canvas, char resize_canvas)
 
         log_message(sdlvideo_log, "%s (%s) %ux%u %ibpp %s", canvas->videoconfig->chip_name, (canvas == sdl_active_canvas) ? "active" : "inactive", width, height, sdl_bitdepth, (canvas->fullscreenconfig->enable) ? " (fullscreen)" : "");
 #ifdef SDL_DEBUG
-        log_message(sdlvideo_log, "Canvas %ix%i, real %ix%i", new_width, new_height, canvas->real_width, canvas->real_height);
+        log_message(sdlvideo_log, "Canvas %ux%u, real %ux%u", width, height, canvas->real_width, canvas->real_height);
 #endif
 
         video_canvas_set_palette(canvas, canvas->palette);
@@ -975,7 +977,7 @@ void sdl_ui_init_finalize(void)
     for (i = 0; i < sdl_num_screens; ++i) {
         video_canvas_resize(sdl_canvaslist[i], 1);
     }
-    ui_check_mouse_cursor();
+    mousedrv_mouse_changed();
 }
 
 static int last_mouse_x = -1;
@@ -1020,5 +1022,13 @@ void sdl_ui_consume_mouse_event(SDL_Event *event)
     if (event && event->type == SDL_MOUSEMOTION) {
         last_mouse_x = event->motion.x;
         last_mouse_y = event->motion.y;
+    }
+    ui_autohide_mouse_cursor();
+}
+
+void sdl_ui_set_window_title(char *title)
+{
+    if (sdl2_window) {
+        SDL_SetWindowTitle(sdl2_window, title);
     }
 }

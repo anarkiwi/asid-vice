@@ -31,6 +31,7 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "debug_gtk3.h"
 #include "info.h"
@@ -41,8 +42,22 @@
 #include "svnversion.h"
 #endif
 #include "uidata.h"
+#include "archdep_get_runtime_info.h"
 
 #include "uiabout.h"
+
+
+/** \brief  Maximum length of generated version string
+ */
+#define VERSION_STRING_MAX 8192
+
+/** \brief  Custom response ID's for the dialog
+ */
+enum {
+    RESPONSE_RUNTIME = 1,   /**< response ID for 'Runtime' button */
+    RESPONSE_COMPILE_TIME   /**< response ID for 'Compile time' button */
+};
+
 
 
 /** \brief  List of current team members
@@ -123,8 +138,21 @@ static void about_response_callback(GtkWidget *widget, gint response_id,
     /* The GTK_RESPONSE_DELETE_EVENT is sent when the user clicks 'Close',
      * but also when the user clicks the 'X' gadget.
      */
-    if (response_id == GTK_RESPONSE_DELETE_EVENT) {
-        gtk_widget_destroy(widget);
+    switch (response_id) {
+        case GTK_RESPONSE_DELETE_EVENT:
+            gtk_widget_destroy(widget);
+            break;
+        case RESPONSE_RUNTIME:
+            debug_gtk3("Got RUNTIME! (TODO)");
+            break;
+#if 0
+        case RESPONSE_COMPILE_TIME:
+            debug_gtk3("Got COMPILE TIME! (TODO)");
+            break;
+#endif
+        default:
+            debug_gtk3("Warning: Unsupported response ID %d", response_id);
+            break;
     }
 }
 
@@ -138,9 +166,12 @@ static void about_response_callback(GtkWidget *widget, gint response_id,
  */
 gboolean ui_about_dialog_callback(GtkWidget *widget, gpointer user_data)
 {
-    char version[1024];
+    char version[VERSION_STRING_MAX];
     GtkWidget *about = gtk_about_dialog_new();
     GdkPixbuf *logo = get_vice_logo();
+
+    archdep_runtime_info_t runtime_info;
+
 
     /* set toplevel window, Gtk doesn't like dialogs without parents */
     gtk_window_set_transient_for(GTK_WINDOW(about), ui_get_active_window());
@@ -153,21 +184,45 @@ gboolean ui_about_dialog_callback(GtkWidget *widget, gpointer user_data)
 
     /* set version string */
 #ifdef USE_SVN_REVISION
-    g_snprintf(version, 1024, "%s r%s (GTK3 %d.%d.%d, GLib %d.%d.%d)",
+    g_snprintf(version, VERSION_STRING_MAX,
+            "%s r%s (GTK3 %d.%d.%d, GLib %d.%d.%d)",
             VERSION, VICE_SVN_REV_STRING,
             GTK_MAJOR_VERSION, GTK_MINOR_VERSION, GTK_MICRO_VERSION,
             GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION);
 #else
-    g_snprintf(version, 1024, "%s (GTK3 %d.%d.%d, GLib %d.%d.%d)",
+    g_snprintf(version, VERSION_STRING_MAX,
+            "%s (GTK3 %d.%d.%d, GLib %d.%d.%d)",
             VERSION,
             GTK_MAJOR_VERSION, GTK_MINOR_VERSION, GTK_MICRO_VERSION,
             GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION);
 #endif
+
+    if (archdep_get_runtime_info(&runtime_info)) {
+        size_t v = strlen(version);
+        g_snprintf(version + v, VERSION_STRING_MAX - v - 1UL,
+                "\n\n%s %s\n"
+                "%s\n"
+                "%s",
+                runtime_info.os_name,
+                runtime_info.os_release,
+                runtime_info.os_version,
+                runtime_info.machine);
+    }
+
+#ifdef FREE_MR_AMMO
+    gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(about), "FREE MR AMMO");
+#endif
+
+
     gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(about), version);
 
     /* Describe the program */
     gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(about),
+#ifndef FREE_MR_AMMO
             "Emulates an 8-bit Commodore computer.");
+#else
+            "Free's Mr. Ammo");
+#endif
     /* set license */
     gtk_about_dialog_set_license_type(GTK_ABOUT_DIALOG(about), GTK_LICENSE_GPL_2_0);
     /* set website link and title */
@@ -183,26 +238,28 @@ gboolean ui_about_dialog_callback(GtkWidget *widget, gpointer user_data)
      *          so altering this file by hand won't be required anymore.
      */
     gtk_about_dialog_set_copyright(GTK_ABOUT_DIALOG(about),
-            "Copyright 1996-2019, VICE team");
+            "Copyright 1996-2020, VICE team");
 
     /* set logo */
     if (logo != NULL) {
         gtk_about_dialog_set_logo(GTK_ABOUT_DIALOG(about), logo);
         g_object_unref(logo);
     }
-
+#if 0
+    gtk_dialog_add_button(GTK_DIALOG(about), "Runtime info", RESPONSE_RUNTIME);
+#endif
     /*
      * hook up event handlers
      */
 
     /* destroy callback, called when the dialog is closed through the 'X',
      * but NOT when clicking 'Close' */
-    g_signal_connect(about, "destroy", G_CALLBACK(about_destroy_callback),
+    g_signal_connect_unlocked(about, "destroy", G_CALLBACK(about_destroy_callback),
             NULL);
 
     /* set up a generic handler for various buttons, this makes sure the
      * 'Close' button is handled properly */
-    g_signal_connect(about, "response", G_CALLBACK(about_response_callback),
+    g_signal_connect_unlocked(about, "response", G_CALLBACK(about_response_callback),
             NULL);
 
     /* make the about dialog modal */

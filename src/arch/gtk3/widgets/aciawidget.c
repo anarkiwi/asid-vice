@@ -36,12 +36,13 @@
 
 #include <gtk/gtk.h>
 
-#include "lib.h"
 #include "basewidgets.h"
-#include "widgethelpers.h"
 #include "debug_gtk3.h"
-#include "resources.h"
+#include "lib.h"
 #include "openfiledialog.h"
+#include "resources.h"
+#include "ui.h"
+#include "widgethelpers.h"
 
 #include "aciawidget.h"
 
@@ -49,6 +50,13 @@
 /** \brief  Reference to baud rates list
  */
 static int *acia_baud_rates;
+
+
+/** \brief  References to the ACIA GtkEntry widgets
+ *
+ * I wish there was a better solution.
+ */
+static GtkWidget *acia_entries[2];
 
 
 /** \brief  List of baud rates
@@ -129,9 +137,30 @@ static void on_serial_device_changed(GtkWidget *widget, gpointer user_data)
 {
     int device = GPOINTER_TO_INT(user_data);
     const gchar *text = gtk_entry_get_text(GTK_ENTRY(widget));
-
-    debug_gtk3("setting RsDevice%d to '%s'.", device, text);
     resources_set_string_sprintf("RsDevice%d", text, device);
+}
+
+
+/** \brief  Callback for the SuperPET ACIA host serial device path browser
+ *
+ * \param[in]   dialog      open-file dialog
+ * \param[in[   filename    path to host serial device
+ * \param[in]   data        device number (1 or 2)
+ */
+static void browse_filename_callback(GtkDialog *dialog,
+                                     gchar *filename,
+                                     gpointer data)
+{
+    if (filename != NULL) {
+        int device = GPOINTER_TO_INT(data);
+        GtkWidget *entry = acia_entries[device - 1];
+
+        debug_gtk3("Device = %d, filename = '%s'\n", device, filename);
+        /* update text entry box, forces an update of the resource */
+        gtk_entry_set_text(GTK_ENTRY(entry), filename);
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
 }
 
 
@@ -145,28 +174,15 @@ static void on_browse_clicked(GtkWidget *widget, gpointer user_data)
     int device;
     const char *fdesc = "Serial ports";
     const char *flist[] = { "ttyS*", NULL };
-    gchar *filename;
     gchar title[256];
 
     device = GPOINTER_TO_INT(user_data);
-    g_snprintf(title, 256, "Select serial device #%d", device);
+    g_snprintf(title, sizeof(title), "Select serial device #%d", device);
 
-    filename = vice_gtk3_open_file_dialog(title, fdesc, flist, "/dev");
-    if (filename != NULL) {
-
-        GtkWidget *grid;
-        GtkWidget *entry;
-
-        debug_gtk3("setting RsDevice%d to '%s'.", device, filename);
-        /* resources_set_string_sprintf("RsDevice%d", filename, device); */
-
-        /* update text entry box, forces an update of the resource */
-        grid = gtk_widget_get_parent(widget);
-        entry = gtk_grid_get_child_at(GTK_GRID(grid), 0, 1);
-        gtk_entry_set_text(GTK_ENTRY(entry), filename);
-
-        g_free(filename);
-    }
+    vice_gtk3_open_file_dialog(
+            title, fdesc, flist, "/dev",
+            browse_filename_callback,
+            GINT_TO_POINTER(device));
 }
 
 
@@ -225,6 +241,8 @@ static GtkWidget *create_acia_serial_device_widget(int num)
     browse = gtk_button_new_with_label("Browse ...");
     g_signal_connect(browse, "clicked", G_CALLBACK(on_browse_clicked),
             GINT_TO_POINTER(num));
+    /* lame, I know */
+    acia_entries[num - 1] = entry;
 
     gtk_grid_attach(GTK_GRID(grid), entry, 0, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), browse, 1, 1, 1, 1);
@@ -287,7 +305,7 @@ GtkWidget *acia_widget_create(int *baud)
     serial2_widget = create_acia_serial_device_widget(2);
     gtk_grid_attach(GTK_GRID(grid), serial2_widget, 2, 1, 1, 1);
 
-    g_signal_connect(grid, "destroy", G_CALLBACK(on_destroy), NULL);
+    g_signal_connect_unlocked(grid, "destroy", G_CALLBACK(on_destroy), NULL);
 
     gtk_widget_show_all(grid);
     return grid;

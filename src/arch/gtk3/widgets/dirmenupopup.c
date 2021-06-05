@@ -1,4 +1,4 @@
-/** \file   dirmenupopup.c
+    /** \file   dirmenupopup.c
  *  \brief  Create a menu to show a directory of a drive or tape deck
  *
  * FIXME: The current code depends way too much on internal/core code. The code
@@ -7,6 +7,7 @@
  *
  *
  *  \author Bas Wassink <b.wassink@ziggo.nl>
+ *  \author Groepaz (groepaz@gmx.de>
  */
 
 /*
@@ -33,22 +34,26 @@
 #include "vice.h"
 
 #include <gtk/gtk.h>
-#include "debug_gtk3.h"
-#include "lib.h"
-#include "log.h"
-#include "imagecontents/diskcontents.h"
-#include "drive.h"
-#include "drivetypes.h"
-#include "diskimage.h"
-#include "diskimage/fsimage.h"
-#include "vdrive/vdrive.h"
+#include <stdbool.h>
+
 #include "attach.h"
 #include "autostart.h"
-#include "util.h"
-
+#include "csshelpers.h"
+#include "debug_gtk3.h"
+#include "diskimage.h"
+#include "diskimage/fsimage.h"
+#include "drive.h"
+#include "drivetypes.h"
+#include "imagecontents/diskcontents.h"
+#include "lib.h"
+#include "log.h"
 #include "tape.h"
+#include "util.h"
+#include "vdrive/vdrive.h"
+#include "widgethelpers.h"
 
 #include "dirmenupopup.h"
+
 
 
 /** \brief  Function to read the contents of an image
@@ -57,9 +62,8 @@
  */
 static read_contents_func_type content_func;
 
-/** \brief  Function to call when a file in the directory is selected
- */
-static void (*response_func)(const char *, int);
+/** \brief  Function to call when a file in the directory is selected */
+static void (*response_func)(const char *, int, int, unsigned int);
 
 /** \brief  Disk image being used
  *
@@ -67,104 +71,82 @@ static void (*response_func)(const char *, int);
  */
 static const char *autostart_diskimage;
 
-/** \brief  CSS style string to set the CBM font
+
+/** \brief  CSS style string to set the CBM font and remove padding
  */
-static const char *DIRENT_CSS = "label { font-family: \"CBM\"; }";
+#define MENULABEL_CSS \
+    "label {\n" \
+    "  font-family: \"C64 Pro Mono\";\n" \
+    "  font-size: 16px;\n" \
+    "  letter-spacing: 0;\n" \
+    "  margin: -2px;\n" \
+    "  border: 0;\n" \
+    "  padding: 0;\n" \
+    "}"
 
-/** \brief  Reference to the CSS provider used for directory entries
+/** \brief  CSS style string to remove padding from menu items
  */
-static GtkCssProvider *css_provider;
+#define MENUITEM_CSS \
+    "menuitem {\n" \
+    "  margin: 0;\n" \
+    "  border: 0;\n" \
+    "  padding: 0;\n" \
+    "}"
 
 
-/* FIXME: stole this from arch/unix/x11/gnome/x11ui.c
- *
- * And I still get warnings from Pango
- */
-static unsigned char *convert_utf8(unsigned char *s)
-{
-    unsigned char *d, *r;
+/** \brief  CSS provider used for directory entry GtkMenuItem labels */
+static GtkCssProvider *menulabel_css_provider;
 
-    r = d = lib_malloc((size_t)(strlen((char *)s) * 2 + 1));
-    while (*s) {
-        if (*s < 0x80) {
-            *d = *s;
-        } else {
-            /* special latin1 character handling */
-            if (*s == 0xa0) {
-                *d = 0x20;
-            } else {
-                if (*s == 0xad) {
-                    *s = 0xed;
-                }
-                *d++ = 0xc0 | (*s >> 6);
-                *d = (*s & ~0xc0) | 0x80;
-            }
-        }
-        s++;
-        d++;
-    }
-    *d = '\0';
-    return r;
-}
+/** \brief  CSS provider used for directory entry GtkMenuItem's */
+static GtkCssProvider *menuitem_css_provider;
 
 
 /** \brief  Handler for the "activate" event of a menu item
  *
  * \param[in]   item    menu item triggering the event
- * \param[in]   data    index in the directory (0 = header)
+ * \param[in]   data    index in the directory
  */
 static void on_item_activate(GtkWidget *item, gpointer data)
 {
     int index = GPOINTER_TO_INT(data);
+    int device = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(item), "DeviceNumber"));
+    unsigned int drive = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(item), "DriveNumber"));
 
-    debug_gtk3("Got index %d, triggering response function", index);
-    response_func(autostart_diskimage, index);
+    debug_gtk3("Calling response_func(%d, %d, %u)", index, device, drive);
+    response_func(autostart_diskimage, index, device, drive);
 }
 
 
-
-/** \brief  Create CSS style provider for the directory entries
+/** \brief  Create reusable CSS providers
  *
- * This way we won't be (re)creating 144 or even 296 style provider
- *
- * \return  bool
+ * \return bool
  */
-static gboolean create_css_provider(void)
+static gboolean create_css_providers(void)
 {
-    GError *err = NULL;
-
-    /* instanciate CSS provider */
-    css_provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_data(css_provider, DIRENT_CSS, -1, &err);
-    if (err != NULL) {
-        log_error(LOG_ERR, "CSS error: %s", err->message);
-        g_error_free(err);
+    menulabel_css_provider = vice_gtk3_css_provider_new(MENULABEL_CSS);
+    if (menulabel_css_provider == NULL) {
+        return FALSE;
+    }
+    menuitem_css_provider = vice_gtk3_css_provider_new(MENUITEM_CSS);
+    if (menuitem_css_provider == NULL) {
         return FALSE;
     }
     return TRUE;
 }
 
 
-/** \brief  Apply CSS provider to \a widget to set the CBM font
+/** \brief  Apply CSS style and margins to a directory listing item
  *
- * \param[in,out]   widget  label in a GtkMenuItem
- *
- * \return  bool
+ * \param[in,out]   item    direct list item
  */
-static gboolean apply_css_provider(GtkWidget *widget)
+void dir_item_apply_style(GtkWidget *item)
 {
-    GtkStyleContext *css_context;
+    GtkWidget *label;
 
-    css_context = gtk_widget_get_style_context(widget);
-    if (css_context == NULL) {
-        log_error(LOG_ERR, "Couldn't get style context of widget");
-        return FALSE;
-    }
-
-    gtk_style_context_add_provider(css_context,
-            GTK_STYLE_PROVIDER(css_provider),
-            GTK_STYLE_PROVIDER_PRIORITY_USER);
-    return TRUE;
+    g_object_set(item, "margin-top", 0, "margin-bottom", 0, NULL);
+    label = gtk_bin_get_child(GTK_BIN(item));
+    vice_gtk3_css_provider_add(label, menulabel_css_provider);
+    vice_gtk3_css_provider_add(item, menuitem_css_provider);
 }
 
 
@@ -181,7 +163,7 @@ static gboolean apply_css_provider(GtkWidget *widget)
 GtkWidget *dir_menu_popup_create(
         int dev,
         read_contents_func_type func,
-        void (*response)(const char *, int))
+        void (*response)(const char *, int, int, unsigned int))
 {
     GtkWidget *menu;
     GtkWidget *item;
@@ -191,13 +173,15 @@ GtkWidget *dir_menu_popup_create(
     char *utf8;
     char *tmp;
     int index;
-    GtkWidget *label;
+    int blocks;
+    /* TODO: drive 1? */
+    unsigned int drive = 0;
 
-    debug_gtk3("DEVICE = %d.", dev);
+    debug_gtk3("DEVICE = %d, DRIVE = %u", dev, drive);
 
-    /* create style provider */
-    if (!create_css_provider()) {
-        debug_gtk3("failed to create CSS provider, borking");
+    /* create style providers */
+    if (!create_css_providers()) {
+        debug_gtk3("failed to create CSS providers, borking");
         return NULL;
     }
 
@@ -215,14 +199,12 @@ GtkWidget *dir_menu_popup_create(
          * code is not normal method.
          */
 
-        debug_gtk3("DEV = %d.", dev);
-
         vdrive_t *vdrive = NULL;
         struct disk_image_s *diskimg = NULL;
         autostart_diskimage = NULL;
 
         debug_gtk3("Getting vdrive reference for unit #%d.", dev + DRIVE_UNIT_MIN);
-        vdrive = file_system_get_vdrive(dev + DRIVE_UNIT_MIN);
+        vdrive = file_system_get_vdrive(dev + DRIVE_UNIT_MIN, drive);
         if (vdrive == NULL) {
             debug_gtk3("failed: got NULL.");
         } else {
@@ -255,11 +237,11 @@ GtkWidget *dir_menu_popup_create(
 
     tmp = NULL;
     if (autostart_diskimage) {
-        util_fname_split(autostart_diskimage, NULL, &tmp);        
+        util_fname_split(autostart_diskimage, NULL, &tmp);
     }
     if (dev >= 0) {
-        g_snprintf(buffer, 1024, "Directory of unit %d: (%s)", 
-                   dev + DRIVE_UNIT_MIN, tmp ? tmp : "n/a");
+        g_snprintf(buffer, 1024, "Directory of unit %d drive %u (%s):",
+                   dev + DRIVE_UNIT_MIN, drive, tmp ? tmp : "n/a");
     } else {
         g_snprintf(buffer, 1024, "Directory of attached tape: (%s)",
             tmp ? tmp : "n/a");
@@ -269,7 +251,7 @@ GtkWidget *dir_menu_popup_create(
     if (tmp) {
         lib_free(tmp);
     }
-    
+
     debug_gtk3("Did we get some image?");
     if (autostart_diskimage != NULL) {
         /* read dir and add them as menu items */
@@ -282,11 +264,19 @@ GtkWidget *dir_menu_popup_create(
         } else {
             debug_gtk3("Getting disk name & ID:");
             /* DISK name & ID */
+
             tmp = image_contents_to_string(contents, 0);
-            utf8 = (char *)convert_utf8((unsigned char *)tmp);
+            utf8 = (char *)vice_gtk3_petscii_to_utf8((unsigned char *)tmp, 1, false);
             item = gtk_menu_item_new_with_label(utf8);
+
+#if 0
+            g_object_set(item, "margin-top", 0,
+                    "margin-bottom", 0, NULL);
             label = gtk_bin_get_child(GTK_BIN(item));
-            apply_css_provider(label);
+            vice_gtk3_css_provider_add(label, menulabel_css_provider);
+            vice_gtk3_css_provider_add(item, menuitem_css_provider);
+#endif
+            dir_item_apply_style(item);
 
             gtk_container_add(GTK_CONTAINER(menu), item);
             lib_free(tmp);
@@ -302,18 +292,43 @@ GtkWidget *dir_menu_popup_create(
                     entry = entry->next) {
 
                 tmp = image_contents_file_to_string(entry, 0);
-                utf8 = (char *)convert_utf8((unsigned char *)tmp);
+                utf8 = (char *)vice_gtk3_petscii_to_utf8((unsigned char *)tmp, 0, false);
                 item = gtk_menu_item_new_with_label(utf8);
+                /* set extra data to used in the event handler */
+                g_object_set_data(G_OBJECT(item),
+                                  "DeviceNumber",
+                                  GINT_TO_POINTER(dev));
+                g_object_set_data(G_OBJECT(item),
+                                  "DriveNumber",
+                                  GUINT_TO_POINTER(drive));
+
+#if 0
+                g_object_set(item, "margin-top", 0, "margin-bottom", 0, NULL);
                 label = gtk_bin_get_child(GTK_BIN(item));
-                apply_css_provider(label);
+                vice_gtk3_css_provider_add(label, menulabel_css_provider);
+                vice_gtk3_css_provider_add(item, menuitem_css_provider);
+#endif
+                dir_item_apply_style(item);
 
                 gtk_container_add(GTK_CONTAINER(menu), item);
-
                 g_signal_connect(item, "activate",
-                        G_CALLBACK(on_item_activate), GINT_TO_POINTER(index));
+                        G_CALLBACK(on_item_activate),
+                        GINT_TO_POINTER(index));
                 index++;
                 lib_free(tmp);
                 lib_free(utf8);
+            }
+
+            /* add BLOCKS FREE. */
+            blocks = contents->blocks_free;
+            if (blocks >= 0) {
+                tmp = lib_msprintf("%d BLOCKS FREE.", contents->blocks_free);
+                item = gtk_menu_item_new_with_label(tmp);
+
+                /* move this into separate function: */
+                dir_item_apply_style(item);
+                gtk_container_add(GTK_CONTAINER(menu), item);
+                lib_free(tmp);
             }
         }
         if (contents != NULL) {
@@ -325,7 +340,6 @@ GtkWidget *dir_menu_popup_create(
         gtk_container_add(GTK_CONTAINER(menu), item);
     }
     gtk_widget_show_all(GTK_WIDGET(menu));
-
 
     return menu;
 }

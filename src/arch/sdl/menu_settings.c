@@ -42,6 +42,7 @@
 #include "uifilereq.h"
 #include "uimenu.h"
 #include "uipoll.h"
+#include "uistatusbar.h"
 
 static UI_MENU_CALLBACK(save_settings_callback)
 {
@@ -81,7 +82,7 @@ static UI_MENU_CALLBACK(save_settings_to_callback)
 static UI_MENU_CALLBACK(load_settings_callback)
 {
     if (activated) {
-        if (resources_load(NULL) < 0) {
+        if (resources_reset_and_load(NULL) < 0) {
             ui_error("Cannot load settings.");
         } else {
             ui_message("Settings loaded.");
@@ -91,6 +92,25 @@ static UI_MENU_CALLBACK(load_settings_callback)
 }
 
 static UI_MENU_CALLBACK(load_settings_from_callback)
+{
+    if (activated) {
+        char *name = NULL;
+
+        name = sdl_ui_file_selection_dialog("Choose settings file", FILEREQ_MODE_CHOOSE_FILE);
+
+        if (name != NULL) {
+            if (resources_reset_and_load(name) < 0) {
+                ui_error("Cannot load settings.");
+            } else {
+                ui_message("Settings loaded.");
+            }
+            lib_free(name);
+        }
+    }
+    return NULL;
+}
+
+static UI_MENU_CALLBACK(load_extra_settings_from_callback)
 {
     if (activated) {
         char *name = NULL;
@@ -167,6 +187,9 @@ static const ui_menu_entry_t keymap_index_submenu_entries[] = {
     SDL_MENU_LIST_END
 };
 
+#define SETTINGS_ACTIVE_KEYMAP_IDX      10
+#define SETTINGS_KEYBOARD_MAPPING_IDX   11
+
 void uikeyboard_update_index_menu(void)
 {
     int idx, type, mapping;
@@ -175,8 +198,8 @@ void uikeyboard_update_index_menu(void)
     resources_get_int("KeyboardType", &type);
     resources_get_int("KeyboardMapping", &mapping);
     
-    if(settings_manager_menu[9].data) {
-        lib_free(settings_manager_menu[9].data);
+    if(settings_manager_menu[SETTINGS_ACTIVE_KEYMAP_IDX].data) {
+        lib_free(settings_manager_menu[SETTINGS_ACTIVE_KEYMAP_IDX].data);
     }
     
     entry = keymap_index_submenu = lib_malloc(sizeof(ui_menu_entry_t) * (5));
@@ -187,7 +210,7 @@ void uikeyboard_update_index_menu(void)
         }
     }
     memset(entry, 0, sizeof(ui_menu_entry_t));
-    settings_manager_menu[9].data = keymap_index_submenu;
+    settings_manager_menu[SETTINGS_ACTIVE_KEYMAP_IDX].data = keymap_index_submenu;
 }
 
 static UI_MENU_CALLBACK(radio_KeyboardMapping_callback)
@@ -228,7 +251,7 @@ void uikeyboard_update_mapping_menu(void)
         num--;
     }
     memset(entry, 0, sizeof(ui_menu_entry_t));
-    settings_manager_menu[10].data = keyboard_mapping_submenu;
+    settings_manager_menu[SETTINGS_KEYBOARD_MAPPING_IDX].data = keyboard_mapping_submenu;
 }
 
 void uikeyboard_menu_create(void)
@@ -239,8 +262,8 @@ void uikeyboard_menu_create(void)
 
 void uikeyboard_menu_shutdown(void)
 {
-    lib_free(settings_manager_menu[9].data);
-    lib_free(settings_manager_menu[10].data);
+    lib_free(settings_manager_menu[SETTINGS_ACTIVE_KEYMAP_IDX].data);
+    lib_free(settings_manager_menu[SETTINGS_KEYBOARD_MAPPING_IDX].data);
 }
 
 static UI_MENU_CALLBACK(load_sym_keymap_callback)
@@ -543,6 +566,10 @@ ui_menu_entry_t settings_manager_menu[] = {
       MENU_ENTRY_OTHER,
       load_settings_from_callback,
       NULL },
+    { "Load extra settings from",
+      MENU_ENTRY_OTHER,
+      load_extra_settings_from_callback,
+      NULL },
     { "Restore default settings",
       MENU_ENTRY_OTHER,
       default_settings_callback,
@@ -645,6 +672,10 @@ ui_menu_entry_t settings_manager_menu_vsid[] = {
     { "Load settings from",
       MENU_ENTRY_OTHER,
       load_settings_from_callback,
+      NULL },
+    { "Load extra settings from",
+      MENU_ENTRY_OTHER,
+      load_extra_settings_from_callback,
       NULL },
     { "Restore default settings",
       MENU_ENTRY_OTHER,

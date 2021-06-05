@@ -79,8 +79,7 @@ static void on_radio_toggled(GtkWidget *radio, gpointer user_data)
         resources_get_string(resource, &old_val);
         new_val = (const char *)user_data;
 
-        if (strcmp(new_val, old_val) == 0) {
-            debug_gtk3("setting %s to '%s'.", resource, new_val);
+        if (strcmp(new_val, old_val) != 0) {
             resources_set_string(resource, new_val);
         }
     }
@@ -133,7 +132,7 @@ GtkWidget *printer_output_mode_widget_create(int device)
     g_signal_connect(radio_gfx, "toggled", G_CALLBACK(on_radio_toggled),
             (gpointer)"graphics");
 
-    g_signal_connect(grid, "destroy", G_CALLBACK(on_widget_destroy), NULL);
+    g_signal_connect_unlocked(grid, "destroy", G_CALLBACK(on_widget_destroy), NULL);
 
     gtk_widget_show_all(grid);
     return grid;

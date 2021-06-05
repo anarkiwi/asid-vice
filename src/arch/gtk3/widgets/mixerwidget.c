@@ -47,6 +47,7 @@
 #include "lib.h"
 #include "log.h"
 #include "resources.h"
+#include "sid/sid.h"
 
 #include "mixerwidget.h"
 
@@ -60,7 +61,7 @@
  * Probably will require some testing/tweaking to get this to look acceptable
  * with various themes (and OSes).
  */
-#define SLIDER_CSS "scale slider { min-width: 10px; min-height: 10px; margin: -3px; } scale { margin-top: -4px; margin-bottom: -4px; } scale value { min-width: 4em; }"
+#define SLIDER_CSS "scale slider { min-width: 10px; min-height: 10px; margin: -3px; } scale { margin-top: -8px; margin-bottom: -8px; } scale value { min-width: 4em; }"
 
 
 /** \brief  CSS for the labels
@@ -113,22 +114,31 @@ static GtkWidget *gain8580label;
 /** \brief  ReSID 8580 filter bias label */
 static GtkWidget *bias8580label;
 
-#if 0
-static GtkWidget *passband6581spin;
 #endif
 
-#endif
+/** \brief  CSS provider for labels
+ */
+static GtkCssProvider *label_css_provider;
+
+/** \brief  CSS provider for scales (sliders)
+ */
+static GtkCssProvider *scale_css_provider;
+
+
 
 /* depending on what SID type is being used, show the right widgets */
 void mixer_widget_sid_type_changed(void)
 {
     int model = 0;
+    int engine;
 #ifdef HAVE_RESID
 # ifdef HAVE_NEW_8580_FILTER
     gboolean enabled = TRUE;
 # else
     gboolean enabled = FALSE;
 # endif
+#else
+    gboolean enabled = FALSE;
 #endif
 
     if (resources_get_int("SidModel", &model) < 0) {
@@ -143,7 +153,7 @@ void mixer_widget_sid_type_changed(void)
     }
 
 #ifdef HAVE_RESID
-    if ((model == 1) || (model == 2)) {
+    if ((model == SID_MODEL_8580) || (model == SID_MODEL_8580D)) {
         gtk_widget_hide(passband6581);
         gtk_widget_hide(gain6581);
         gtk_widget_hide(bias6581);
@@ -156,9 +166,6 @@ void mixer_widget_sid_type_changed(void)
         gtk_widget_show(passband8580label);
         gtk_widget_show(gain8580label);
         gtk_widget_show(bias8580label);
-#if 0
-        gtk_widget_hide(passband6581pin);
-#endif
     } else {
         gtk_widget_hide(passband8580);
         gtk_widget_hide(gain8580);
@@ -172,16 +179,33 @@ void mixer_widget_sid_type_changed(void)
         gtk_widget_show(passband6581label);
         gtk_widget_show(gain6581label);
         gtk_widget_show(bias6581label);
-#if 0
-        gtk_widget_show(passband6581spin);
-#endif
     }
 
     /* enable/disable 8580 filter controls based on --enable-new8580filter */
     gtk_widget_set_sensitive(passband8580, enabled);
     gtk_widget_set_sensitive(gain8580, enabled);
     gtk_widget_set_sensitive(bias8580, enabled);
+#endif
 
+    /* disable sliders when not ReSID */
+    debug_gtk3("Getting SID engine...");
+    if (resources_get_int("SidEngine", &engine) < 0) {
+        debug_gtk3("Failed, using FastSID.");
+        engine = SID_ENGINE_FASTSID;
+    } else {
+        debug_gtk3("OK: engine = %d.", engine);
+    }
+    enabled = engine == SID_ENGINE_FASTSID ? 0 : 1;
+
+#ifdef HAVE_RESID
+    if (engine == SID_ENGINE_FASTSID) {
+        gtk_widget_set_sensitive(passband6581, enabled);
+        gtk_widget_set_sensitive(gain6581, enabled);
+        gtk_widget_set_sensitive(bias6581, enabled);
+        gtk_widget_set_sensitive(passband8580, enabled);
+        gtk_widget_set_sensitive(gain8580, enabled);
+        gtk_widget_set_sensitive(bias8580, enabled);
+    }
 #endif
 }
 
@@ -228,29 +252,13 @@ static GtkWidget *create_label(const char *text, gboolean minimal,
                                GtkAlign alignment)
 {
     GtkWidget *label;
-    GtkCssProvider *provider;
-    GtkStyleContext *context;
-    GError *err = NULL;
 
     label = gtk_label_new(text);
     gtk_widget_set_halign(label, alignment);
 
     if (minimal) {
-        provider = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(provider, LABEL_CSS, -1, &err);
-        if (err != NULL) {
-            fprintf(stderr, "CSS error: %s\n", err->message);
-            g_error_free(err);
-        }
-
-        context = gtk_widget_get_style_context(label);
-        if (context != NULL) {
-            gtk_style_context_add_provider(context,
-                    GTK_STYLE_PROVIDER(provider),
-                    GTK_STYLE_PROVIDER_PRIORITY_USER);
-        }
+        vice_gtk3_css_provider_add(label, label_css_provider);
     }
-
     return label;
 }
 
@@ -271,9 +279,6 @@ static GtkWidget *create_slider(
         gboolean minimal)
 {
     GtkWidget *scale;
-    GtkCssProvider *provider;
-    GtkStyleContext *context;
-    GError *err = NULL;
 
     scale = vice_gtk3_resource_scale_int_new(resource,
             GTK_ORIENTATION_HORIZONTAL, low, high, step);
@@ -282,19 +287,8 @@ static GtkWidget *create_slider(
     /* vice_gtk3_resource_scale_int_set_marks(scale, step); */
 
     if (minimal) {
-        provider = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(provider, SLIDER_CSS, -1, &err);
-        if (err != NULL) {
-            fprintf(stderr, "CSS error: %s\n", err->message);
-            g_error_free(err);
-        }
-
-        context = gtk_widget_get_style_context(scale);
-        if (context != NULL) {
-            gtk_style_context_add_provider(context,
-                    GTK_STYLE_PROVIDER(provider),
-                    GTK_STYLE_PROVIDER_PRIORITY_USER);
-        }
+        /* use CSS to make sliders use less space */
+        vice_gtk3_css_provider_add(scale, scale_css_provider);
     }
 
     /*    gtk_scale_set_draw_value(GTK_SCALE(scale), FALSE); */
@@ -440,6 +434,16 @@ GtkWidget *mixer_widget_create(gboolean minimal, GtkAlign alignment)
     g_object_set(G_OBJECT(grid), "margin-left", 8, "margin-right", 8, NULL);
     gtk_widget_set_hexpand(grid, TRUE);
 
+    /* create reusable CSS providers */
+    label_css_provider = vice_gtk3_css_provider_new(LABEL_CSS);
+    if (label_css_provider == NULL) {
+        return NULL;
+    }
+    scale_css_provider = vice_gtk3_css_provider_new(SLIDER_CSS);
+    if (scale_css_provider == NULL) {
+        return NULL;
+    }
+
     if (minimal) {
         /*
          * 'minimal' is used when this widget is used under the statusbar,
@@ -528,8 +532,6 @@ GtkWidget *mixer_widget_create(gboolean minimal, GtkAlign alignment)
     gtk_grid_attach(GTK_GRID(grid), bias8580label, 0, row, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), bias8580, 1, row, 1, 1);
     row++;
-
-
 #endif
 
     gtk_widget_show_all(grid);

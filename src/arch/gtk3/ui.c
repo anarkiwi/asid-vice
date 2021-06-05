@@ -4,6 +4,8 @@
  * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
  * \author  Bas Wassink <b.wassink@ziggo.nl>
  * \author  Marcus Sutton <loggedoubt@gmail.com>
+ *
+ * $VICRES  AutostartOnDoubleclick  all
  */
 
 /*
@@ -41,6 +43,11 @@
 #include <objc/runtime.h>
 #include <objc/message.h>
 #include <CoreFoundation/CFString.h>
+#include <CoreGraphics/CGGeometry.h>
+
+/* The proper way to use objc_msgSend is to cast it into the right shape each time */
+#define OBJC_MSGSEND(return_type, ...) ((return_type (*)(__VA_ARGS__))objc_msgSend)
+#define OBJC_MSGSEND_STRET(...) ((void (*)(__VA_ARGS__))objc_msgSend_stret)
 #endif
 
 #include "debug_gtk3.h"
@@ -55,8 +62,11 @@
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
+#include "mainlock.h"
+#include "monitor.h"
 #include "lightpen.h"
 #include "resources.h"
+#include "tick.h"
 #include "util.h"
 #include "videoarch.h"
 #include "vsync.h"
@@ -78,6 +88,7 @@
 #include "mixerwidget.h"
 #include "uidata.h"
 #include "archdep.h"
+#include "widgethelpers.h"
 
 /* for the fullscreen_capability() stub */
 #include "fullscreen.h"
@@ -95,10 +106,11 @@ static int set_window_xpos(int val, void *param);
 static int set_window_ypos(int val, void *param);
 static int set_start_minimized(int val, void *param);
 static int set_native_monitor(int val, void *param);
+static int set_monitor_font(const char *, void *param);
 static int set_fullscreen_state(int val, void *param);
 static void ui_toggle_warp(void);
-
-
+static int set_pause_on_settings(int val, void *param);
+static void ui_switch_border_mode(void);
 
 /*****************************************************************************
  *                  Defines, enums, type declarations                        *
@@ -125,11 +137,18 @@ typedef struct ui_resources_s {
 
     int save_resources_on_exit; /**< SaveResourcesOnExit (bool) */
     int confirm_on_exit;        /**< ConfirmOnExit (bool) */
+    int pause_on_settings;      /**< PauseOnSettings (bool) */
 
     int start_minimized;        /**< StartMinimized (bool) */
 
     int use_native_monitor;     /**< NativeMonitor (bool) */
 
+    char *monitor_font;         /**< Pango font description string of the
+                                     VTE monitor font */
+#ifdef COMPYX_LAMER
+    int autostart_on_doubleclick;   /**< Use autostart on double-clicking in
+                                         file attach dialogs (bool) */
+#endif
 #if 0
     int depth;
 #endif
@@ -151,7 +170,8 @@ typedef struct ui_resources_s {
  */
 static ui_resource_t ui_resources;
 
-
+/** \brief  Fullscreen state
+ */
 static int fullscreen_enabled = 0;
 
 
@@ -180,18 +200,22 @@ static kbd_gtk3_hotkey_t default_hotkeys[] = {
      */
     { GDK_KEY_P, VICE_MOD_MASK|GDK_SHIFT_MASK, (void *)ui_advance_frame },
 
-    { GDK_KEY_F12, VICE_MOD_MASK|GDK_SHIFT_MASK, uimedia_auto_screenshot },
-
+    /* Removed, Pause has taken over this function, see commit 37965 */
+    { GDK_KEY_F12, VICE_MOD_MASK|GDK_SHIFT_MASK, ui_switch_border_mode },
     /* Alt+J = swap joysticks */
     { GDK_KEY_j, VICE_MOD_MASK,
         (void *)ui_swap_joysticks_callback },
     /* Alt+Shift+U = swap userport joysticks */
-    { GDK_KEY_u, VICE_MOD_MASK|GDK_SHIFT_MASK,
+    { GDK_KEY_U, VICE_MOD_MASK|GDK_SHIFT_MASK,
         (void *)ui_swap_userport_joysticks_callback },
     { GDK_KEY_J, VICE_MOD_MASK|GDK_SHIFT_MASK,
         (void *)ui_toggle_keyset_joysticks },
     { GDK_KEY_m, VICE_MOD_MASK,
         (void *)ui_toggle_mouse_grab },
+    
+    /* Windows folks expect Alt+Enter to go full screen */
+    { GDK_KEY_Return, VICE_MOD_MASK,
+        (void *)ui_fullscreen_callback },
 
     /* Arnie */
     { 0, 0, NULL }
@@ -206,11 +230,13 @@ static kbd_gtk3_hotkey_t default_hotkeys[] = {
 
 /** \brief  String type resources list
  */
-#if 0
 static const resource_string_t resources_string[] = {
+    /* VTE-monitor font */
+    { "MonitorFont", "monospace 11", RES_EVENT_NO, NULL,
+        &ui_resources.monitor_font, set_monitor_font, NULL },
+
     RESOURCE_STRING_LIST_END
 };
-#endif
 
 
 /** \brief  Boolean resources shared between windows
@@ -230,6 +256,14 @@ static const resource_int_t resources_int_shared[] = {
     { "FullscreenEnable", 0, RES_EVENT_NO, NULL,
         &fullscreen_enabled, set_fullscreen_state, NULL },
 
+    { "PauseOnSettings", 0, RES_EVENT_NO, NULL,
+        &ui_resources.pause_on_settings, set_pause_on_settings, NULL },
+#ifdef COMPYX_LAMER
+    /* Use autostart on doubleclick in dialogs */
+    { "AutostartOnDoubleclick", 0, RES_EVENT_NO, NULL,
+        &ui_resources.autostart_on_doubleclick, set_autostart_on_doubleclick,
+        NULL },
+#endif
 
     RESOURCE_INT_LIST_END
 };
@@ -289,6 +323,12 @@ static const cmdline_option_t cmdline_options_common[] =
     { "+confirmonexit", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
         NULL, NULL, "ConfirmOnExit", (void *)0,
         NULL, "Do not confirm quitting VICE" },
+    { "-pauseonsettings", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+        NULL, NULL, "PauseOnSettings", (void *)1,
+        NULL, "Pause emulation when activating settings dialog" },
+    { "+pauseonsettings", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+        NULL, NULL, "PauseOnSettings", (void *)0,
+        NULL, "Do not pause emulation when activating settings dialog" },
     { "-saveres", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
         NULL, NULL, "SaveResourcesOnExit", (void *)1,
         NULL, "Save settings on exit" },
@@ -313,6 +353,18 @@ static const cmdline_option_t cmdline_options_common[] =
     { "+fullscreen", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
         NULL, NULL, "FullscreenEnable", (void*)0,
         NULL, "Disable fullscreen" },
+    { "-monitorfont", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
+        set_monitor_font, NULL, "MonitorFont", NULL,
+        "font-description", "Set monitor font for the Gtk3 monitor" },
+    { "-autostart-on-doubleclick", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+        NULL, NULL, "AutostartOnDoubleclick", (void*)1,
+        NULL, "Autostart files on doubleclick" },
+#ifdef COMPYX_LAMER
+    { "+autostart-on-doubleclick", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+        NULL, NULL, "AutostartOnDoubleclick", (void*)0,
+        NULL, "Open files on doubleclick" },
+#endif
+
 
     CMDLINE_LIST_END
 };
@@ -321,6 +373,10 @@ static const cmdline_option_t cmdline_options_common[] =
 /** \brief  Flag indicating pause mode
  */
 static int is_paused = 0;
+
+/** \brief  Flag indicating that the monitor should be entered whilst paused
+ */
+static int enter_monitor_while_paused = 0;
 
 /** \brief  Index of the most recently focused main window
  */
@@ -367,6 +423,8 @@ static GtkWidget *(*create_controls_widget_func)(int) = NULL;
  * \param[in]   y       y position of drag event
  * \param[in]   time    (I don't have a clue)
  * \param[in]   data    extra event data (unused)
+ *
+ * \return  TRUE
  */
 static gboolean ui_on_drag_drop(
         GtkWidget *widget,
@@ -376,7 +434,6 @@ static gboolean ui_on_drag_drop(
         guint time,
         gpointer data)
 {
-    debug_gtk3("called.");
     return TRUE;
 }
 
@@ -393,9 +450,6 @@ static gboolean ui_on_drag_drop(
  * \param[in]   data        dragged data
  * \param[in]   info        int declared in the targets array (unclear)
  * \param[in]   time        no idea
- *
- * \todo    Once this works properly, remove a lot of debugging calls, perhaps
- *          changing a few into log calls.
  */
 static void ui_on_drag_data_received(
         GtkWidget *widget,
@@ -410,9 +464,9 @@ static void ui_on_drag_data_received(
     gchar *filename = NULL;
     gchar **files = NULL;
     guchar *text = NULL;
+#ifdef HAVE_DEBUG_GTK3UI
     int i;
-
-    debug_gtk3("got drag-data, info = %u:", info);
+#endif
 
     switch (info) {
 
@@ -424,6 +478,8 @@ static void ui_on_drag_data_received(
             /* got possible list of URI's */
             uris = gtk_selection_data_get_uris(data);
             if (uris != NULL) {
+                /* keep this debugging output, drag'n'drop is pretty flaky */
+#if 0
                 /* dump URI's on stdout */
                 debug_gtk3("got URI's:");
                 for (i = 0; uris[i] != NULL; i++) {
@@ -435,6 +491,7 @@ static void ui_on_drag_data_received(
                         g_free(filename);
                     }
                 }
+#endif
 
                 /* use the first/only entry as the autostart file
                  *
@@ -464,46 +521,46 @@ static void ui_on_drag_data_received(
             /* remove trailing whitespace */
             g_strchomp((gchar *)text);
 
-            debug_gtk3("Got data as text: '%s'.", text);
             files = g_strsplit((const gchar *)text, "\n", -1);
             g_free(text);
 
-            for (i = 0; files[i] != NULL; i++) {
 #ifdef HAVE_DEBUG_GTK3UI
+            for (i = 0; files[i] != NULL; i++) {
+                /* keep this as well */
                 gchar *tmp = g_filename_from_uri(files[i], NULL, NULL);
-#endif
                 debug_gtk3("URI: '%s', filename: '%s'.",
                         files[i], tmp);
             }
+#endif
             /* now grab the first file */
             filename = g_filename_from_uri(files[0], NULL, NULL);
             g_strfreev(files);
-
-            debug_gtk3("got filename '%s'.", filename);
             break;
 
         default:
-            debug_gtk3("Warning: unhandled d'n'd target %u.", info);
             filename = NULL;
             break;
     }
 
     /* can we attempt autostart? */
     if (filename != NULL) {
-        debug_gtk3("Attempting to autostart '%s'.", filename);
         if (autostart_autodetect(filename, NULL, 0, AUTOSTART_MODE_RUN) != 0) {
-            debug_gtk3("failed.");
-        } else {
-            debug_gtk3("OK!");
+            /* TODO: add proper UI error */
         }
         g_free(filename);
     }
 }
 
 
+/** \brief  Set fullscreen state \a val
+ *
+ * \param[in]   val     fullscreen state (boolean)
+ * \param[in]   param   extra argument (unused(
+ *
+ * \return 0
+ */
 static int set_fullscreen_state(int val, void *param)
 {
-    debug_gtk3("called with %d.", val);
     fullscreen_enabled = val;
     return 0;
 }
@@ -562,6 +619,17 @@ video_canvas_t *ui_get_active_canvas(void)
 }
 
 
+/** \brief  Get the active main window's index
+ *
+ * \return  index of a main emulator window
+ */
+int ui_get_main_window_index(void)
+{
+    /* SOMETHING CHANGED */
+    return active_win_index;
+}
+
+
 /** \brief  Get a window's index
  *
  * \param[in]   widget      window to get the index of
@@ -599,6 +667,8 @@ static gboolean on_focus_in_event(GtkWidget *widget, GdkEventFocus *event,
 
     /* printf("ui.c:on_focus_in_event\n"); */
 
+    ui_set_ignore_mouse_hide(FALSE);
+
     ui_mouse_grab_pointer();
 
     if (index < 0) {
@@ -631,19 +701,49 @@ static gboolean on_focus_out_event(GtkWidget *widget, GdkEventFocus *event,
 {
     /* printf("ui.c:on_focus_out_event\n"); */
 
+    ui_set_ignore_mouse_hide(TRUE);
+
     ui_mouse_ungrab_pointer();
 
     return FALSE;
 }
 
+
 /** \brief  Create an icon by loading it from the vice.gresource file
  *
- * \return  Standard C= icon ripped from the internet (but at least scalable)
- *          Which of course looks weird on Windows for some reason, *sigh*.
+ * \return  App icon for the current machine
+ *
+ * \todo    Refactor to use arch/shared/archdep_icon_path.c
  */
 static GdkPixbuf *get_default_icon(void)
 {
-    return uidata_get_pixbuf("CBM_Logo.svg");
+    char buffer[256];
+
+
+    /* machine_name for VSID is 'C64' to be able to load ROMs from data/C64 */
+    if (machine_class == VICE_MACHINE_VSID) {
+        strncpy(buffer, "SID.svg", sizeof(buffer) - 1);
+        buffer[sizeof(buffer) - 1] = '\0';
+    } else {
+        g_snprintf(buffer, sizeof(buffer), "%s.svg", machine_name);
+        debug_gtk3("Trying icon '%s'", buffer);
+    }
+
+#ifdef MACOSX_SUPPORT
+    /* The icon is SVG, so lets try to figure out the right size to render */
+    id application;
+    id dock_tile;
+    CGSize dock_tile_size;
+
+    application    = OBJC_MSGSEND(id, id, SEL)((id)objc_getClass("NSApplication"), sel_getUid("sharedApplication"));
+    dock_tile      = OBJC_MSGSEND(id, id, SEL)(application, sel_getUid("dockTile"));
+    dock_tile_size = OBJC_MSGSEND(CGSize, id, SEL)(dock_tile, sel_getUid("size"));
+
+    return uidata_get_pixbuf_at_scale(buffer, dock_tile_size.width, dock_tile_size.height, true);
+#else
+    /* TODO: Can we figure out the right icon size on Windows, Linux? */
+    return uidata_get_pixbuf(buffer);
+#endif
 }
 
 
@@ -855,6 +955,21 @@ static int set_confirm_on_exit(int val, void *param)
 }
 
 
+/** \brief  Set PauseOnSettings resource (bool)
+ *
+ * \param[in]   val     new value
+ * \param[in]   param   extra param (ignored)
+ *
+ * \return 0
+ */
+static int set_pause_on_settings(int val, void *param)
+{
+    ui_resources.pause_on_settings = val ? 1 : 0;
+    return 0;
+}
+
+
+
 /** \brief  Set StartMinimized resource (bool)
  *
  * \param[in]   val     0: start normal 1: start minimized
@@ -888,6 +1003,21 @@ static int set_native_monitor(int val, void *param)
     ui_resources.use_native_monitor = val ? 1 : 0;
     return 0;
 }
+
+
+/** \brief  Resource handler: set monitor font for VTE-based monitor
+ *
+ * \param[in]   val     font description string
+ * \param[in]   param   extra argument (unused)
+ *
+ * \return  0 (success)
+ */
+static int set_monitor_font(const char *val, void *param)
+{
+    util_string_set(&ui_resources.monitor_font, val);
+    return 0;
+}
+
 
 
 
@@ -963,6 +1093,22 @@ static int set_window_ypos(int val, void *param)
 }
 
 
+#ifdef COMPYX_LAMER
+/** \brief  Set the 'AutostartOnDoubleclick' resource
+ *
+ * \param[in]   value   new value
+ * \param[in]   param   extra data (unused)
+ *
+ * \return 0;
+ */
+static int set_autostart_on_doubleclick(int val, void *param)
+{
+    ui_resources.autostart_on_doubleclick = val;
+    return 0;
+}
+#endif
+
+
 /*
  * Function pointer setters
  */
@@ -976,6 +1122,16 @@ void ui_set_handle_dropped_files_func(int (*func)(const char *))
 {
     handle_dropped_files_func = func;
 }
+
+
+#ifdef COMPYX_LAMER
+/** \brief  Get autostart-on-doubleclick state
+ */
+gboolean ui_get_autostart_on_doubleclick(void)
+{
+    return (gboolean)ui_resources.autostart_on_doubleclick;
+}
+#endif
 
 
 /** \brief  Set function to help create the main window(s)
@@ -1013,7 +1169,8 @@ void ui_set_create_controls_widget_func(GtkWidget *(*func)(int))
  * Looks like debug code. But better keep it here to debug the warnings about
  * GtkEventBox'es getting destroyed prematurely.
  *
- * \param[in]   widget  widget
+ * \param[in]   widget  widget triggering the event
+ * \param[in]   data    extra event data (unused)
  */
 static void on_window_grid_destroy(GtkWidget *widget, gpointer data)
 {
@@ -1073,20 +1230,17 @@ static gboolean on_window_configure_event(GtkWidget *widget,
 
 #ifdef MACOSX_SUPPORT
 
-/* The proper way to use objc_msgSend is to cast it into the right shape each time */
-#define OBJC_MSGSEND_FUNC_CAST(...) ((id (*)(__VA_ARGS__))objc_msgSend)
-
-void macos_set_dock_icon_workaround(void);
+void macos_set_dock_icon_workaround(GdkPixbuf *icon);
 void macos_activate_application_workaround(void);
 
 /** \brief  Set the macOS dock icon
  *
  * Gtk dock icon support doesn't work on macos (last tested with Gtk 3.24.8)
- * Therefore we get it done via the obj-c API. Except rather than integrate 
+ * Therefore we get it done via the obj-c API. Except rather than integrate
  * support for obj-c into the project, leverage some low level C functionality
  * to interact with the obj-c runtime.
  */
-void macos_set_dock_icon_workaround()
+void macos_set_dock_icon_workaround(GdkPixbuf *icon)
 {
     GBytes *gbytes;
     gconstpointer bytes;
@@ -1094,8 +1248,11 @@ void macos_set_dock_icon_workaround()
     id imageData;
     id logo;
     id application;
+    gchar *png_buffer;
+    gsize png_buffer_size;
 
-    gbytes = uidata_get_bytes("Icon-128@2x.png");
+    gdk_pixbuf_save_to_buffer(icon, &png_buffer, &png_buffer_size, "png", NULL, NULL);
+    gbytes = g_bytes_new_take(png_buffer, png_buffer_size);
 
     if (!gbytes) {
         log_error(LOG_ERR, "macos_set_dock_icon_workaround: failed to access icon bytes from gresource file.\n");
@@ -1104,19 +1261,19 @@ void macos_set_dock_icon_workaround()
 
     bytes = g_bytes_get_data(gbytes, &bytesSize);
     imageData =
-        OBJC_MSGSEND_FUNC_CAST(id, SEL, gconstpointer, gsize, BOOL)(
+        OBJC_MSGSEND(id, id, SEL, gconstpointer, gsize, BOOL)(
             (id)objc_getClass("NSData"),
             sel_getUid("dataWithBytesNoCopy:length:freeWhenDone:"),
             bytes,
             bytesSize,
             NO);
-    logo = OBJC_MSGSEND_FUNC_CAST(id, SEL)((id)objc_getClass("NSImage"), sel_getUid("alloc"));
-    logo = OBJC_MSGSEND_FUNC_CAST(id, SEL, id)(logo, sel_getUid("initWithData:"), imageData);
+    logo = OBJC_MSGSEND(id, id, SEL)((id)objc_getClass("NSImage"), sel_getUid("alloc"));
+    logo = OBJC_MSGSEND(id, id, SEL, id)(logo, sel_getUid("initWithData:"), imageData);
 
     if (logo) {
-        application = OBJC_MSGSEND_FUNC_CAST(id, SEL)((id)objc_getClass("NSApplication"), sel_getUid("sharedApplication"));
-        OBJC_MSGSEND_FUNC_CAST(id, SEL, id)(application, sel_getUid("setApplicationIconImage:"), logo);
-        OBJC_MSGSEND_FUNC_CAST(id, SEL)(logo, sel_getUid("release"));
+        application = OBJC_MSGSEND(id, id, SEL)((id)objc_getClass("NSApplication"), sel_getUid("sharedApplication"));
+        OBJC_MSGSEND(id, id, SEL, id)(application, sel_getUid("setApplicationIconImage:"), logo);
+        OBJC_MSGSEND(id, id, SEL)(logo, sel_getUid("release"));
     } else {
         log_error(LOG_ERR, "macos_set_dock_icon_workaround: failed to initialise image from resource");
     }
@@ -1136,19 +1293,57 @@ void macos_activate_application_workaround()
     id ns_application;
 
     /* [[NSApplication sharedApplication] activateIgnoringOtherApps: YES]; */
-    ns_application = OBJC_MSGSEND_FUNC_CAST(id, SEL)((id)objc_getClass("NSApplication"), sel_getUid("sharedApplication"));
-    OBJC_MSGSEND_FUNC_CAST(id, SEL, BOOL)(ns_application, sel_getUid("activateIgnoringOtherApps:"), YES);
+    ns_application = OBJC_MSGSEND(id, id, SEL)((id)objc_getClass("NSApplication"), sel_getUid("sharedApplication"));
+    OBJC_MSGSEND(void, id, SEL, BOOL)(ns_application, sel_getUid("activateIgnoringOtherApps:"), YES);
 }
 
 #endif
 
 
+/** \brief  Event handler for the rendering area's button presses
+ *
+ * Currently switches fullscreen mode when double-clicking, but can also be
+ * used to present a context menu to for some video settings via right-click,
+ * which is one of our many TODO's.
+ *
+ * \param[in]   canvas  rendering area
+ * \param[in]   event   event object
+ * \param[in]   data    GtkWindow parent of \a canvas
+ *
+ * \return  TRUE if event accepted
+ */
+static gboolean rendering_area_event_handler(GtkWidget *canvas,
+                                             GdkEventButton *event,
+                                             gpointer data)
+{
+    if (machine_class == VICE_MACHINE_VSID) {
+        return FALSE;
+    }
+
+    if (event->type == GDK_DOUBLE_BUTTON_PRESS
+            && event->button == GDK_BUTTON_PRIMARY) {
+        int mouse;
+
+        /* only trigger fullscreen switching when mouse-grab isn't active and
+         * a lightpen isn't active */
+        resources_get_int("Mouse", &mouse);
+        if (!mouse && !lightpen_enabled) {
+            ui_fullscreen_callback(canvas, event);
+        }
+        /* signal event handled */
+        return TRUE;
+    }
+    /* signal event not handled, avoids the host mouse pointer showing up
+     * during mouse grab */
+    return FALSE;
+}
+
+
+
 /** \brief  Create a toplevel window to represent a video canvas
  *
  * This function takes a video canvas structure and builds the widgets
- * that will represent that canvas in the UI as a whole. In the machine
- * emulators, the GtkDrawingArea that represents the actual screen backed
- * by the canvas will be entered into canvas->drawing_area.
+ * that will represent that canvas in the UI as a whole.
  *
  * While it creates the widgets, it does not make them visible. The
  * video canvas routines are expected to do any last-minute processing
@@ -1175,7 +1370,7 @@ void ui_create_main_window(video_canvas_t *canvas)
 
     GtkWidget *kbd_widget;
     int kbd_status = 0;
-
+    int mouse_grab = 0;
 
     GdkPixbuf *icon;
 
@@ -1186,16 +1381,23 @@ void ui_create_main_window(video_canvas_t *canvas)
 
     gchar title[256];
 
+    int minimized = 0;
     int full = 0;
+    int restore;
+
+    if (machine_class != VICE_MACHINE_VSID) {
+        resources_get_int("Mouse", &mouse_grab);
+    }
 
     new_window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     /* this needs to be here to make the menus with accelerators work */
     ui_menu_init_accelerators(new_window);
 
-    /* set a default C= icon for now */
+    /* set the dock / taskbar icon */
     icon = get_default_icon();
+
 #ifdef MACOSX_SUPPORT
-    macos_set_dock_icon_workaround();
+    macos_set_dock_icon_workaround(icon);
 #else
     if (icon != NULL) {
         gtk_window_set_icon(GTK_WINDOW(new_window), icon);
@@ -1203,7 +1405,13 @@ void ui_create_main_window(video_canvas_t *canvas)
 #endif
 
     /* set title */
-    g_snprintf(title, 256, "VICE (%s)", machine_get_name());
+    if (!mouse_grab) {
+        g_snprintf(title, 256, "VICE (%s)", machine_get_name());
+    } else {
+        g_snprintf(title, 256, "VICE (%s) (Use %s+M to disable mouse grab)",
+                machine_get_name(), VICE_MOD_MASK_TEXT);
+    }
+
     gtk_window_set_title(GTK_WINDOW(new_window), title);
 
     grid = gtk_grid_new();
@@ -1231,7 +1439,7 @@ void ui_create_main_window(video_canvas_t *canvas)
     }
 
     /* add status bar */
-    status_bar = ui_statusbar_create();
+    status_bar = ui_statusbar_create(target_window);
     gtk_widget_show_all(status_bar);
     gtk_widget_set_no_show_all(status_bar, TRUE);
 
@@ -1261,18 +1469,19 @@ void ui_create_main_window(video_canvas_t *canvas)
         gtk_widget_set_no_show_all(mixer_controls, TRUE);
     }
 
-    g_signal_connect(new_window, "focus-in-event",
+    g_signal_connect_unlocked(new_window, "focus-in-event",
                      G_CALLBACK(on_focus_in_event), NULL);
-    g_signal_connect(new_window, "focus-out-event",
+    g_signal_connect_unlocked(new_window, "focus-out-event",
                      G_CALLBACK(on_focus_out_event), NULL);
-    g_signal_connect(new_window, "window-state-event",
+    g_signal_connect_unlocked(new_window, "window-state-event",
                      G_CALLBACK(on_window_state_event), NULL);
-    g_signal_connect(new_window, "delete-event",
+    /* This event never returns so must not hold the vice lock */
+    g_signal_connect_unlocked(new_window, "delete-event",
                      G_CALLBACK(ui_main_window_delete_event), NULL);
     g_signal_connect(new_window, "destroy",
                      G_CALLBACK(ui_main_window_destroy_callback), NULL);
     /* can probably use the `user_data` to pass window index */
-    g_signal_connect(new_window, "configure-event",
+    g_signal_connect_unlocked(new_window, "configure-event",
                      G_CALLBACK(on_window_configure_event),
                      GINT_TO_POINTER(target_window));
     /*
@@ -1301,7 +1510,6 @@ void ui_create_main_window(video_canvas_t *canvas)
     canvas->window_index = target_window;
 
     /* gtk_window_set_title(GTK_WINDOW(new_window), canvas->viewport->title); */
-    ui_display_speed(100.0f, 0.0f, 0); /* initial update of the window status bar */
 
     /* Connect keyboard handlers, except for VSID
      *
@@ -1320,25 +1528,48 @@ void ui_create_main_window(video_canvas_t *canvas)
      * Try to restore windows position and size
      */
 
-    if (resources_get_int_sprintf("Window%dXpos", &xpos, target_window) < 0) {
-        log_error(LOG_ERR, "No for Window%dXpos", target_window);
-    }
-    resources_get_int_sprintf("Window%dYpos", &ypos, target_window);
-    resources_get_int_sprintf("Window%dwidth", &width, target_window);
-    resources_get_int_sprintf("Window%dheight", &height, target_window);
 
-    debug_gtk3("X: %d, Y: %d, W: %d, H: %d", xpos, ypos, width, height);
-    if (xpos < 0 || ypos < 0 || width <= 0 || height <= 0) {
-        /* def. not legal */
-        debug_gtk3("shit ain't legal!");
-    } else {
-        gtk_window_move(GTK_WINDOW(new_window), xpos, ypos);
-        gtk_window_resize(GTK_WINDOW(new_window), width, height);
+    /*
+     * Do we need to restore window(s) position/size?
+     */
+    if (resources_get_int("RestoreWindowGeometry", &restore) < 0) {
+        restore = 0;
     }
 
-    if (resources_get_int("FullscreenEnable", &full) < 0) {
-        debug_gtk3("failed to get FullscreenEnabled resource.");
+    if (restore) {
+        if (resources_get_int_sprintf("Window%dXpos", &xpos, target_window) < 0) {
+            log_error(LOG_ERR, "No for Window%dXpos", target_window);
+        }
+        resources_get_int_sprintf("Window%dYpos", &ypos, target_window);
+        resources_get_int_sprintf("Window%dwidth", &width, target_window);
+        resources_get_int_sprintf("Window%dheight", &height, target_window);
+
+        debug_gtk3("X: %d, Y: %d, W: %d, H: %d", xpos, ypos, width, height);
+        if (xpos < 0 || ypos < 0 || width <= 0 || height <= 0) {
+            /* def. not legal */
+            debug_gtk3("shit ain't legal!");
+        } else {
+            gtk_window_move(GTK_WINDOW(new_window), xpos, ypos);
+            gtk_window_resize(GTK_WINDOW(new_window), width, height);
+        }
+    }
+
+    /*
+     * Do we start minimized?
+     */
+    if (resources_get_int("StartMinimized", &minimized) < 0) {
+        minimized = 0;  /* fallback : not minimized */
+    }
+    if (minimized) {
+        /* there's no gtk_window_minimize() so we do this:
+         * (there is a gtk_window_maximize(), so for API consistency I'd would
+         *  probably have added gtk_window_minimize() to mirror the maximize
+         *  function)
+         */
+        gtk_window_iconify(GTK_WINDOW(new_window));
     } else {
+        /* my guess is a minimized/iconified window cannot be fullscreen */
+        resources_get_int("FullscreenEnable", &full);
         if (full) {
             gtk_window_fullscreen(GTK_WINDOW(new_window));
         } else {
@@ -1346,11 +1577,21 @@ void ui_create_main_window(video_canvas_t *canvas)
         }
     }
 
-    if (resources_get_int("KbdStatusbar", &kbd_status) < 0) {
-        debug_gtk3("Failed to get KbdStatusbar resource, defaulting to False.");
+
+    /* VSID doesn't have the keyboard debugging widget on the statusbar
+     *
+     * But it's still added, so disable always. Probably a big FIXME
+     */
+    if (machine_class != VICE_MACHINE_VSID) {
+
+        if (resources_get_int("KbdStatusbar", &kbd_status) < 0) {
+            kbd_status = 0;
+        }
+    } else {
         kbd_status = 0;
     }
-    kbd_widget = gtk_grid_get_child_at(GTK_GRID(status_bar), 0, 2);
+
+    kbd_widget = gtk_grid_get_child_at(GTK_GRID(status_bar), 0, 3);
 
     if (kbd_status) {
         gtk_widget_show_all(kbd_widget);
@@ -1358,13 +1599,17 @@ void ui_create_main_window(video_canvas_t *canvas)
         gtk_widget_hide(kbd_widget);
     }
 
+    if (grid != NULL) {
+        /* get rendering area */
+        GtkWidget *render_area = gtk_grid_get_child_at(GTK_GRID(grid), 0, 1);
 
-
-
-
-#ifdef MACOSX_SUPPORT
-    macos_activate_application_workaround();
-#endif
+        /* set up event handler for clicks on the canvas */
+        g_signal_connect_unlocked(
+                render_area,
+                "button-press-event",
+                G_CALLBACK(rendering_area_event_handler),
+                new_window);
+    }
 }
 
 
@@ -1376,14 +1621,37 @@ void ui_create_main_window(video_canvas_t *canvas)
  */
 void ui_display_main_window(int index)
 {
-    if (ui_resources.window_widget[index]) {
-        /* Normally this would show everything in the window,
-         * including hidden status bar displays, but we've
-         * disabled secondary displays in the status bar code with
-         * gtk_widget_set_no_show_all(). */
-        gtk_widget_show_all(ui_resources.window_widget[index]);
-        active_win_index = index;
+    GtkWidget *window;
+    GdkFrameClock *frame_clock;
+    video_canvas_t *canvas;
+
+    window = ui_resources.window_widget[index];
+
+    if (!window) {
+        /* This function is called blindly for both primary and secondary windows */
+        return;
     }
+
+    /* Normally this would show everything in the window,
+     * including hidden status bar displays, but we've
+     * disabled secondary displays in the status bar code with
+     * gtk_widget_set_no_show_all(). */
+    gtk_widget_show_all(window);
+
+#ifdef MACOSX_SUPPORT
+    macos_activate_application_workaround();
+#endif
+
+    /* Queue up a redraw opportunity each frame */
+    canvas = ui_resources.canvas[index];
+    if (canvas->event_box) {
+        /* no canvas for vsid */
+        frame_clock = gdk_window_get_frame_clock(gtk_widget_get_window(window));
+        g_signal_connect_unlocked(frame_clock, "update", G_CALLBACK(canvas->renderer_backend->queue_redraw), canvas);
+        gdk_frame_clock_begin_updating(frame_clock);
+    }
+
+    active_win_index = index;
 }
 
 /** \brief  Destroy a main window
@@ -1394,9 +1662,26 @@ void ui_display_main_window(int index)
  */
 void ui_destroy_main_window(int index)
 {
-    if (ui_resources.window_widget[index]) {
-        gtk_widget_destroy(ui_resources.window_widget[index]);
+    GtkWidget *window;
+    GdkFrameClock *frame_clock;
+    video_canvas_t *canvas;
+
+    window = ui_resources.window_widget[index];
+
+    if (!window) {
+        /* This function is called blindly for both primary and secondary windows */
+        return;
     }
+
+    /* Explicitly shut down the frame clock based rendering updates - not sure if necessary but cleaner. */
+    canvas = ui_resources.canvas[index];
+    if (canvas->event_box) {
+        /* no canvas for vsid */
+        frame_clock = gdk_window_get_frame_clock(gtk_widget_get_window(window));
+        gdk_frame_clock_end_updating(frame_clock);
+    }
+
+    gtk_widget_destroy(window);
 }
 
 
@@ -1466,16 +1751,13 @@ int ui_init(int *argc, char **argv)
     settings_default = gtk_settings_get_default();
     g_object_set(settings_default, "gtk-menu-bar-accel", "F20", NULL);
 
-
     if (!uidata_init()) {
         log_error(LOG_ERR,
-                "failed to initialize GResource data, don't expected much"
+                "failed to initialize GResource data, don't expect much"
                 " when it comes to icons, fonts or logos.");
     }
 
-    debug_gtk3("Registering CBM font.");
     if (!archdep_register_cbmfont()) {
-        debug_gtk3("failed, continuing");
         log_error(LOG_ERR, "failed to register CBM font.");
     }
 
@@ -1527,6 +1809,25 @@ int ui_init_finalize(void)
 }
 
 
+/** \brief  Result of the JAM dialog
+ */
+static ui_jam_action_t jam_dialog_result;
+
+
+/** \brief  JAM dialog handler for the threaded UI
+ *
+ * \param[in]   user_data   message
+ *
+ * \return  FALSE
+ */
+gboolean ui_jam_dialog_impl(gpointer user_data)
+{
+    /* XXX: this probably needs a variable index into the window_widget array */
+    jam_dialog_result = jam_dialog(ui_resources.window_widget[PRIMARY_WINDOW], (char *)user_data);
+
+    return FALSE;
+}
+
 /** \brief  Display a dialog box in response to a CPU jam
  *
  * \param[in]   format  format string for the message to display
@@ -1537,21 +1838,27 @@ ui_jam_action_t ui_jam_dialog(const char *format, ...)
 {
     va_list args;
     char *buffer;
-    int result;
 
     va_start(args, format);
     buffer = lib_mvsprintf(format, args);
     va_end(args);
 
-    ui_set_ignore_mouse_hide(TRUE);
+    /*
+     * We need to use the main thread to do UI stuff. And we
+     * also need to block the VICE thread until we get the
+     * user decision.
+     */
+    jam_dialog_result = UI_JAM_INVALID;
+    gdk_threads_add_timeout(0, ui_jam_dialog_impl, (gpointer)buffer);
 
-    /* XXX: this probably needs a variable index into the window_widget array */
-    result = jam_dialog(ui_resources.window_widget[PRIMARY_WINDOW], buffer);
+    /* block until the result is set */
+    while (jam_dialog_result == UI_JAM_INVALID) {
+        tick_sleep(tick_per_second() / 60);
+    }
+
     lib_free(buffer);
 
-    ui_set_ignore_mouse_hide(FALSE);
-
-    return result;
+    return jam_dialog_result;
 }
 
 
@@ -1567,12 +1874,10 @@ int ui_resources_init(void)
     if (resources_register_int(resources_int_shared) != 0) {
         return -1;
     }
-#if 0
     /* initialize string resources */
     if (resources_register_string(resources_string) < 0) {
         return -1;
     }
-#endif
     /* initialize int/bool resources */
     if (resources_register_int(resources_int_primary_window) < 0) {
         return -1;
@@ -1597,6 +1902,7 @@ int ui_resources_init(void)
  */
 void ui_resources_shutdown(void)
 {
+    lib_free(ui_resources.monitor_font);
 }
 
 /** \brief Clean up memory used by the UI system itself
@@ -1605,44 +1911,6 @@ void ui_shutdown(void)
 {
     uidata_shutdown();
     ui_statusbar_shutdown();
-}
-
-/** \brief  Update all menu item checkmarks on all windows
- *
- * \note    This is called from multiple functions in autostart.c and also
- *          mon_resource_set() in monitor/monitor.c when they change the
- *          value of resources.
- *
- * \todo    This is unimplemented, but will be much easier to implement if we
- *          switch to using a GtkApplication/GMenu based UI.
- */
-void ui_update_menus(void)
-{
-    /* NOP: Gtk3 doesn't need this */
-}
-
-
-/** \brief  Dispatch next GLib main context event
- *
- * \warning According to the Gtk3/GLib devs, this will at some point
- *          bite us in the arse.
- */
-void ui_dispatch_next_event(void)
-{
-    g_main_context_iteration(NULL, FALSE);
-}
-
-
-/** \brief  Dispatch events pending in the GLib main context loop
- *
- * \warning According to the Gtk3/GLib devs, this will at some point
- *          bite us in the arse.
- */
-void ui_dispatch_events(void)
-{
-    while (g_main_context_iteration(NULL, FALSE)) {
-        /* NOP */
-    }
 }
 
 /** \brief  Display the "Do you want to extend the disk image to
@@ -1661,6 +1929,29 @@ int ui_extend_image_dialog(void)
 }
 
 
+/** \brief  Not used */
+void ui_dispatch_events(void)
+{
+}
+
+
+/** \brief  Error dialog handler for the threaded UI
+ *
+ * \param[in]   user_data   error message
+ *
+ * \return  FALSE
+ */
+static gboolean ui_error_impl(gpointer user_data)
+{
+    char *buffer = (char *)user_data;
+
+    vice_gtk3_message_error("VICE Error", buffer);
+    lib_free(buffer);
+
+    return FALSE;
+}
+
+
 /** \brief  Display error message through the UI
  *
  * \param[in]   format  format string for the error
@@ -1674,8 +1965,8 @@ void ui_error(const char *format, ...)
     buffer = lib_mvsprintf(format, ap);
     va_end(ap);
 
-    vice_gtk3_message_error("VICE Error", buffer);
-    lib_free(buffer);
+    /* call from ui thread */
+    gdk_threads_add_timeout(0, ui_error_impl, (gpointer)buffer);
 }
 
 
@@ -1696,43 +1987,6 @@ void ui_message(const char *format, ...)
     lib_free(buffer);
 }
 
-#if 0
-/** \brief  Display FPS (and some other stuff) in the title bar of each
- *          window
- *
- * \param[in]   percent    CPU speed ratio
- * \param[in]   framerate  frame rate
- * \param[in]   warp_flag  nonzero if warp mode is active
- */
-void ui_display_speed(float percent, float framerate, int warp_flag)
-{
-    int i;
-    char str[128];
-    int percent_int = (int)(percent + 0.5);
-    int framerate_int = (int)(framerate + 0.5);
-    char *warp, *mode[3] = {"", " (VDC)", " (Monitor)"};
-
-    for (i = 0; i < NUM_WINDOWS; i++) {
-        if (ui_resources.canvas[i] && GTK_WINDOW(ui_resources.window_widget[i])) {
-            warp = (warp_flag ? "(warp)" : "");
-            str[0] = 0;
-            if (machine_class != VICE_MACHINE_VSID) {
-                snprintf(str, 128, "%s%s - %3d%%, %2d fps %s%s",
-                         ui_resources.canvas[i]->viewport->title, mode[i],
-                         percent_int, framerate_int, warp,
-                         is_paused ? " (Paused)" : "");
-            } else {
-                snprintf(str, 128, "VSID - %3d%% %s%s",
-                         percent_int, warp,
-                         is_paused ? " (Paused)" : "");
-            }
-            str[127] = 0;
-            gtk_window_set_title(GTK_WINDOW(ui_resources.window_widget[i]), str);
-        }
-    }
-}
-#endif
-
 
 /** \brief  Keeps the ui events going while the emulation is paused
  *
@@ -1741,22 +1995,21 @@ void ui_display_speed(float percent, float framerate, int warp_flag)
  */
 static void pause_trap(uint16_t addr, void *data)
 {
-    ui_display_paused(1);
     vsync_suspend_speed_eval();
-    while (is_paused) {
-        ui_dispatch_next_event();
-        g_usleep(10000);
+    sound_suspend();
+
+    is_paused = 1;
+
+    while (is_paused)
+    {
+        tick_sleep(tick_per_second() / 60);
+
+        /* Enter monitor directly if needed. */
+        if (enter_monitor_while_paused) {
+            enter_monitor_while_paused = 0;
+            monitor_startup(e_default_space);
+        }
     }
-}
-
-
-/** \brief  This should display some 'pause' status indicator on the statusbar
- *
- * \param[in]   flag    pause state
- */
-void ui_display_paused(int flag)
-{
-    ui_display_speed(0.0, 0.0, 0);
 }
 
 
@@ -1774,11 +2027,8 @@ int ui_pause_active(void)
  */
 void ui_pause_enable(void)
 {
-    if (!ui_pause_active()) {
-        is_paused = 1;
-        interrupt_maincpu_trigger_trap(pause_trap, 0);
-        ui_display_paused(1);
-    }
+    is_paused = 1;
+    interrupt_maincpu_trigger_trap(pause_trap, 0);
 }
 
 
@@ -1786,10 +2036,14 @@ void ui_pause_enable(void)
  */
 void ui_pause_disable(void)
 {
-    if (ui_pause_active()) {
-        is_paused = 0;
-        ui_display_paused(0);
-    }
+    is_paused = 0;
+}
+
+/** \brief  The pause loop should trigger the monitor
+ */
+void ui_pause_enter_monitor(void)
+{
+    enter_monitor_while_paused = 1;
 }
 
 
@@ -1851,15 +2105,17 @@ gboolean ui_advance_frame(void)
     return TRUE;    /* has to be TRUE to avoid passing Alt+SHIFT+P into the emu */
 }
 
-/** \brief  Shutdown the UI, clean up resources
+/** \brief  Destroy UI resources (but NOT vice 'resources')
+ *
+ * Don't call this directly except from main_exit();
  */
 void ui_exit(void)
 {
-    int soe;    /* save on exit */
+    mainlock_obtain();
 
     /* clean up UI resources */
     if (machine_class != VICE_MACHINE_VSID) {
-        uicart_shutdown();
+        ui_cart_shutdown();
         ui_disk_attach_shutdown();
         ui_tape_attach_shutdown();
         ui_smart_attach_shutdown();
@@ -1871,23 +2127,13 @@ void ui_exit(void)
     ui_destroy_main_window(PRIMARY_WINDOW);
     ui_destroy_main_window(SECONDARY_WINDOW);
 
-    resources_get_int("SaveResourcesOnExit", &soe);
-    if (soe) {
-        resources_save(NULL);
-    }
-
     /* unregister the CBM font */
     archdep_unregister_cbmfont();
 
     /* deallocate memory used by the unconnected keyboard shortcuts */
     kbd_hotkey_shutdown();
 
-    /* trigger any remaining Gtk/GLib events */
-    while (g_main_context_pending(g_main_context_default())) {
-        debug_gtk3("processing pending event.");
-        g_main_context_iteration(g_main_context_default(), TRUE);
-    }
-    archdep_vice_exit(0);
+    mainlock_release();
 }
 
 /** \brief  Send current light pen state to the emulator core for all windows
@@ -1978,12 +2224,30 @@ void ui_enable_mixer_controls(int enabled)
 }
 
 
-
+/** \brief  Get GtkWindow instance by \a index
+ *
+ * \param[in]   index   index in the windows widgets array (0-2)
+ *
+ * \return  GtkWindow instance
+ */
 GtkWidget *ui_get_window_by_index(int index)
 {
     if (index < 0 || index >= NUM_WINDOWS) {
-        debug_gtk3("invalid window index %d.", index);
         return NULL;
     }
     return ui_resources.window_widget[index];
+}
+
+
+/** \brief  Switch x64sc border mode during real-time
+ */
+void ui_switch_border_mode(void)
+{
+    int mode;
+
+    if (machine_class == VICE_MACHINE_C64SC) {
+        resources_get_int("VICIIBorderMode", &mode);
+        resources_set_int("VICIIBorderMode", (mode + 1) & 3);
+    }
+
 }

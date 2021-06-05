@@ -1,29 +1,30 @@
 ACLOCAL_AMFLAGS=-Im4
 
+# Install HTML docs?
+if ENABLE_HTML_DOCS
+HTML_DOCS=yes
+else
+HTML_DOCS=no
+endif
+
+
 if VICE_QUIET
 .SILENT:
 endif
 
 # Process this file with automake to produce Makefile.in
 
-SUBDIRS = src build data man doc
+SUBDIRS = src build data doc
 
 # COMMON_EXTRA_DIST is what used to be the EXTRA_DIST, when adding dist
 # files, please add them to the COMMON_EXTRA_DIST list.
 
 COMMON_EXTRA_DIST = \
-	AUTHORS \
 	autogen.sh \
 	config.rpath \
-	configure.proto \
-	ChangeLog \
-	ChangeLog.1 \
-	ChangeLog.2 \
-	ChangeLog.3 \
-	ChangeLog.4 \
+	configure.ac \
+	cmake-bootstrap.sh \
 	COPYING \
-	FEEDBACK \
-	INSTALL \
 	NEWS
 
 EXTRA_DIST = $(COMMON_EXTRA_DIST)
@@ -91,11 +92,7 @@ ffmpeglibs-clean:
 
 install: installvice
 
-# If we have no ChangeLog (which should be generated from SVN), generate a
-# dummy one.
 
-ChangeLog:
-	touch ChangeLog
 
 if MAKE_BINDIST
 
@@ -112,7 +109,7 @@ endif
 if BEOS_COMPILE
 if SDL_COMPILE
 bindist:
-	$(SHELL) @ARCH_SRC_DIR@/make-bindist_beos.sh $(STRIP) $(VICE_VERSION) $(host_cpu) $(host_os) @ENABLE_ARCH@ nozip $(XSCPU64_INCLUDED) $(top_srcdir) $(SDL_VERSION)
+	$(SHELL) @ARCH_SRC_DIR@/make-bindist_beos.sh $(STRIP) $(VICE_VERSION) $(host_cpu) $(host_os) @ENABLE_ARCH@ nozip $(top_srcdir) $(SDL_VERSION)
 
 bindistzip:
 	$(SHELL) @ARCH_SRC_DIR@/make-bindist_beos.sh $(STRIP) $(VICE_VERSION) $(host_cpu) $(host_os) @ENABLE_ARCH@ zip $(XSCPU64_INCLUDED) $(top_srcdir) $(SDL_VERSION)
@@ -139,17 +136,25 @@ endif
 if WIN32_COMPILE
 if NATIVE_GTK3_COMPILE
 bindist:
-	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ nozip $(X64_INCLUDED) $(top_srcdir) $(host_cpu) $(abs_top_builddir) $(CROSS) $(objdump) $(CC)
+	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ nozip $(X64_INCLUDED) $(top_srcdir) $(host_cpu) $(abs_top_builddir) $(CROSS) $(objdump) $(CC) $(HTMLDOCS)
 
 bindistzip:
-	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ zip $(X64_INCLUDED) $(top_srcdir) $(host_cpu) $(abs_top_builddir) $(CROSS) $(objdump) $(CC)
+	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ zip $(X64_INCLUDED) $(top_srcdir) $(host_cpu) $(abs_top_builddir) $(CROSS) $(objdump) $(CC) $(HTML_DOCS)
+
+bindist7zip:
+	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ 7zip $(X64_INCLUDED) $(top_srcdir) $(host_cpu) $(abs_top_builddir) $(CROSS) $(objdump) $(CC) $(HTML_DOCS)
+
 else
 if SDL_COMPILE
 bindist:
-	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ nozip $(X64_INCLUDED) $(top_srcdir) $(top_builddir) $(host_cpu) $(SDL_VERSION) "$(SDLCONFIG)" $(CROSS) $(objdump) $(CC)
+	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ nozip $(X64_INCLUDED) $(top_srcdir) $(top_builddir) $(host_cpu) $(SDL_VERSION) "$(SDLCONFIG)" $(CROSS) $(objdump) $(CC) $(HTML_DOCS)
 
 bindistzip:
-	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ zip $(X64_INCLUDED) $(top_srcdir) $(top_builddir) $(host_cpu) $(SDL_VERSION) "$(SDLCONFIG)" $(CROSS) $(objdump) $(CC)
+	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ zip $(X64_INCLUDED) $(top_srcdir) $(top_builddir) $(host_cpu) $(SDL_VERSION) "$(SDLCONFIG)" $(CROSS) $(objdump) $(CC) $(HTML_DOCS)
+
+bindist7zip:
+	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ 7zip $(X64_INCLUDED) $(top_srcdir) $(top_builddir) $(host_cpu) $(SDL_VERSION) "$(SDLCONFIG)" $(CROSS) $(objdump) $(CC) $(HTML_DOCS)
+
 endif
 endif
 endif
@@ -184,17 +189,15 @@ dist-gzip:
 	$(DOS2UNIX) `find $(top_srcdir) -name "*.sh"`
 	$(DOS2UNIX) $(top_srcdir)/doc/vice.texi
 	$(MAKE) distdir
-	$(AMTAR) chf - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir).tar.gz
+	$(AMTAR) chf - $(distdir) | gzip --best -c >$(distdir).tar.gz
 	$(am__remove_distdir)
 
 dist dist-all:
 	$(DOS2UNIX) `find $(top_srcdir) -name "*.sh"`
 	$(DOS2UNIX) $(top_srcdir)/doc/vice.texi
 	$(MAKE) distdir
-	$(AMTAR) chf - $(distdir) | GZIP=$(GZIP_ENV) gzip -c >$(distdir).tar.gz
+	$(AMTAR) chf - $(distdir) | gzip --best -c >$(distdir).tar.gz
 	$(am__remove_distdir)
 
-$(top_srcdir)/configure.ac: $(top_srcdir)/configure.proto
-	$(am__cd) $(srcdir) && $(SHELL) autogen.sh
 
 clean: $(EXTRA_CLEANS) clean-recursive

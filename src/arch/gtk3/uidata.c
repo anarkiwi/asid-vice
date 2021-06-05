@@ -39,6 +39,7 @@
 #include "archdep.h"
 #include "debug_gtk3.h"
 #include "lib.h"
+#include "log.h"
 #include "util.h"
 
 #include "uidata.h"
@@ -51,10 +52,6 @@ static GResource *gresource = NULL;
 
 
 /** \brief  Intialize the GResource binary blob handling
- *
- * First tries to load from src/arch/gtk3/data and then from VICEDIR/data.
- * Loading from VICEDIR/data will fail, the vice.gresource file doesn't get
- * copied there yet with a make install, nor does the VICEDIR/data dir exist.
  *
  * \return  bool
  */
@@ -70,8 +67,9 @@ int uidata_init(void)
 
     /* try directory with VICE's data files */
     dir = archdep_get_vice_datadir();
-    debug_gtk3("trying archdep_get_vice_datadir() (%s).", dir);
-    path = archdep_join_paths(dir, "vice.gresource", NULL);
+    debug_gtk3("trying archdep_get_vice_datadir() %s/common", dir);
+    path = archdep_join_paths(dir, "common", "vice.gresource", NULL);
+    debug_gtk3("Loading gresource from '%s'\n", path);
     lib_free(dir);
 
     gresource = g_resource_load(path, &err);
@@ -134,6 +132,55 @@ GdkPixbuf * uidata_get_pixbuf(const char *name)
     debug_gtk3("attempting to load resource '%s'.", path);
     buf = gdk_pixbuf_new_from_resource(path, &err);
     lib_free(path);
+    if (err) {
+        log_error(LOG_ERR, "Failed to obtain pixbuf for %s, Error: %s", name, err->message);
+        g_clear_error(&err);
+    }
+    return buf;
+}
+
+/** \brief  Get a pixbuf from the GResource blob and scale it
+ *
+ * \param   name    virtual path to the file
+ *
+ * \return  pixbuf or `NULL` on error
+ */
+GdkPixbuf * uidata_get_pixbuf_at_scale(const char *name, int width, int height, gboolean preserve_aspect_ratio)
+{
+    GdkPixbuf *buf;
+    GError *err = NULL;
+    char *path;
+
+    path = util_concat(UIDATA_ROOT_PATH, "/", name, NULL);
+    debug_gtk3("attempting to load resource '%s'.", path);
+    buf = gdk_pixbuf_new_from_resource_at_scale(path, width, height, preserve_aspect_ratio, &err);
+    lib_free(path);
+    if (err) {
+        log_error(LOG_ERR, "Failed to obtain pixbuf for %s, Error: %s", name, err->message);
+        g_clear_error(&err);
+    }
+    return buf;
+}
+
+
+#if 0
+/** \brief  Load an animation from VICE's GResource instance
+ *
+ * \param[in]   name    filename inside the GResource
+ * \param[in]   loop    loop animation
+ *
+ * \return  animation reference or `NULL` on error
+ */
+GdkPixbufAnimation *uidata_get_pixbuf_animated(const char *name, gboolean loop)
+{
+    GdkPixbufAnimation *buf;
+    GError *err = NULL;
+    char *path;
+
+    path = util_concat(UIDATA_ROOT_PATH, "/", name, NULL);
+    debug_gtk3("attempting to load resource '%s'.", path);
+    buf = gdk_pixbuf_animation_new_from_resource(path, &err);
+    lib_free(path);
     if (buf == NULL) {
         debug_gtk3("failed: %s.", err->message);
         /* TODO: log error */
@@ -141,6 +188,8 @@ GdkPixbuf * uidata_get_pixbuf(const char *name)
     }
     return buf;
 }
+#endif
+
 
 /** \brief  Get a bytes from the GResource blob
  *

@@ -54,14 +54,14 @@ char *archdep_default_joymap_file_name(void)
 }
 #endif
 
-#if defined(ARCHDEP_OS_WINDOWS) || defined(ARCHDEP_OS_OS2)
+#if defined(ARCHDEP_OS_WINDOWS)
 char *archdep_default_joymap_file_name(void)
 {
     return util_concat(archdep_boot_path(), "\\" KBD_PORT_PREFIX "-joymap-", machine_get_name(), ".vjm", NULL);
 }
 #endif
 
-#if defined(ARCHDEP_OS_BEOS) || defined(ARCHDEP_OS_AMIGA)
+#if defined(ARCHDEP_OS_BEOS)
 char *archdep_default_joymap_file_name(void)
 {
     static char *fname;

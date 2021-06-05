@@ -1,4 +1,4 @@
-/**
+/** \file   basedialogs.c
  * \brief   Gtk3 basic dialogs (Info, Yes/No, etc)
  *
  * \author  Bas Wassink <b.wassink@ziggo.nl>
@@ -28,13 +28,96 @@
 #include <gtk/gtk.h>
 #include <string.h>
 
-#include "lib.h"
 #include "debug_gtk3.h"
+#include "lib.h"
 #include "uimachinewindow.h"
 #include "ui.h"
 
 #include "basedialogs.h"
 
+
+static gboolean entry_get_int(GtkWidget *entry, int *value);
+
+
+/** \brief  Callback function for the confirm dialog
+ */
+static void (*confirm_cb)(GtkDialog *, gboolean);
+
+static void (*integer_cb)(GtkDialog *, int, gboolean);
+
+
+
+/** \brief  Handler for the 'response' event of the Info dialog
+ *
+ * \param[in,out]   dialog          Info dialog
+ * \param[in]       response_id     response ID (ignored)
+ * \param[in]       data            extra event data (ignored)
+ */
+static void on_response_info(GtkWidget *dialog, gint response_id, gpointer data)
+{
+    debug_gtk3("Called with response_id %d", response_id);
+    gtk_widget_destroy(dialog);
+}
+
+
+/** \brief  Handler for the 'response' event of the Confirm dialog
+ *
+ * \param[in,out]   dialog          Info dialog
+ * \param[in]       response_id     response ID (ignored)
+ * \param[in]       data            extra event data (ignored)
+ */
+static void on_response_confirm(GtkDialog *dialog, gint response_id, gpointer data)
+{
+    debug_gtk3("Called with response_id %d", response_id);
+    if (response_id == GTK_RESPONSE_OK) {
+        confirm_cb(dialog, TRUE);
+    } else {
+        confirm_cb(dialog, FALSE);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+/** \brief  Handler for the 'response' event of the Error dialog
+ *
+ * \param[in,out]   dialog          error dialog
+ * \param[in]       response_id     response ID (ignored)
+ * \param[in]       data            extra event data (ignored)
+ */
+static void on_response_integer(GtkDialog *dialog, gint response_id, gpointer data)
+{
+    debug_gtk3("Called with response_id %d", response_id);
+
+    if (response_id == GTK_RESPONSE_ACCEPT) {
+        GtkWidget *entry = data;
+        int result;
+
+        /* try to convert entry box contents to integer */
+        if (entry_get_int(entry, &result)) {
+            /* OK */
+            integer_cb(dialog, result, TRUE);
+        } else {
+            /* fail */
+            integer_cb(dialog, 0, FALSE);
+        }
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+/** \brief  Handler for the 'response' event of the Integer dialog
+ *
+ * \param[in,out]   dialog          integer dialog
+ * \param[in]       response_id     response ID
+ * \param[in]       data            extra event data (ignored)
+ */
+static void on_response_error(GtkWidget *dialog, gint response_id, gpointer data)
+{
+    debug_gtk3("Called with response_id %d", response_id);
+
+
+    gtk_widget_destroy(dialog);
+}
 
 /** \brief  Handler for the 'destroy' event of a dialog
  *
@@ -45,12 +128,7 @@
  */
 static void on_dialog_destroy(GtkWidget *dialog, gpointer data)
 {
-    GtkWidget *window = GTK_WIDGET(data);
-#if 0
-    debug_gtk3("RESTORE MOUSE HIDE");
-#endif
-    ui_set_ignore_mouse_hide(FALSE);
-    gtk_widget_destroy(window);
+    gtk_widget_destroy(GTK_WIDGET(data));
 }
 
 
@@ -70,8 +148,6 @@ static GtkWidget *create_dialog(GtkMessageType type, GtkButtonsType buttons,
     GtkWindow *parent = ui_get_active_window();
     gboolean no_parent = FALSE;
 
-    ui_set_ignore_mouse_hide(TRUE);
-
     if (parent == NULL) {
         /* set up a temporary parent to avoid Gtk warnings */
         no_parent = TRUE;
@@ -87,7 +163,7 @@ static GtkWidget *create_dialog(GtkMessageType type, GtkButtonsType buttons,
 
     /* set up signal handler to destroy the temporary parent window */
     if (no_parent) {
-        g_signal_connect(dialog, "destroy", G_CALLBACK(on_dialog_destroy),
+        g_signal_connect_unlocked(dialog, "destroy", G_CALLBACK(on_dialog_destroy),
                 (gpointer)parent);
     }
 
@@ -102,13 +178,14 @@ static GtkWidget *create_dialog(GtkMessageType type, GtkButtonsType buttons,
 
 
 /** \brief  Create 'info' dialog
- *
+ * \param[in]   parent      parent widget
  * \param[in[   title       dialog title
  * \param[in]   fmt         message format string and arguments
  *
- * \return  `TRUE`
+ * \return  dialog
  */
-gboolean vice_gtk3_message_info(const char *title, const char *fmt, ...)
+GtkWidget *vice_gtk3_message_info(const char *title,
+                                  const char *fmt, ...)
 {
     GtkWidget *dialog;
     va_list args;
@@ -119,26 +196,35 @@ gboolean vice_gtk3_message_info(const char *title, const char *fmt, ...)
     va_end(args);
 
     dialog = create_dialog(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, title, buffer);
-    gtk_dialog_run(GTK_DIALOG(dialog));
+
     lib_free(buffer);
-    gtk_widget_destroy(dialog);
-    return TRUE;
+
+    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+
+    g_signal_connect(dialog, "response", G_CALLBACK(on_response_info), NULL);
+    gtk_widget_show(dialog);
+    return dialog;
 }
 
 
 /** \brief  Create 'confirm' dialog
  *
+ * \param[in]   callback    callback function to accept the dialog's result
+ * \param[out]  result      location to store result
  * \param[in[   title       dialog title
  * \param[in]   fmt         message format string and arguments
  *
- * \return  `TRUE` on OK/Yes, `FALSE` otherwise
+ * \return  dialog
  */
-gboolean vice_gtk3_message_confirm(const char *title, const char *fmt, ...)
+GtkWidget *vice_gtk3_message_confirm(void (*callback)(GtkDialog *, gboolean),
+                                     const char *title,
+                                     const char *fmt, ...)
 {
     GtkWidget *dialog;
     va_list args;
     char *buffer;
-    int result;
+
+    confirm_cb = callback;
 
     va_start(args, fmt);
     buffer = lib_mvsprintf(fmt, args);
@@ -146,25 +232,28 @@ gboolean vice_gtk3_message_confirm(const char *title, const char *fmt, ...)
 
     dialog = create_dialog(GTK_MESSAGE_QUESTION, GTK_BUTTONS_OK_CANCEL,
             title, buffer);
-    result = gtk_dialog_run(GTK_DIALOG(dialog));
+
     lib_free(buffer);
-    gtk_widget_destroy(dialog);
-#if 0
-    debug_gtk3("got response ID %d.", result);
-#endif
-    return (result == GTK_RESPONSE_OK ? TRUE : FALSE);
+
+    gtk_window_set_transient_for(GTK_WINDOW(dialog), ui_get_active_window());
+    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+
+    g_signal_connect(dialog, "response", G_CALLBACK(on_response_confirm),
+            NULL);
+    gtk_widget_show(dialog);
+    return dialog;
 }
 
 
 /** \brief  Create 'error' dialog
  *
- * \param[in]   widget      parent widget
  * \param[in[   title       dialog title
  * \param[in]   fmt         message format string and arguments
  *
- * \return  `TRUE`
+ * \return  dialog
  */
-gboolean vice_gtk3_message_error(const char *title, const char *fmt, ...)
+GtkWidget *vice_gtk3_message_error(const char *title,
+                                 const char *fmt, ...)
 {
     GtkWidget *dialog;
     va_list args;
@@ -173,29 +262,17 @@ gboolean vice_gtk3_message_error(const char *title, const char *fmt, ...)
     va_start(args, fmt);
     buffer = lib_mvsprintf(fmt, args);
     va_end(args);
-#if 0
-    size_t len = strlen(buffer);
-    unsigned int x = 0;
-    unsigned int y = 0;
-    for (y = 0; y < 256 && x + y < (int)len; y += 16) {
-
-        char textbuf[17];
-
-        printf("%02x:  ", y);
-        memset(textbuf, 0, 17);
-        for (x = 0; x < 16 && x + y < (int)len; x++) {
-            printf("%02x ", buffer[x + y]);
-            textbuf[x] = buffer[x + y];
-        }
-        puts("");
-    }
-#endif
 
     dialog = create_dialog(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, title, buffer);
-    gtk_dialog_run(GTK_DIALOG(dialog));
+
     lib_free(buffer);
-    gtk_widget_destroy(dialog);
-    return TRUE;
+
+    gtk_window_set_transient_for(GTK_WINDOW(dialog), ui_get_active_window());
+    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+
+    g_signal_connect(dialog, "response", G_CALLBACK(on_response_error), NULL);
+    gtk_widget_show(dialog);
+    return dialog;
 }
 
 
@@ -252,21 +329,24 @@ static gboolean on_integer_key_press_event(GtkEntry *entry,
 
 /** \brief  Create a dialog to enter an integer value
  *
+ * \param[in]   callback    callback function to accept result
  * \param[in]   title       dialog title
  * \param[in]   message     dialog body text
  * \param[in]   old_value   current value of whatever needs to be changed
- * \param[out]  new_value   object to store new value on success
  * \param[in]   min         minimal valid value
  * \param[in]   max         maximum valid value
  *
- * \return  TRUE when a valid value was entered, FALSE otherwise
+ * \return  dialog
  *
  * TODO: check input while entering (marking any invalid value red or so)
  */
-gboolean vice_gtk3_integer_input_box(
-        const char *title, const char *message,
-        int old_value, int *new_value,
-        int min, int max)
+GtkWidget *vice_gtk3_integer_input_box(
+        void (*callback)(GtkDialog *, int, gboolean),
+        const char *title,
+        const char *message,
+        int old_value,
+        int min,
+        int max)
 {
     GtkWidget *dialog;
     GtkWidget *content;
@@ -274,8 +354,9 @@ gboolean vice_gtk3_integer_input_box(
     GtkWidget *label;
     GtkWidget *entry;
     char *text;
-    gint response;
     char buffer[1024];
+
+    integer_cb = callback;
 
     dialog = gtk_dialog_new_with_buttons(title, ui_get_active_window(),
             GTK_DIALOG_MODAL,
@@ -283,6 +364,8 @@ gboolean vice_gtk3_integer_input_box(
             "Cancel", GTK_RESPONSE_REJECT,
             NULL);
     content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+
+    gtk_window_set_transient_for(GTK_WINDOW(dialog), ui_get_active_window());
 
     grid = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
@@ -308,7 +391,7 @@ gboolean vice_gtk3_integer_input_box(
 
     /* add the text entry */
     entry = gtk_entry_new();
-    g_snprintf(buffer, 1024, "%d", old_value);
+    g_snprintf(buffer, sizeof(buffer), "%d", old_value);
     gtk_entry_set_text(GTK_ENTRY(entry), buffer);
 
     gtk_widget_set_hexpand(entry, TRUE);
@@ -319,22 +402,8 @@ gboolean vice_gtk3_integer_input_box(
 
     g_signal_connect(dialog, "key-press-event",
             G_CALLBACK(on_integer_key_press_event), (gpointer)dialog);
-
-    response = gtk_dialog_run(GTK_DIALOG(dialog));
-    if (response == GTK_RESPONSE_ACCEPT) {
-        /* TODO set *new_value */
-        if (entry_get_int(entry, new_value)) {
-            gtk_widget_destroy(dialog);
-            if (*new_value >= min && *new_value <= max) {
-                return TRUE;
-            } else {
-                debug_gtk3("value entered out of bounds (%d-%d): %d.",
-                        min, max, *new_value);
-                return FALSE;
-            }
-        }
-    }
-    gtk_widget_destroy(dialog);
-    return FALSE;
+    g_signal_connect(dialog, "response", G_CALLBACK(on_response_integer),
+            (gpointer)entry);
+    gtk_widget_show(dialog);
+    return dialog;
 }
-

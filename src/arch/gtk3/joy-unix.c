@@ -200,7 +200,7 @@ int joy_arch_cmdline_options_init(void)
 #        include <errno.h>
 #        define NEW_JOYSTICK 1
 #        undef HAS_DIGITAL_JOYSTICK
-static int use_old_api=0;
+static int use_old_api=0;       /**< FIXME: make this a #define? */
 #      else
 static int use_old_api=1;
 #      endif
@@ -219,11 +219,11 @@ int use_old_api=1;
 #      error Unknown Joystick
 #    endif
 
-#    define ANALOG_JOY_NUM (JOYDEV_ANALOG_5-JOYDEV_ANALOG_0+1)
+#    define ANALOG_JOY_NUM (JOYDEV_ANALOG_7 - JOYDEV_ANALOG_0 + 1)
 
 /* file handles for the joystick device files */
 
-static int ajoyfd[ANALOG_JOY_NUM] = { -1, -1, -1, -1, -1, -1 };
+static int ajoyfd[ANALOG_JOY_NUM] = { -1, -1, -1, -1, -1, -1, -1, -1 };
 static int djoyfd[2] = { -1, -1 };
 
 #    define JOYCALLOOPS 100
@@ -293,6 +293,8 @@ static device_info_t predefined_device_list[] = {
     { "Analog joystick 3",  JOYDEV_ANALOG_3 },
     { "Analog joystick 4",  JOYDEV_ANALOG_4 },
     { "Analog joystick 5",  JOYDEV_ANALOG_5 },
+    { "Analog joystick 6",  JOYDEV_ANALOG_6 },
+    { "Analog joystick 7",  JOYDEV_ANALOG_7 },
 #ifdef HAS_DIGITAL_JOYSTICK
     { "Digital joystick 0", JOYDEV_DIGITAL_0 },
     { "Digital joystick 1", JOYDEV_DIGITAL_1 },
@@ -388,7 +390,7 @@ void old_joystick_init(void)
             /* calibration loop */
             for (j = 0; j < JOYCALLOOPS; j++) {
                 struct JS_DATA_TYPE js;
-                int status = read(ajoyfd[i], &js, JS_RETURN);
+                ssize_t status = read(ajoyfd[i], &js, JS_RETURN);
 
                 if (status != JS_RETURN) {
                     log_warning(joystick_log, "Error reading joystick device `%s'.", dev);
@@ -403,7 +405,7 @@ void old_joystick_init(void)
             joyxcal[i] /= JOYCALLOOPS;
             joyycal[i] /= JOYCALLOOPS;
 
-            /* determine treshoulds */
+            /* determine tresholds */
             joyxmin[i] = joyxcal[i] - joyxcal[i] / JOYSENSITIVITY;
             joyxmax[i] = joyxcal[i] + joyxcal[i] / JOYSENSITIVITY;
             joyymin[i] = joyycal[i] - joyycal[i] / JOYSENSITIVITY;
@@ -472,7 +474,7 @@ void old_joystick(void)
         } else
 #    endif
         if (joyport == JOYDEV_ANALOG_0 || joyport == JOYDEV_ANALOG_1) {
-            int status;
+            ssize_t status;
             struct JS_DATA_TYPE js;
             int ajoyport = joyport - JOYDEV_ANALOG_0;
 
@@ -537,7 +539,9 @@ void new_joystick_init(void)
         { "/dev/js2", "/dev/input/js2" },
         { "/dev/js3", "/dev/input/js3" },
         { "/dev/js4", "/dev/input/js4" },
-        { "/dev/js5", "/dev/input/js5" }
+        { "/dev/js5", "/dev/input/js5" },
+        { "/dev/js6", "/dev/input/js6" },
+        { "/dev/js7", "/dev/input/js7" }
     };
 
     if (joystick_log == LOG_ERR) {
@@ -599,7 +603,7 @@ void new_joystick_close(void)
 {
     int i;
 
-    for (i=0; i<ANALOG_JOY_NUM; ++i) {
+    for (i = 0; i < ANALOG_JOY_NUM; ++i) {
         if (ajoyfd[i] > 0) {
             close (ajoyfd[i]);
         }
@@ -612,10 +616,10 @@ void new_joystick(void)
     struct js_event e;
     int ajoyport;
 
-    for (i = 1; i <= 5; i++) {
+    for (i = 1; i <= ANALOG_JOY_NUM; i++) {
         int joyport = joystick_port_map[i - 1];
 
-        if ((joyport < JOYDEV_ANALOG_0) || (joyport > JOYDEV_ANALOG_5)) {
+        if ((joyport < JOYDEV_ANALOG_0) || (joyport > JOYDEV_ANALOG_7)) {
             continue;
         }
 
@@ -635,14 +639,34 @@ void new_joystick(void)
                    The following treats only the first four buttons on a joystick
                    as fire buttons and ignores the rest.
                 */
+                /* printf("e.number: %d e.value: %d\n", e.number, e.value); */
+                /* FIXME: we need a gui to let the user map this, see SDL port */
                 if (! (e.number & ~3)) { /* only first four buttons are fire */
-                    joystick_set_value_and(i, ~16); /* reset fire bit */
-                    if (e.value) {
-                        joystick_set_value_or(i, 16);
+                    if (e.number == 0) {
+                        /* regular fire button */
+                        joystick_set_value_and(i, ~16); /* reset fire bit */
+                        if (e.value) {
+                            joystick_set_value_or(i, 16);
+                        }
+                    }
+                    if (e.number == 1) {
+                        /* 2nd fire button (POTX) */
+                        joystick_set_value_and(i, ~32); /* reset fire bit */
+                        if (e.value) {
+                            joystick_set_value_or(i, 32);
+                        }
+                    }
+                    if (e.number == 2) {
+                        /* 3rd fire button (POTY) */
+                        joystick_set_value_and(i, ~64); /* reset fire bit */
+                        if (e.value) {
+                            joystick_set_value_or(i, 64);
+                        }
                     }
                 }
                 break;
             case JS_EVENT_AXIS:
+                /* printf("JS_EVENT_AXIS e.number: %d e.value: %d\n", e.number, e.value); */
                 if (e.number == 0) {
                     joystick_set_value_and(i, 19); /* reset 2 bit */
                     if (e.value > 16384) {

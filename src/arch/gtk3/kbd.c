@@ -40,7 +40,9 @@
 #include "kbddebugwidget.h"
 #include "keyboard.h"
 #include "kbd.h"
+#include "mainlock.h"
 #include "uimenu.h"
+#include "uimedia.h"
 
 /*
  * Forward declarations
@@ -140,8 +142,79 @@ void kbd_initialize_numpad_joykeys(int *joykeys)
     joykeys[6] = GDK_KEY_KP_7;
     joykeys[7] = GDK_KEY_KP_8;
     joykeys[8] = GDK_KEY_KP_9;
+    joykeys[9] = GDK_KEY_KP_Decimal;
+    joykeys[10] = GDK_KEY_KP_Enter;
 }
 
+/* since GDK will not make a difference between left and right shift in the
+   modifiers reported in the key event, we track the state of the shift keys
+   ourself.
+
+   FIXME: perhaps the caps-lock state can be tracked better by using
+          gdk_keymap_get_caps_lock_state() instead - however this will then
+          actually consider the "locking". this still has to be fixed in the
+          common code handling this.
+*/
+
+/** \brief  Left SHIFT key state
+ */
+static int shiftl_state = 0;
+
+/** \brief  Right SHIFT key state
+ */
+static int shiftr_state = 0;
+
+/** \brief  CAPSLOCK key state
+ */
+static int capslock_state = 0;
+
+
+/** \brief  Set shift flags on key press
+ *
+ * \param[in]   report  GDK keypress event
+ */
+static void kbd_fix_shift_press(GdkEvent *report)
+{
+    switch (report->key.keyval) {
+        case GDK_KEY_Shift_L:
+            shiftl_state = 1;
+            break;
+        case GDK_KEY_Shift_R:
+            shiftr_state = 1;
+            break;
+        case GDK_KEY_Caps_Lock:
+            capslock_state = 1;
+            break;
+    }
+}
+
+/** \brief  Unset shift flags on key release
+ *
+ * \param[in]   report  GDK keypress event
+ */
+static void kbd_fix_shift_release(GdkEvent *report)
+{
+    switch (report->key.keyval) {
+        case GDK_KEY_Shift_L:
+            shiftl_state = 0;
+            break;
+        case GDK_KEY_Shift_R:
+            shiftr_state = 0;
+            break;
+        case GDK_KEY_Caps_Lock:
+            capslock_state = 0;
+            break;
+    }
+}
+
+/** \brief  Clear shift flags                    
+ */
+static void kbd_fix_shift_clear(void)
+{
+    shiftl_state = 0;
+    shiftr_state = 0;
+    capslock_state = 0;
+}
 
 /** \brief  Get modifiers keys for keyboard event
  *
@@ -152,11 +225,16 @@ void kbd_initialize_numpad_joykeys(int *joykeys)
 static int kbd_get_modifier(GdkEvent *report)
 {
     int ret = 0;
+    /* printf("key.state: %04x key.keyval: %04x (%s) key.hardware_keycode: %04x\n", 
+            report->key.state, report->key.keyval, gdk_keyval_name(report->key.keyval), 
+            report->key.hardware_keycode); */
     if (report->key.state & GDK_SHIFT_MASK) {
-        ret |= KBD_MOD_LSHIFT;
-    }
-    if (report->key.state & GDK_SHIFT_MASK) {
-        ret |= KBD_MOD_RSHIFT;
+        if (shiftl_state || capslock_state) {
+            ret |= KBD_MOD_LSHIFT;
+        }
+        if (shiftr_state) {
+            ret |= KBD_MOD_RSHIFT;
+        }
     }
     if (report->key.state & GDK_MOD1_MASK) {
         ret |= KBD_MOD_LALT;
@@ -170,10 +248,126 @@ static int kbd_get_modifier(GdkEvent *report)
     return ret;
 }
 
+/* when shift is pressed, then a regular key, then shift released, and then
+   the regular key, the key-release event of the last key will not match the
+   key-press event. this will confuse our generic keyboard handling. to fight
+   agains this problem, we remember what keys were pressed and alter the
+   events accordingly. */
+
+/** \brief  Current number of pressed key buffers elements
+ */
+static int keyspressed = 0;
+
+
+/** \brief  Maximum size of pressed key buffers
+ */
+#define KEYS_PRESSED_MAX 200
+
+
+/** \brief  GDK key codes
+ */
+static int pressedkeys[KEYS_PRESSED_MAX];
+
+/** \brief  GDK key modifiers
+ */
+static int pressedkeysmod[KEYS_PRESSED_MAX];
+
+/** \brief  Key hardware scancodes
+ */
+static int pressedkeyshw[KEYS_PRESSED_MAX];
+
+/** \brief  GDK key states
+ */
+static int pressedkeysstate[KEYS_PRESSED_MAX];
+
+
+/** \brief  Look up key buffer index for \a report by hardware scancode
+ *
+ * \param[in]   report  GDK key-press event
+ *
+ * \return  index or -1 when not found
+ */
+static int findpressedkey(GdkEvent *report)
+{
+    int i;
+    for (i = 0; i < keyspressed; i++) {
+        if(report->key.hardware_keycode == pressedkeyshw[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
+/** \brief  Add pressed key
+ *
+ * \param[in]   report  GDK key-press event
+ * \param[in]   key     GDK key value
+ * \param[out]  mod     GDK key modifiers
+ *
+ * \return  boolean (1 if added)
+ */
+static int addpressedkey(GdkEvent *report, int *key, int *mod)
+{
+    int idx;
+    *mod = kbd_get_modifier(report);
+    if (keyspressed < KEYS_PRESSED_MAX) {
+        idx = findpressedkey(report);
+        if (idx == -1) {
+            pressedkeys[keyspressed] = *key;
+            pressedkeyshw[keyspressed] = report->key.hardware_keycode;
+            pressedkeysmod[keyspressed] = *mod;
+            pressedkeysstate[keyspressed] = report->key.state;
+#if 0
+            printf("addpressedkey    val:%5d hw:%04x mod:%04x state:%04x\n",
+                *key, report->key.hardware_keycode, *mod, report->key.state);
+#endif
+            keyspressed++;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/** \brief  Remove pressed key
+ *
+ * \param[in]   report  GDK key-press event
+ * \param[out]  key     GDK key value
+ * \param[out]  mod     GDK key modifiers
+ *
+ * \return  boolean (1 if removed)
+ */
+static int removepressedkey(GdkEvent *report, int *key, int *mod)
+{
+    int i, idx;
+    *mod = 0;
+    if (keyspressed > 0) {
+        idx = findpressedkey(report);
+        if (idx != -1) {
+            *key = pressedkeys[idx];
+            *mod = pressedkeysmod[idx];
+            report->key.state = pressedkeysstate[idx];
+#if 0
+            printf("removepressedkey val:%5d hw:%04x mod:%04x state:%04x\n",
+                *key, report->key.hardware_keycode, *mod, report->key.state);
+#endif
+            for (i = idx; i < keyspressed; i++) {
+                pressedkeys[i] = pressedkeys[i + 1];
+                pressedkeyshw[i] = pressedkeyshw[i + 1];
+                pressedkeysmod[i] = pressedkeysmod[i + 1];
+                pressedkeysstate[i] = pressedkeysstate[i + 1];
+            }
+            keyspressed--;
+            return 1;
+        }
+    }
+    return 0;
+}
 
 /** \brief  Gtk keyboard event handler
  *
- * \param[in]   widget  widget triggering the event
+ * \param[in]   w       widget triggering the event
  * \param[in]   report  event object
  * \param[in]   gp      extra data (unused)
  *
@@ -182,12 +376,14 @@ static int kbd_get_modifier(GdkEvent *report)
 static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
 {
     gint key;
+    int mod;
 
     key = report->key.keyval;
     switch (report->type) {
         case GDK_KEY_PRESS:
             /* fprintf(stderr, "GDK_KEY_PRESS: %u %04x.\n",
                        report->key.keyval,  report->key.state); */
+            kbd_fix_shift_press(report);
 #ifdef WIN32_COMPILE
 /* HACK: The Alt-Gr Key seems to work differently on windows and linux.
          On Linux one Keypress "ISO_Level3_Shift" will be produced, and
@@ -211,6 +407,13 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
             /* fprintf(stderr, "               %u %04x.\n",
                        report->key.keyval,  report->key.state); */
 #endif
+            /* On a german keyboard there is a comma on the "delete" key instead
+               of a decimal point, and we get KP_Seperator instead of KP_decimal.
+               Remap it here so we don't have to handle it elsewhere. */
+            if (report->key.keyval == GDK_KEY_KP_Separator) {
+                key = report->key.keyval = GDK_KEY_KP_Decimal;
+            }
+
             kdb_debug_widget_update(report);
 
             if (gtk_window_activate_key(GTK_WINDOW(w), (GdkEventKey *)report)) {
@@ -236,12 +439,32 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
                 return TRUE;
             }
 #endif
+            /* XXX: hack because the hotkeys have to check for Alt so they
+             *      don't end up in the emulated machine.
+             *
+             *      Once I refactor the UI code, the custom hotkeys via this
+             *      code path shouldn't be required anymore.    -- compyx
+             */
+            if (key == GDK_KEY_Pause) {
+                ui_media_auto_screenshot();
+                return TRUE;
+            }
 
-            keyboard_key_pressed((signed long)key, kbd_get_modifier(report));
+/* only press keys that were not yet pressed */
+            if(addpressedkey(report, &key, &mod)) {
+#if 0
+                printf("%2d key press,   %5u %04x %04x. lshift: %d rshift: %d slock: %d mod:  %04x\n",
+                    keyspressed,
+                    report->key.keyval, report->key.state, report->key.hardware_keycode,
+                    shiftl_state, shiftr_state, capslock_state, mod);
+#endif
+                keyboard_key_pressed((signed long)key, mod);
+            }
             return TRUE;
         case GDK_KEY_RELEASE:
             /* fprintf(stderr, "GDK_KEY_RELEASE: %u %04x.\n",
                        report->key.keyval,  report->key.state); */
+            kbd_fix_shift_release(report);
 #ifdef WIN32_COMPILE
             /* HACK: remap control,alt+r to alt-gr, see above */
             if (report->key.keyval == GDK_KEY_Alt_R) {
@@ -250,16 +473,40 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
             /* fprintf(stderr, "                 %u %04x.\n",
                        report->key.keyval,  report->key.state); */
 #endif
+#if 0
+            /* WTH was this supposed to fix? */
             if (key == GDK_KEY_Shift_L ||
                 key == GDK_KEY_Shift_R ||
                 key == GDK_KEY_ISO_Level3_Shift) {
                 keyboard_key_clear();
             }
-            keyboard_key_released(key, kbd_get_modifier(report));
+#endif
+            /* On a german keyboard there is a comma on the "delete" key instead
+               of a decimal point, and we get KP_Seperator instead of KP_decimal.
+               Remap it here so we don't have to handle it elsewhere. */
+            if (report->key.keyval == GDK_KEY_KP_Separator) {
+                key = report->key.keyval = GDK_KEY_KP_Decimal;
+            }
+                
+            if(removepressedkey(report, &key, &mod)) {
+#if 0
+                printf("%2d key release, %5u %04x %04x. lshift: %d rshift: %d slock: %d mod:  %04x\n",
+                    keyspressed, report->key.keyval, report->key.state, report->key.hardware_keycode,
+                    shiftl_state, shiftr_state, capslock_state, mod);
+#endif
+                keyboard_key_released(key, mod);
+            } else {
+                /* we released a key that was not pressed, something is wrong */
+                keyspressed = 0;
+                kbd_fix_shift_clear();
+                keyboard_key_clear();
+            }
             break;
         case GDK_ENTER_NOTIFY:
         case GDK_LEAVE_NOTIFY:
         case GDK_FOCUS_CHANGE:
+            keyspressed = 0;
+            kbd_fix_shift_clear();
             keyboard_key_clear();
             break;
         default:
@@ -276,19 +523,27 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
  */
 void kbd_connect_handlers(GtkWidget *widget, void *data)
 {
-    g_signal_connect(
+    /*
+     * g_signal_connect_unlocked is used here so that key events are
+     * directly visible to the emulator - no waiting / locking.
+     *
+     * That is, assuming that some other event isn't already waiting
+     * for the vice lock, however this is rare.
+     */
+    
+    g_signal_connect_unlocked(
             G_OBJECT(widget),
             "key-press-event",
             G_CALLBACK(kbd_event_handler), data);
-    g_signal_connect(
+    g_signal_connect_unlocked(
             G_OBJECT(widget),
             "key-release-event",
             G_CALLBACK(kbd_event_handler), data);
-    g_signal_connect(
+    g_signal_connect_unlocked(
             G_OBJECT(widget),
             "enter-notify-event",
             G_CALLBACK(kbd_event_handler), data);
-    g_signal_connect(
+    g_signal_connect_unlocked(
             G_OBJECT(widget),
             "leave-notify-event",
             G_CALLBACK(kbd_event_handler), data);
@@ -379,7 +634,10 @@ static gboolean kbd_hotkey_handle(GdkEvent *report)
                         debug_gtk3("got modifers");
                         debug_gtk3("triggering callback of hotkey with index %d.", i);
 #endif
+                        mainlock_obtain();
                         hotkeys_list[i].callback();
+                        mainlock_release();
+                    
                         return TRUE;
                     }
             }

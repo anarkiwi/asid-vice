@@ -2,6 +2,7 @@
  * \brief   Main Gtk3 UI code - header
  *
  * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
+ * \author  Bas Wassink <b.wassink@ziggo.nl>
  */
 
 /*
@@ -50,6 +51,8 @@ enum {
 };
 
 
+/** \brief  Number of drag-n-drop targets
+ */
 #define UI_DRAG_TARGETS_COUNT   3
 
 
@@ -80,9 +83,8 @@ void ui_destroy_main_window(int index);
 
 void ui_dispatch_events(void);
 void ui_exit(void);
-void ui_show_text(const char *title, const char *text, int width, int height);
 
-void ui_display_paused(int flag);
+void ui_update_statusbars(void);
 
 int  ui_is_fullscreen(void);
 void ui_trigger_resize(void);
@@ -97,6 +99,7 @@ video_canvas_t *ui_get_active_canvas(void);
  */
 int  ui_pause_active(void);
 void ui_pause_enable(void);
+void ui_pause_enter_monitor(void);
 void ui_pause_disable(void);
 void ui_pause_toggle(void);
 
@@ -110,6 +113,9 @@ void ui_enable_mixer_controls(int enabled);
 
 GtkWidget *ui_get_window_by_index(int index);
 int ui_get_window_index(GtkWidget *widget);
+int ui_get_main_window_index(void);
+
+gboolean ui_get_autostart_on_doubleclick(void);
 
 #if 0
 #define UI_DRAG_TARGETS_COUNT   3

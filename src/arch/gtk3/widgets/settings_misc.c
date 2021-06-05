@@ -1,11 +1,10 @@
 /** \file   settings_misc.c
  * \brief   Widget to control resources that are hard to place properly
  *
+ * Currently doesn't contain a single widget, which is nice. Keeping this around
+ * for future hard-to-place widgets. In the end this should go.
+ *
  * \author  Bas Wassink <b.wassink@ziggo.nl>
- */
-
-/*
- * $VICERES VirtualDevices      -vsid
  */
 
 /*
@@ -34,13 +33,6 @@
 #include <gtk/gtk.h>
 
 #include "vice_gtk3.h"
-#include "resources.h"
-#include "machine.h"
-
-#include "canvasrenderbackendwidget.h"
-#include "canvasrenderfilterwidget.h"
-#include "cwdwidget.h"
-#include "jamactionwidget.h"
 
 #include "settings_misc.h"
 
@@ -57,30 +49,17 @@
 GtkWidget *settings_misc_widget_create(GtkWidget *widget)
 {
     GtkWidget *grid;
-    GtkWidget *cwd_widget = NULL;
-    GtkWidget *vdev_widget = NULL;
-    GtkWidget *jam_widget = jam_action_widget_create();
-    GtkWidget *backend_widget = canvas_render_backend_widget_create();
-    GtkWidget *filter_widget = canvas_render_filter_widget_create();
+    GtkWidget *label;
 
     grid = gtk_grid_new();
 
-    if (machine_class != VICE_MACHINE_VSID) {
-        vdev_widget = vice_gtk3_resource_check_button_new(
-                "VirtualDevices",
-                "Enable virtual devices");
-        cwd_widget = cwd_widget_create();
-
-        gtk_grid_attach(GTK_GRID(grid), cwd_widget, 0, 1, 2, 1);
-        g_object_set(vdev_widget, "margin-left",8, NULL);
-        gtk_grid_attach(GTK_GRID(grid), vdev_widget, 0, 2, 2, 1);
-        gtk_grid_attach(GTK_GRID(grid), jam_widget, 0, 3, 2, 1);
-        gtk_grid_attach(GTK_GRID(grid), filter_widget, 0, 4, 2, 1);
-        g_object_set(filter_widget, "margin-left",8, NULL);
-        gtk_grid_attach(GTK_GRID(grid), backend_widget, 1, 4, 2, 1);
-    } else {
-         gtk_grid_attach(GTK_GRID(grid), jam_widget, 0, 0, 1, 1);
-    }
+    label = gtk_label_new(NULL);
+    gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+    gtk_label_set_markup(GTK_LABEL(label),
+            "Placeholder for settings where we can't think of a better place.\n\n"
+            "Ideally this is empty, but it can <b>temporarily</b> be used to store "
+            "some widgets until we figure out a proper place.");
+    gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
 
     gtk_widget_show_all(grid);
     return grid;

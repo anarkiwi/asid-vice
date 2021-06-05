@@ -47,11 +47,14 @@
 #include <gtk/gtk.h>
 #include <string.h>
 
+#include "archdep_defs.h"
 #include "vice_gtk3.h"
 #include "debug_gtk3.h"
 #include "filechooserhelpers.h"
+#include "lib.h"
 #include "hvsc.h"
 #include "resources.h"
+#include "uiapi.h"
 #include "uivsidwindow.h"
 
 /* TODO: move and rename `convert_to_utf8()` */
@@ -291,7 +294,6 @@ static void add_files_callback(GSList *files)
 
     do {
         const char *path = (const char *)(pos->data);
-        debug_gtk3("Adding SID: %s", path);
         vsid_playlist_widget_append_file(path);
         pos = g_slist_next(pos);
     } while (pos != NULL);
@@ -433,9 +435,17 @@ static void on_row_activated(GtkTreeView *view,
 
     gtk_tree_model_get_value(GTK_TREE_MODEL(playlist_model), &iter, 2, &value);
     filename = g_value_get_string(&value);
-    debug_gtk3("got filename '%s'.", filename);
 
-    ui_vsid_window_load_psid(filename);
+    if (ui_vsid_window_load_psid(filename) < 0) {
+
+        /* looks like adding files to the playlist already checks the files
+         * being added, so this may not be neccesarry */
+        char *msg;
+
+        msg = lib_msprintf("'%s' is not a valid PSID file", filename);
+        ui_display_statustext(msg, 10);
+        lib_free(msg);
+    }
 
     g_value_unset(&value);
 }
@@ -467,7 +477,6 @@ static void on_playlist_remove_clicked(GtkWidget *widget, gpointer data)
     if (gtk_tree_selection_get_selected(selection,
                                         NULL,
                                         &iter)) {
-        debug_gtk3("got valid iter.");
         gtk_list_store_remove(playlist_model, &iter);
     }
 }
@@ -477,11 +486,7 @@ static void on_playlist_first_clicked(GtkWidget *widget, gpointer data)
 {
     plist_state_t state;
 
-    debug_gtk3("clicked!");
-
     if (playlist_state_get(&state)) {
-        debug_gtk3("got valid iterator: %s", state.path_str);
-
         if (gtk_tree_model_get_iter_first(state.model, &(state.iter))) {
 
             GValue value = G_VALUE_INIT;
@@ -491,8 +496,8 @@ static void on_playlist_first_clicked(GtkWidget *widget, gpointer data)
             gtk_tree_model_get_value(GTK_TREE_MODEL(state.model),
                     &(state.iter), 2, &value);
             filename = g_value_get_string(&value);
-            debug_gtk3("got filename '%s'.", filename);
 
+            /* TODO: check result */
             ui_vsid_window_load_psid(filename);
 
             g_value_unset(&value);
@@ -507,15 +512,11 @@ static void on_playlist_last_clicked(GtkWidget *widget, gpointer data)
 {
     plist_state_t state;
 
-    debug_gtk3("clicked!");
-
     if (playlist_state_get(&state)) {
 
         GValue value = G_VALUE_INIT;
         const gchar *filename;
         GtkTreeIter temp;
-
-        debug_gtk3("got valid iterator: %s", state.path_str);
 
         /* This is complete bollocks, there is no gtk_tree_model_iter_last() */
         temp = state.iter;
@@ -527,8 +528,6 @@ static void on_playlist_last_clicked(GtkWidget *widget, gpointer data)
         gtk_tree_model_get_value(GTK_TREE_MODEL(state.model),
                 &(temp), 2, &value);
         filename = g_value_get_string(&value);
-        debug_gtk3("got filename '%s'.", filename);
-
         ui_vsid_window_load_psid(filename);
 
         g_value_unset(&value);
@@ -537,30 +536,18 @@ static void on_playlist_last_clicked(GtkWidget *widget, gpointer data)
     }
 }
 
+
 static void on_playlist_clear_clicked(GtkWidget *widget, gpointer data)
 {
-    debug_gtk3("Called!");
     delete_all_rows(NULL, NULL);
 }
 
 
 static void on_playlist_next_clicked(GtkWidget *widget, gpointer data)
 {
-#if 0
-    GtkTreeSelection *selection;
-    GtkTreeModel *model;
-    GtkTreeIter iter;
-    GtkTreePath *path;
-    gchar *pstr;
-#endif
-
     plist_state_t state;
 
-    debug_gtk3("clicked!");
-
     if (playlist_state_get(&state)) {
-        debug_gtk3("got valid iterator: %s", state.path_str);
-
         if (gtk_tree_model_iter_next(state.model, &(state.iter))) {
 
             GValue value = G_VALUE_INIT;
@@ -571,8 +558,6 @@ static void on_playlist_next_clicked(GtkWidget *widget, gpointer data)
             gtk_tree_model_get_value(GTK_TREE_MODEL(state.model),
                     &(state.iter), 2, &value);
             filename = g_value_get_string(&value);
-            debug_gtk3("got filename '%s'.", filename);
-
             ui_vsid_window_load_psid(filename);
 
             g_value_unset(&value);
@@ -590,21 +575,9 @@ static void on_playlist_next_clicked(GtkWidget *widget, gpointer data)
  */
 static void on_playlist_prev_clicked(GtkWidget *widget, gpointer data)
 {
-#if 0
-    GtkTreeSelection *selection;
-    GtkTreeModel *model;
-    GtkTreeIter iter;
-    GtkTreePath *path;
-    gchar *pstr;
-#endif
-
     plist_state_t state;
 
-    debug_gtk3("clicked!");
-
     if (playlist_state_get(&state)) {
-        debug_gtk3("got valid iterator: %s", state.path_str);
-
         if (gtk_tree_model_iter_previous(state.model, &(state.iter))) {
 
             GValue value = G_VALUE_INIT;
@@ -615,8 +588,6 @@ static void on_playlist_prev_clicked(GtkWidget *widget, gpointer data)
             gtk_tree_model_get_value(GTK_TREE_MODEL(state.model),
                     &(state.iter), 2, &value);
             filename = g_value_get_string(&value);
-            debug_gtk3("got filename '%s'.", filename);
-
             ui_vsid_window_load_psid(filename);
 
             g_value_unset(&value);
@@ -757,6 +728,7 @@ static void vsid_playlist_view_create(void)
             renderer,
             "text", 0,
             NULL);
+    gtk_tree_view_column_set_resizable(column, TRUE);
     gtk_tree_view_append_column(GTK_TREE_VIEW(playlist_view), column);
 
     column = gtk_tree_view_column_new_with_attributes(
@@ -764,6 +736,7 @@ static void vsid_playlist_view_create(void)
             renderer,
             "text", 1,
             NULL);
+    gtk_tree_view_column_set_resizable(column, TRUE);
     gtk_tree_view_append_column(GTK_TREE_VIEW(playlist_view), column);
 
     column = gtk_tree_view_column_new_with_attributes(
@@ -771,6 +744,7 @@ static void vsid_playlist_view_create(void)
             renderer,
             "text", 2,
             NULL);
+    gtk_tree_view_column_set_resizable(column, TRUE);
     gtk_tree_view_append_column(GTK_TREE_VIEW(playlist_view), column);
 
     /* Allow selecting multiple items (for deletion) */
@@ -810,8 +784,7 @@ static GtkWidget *vsid_playlist_controls_create(void)
         GtkWidget *button;
         gchar buff[1024];
 
-        g_snprintf(buff, 1024, "%s-symbolic", controls[i].icon_name);
-
+        g_snprintf(buff, sizeof(buff), "%s-symbolic", controls[i].icon_name);
         button = gtk_button_new_from_icon_name(
                 buff,
                 GTK_ICON_SIZE_LARGE_TOOLBAR);
@@ -871,7 +844,7 @@ GtkWidget *vsid_playlist_widget_create(void)
             vsid_playlist_controls_create(),
             0, 2, 1, 1);
 
-    g_signal_connect(grid, "destroy", G_CALLBACK(on_destroy), NULL);
+    g_signal_connect_unlocked(grid, "destroy", G_CALLBACK(on_destroy), NULL);
 
     gtk_widget_show_all(grid);
     return grid;
@@ -937,7 +910,6 @@ gboolean vsid_playlist_widget_append_file(const gchar *path)
 void vsid_playlist_widget_remove_file(int row)
 {
     if (row < 0) {
-        debug_gtk3("got invalid row %d.", row);
         return;
     }
     /* TODO: actually remove item :) */

@@ -1,5 +1,16 @@
 # FrankenVICE
 
+**UPDATE 2020-07-07**
+
+Frankenvice broke after DQH's threaded-UI commit, so I (compyx) had to add a few hacks to the src/arch/gtk3/make-bindist_win32.sh script.
+Among those was copying two DLL's from an MSYS2 install: libgtk-3.0.dll and libgdk-3.0.dll, both which are currently in ./build/mingw/frankenvice/lib/win{32,64}.
+Without those the emulators won't properly init DirectX. I've tried contacting both the msys2 devs and the gtk3 devs via various ways but got zero response.
+
+I also noticed that on Debian 10.4, we need to install texlive-binaries to get the `pdftex` binary required to build the pdf file. This unfortunately pulls in a lot of useless X11 stuff, I haven't found a way to avoid that, yet.
+
+Finally, the current src/arch/gtk3/make-bindist_win32.sh script is a huge mess, which requires a lot of cleaning up. It can and will break at any time =)
+
+
 ## Creating a Gtk3 Window cross compiler on Debian with Fedora packages
 
 All this assumes a 64-bit box and also a 64-bit target when compiling.
@@ -25,37 +36,204 @@ Now click 'continue' until done (GRUB on MBR etc)
 **REBOOT**
 
 
+#### Enable sudo
 
+We need sudo for the frankenvice script (I think)
+
+So, we'll install sudo (on Debian 10.3) and add the 'vice' user to the sudoers:
+```sh
+$ su -i
+$ apt install sudo
+$ adduser vice sudo
+```
+
+Now log out completely and log back in to have the 'vice' user recognized as a sudoer.
+
+**UPDATE 2020-05-13**
+
+When selecting an empty password, the debian installer will lock out root and automagically add the normal user to sudoers. This is actually preferred since we need sudo anyway for some scripts.
+
+
+### Install required packages
 
 Make sure you have the basic development tools:
 
-```sh
-$ su
-$ apt install autoconf autotools build-essential byacc flex git subversion \
-        vim xa65 alien p7zip-full zip texinfo gawk* zip unzip
 ```
-(todo: probably a lot more
- Seems glib-compile-schemas and glib-compile-resources live in Debian's
- libglib-2.0)
+$ sudo apt install autoconf automake build-essential byacc flex git subversion \
+        vim xa65 alien p7zip-full texinfo gawk zip unzip yasm dos2unix \
+        libglib2.0-dev-bin icoutils
+```
+(todo: probably a lot more)
 
 Do **not** install any native Linux Gtk/GLib packages unless specifically told to do so, this might result in unwanted results.
+The above mentioned `libglib2.0-dev-bin` is an exception, we don't want to install the windows version of it and run it via Wine.
 
-*) Make bindist uses gawk vs awk, not sure why.
+(`make bindist` uses gawk, not awk, so make sure to install gawk)
 
 
 #### Install Debian's mingw packages
 
+Make sure you don't have apt set to automatically pull in 'suggested' packages, that will pull in wine, which we don't want. Default debian won't do that.
+
 ```sh
-$ su
-$ apt install mingw-w64 mingw-w64-tools
+$ sudo apt install mingw-w64 mingw-w64-tools
 ```
 
 Hint: Debian mingw packages are called 'mingw-w64-\*" while Fedora mingw packages are called 'mingw64-\*'. This will come in handy later to see which packages came from Debian and which were installed via RPM's using 'alien'.
 
 
+
+
+#### Check out VICE trunk
+
+VICE trunk contains a script and a list of packages, which should make the next step a lot easier.
+
+Check out trunk (read-only):
+```sh
+$ cd
+$ svn checkout https://svn.code.sf.net/p/vice-emu/code/trunk vice-trunk
+```
+
+
 #### Install Fedora packages
 
 Since Debian doesn't provide any Gtk/GLib packages for cross-compiling to Windows, we'll be using Fedora packages. At the moment of writing I've been using Fedora 30 packages.
+
+
+**UPDATE 2020-05-13**
+
+The directory ~/vice-trunk/vice/build/mingw/frankenvice now contains a script to automate downloading, converting and installing Fedora mingw64 packages. It'll use the file rpm-packages.txt for its package list.
+But first read the `frankenvice-install.sh` file to make sure the build environment is setup up properly:
+
+##### Fix alien's Perl code:
+
+Patch alien's Rpm.pm to allow zstd handling:
+
+The file is located at `/usr/share/perl5/Alien/Package/Rpm.pm`
+
+The patch provided by Larsks is this:
+```diff
+diff --git a/Alien/Package/Rpm.pm b/Alien/Package/Rpm.pm
+index d53be2b..66ff3d6 100644
+--- a/Alien/Package/Rpm.pm
++++ b/Alien/Package/Rpm.pm
+@@ -159,10 +159,12 @@ sub unpack {
+ 	$this->SUPER::unpack(@_);
+ 	my $workdir=$this->unpacked_tree;
+ 	
+-	# Check if we need to use lzma to uncompress the cpio archive
++	# Check if we need to uncompress the cpio archive
+ 	my $decomp='';
+ 	if ($this->do("rpm2cpio '".$this->filename."' | lzma -t -q > /dev/null 2>&1")) {
+ 		$decomp = 'lzma -d -q |';
++	} elsif ($this->do("rpm2cpio '".$this->filename."' | zstd -t -q > /dev/null 2>&1")) {
++		$decomp = 'zstd -d -q |';
+ 	}
+ 
+```
+
+
+##### Fix pkg-config for Windows cross-building
+
+Currently (2020-03-23), Debian has an issue with running pkg-config for Windows
+cross-builds. Whenever you run into a message like:
+
+    Please install dpkg-dev to use pkg-config when cross-building
+
+Don't bother installing dpkg-dev, it's already installed and reinstalling won't
+fix anything.
+
+Edit `/usr/share/pkg-config-crosswrapper` and comment out the 'if [ "$?" != 0 ]
+branch after the multiarch="...." line (line 13 on my box).
+
+
+##### Run the script to download and install Fedora mingw64 packages
+
+```sh
+$ cd
+$ vice-trunk/vice/build/mingw/frankenvice/frankenvice-install.sh
+```
+
+This should download, convert and install Fedora32 mingw64 packages.
+
+
+
+##### Glib tools
+
+Make sure Glib related bins can be found (there are .exe's to do this, but that
+requires Wine, so probably not do that)
+
+*Looks like this is no longer required, managed to build just fine without this*
+
+```sh
+$ su
+$ ln -s /usr/lib/x86_64-linux-gnu/glib-2.0/glib-compile-resources \
+    /usr/bin/glib-compile-resources
+$ ln -s /usr/lib/x86_64-linux-gnu/glib-2.0/glib-compile-schemas \
+    /usr/bin/glib-compile-schemas
+$ ln -s /usr/x86_64-w64-mingw32/bin/glib-genmarshal \
+    /usr/bin/glib-genmarshal
+$ ln -s /usr/x86_64-w64-mingw32/bin/glib-mkenums \
+    /usr/bin/glib-mkenums
+```
+
+##### Compile GLib-2.0 schemas
+
+(I assume normally the package manager will do this whenever some schema gets
+ updated. Right now I had to do it to at least have a 'gschemas.compiled' file
+ for make bindist(zip) to copy.)
+
+```sh
+$ cd /usr/x86_64-w64-mingw32/share/glib-2.0/schemas
+$ sudo /usr/lib/x86_64-linux-gnu/glib-2.0/glib-compile-schemas .
+```
+
+
+
+#### Try compiling VICE
+
+```sh
+$ cd ~/vice-trunk/vice
+$ ./autogen.sh
+$ cd ..
+$ mkdir gtk3-win64-build
+$ cd gtk3-win64-build
+$ ../vice/configure --enable-native-gtk3ui --host=x86_64-w64-mingw32 --enable-arch=no
+```
+
+If this works, we're on the right track, so we'll run make next:
+```sh
+$ make 2>&1 | tee build.log
+$ make bindist
+$ make bindistzip
+```
+
+I get a few warnings still:
+```
+cp: cannot stat '/usr/lib/gcc/x86_64-w64-mingw32/8.3-win32/../../../../x86_64-w64-mingw32/bin/libgcc_s_*.dll': No such file or directory
+cp: cannot stat '/usr/lib/gcc/x86_64-w64-mingw32/8.3-win32/../../../../x86_64-w64-mingw32/bin/liblzma-5.dll': No such file or directory
+cp: failed to get attributes of 'share/icons/hicolor': No such file or directory
+```
+
+And while running on Windows 10, I get warnings about libtiff-5.dll and libwinpthread-1.dll not being found.
+libwinpthread-1.dll is in /usr/x86_64-w64-mingw32/lib/, apparently installed with Debian's mingw64-dev or so.
+
+
+EXPERIMENTAL SHIT FOLLOWING:
+
+Create symlink for the libwinpthread-1.dll:
+
+```sh
+$ cd /usr/x86_64-w64-mingw32/bin
+$ sudo ln -s ../lib/libwinpthread-1.dll libwinphread-1.dll
+```
+doesn't work :(
+
+
+**Done for now, someone else can figure this crap out.**
+
+
+**OLD (2020-05-14), most if not all the following can be ignored**
 
 These are the packages I had to use:
 
@@ -67,6 +245,7 @@ mingw64-expat
 mingw64-fontconfig
 mingw64-freeglut
 mingw64-freetype
+mingw64-fribidi
 mingw64-gdk-pixbuf
 mingw64-gettext
 mingw64-giflib
@@ -77,7 +256,6 @@ mingw64-gtk-update-icon-cache
 mingw64-harfbuzz
 mingw64-icu
 mingw64-jasper
-mingw64-libcroco
 mingw64-libepoxy
 mingw64-libffi
 mingw64-libjpeg-turbo
@@ -149,33 +327,6 @@ $ for pc in *.pc; do \
   done
 ```
 
-#### Glib tools
-
-Make sure Glib related bins can be found (there are .exe's to do this, but that
-requires Wine, so probably not do that)
-```sh
-$ su
-$ ln -s /usr/lib/x86_64-linux-gnu/glib-2.0/glib-compile-resources \
-    /usr/bin/glib-compile-resources
-$ ln -s /usr/lib/x86_64-linux-gnu/glib-2.0/glib-compile-schemas \
-    /usr/bin/glib-compile-schemas
-$ ln -s /usr/x86_64-w64-mingw32/bin/glib-genmarshal \
-    /usr/bin/glib-genmarshal
-$ ln -s /usr/x86_64-w64-mingw32/bin/glib-mkenums \
-    /usr/bin/glib-mkenums
-```
-
-##### Compile GLib-2.0 schemas
-
-(I assume normally the package manager will do this whenever some schema gets
- updated. Right now I had to do it to at least have a 'gschemas.compiled' file
- for make bindist(zip) to copy.)
-
-```sh
-$ su
-$ cd /usr/x86_64-w64-mingw32/share/glib-2.0/schemas
-$ glib-compile-schemas .
-```
 
 
 
@@ -205,21 +356,6 @@ $ svn checkout https://svn.code.sf.net/p/vice-emu/code/trunk vice-trunk
 See if configure can find everything. Especially important is that it can find
 the openGL stuff, since that's what we're doing this horror for:
 
-```sh
-$ cd ~/vice-trunk/vice
-$ ./autogen.sh
-$ cd ..
-$ mkdir gtk3-win64-build
-$ cd gtk3-win64-build
-$ ../vice/configure --enable-native-gtk3ui --host=x86_64-w64-mingw32
-```
-
-If this works, we're on the right track, so we'll run make next:
-```sh
-$ make 2>&1 | tee build.log
-$ make bindist
-$ make bindistzip
-```
 
 
 Finally: scp the GTK3VICE-win64-rxxxxx.zip to a Windows box and see if it works.
@@ -342,7 +478,7 @@ $ dpkg -i mingw64-cairo_1.14.10-6_all.deb
 
 ### Using vice-rpm-to-deb.sh
 
-In the build/mingw directory in trunk is a script `vice-rpm-to-deb.sh` which can convert Fedora RPMs to Debian DEBs for use with FrankenVice.
+In the build/mingw/frankenvice directory in trunk is a script `vice-rpm-to-deb.sh` which can convert Fedora RPMs to Debian DEBs for use with FrankenVice.
 
 What it basically does is this:
 
@@ -356,6 +492,38 @@ What it basically does is this:
 What it doesn't do is fix symlinks that use absolute paths, I haven't seen any packages that use that, so perhaps we're safe, but I doubt that,
 
 Another nasty thing is that it requires root to run, due to `alien` somehow requiring root access. The script also currently requires bash, due to my limited shell scripting skills.
+
+
+#### Patch Alien to work with current RPM's using zstd
+
+Patch alien's Rpm.pm to allow zstd handling:
+
+The file is located at `/usr/share/perl5/Alien/Package/Rpm.pm`
+
+The patch provided by Larsks is this:
+```diff
+diff --git a/Alien/Package/Rpm.pm b/Alien/Package/Rpm.pm
+index d53be2b..66ff3d6 100644
+--- a/Alien/Package/Rpm.pm
++++ b/Alien/Package/Rpm.pm
+@@ -159,10 +159,12 @@ sub unpack {
+ 	$this->SUPER::unpack(@_);
+ 	my $workdir=$this->unpacked_tree;
+ 	
+-	# Check if we need to use lzma to uncompress the cpio archive
++	# Check if we need to uncompress the cpio archive
+ 	my $decomp='';
+ 	if ($this->do("rpm2cpio '".$this->filename."' | lzma -t -q > /dev/null 2>&1")) {
+ 		$decomp = 'lzma -d -q |';
++	} elsif ($this->do("rpm2cpio '".$this->filename."' | zstd -t -q > /dev/null 2>&1")) {
++		$decomp = 'zstd -d -q |';
+ 	}
+ 
+```
+
+I already updated bits of the Perl code before writing this, so I manually added some of the patch. So good luck applying this one.
+
+But after this you should be able to use Gtk3-3.24.x RPMs (which will require installing a shitload of other .fc32 packages)
 
 
 #### Example use
@@ -374,7 +542,7 @@ Use the script to convert to deb:
 ```sh
 $ cd ~/temp
 $ su
-$ /home/vice/vice-trunk/vice/build/mingw/vice-rpm-to-deb.sh ../rpm/mingw64-flac-1.3.2-6.fc30.noarch.rpm
+$ /home/vice/vice-trunk/vice/build/mingw/frankenvice/vice-rpm-to-deb.sh ../rpm/mingw64-flac-1.3.2-6.fc30.noarch.rpm
 ```
 
 This should result in:
@@ -424,12 +592,47 @@ If the grep output has '-lFLAC' and '#define HAVE\_LIBFLAC 1', flac will work.
 
 
 
+## Attempt at using an MSYS2 package to provide libmpg123 (2020-08-15)
+
+Neither Debian nor Fedora provide a mingw version of libmpg123, only Arch and MSYS2 do. I've decided to try to get the msys2 package to work with Frankenvice.
+
+### Prerequisites
+
+MSYS2 uses zstd to compress archive, so we need to install that:
+```
+$ sudo apt install zstd
 ```
 
+### Download and extract the MSYS2 package
+
+Don't put the download in ~/frankenvice/downloads, scripts assuming .rpm's will probably fail when doing that. Instead, use a separate directory.
+
+```
+$ cd
+$ mkdir ~/temp
+$ cd ~/temp
+$ wget https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-mpg123-1.26.3-1-any.pkg.tar.zst
+$ zstd -dk mingw-w64-x86_64-mpg123-1.26.3-1-any.pkg.tar.zst
+$ mkdir mpg123
+$ cd mpg123
+$ tar -xf ../mingw-w64-x86_64-mpg123-1.26.3-1-any.pkg.tar
+```
+
+### Install the package
+
+```
+$ cd mpg123
+$ sudo cp -R mingw64/* /usr/x86_64-w64-mingw32/
+```
+
+```
+$ sudo vim /usr/x86_64-w64-mingw32/lib/pkg/config/libmpg123.pc
+change prefix to /usr/x86_64-w64-mingw32
+```
+(todo change into sed command)
 
 
-
-
+This makes configure recognize mpg123 and `make bindist even properly copies the required DLL.
 
 
 

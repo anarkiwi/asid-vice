@@ -17,6 +17,7 @@
  *
  * $VICERES MainCPU_TRACE   all
  * $VICERES IEC_TRACE       -vsid
+ * $VICERES IEEE_TRACE      -vsid
  * $VICERES Drive0CPU_TRACE -vsid
  * $VICERES Drive1CPU_TRACE -vsid
  * $VICERES Drive2CPU_TRACE -vsid
@@ -56,6 +57,7 @@
 #include "datasette.h"
 #include "debug.h"
 #include "machine.h"
+#include "mainlock.h"
 #include "resources.h"
 #include "ui.h"
 #include "uiabout.h"
@@ -75,12 +77,6 @@
 #include "uimonarch.h"
 #include "uidiskcreate.h"
 #include "uitapecreate.h"
-
-#ifdef HAVE_NETWORK
-# include "uinetplay.h"
-# include "uinetplay_new.h"
-#endif
-
 #include "uisettings.h"
 #include "uismartattach.h"
 #include "uisnapshot.h"
@@ -142,7 +138,7 @@ static GtkWidget *help_submenu = NULL;
  */
 static gboolean settings_load_callback(GtkWidget *widget, gpointer data)
 {
-    if (resources_load(NULL) != 0) {
+    if (resources_reset_and_load(NULL) != 0) {
         vice_gtk3_message_error("VICE core error",
                 "Failed to load default settings file");
     }
@@ -150,23 +146,46 @@ static gboolean settings_load_callback(GtkWidget *widget, gpointer data)
 }
 
 
+/** \brief  Calllback for the load-settings dialog
+ *
+ * \param[in,out]   dialog      dialog
+ * \param[in,out]   filename    filename
+ * \param[in]       data        mode (0: reset and load, 1: add extra settings)
+ */
+static void settings_load_filename_callback(GtkDialog *dialog,
+                                            gchar *filename,
+                                            gpointer data)
+{
+    int res;
+    if (filename!= NULL) {
+        mainlock_obtain();
+        res = (data == NULL) ? resources_reset_and_load(filename)
+                             : resources_load(filename);
+        if (res != 0) {
+            vice_gtk3_message_error("VICE core error",
+                    "Failed to load settings from '%s'", filename);
+        }
+        mainlock_release();
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
 /** \brief  Load settings from user-specified file
  *
  * \param[in]   widget  menu item triggering the event (ignored)
- * \param[in]   data    extra even data (ignored)
+ * \param[in]   data    mode (0: reset and load, 1: add extra settings)
  *
  * \return  TRUE
  */
 static gboolean settings_load_custom_callback(GtkWidget *widget, gpointer data)
 {
-    gchar *filename = vice_gtk3_open_file_dialog("Load settings file",
-            NULL, NULL, NULL);
-    if (filename!= NULL) {
-        if (resources_load(filename) != 0) {
-            vice_gtk3_message_error("VICE core error",
-                    "Failed to load settings from '%s'", filename);
-        }
-    }
+    vice_gtk3_open_file_dialog(
+            "Load settings file",
+            NULL, NULL, NULL,
+            settings_load_filename_callback,
+            data);
     return TRUE;
 }
 
@@ -174,7 +193,9 @@ static gboolean settings_load_custom_callback(GtkWidget *widget, gpointer data)
 /** \brief  Save settings to default file
  *
  * \param[in]   widget  menu item triggering the event (ignored)
- * \param[in]   data    extra even data (ignored)
+ * \param[in]   data    extra even datat (ignored)
+ *
+ * \return  TRUE to signal the event has been handled
  */
 static gboolean settings_save_callback(GtkWidget *widget, gpointer data)
 {
@@ -183,6 +204,32 @@ static gboolean settings_save_callback(GtkWidget *widget, gpointer data)
                 "Failed to save default settings file");
     }
     return TRUE;
+}
+
+
+/** \brief  Callback for the save-custom-settings dialog
+ *
+ * \param[in,out]   dialog      save-file dialog
+ * \param[in,out]   filename    filename
+ * \param[in]       data        extra data (unused)
+ */
+static void on_settings_save_custom_filename(GtkDialog *dialog,
+                                             gchar *filename,
+                                             gpointer data)
+{
+    if (filename!= NULL) {
+        mainlock_obtain();
+        if (resources_save(filename) != 0) {
+            vice_gtk3_message_error("VICE core error",
+                    "Failed to save settings as '%s'", filename);
+        }
+        mainlock_release();
+        g_free(filename);
+    }
+    mainlock_release();
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+    mainlock_obtain();
+
 }
 
 
@@ -195,39 +242,58 @@ static gboolean settings_save_callback(GtkWidget *widget, gpointer data)
  */
 static gboolean settings_save_custom_callback(GtkWidget *widget, gpointer data)
 {
-    gchar *filename = vice_gtk3_save_file_dialog("Save settings as ...",
-            NULL, TRUE, NULL);
-    if (filename!= NULL) {
-        if (resources_save(filename) != 0) {
-            vice_gtk3_message_error("VICE core error",
-                    "Failed to save settings as '%s'", filename);
-        }
-        g_free(filename);
-    }
+    vice_gtk3_save_file_dialog(
+            "Save settings as ...",
+            NULL, TRUE, NULL,
+            on_settings_save_custom_filename,
+            NULL);
+
     return TRUE;
 }
 
+
+/** \brief  Encode unit and drive number for a detach callback argument
+ *
+ * Encodes unit and drive number into a value to be used in the
+ * ui_disk_detach_callback() calls.
+ *
+ * \param[in]   U   unit number (8-11)
+ * \param[in]   D   drive number (0 or 1)
+ */
+#define UNIT_DRIVE_TO_PTR(U, D) GINT_TO_POINTER(((U) << 8) | ((D) & 0xff))
 
 
 /** \brief  File->Detach disk submenu
  */
 static ui_menu_item_t detach_submenu[] = {
-    { "Drive #8", UI_MENU_TYPE_ITEM_ACTION,
-        "detach-drive8", ui_disk_detach_callback, GINT_TO_POINTER(8),
-        GDK_KEY_8, VICE_MOD_MASK|GDK_CONTROL_MASK },
-    { "Drive #9", UI_MENU_TYPE_ITEM_ACTION,
-        "detach-drive9", ui_disk_detach_callback, GINT_TO_POINTER(9),
-        GDK_KEY_9, VICE_MOD_MASK|GDK_CONTROL_MASK },
-    { "Drive #10", UI_MENU_TYPE_ITEM_ACTION,
-        "detach-drive10", ui_disk_detach_callback, GINT_TO_POINTER(10),
-        GDK_KEY_0, VICE_MOD_MASK|GDK_CONTROL_MASK },
-    { "Drive #11", UI_MENU_TYPE_ITEM_ACTION,
-        "detach-drive11", ui_disk_detach_callback, GINT_TO_POINTER(11),
+    { "Drive 8:0", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive8:0", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(8, 0),
+        GDK_KEY_8, VICE_MOD_MASK|GDK_CONTROL_MASK, false },
+    { "Drive 8:1", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive8:1", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(8, 1),
+        0, 0, false },
+    { "Drive 9:0", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive9:0", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(9, 0),
+        GDK_KEY_9, VICE_MOD_MASK|GDK_CONTROL_MASK, false },
+    { "Drive 9:1", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive9:0", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(9, 1),
+        0, 0, false },
+    { "Drive 10:0", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive10", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(10, 0),
+        GDK_KEY_0, VICE_MOD_MASK|GDK_CONTROL_MASK, false },
+    { "Drive 10:1", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive10", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(10, 1),
+        0, 0, false },
+    { "Drive 11:0", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive11", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(11, 0),
         GDK_KEY_1, VICE_MOD_MASK|GDK_CONTROL_MASK },
-
+    { "Drive 11:1", UI_MENU_TYPE_ITEM_ACTION,
+        "detach-drive11", ui_disk_detach_callback, UNIT_DRIVE_TO_PTR(11, 1),
+        0, 0, false },
+    /* Detach all, do we even have code to do that? */
     { "Detach all", UI_MENU_TYPE_ITEM_ACTION,
         "detach-all", ui_disk_detach_all_callback, NULL,
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_TERMINATOR
 };
@@ -237,17 +303,17 @@ static ui_menu_item_t detach_submenu[] = {
  */
 static ui_menu_item_t attach_submenu[] = {
     { "Drive #8", UI_MENU_TYPE_ITEM_ACTION,
-        "attach-drive8", ui_disk_attach_callback, GINT_TO_POINTER(8),
-        GDK_KEY_8, VICE_MOD_MASK },
+        "attach-drive8", ui_disk_attach_dialog_show, GINT_TO_POINTER(8),
+        GDK_KEY_8, VICE_MOD_MASK, true },
     { "Drive #9", UI_MENU_TYPE_ITEM_ACTION,
-        "attach-drive9", ui_disk_attach_callback, GINT_TO_POINTER(9),
-        GDK_KEY_9, VICE_MOD_MASK },
+        "attach-drive9", ui_disk_attach_dialog_show, GINT_TO_POINTER(9),
+        GDK_KEY_9, VICE_MOD_MASK, true },
     { "Drive #10", UI_MENU_TYPE_ITEM_ACTION,
-        "attach-drive10", ui_disk_attach_callback, GINT_TO_POINTER(10),
-        GDK_KEY_0, VICE_MOD_MASK },
+        "attach-drive10", ui_disk_attach_dialog_show, GINT_TO_POINTER(10),
+        GDK_KEY_0, VICE_MOD_MASK, true },
     { "Drive #11", UI_MENU_TYPE_ITEM_ACTION,
-        "attach-drive11", ui_disk_attach_callback, GINT_TO_POINTER(11),
-        GDK_KEY_1, VICE_MOD_MASK },
+        "attach-drive11", ui_disk_attach_dialog_show, GINT_TO_POINTER(11),
+        GDK_KEY_1, VICE_MOD_MASK, true },
 
     UI_MENU_TERMINATOR
 };
@@ -259,22 +325,22 @@ static ui_menu_item_t attach_submenu[] = {
 static ui_menu_item_t fliplist_submenu[] = {
     { "Add current image (Unit #8)", UI_MENU_TYPE_ITEM_ACTION,
         "fliplist-add", ui_fliplist_add_current_cb, GINT_TO_POINTER(8),
-        GDK_KEY_I, VICE_MOD_MASK },
+        GDK_KEY_I, VICE_MOD_MASK, false },
     { "Remove current image (Unit #8)", UI_MENU_TYPE_ITEM_ACTION,
        "fliplist-remove", ui_fliplist_remove_current_cb, GINT_TO_POINTER(8),
-        GDK_KEY_K, VICE_MOD_MASK },
+        GDK_KEY_K, VICE_MOD_MASK, false },
     { "Attach next image (Unit #8)", UI_MENU_TYPE_ITEM_ACTION,
         "fliplist-next", ui_fliplist_next_cb, GINT_TO_POINTER(8),
-        GDK_KEY_N, VICE_MOD_MASK },
+        GDK_KEY_N, VICE_MOD_MASK, false },
     { "Attach previous image (Unit #8)", UI_MENU_TYPE_ITEM_ACTION,
         "fliplist-prev", ui_fliplist_prev_cb, GINT_TO_POINTER(8),
-        GDK_KEY_N, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        GDK_KEY_N, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
     { "Load flip list file...", UI_MENU_TYPE_ITEM_ACTION,
         "fliplist-load", ui_fliplist_load_callback, GINT_TO_POINTER(8),
-        0, 0 },
+        0, 0, true },
     { "Save flip list file...", UI_MENU_TYPE_ITEM_ACTION,
         "fliplist-save", ui_fliplist_save_callback, GINT_TO_POINTER(8),
-        0, 0 },
+        0, 0, true },
 
     UI_MENU_TERMINATOR
 };
@@ -285,38 +351,27 @@ static ui_menu_item_t fliplist_submenu[] = {
 static ui_menu_item_t datasette_control_submenu[] = {
     { "Stop", UI_MENU_TYPE_ITEM_ACTION,
         "tape-stop", ui_datasette_tape_action_cb, GINT_TO_POINTER(DATASETTE_CONTROL_STOP),
-        0, 0 },
+        0, 0, false },
     { "Start", UI_MENU_TYPE_ITEM_ACTION,
         "tape-start", ui_datasette_tape_action_cb, GINT_TO_POINTER(DATASETTE_CONTROL_START),
-        0, 0 },
+        0, 0, false },
     { "Forward", UI_MENU_TYPE_ITEM_ACTION,
         "tape-ff", ui_datasette_tape_action_cb, GINT_TO_POINTER(DATASETTE_CONTROL_FORWARD),
-        0, 0 },
+        0, 0, false },
     { "Rewind", UI_MENU_TYPE_ITEM_ACTION,
         "tape-rew", ui_datasette_tape_action_cb, GINT_TO_POINTER(DATASETTE_CONTROL_REWIND),
-        0, 0 },
+        0, 0, false },
     { "Record", UI_MENU_TYPE_ITEM_ACTION,
         "tape-record", ui_datasette_tape_action_cb, GINT_TO_POINTER(DATASETTE_CONTROL_RECORD),
-        0, 0 },
+        0, 0, false },
     { "Reset", UI_MENU_TYPE_ITEM_ACTION,
         "tape-reset", ui_datasette_tape_action_cb, GINT_TO_POINTER(DATASETTE_CONTROL_RESET),
-        0, 0 },
+        0, 0, false },
     { "Reset Counter", UI_MENU_TYPE_ITEM_ACTION,
         "tape-counter", ui_datasette_tape_action_cb, GINT_TO_POINTER(DATASETTE_CONTROL_RESET_COUNTER),
-        0, 0 },
+        0, 0, false },
     UI_MENU_TERMINATOR
 };
-
-#if 0
-/** \brief  'File->Cartridge attach' submenu
- */
-static ui_menu_item_t cart_attach_submenu[] = {
-    { "Smart attach cart image ... ", UI_MENU_TYPE_ITEM_ACTION,
-        "attach-cart", (void *)uicart_smart_attach_dialog, NULL,
-        GDK_KEY_C, VICE_MOD_MASK },
-    UI_MENU_TERMINATOR
-};
-#endif
 
 
 /** \brief  File->Reset submenu
@@ -324,25 +379,25 @@ static ui_menu_item_t cart_attach_submenu[] = {
 static ui_menu_item_t reset_submenu[] = {
     { "Soft reset", UI_MENU_TYPE_ITEM_ACTION,
         "reset-soft", ui_machine_reset_callback, GINT_TO_POINTER(MACHINE_RESET_MODE_SOFT),
-        GDK_KEY_F9, VICE_MOD_MASK },
+        GDK_KEY_F9, VICE_MOD_MASK, false },
     { "Hard reset", UI_MENU_TYPE_ITEM_ACTION,
         "reset-hard", ui_machine_reset_callback, GINT_TO_POINTER(MACHINE_RESET_MODE_HARD),
-        GDK_KEY_F12, VICE_MOD_MASK },
+        GDK_KEY_F12, VICE_MOD_MASK, false },
 
     UI_MENU_SEPARATOR,
 
     { "Reset drive #8", UI_MENU_TYPE_ITEM_ACTION,
         "reset-drive8", ui_drive_reset_callback, GINT_TO_POINTER(8),
-        0, 0 },
+        0, 0, false },
     { "Reset drive #9", UI_MENU_TYPE_ITEM_ACTION,
         "reset-drive9", ui_drive_reset_callback, GINT_TO_POINTER(9),
-        0, 0 },
+        0, 0, false },
     { "Reset drive #10", UI_MENU_TYPE_ITEM_ACTION,
         "reset-drive10", ui_drive_reset_callback, GINT_TO_POINTER(10),
-        0, 0 },
+        0, 0, false },
     { "Reset drive #11", UI_MENU_TYPE_ITEM_ACTION,
         "reset-drive11", ui_drive_reset_callback, GINT_TO_POINTER(11),
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_TERMINATOR
 };
@@ -351,25 +406,25 @@ static ui_menu_item_t reset_submenu[] = {
 /** \brief  'File' menu - head section
  */
 static ui_menu_item_t file_menu_head[] = {
-    { "Smart attach disk/tape ...", UI_MENU_TYPE_ITEM_ACTION,
-        "smart-attach", ui_smart_attach_callback, NULL,
-        GDK_KEY_A, VICE_MOD_MASK },
+    { "Smart attach disk/tape/cartridge ...", UI_MENU_TYPE_ITEM_ACTION,
+        "smart-attach", ui_smart_attach_dialog_show, NULL,
+        GDK_KEY_A, VICE_MOD_MASK, true },
 
     UI_MENU_SEPARATOR,
 
     /* disk */
     { "Attach disk image", UI_MENU_TYPE_SUBMENU,
         NULL, NULL, attach_submenu,
-        GDK_KEY_8, VICE_MOD_MASK },
+        GDK_KEY_8, VICE_MOD_MASK, false },
     { "Create and attach an empty disk image ...", UI_MENU_TYPE_ITEM_ACTION,
-        "create-disk", uidiskcreate_dialog_show, GINT_TO_POINTER(8),
-        0, 0 },
+        "create-disk", ui_disk_create_dialog_show, GINT_TO_POINTER(8),
+        0, 0, true },
     { "Detach disk image", UI_MENU_TYPE_SUBMENU,
         NULL, NULL, detach_submenu,
-        0, 0 },
+        0, 0, false },
     { "Flip list", UI_MENU_TYPE_SUBMENU,
         NULL, NULL, fliplist_submenu,
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
@@ -389,16 +444,16 @@ static ui_menu_item_t *file_menu_tape_section = NULL;
 static ui_menu_item_t file_menu_tape[] = {
     { "Attach tape image ...", UI_MENU_TYPE_ITEM_ACTION,
         "attach-tape", ui_tape_attach_callback, NULL,
-        GDK_KEY_T, VICE_MOD_MASK },
+        GDK_KEY_T, VICE_MOD_MASK, true },
     { "Create and attach an empty tape image ...", UI_MENU_TYPE_ITEM_ACTION,
-        "create-tape", uitapecreate_dialog_show, NULL,
-        0, 0 },
+        "create-tape", ui_tape_create_dialog_show, NULL,
+        0, 0, true },
     { "Detach tape image", UI_MENU_TYPE_ITEM_ACTION,
         "detach-tape", ui_tape_detach_callback, NULL,
-        0, 0 },
+        0, 0, false },
     { "Datasette controls", UI_MENU_TYPE_SUBMENU,
         NULL, NULL, datasette_control_submenu,
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
@@ -411,14 +466,14 @@ static ui_menu_item_t file_menu_tape[] = {
 static ui_menu_item_t file_menu_tail[] = {
     /* cart */
     { "Attach cartridge image ...", UI_MENU_TYPE_ITEM_ACTION,
-        "cart-attach", uicart_show_dialog, NULL,
-        GDK_KEY_C, VICE_MOD_MASK },
+        "cart-attach", ui_cart_show_dialog, NULL,
+        GDK_KEY_C, VICE_MOD_MASK, true },
     { "Detach cartridge image(s)", UI_MENU_TYPE_ITEM_ACTION,
-        "cart-detach", (void *)uicart_detach, NULL,
-        GDK_KEY_C, VICE_MOD_MASK|GDK_SHIFT_MASK },
+        "cart-detach", (void *)ui_cart_detach, NULL,
+        GDK_KEY_C, VICE_MOD_MASK|GDK_SHIFT_MASK, false },
     { "Cartridge freeze", UI_MENU_TYPE_ITEM_ACTION,
-        "cart-freeze", (void *)uicart_trigger_freeze, NULL,
-        GDK_KEY_Z, VICE_MOD_MASK },
+        "cart-freeze", (void *)ui_cart_trigger_freeze, NULL,
+        GDK_KEY_Z, VICE_MOD_MASK, false },
 
     UI_MENU_SEPARATOR,
 
@@ -427,35 +482,24 @@ static ui_menu_item_t file_menu_tail[] = {
         "monitor", ui_monitor_activate_callback, NULL,
 #ifdef MACOSX_SUPPORT
         /* use Command-Option-M on Mac */
-        GDK_KEY_M, VICE_MOD_MASK | GDK_MOD1_MASK
+        GDK_KEY_M, VICE_MOD_MASK | GDK_MOD1_MASK,
 #else
-        GDK_KEY_H, VICE_MOD_MASK
+        GDK_KEY_H, VICE_MOD_MASK,
 #endif
+        false
     },
 
     UI_MENU_SEPARATOR,
 
-#ifdef HAVE_NETWORK
-    { "Netplay ...", UI_MENU_TYPE_ITEM_ACTION,
-#if 0
-        "netplay", ui_netplay_dialog_new, NULL,
-#else
-        "netplay", ui_netplay_dialog_new, NULL,
-#endif
-        0, 0 },
-
-    UI_MENU_SEPARATOR,
-#endif
-
     { "Reset", UI_MENU_TYPE_SUBMENU,
         NULL, NULL, reset_submenu,
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
     { "Exit emulator", UI_MENU_TYPE_ITEM_ACTION,
         "exit", ui_close_callback, NULL,
-        GDK_KEY_Q, VICE_MOD_MASK },
+        GDK_KEY_Q, VICE_MOD_MASK, true },
 
     UI_MENU_TERMINATOR
 };
@@ -466,10 +510,10 @@ static ui_menu_item_t file_menu_tail[] = {
 static ui_menu_item_t edit_menu[] = {
     { "Copy", UI_MENU_TYPE_ITEM_ACTION,
         "copy", (void *)ui_copy_callback, NULL,
-        GDK_KEY_Delete, VICE_MOD_MASK },
+        GDK_KEY_Delete, VICE_MOD_MASK, false },
     { "Paste", UI_MENU_TYPE_ITEM_ACTION,
         "paste", (void *)ui_paste_callback, NULL,
-        GDK_KEY_Insert, VICE_MOD_MASK },
+        GDK_KEY_Insert, VICE_MOD_MASK, false },
 
     UI_MENU_TERMINATOR
 };
@@ -479,65 +523,65 @@ static ui_menu_item_t edit_menu[] = {
  */
 static ui_menu_item_t snapshot_menu[] = {
     { "Load snapshot image ...", UI_MENU_TYPE_ITEM_ACTION,
-        "snapshot-load", uisnapshot_open_file, NULL,
-        GDK_KEY_L, VICE_MOD_MASK },
+        "snapshot-load", ui_snapshot_open_file, NULL,
+        GDK_KEY_L, VICE_MOD_MASK, false },
     { "Save snapshot image ...", UI_MENU_TYPE_ITEM_ACTION,
-        "snapshot-save", uisnapshot_save_file, NULL,
-        GDK_KEY_S, VICE_MOD_MASK },
+        "snapshot-save", ui_snapshot_save_file, NULL,
+        GDK_KEY_S, VICE_MOD_MASK, false },
 
     UI_MENU_SEPARATOR,
 
     { "Quickload snapshot", UI_MENU_TYPE_ITEM_ACTION,
-        "snapshot-quickload", uisnapshot_quickload_snapshot, NULL,
-        GDK_KEY_F10, VICE_MOD_MASK },   /* Shortcut doesn't work in MATE, key
+        "snapshot-quickload", ui_snapshot_quickload_snapshot, NULL,
+        GDK_KEY_F10, VICE_MOD_MASK, false },   /* Shortcut doesn't work in MATE, key
                                          is mapped to Maximize Window. Using
                                          the menu to active this item does
                                          work though -- compyx */
     { "Quicksave snapshot", UI_MENU_TYPE_ITEM_ACTION,
-        "snapshot-quicksave", uisnapshot_quicksave_snapshot, NULL,
-        GDK_KEY_F11, VICE_MOD_MASK },
+        "snapshot-quicksave", ui_snapshot_quicksave_snapshot, NULL,
+        GDK_KEY_F11, VICE_MOD_MASK, false },
 
     UI_MENU_SEPARATOR,
 #if 0
     { "Select history directory ...", UI_MENU_TYPE_ITEM_ACTION,
-        "history-select-dir", uisnapshot_history_select_dir, "0:3",
-        0, 0 },
+        "history-select-dir", ui_snapshot_history_select_dir, "0:3",
+        0, 0, false },
 #endif
     { "Start recording events", UI_MENU_TYPE_ITEM_ACTION,
-        "history-record-start", uisnapshot_history_record_start, NULL,
-        0, 0 },
+        "history-record-start", ui_snapshot_history_record_start, NULL,
+        0, 0, false },
     { "Stop recording events", UI_MENU_TYPE_ITEM_ACTION,
-        "history-record-stop", uisnapshot_history_record_stop, NULL,
-        0, 0 },
+        "history-record-stop", ui_snapshot_history_record_stop, NULL,
+        0, 0, false },
     { "Start playing back events", UI_MENU_TYPE_ITEM_ACTION,
-        "history-playback-start", uisnapshot_history_playback_start, NULL,
-        0, 0 },
+        "history-playback-start", ui_snapshot_history_playback_start, NULL,
+        0, 0, false },
     { "Stop playing back events", UI_MENU_TYPE_ITEM_ACTION,
-        "history-playback-stop", uisnapshot_history_playback_stop, NULL,
-        0, 0 },
+        "history-playback-stop", ui_snapshot_history_playback_stop, NULL,
+        0, 0, false },
     { "Set recording milestone", UI_MENU_TYPE_ITEM_ACTION,
-        "history-milestone-set", uisnapshot_history_milestone_set, NULL,
-        GDK_KEY_E, VICE_MOD_MASK },
+        "history-milestone-set", ui_snapshot_history_milestone_set, NULL,
+        GDK_KEY_E, VICE_MOD_MASK, false },
     { "Return to milestone", UI_MENU_TYPE_ITEM_ACTION,
-        "history-milestone-reset", uisnapshot_history_milestone_reset, NULL,
-        GDK_KEY_U, VICE_MOD_MASK },
+        "history-milestone-reset", ui_snapshot_history_milestone_reset, NULL,
+        GDK_KEY_U, VICE_MOD_MASK, false },
 
     UI_MENU_SEPARATOR,
 #if 0
     { "Recording start mode ...", UI_MENU_TYPE_ITEM_ACTION,
         "history-recording-start-mode", ui_settings_dialog_create, "20,0",
-        0, 0 },
+        0, 0, true },
 
     UI_MENU_SEPARATOR,
 #endif
 
     { "Save media file ...", UI_MENU_TYPE_ITEM_ACTION,
-        "media-save", uimedia_dialog_show, NULL,
-        GDK_KEY_R, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        "media-save", ui_media_dialog_show, NULL,
+        GDK_KEY_R, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
 
     { "Stop media recording", UI_MENU_TYPE_ITEM_ACTION,
-        "media-stop", (void *)uimedia_stop_recording, NULL,
-        GDK_KEY_S, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        "media-stop", (void *)ui_media_stop_recording, NULL,
+        GDK_KEY_S, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
 
     UI_MENU_TERMINATOR
 };
@@ -548,35 +592,33 @@ static ui_menu_item_t snapshot_menu[] = {
 static ui_menu_item_t settings_menu_head[] = {
     { "Toggle fullscreen", UI_MENU_TYPE_ITEM_ACTION,
         "fullscreen", ui_fullscreen_callback, NULL,
-        GDK_KEY_D, VICE_MOD_MASK },
+        GDK_KEY_D, VICE_MOD_MASK, true },
     { "Restore display state", UI_MENU_TYPE_ITEM_ACTION,
         "restore-display", (void *)ui_restore_display, NULL,
-        GDK_KEY_r, VICE_MOD_MASK },
+        GDK_KEY_r, VICE_MOD_MASK, true },
 #if 1
     { "Show menu/status in fullscreen", UI_MENU_TYPE_ITEM_ACTION,
         "fullscreen-widgets", ui_fullscreen_decorations_callback, NULL,
-        GDK_KEY_B, VICE_MOD_MASK },
+        GDK_KEY_B, VICE_MOD_MASK, true },
 #else
     /* Mac menubar version */
     { "Show statusbar in fullscreen", UI_MENU_TYPE_ITEM_ACTION,
         "fullscreen-widgets", ui_fullscreen_decorations_callback, NULL,
-        GDK_KEY_B, VICE_MOD_MASK },
+        GDK_KEY_B, VICE_MOD_MASK, false },
 #endif
 
 #if 0
     UI_MENU_SEPARATOR,
     { "Toggle warp mode", UI_MENU_TYPE_ITEM_CHECK,
         "warp", (void *)(ui_toggle_resource), (void *)"WarpMode",
-        GDK_KEY_W, VICE_MOD_MASK },
+        GDK_KEY_W, VICE_MOD_MASK, false },
     { "Pause emulation", UI_MENU_TYPE_ITEM_CHECK,
         "pause", (void *)(ui_toggle_pause), NULL,
-        GDK_KEY_P, VICE_MOD_MASK },
+        GDK_KEY_P, VICE_MOD_MASK, false },
     { "Advance frame", UI_MENU_TYPE_ITEM_ACTION,
         "frame-advance", (void *)(ui_advance_frame), NULL,
-        GDK_KEY_P, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        GDK_KEY_P, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
 #endif
-    UI_MENU_SEPARATOR,
-
     UI_MENU_TERMINATOR
 };
 
@@ -597,16 +639,16 @@ static ui_menu_item_t settings_menu_all_joy[] = {
 #if 0
     { "Swap joysticks", UI_MENU_TYPE_ITEM_ACTION,
         "joystick-swap", (void *)(ui_swap_joysticks_callback), NULL,
-        GDK_KEY_J, VICE_MOD_MASK },
+        GDK_KEY_J, VICE_MOD_MASK, false },
     { "Swap userport joysticks", UI_MENU_TYPE_ITEM_ACTION,
         "userportjoy-swap", (void *)(ui_swap_userport_joysticks_callback), NULL,
-        GDK_KEY_U, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        GDK_KEY_U, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
     { "Allow keyset joystick", UI_MENU_TYPE_ITEM_CHECK,
         "keyset", (void *)(ui_toggle_resource), (void *)"KeySetEnable",
-        GDK_KEY_J, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        GDK_KEY_J, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
     { "Enable mouse grab", UI_MENU_TYPE_ITEM_CHECK,
         "mouse", (void *)(ui_toggle_resource), (void *)"Mouse",
-        GDK_KEY_M, VICE_MOD_MASK },
+        GDK_KEY_M, VICE_MOD_MASK, false },
 
 #endif
     UI_MENU_TERMINATOR
@@ -620,13 +662,13 @@ static ui_menu_item_t settings_menu_cbm5x0_joy[] = {
 #if 0
     { "Swap joysticks", UI_MENU_TYPE_ITEM_ACTION,
         "joystick-swap", (void *)(ui_swap_joysticks_callback), NULL,
-        GDK_KEY_J, VICE_MOD_MASK },
+        GDK_KEY_J, VICE_MOD_MASK, false },
     { "Allow keyset joystick", UI_MENU_TYPE_ITEM_CHECK,
         "keyset", (void *)(ui_toggle_resource), (void *)"KeySetEnable",
-        GDK_KEY_J, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        GDK_KEY_J, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
     { "Enable mouse grab", UI_MENU_TYPE_ITEM_CHECK,
         "mouse", (void *)(ui_toggle_resource), (void *)"Mouse",
-        GDK_KEY_M, VICE_MOD_MASK },
+        GDK_KEY_M, VICE_MOD_MASK, false },
 
 #endif
     UI_MENU_TERMINATOR
@@ -640,13 +682,13 @@ static ui_menu_item_t settings_menu_userport_joy[] = {
 #if 0
     { "Swap userport joysticks", UI_MENU_TYPE_ITEM_ACTION,
         "userportjoy-swap", (void *)(ui_swap_userport_joysticks_callback), NULL,
-        GDK_KEY_U, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        GDK_KEY_U, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
     { "Allow keyset joystick", UI_MENU_TYPE_ITEM_CHECK,
         "keyset", (void *)(ui_toggle_resource), (void *)"KeySetEnable",
-        GDK_KEY_J, VICE_MOD_MASK | GDK_SHIFT_MASK },
+        GDK_KEY_J, VICE_MOD_MASK | GDK_SHIFT_MASK, false },
     { "Enable mouse grab", UI_MENU_TYPE_ITEM_CHECK,
         "mouse", (void *)(ui_toggle_resource), (void *)"Mouse",
-        GDK_KEY_M, VICE_MOD_MASK },
+        GDK_KEY_M, VICE_MOD_MASK, false },
 
 #endif
     UI_MENU_TERMINATOR
@@ -660,23 +702,26 @@ static ui_menu_item_t settings_menu_tail[] = {
 
     /* the settings dialog */
     { "Settings ...", UI_MENU_TYPE_ITEM_ACTION,
-        "settings", (void *)ui_settings_dialog_create, NULL,
-        GDK_KEY_O, VICE_MOD_MASK },
+        "settings", ui_settings_dialog_create_and_activate_node_callback, NULL,
+        GDK_KEY_O, VICE_MOD_MASK, true },
     { "Load settings", UI_MENU_TYPE_ITEM_ACTION,
         "settings-load", settings_load_callback, NULL,
-        0, 0 },
+        0, 0, false },
     { "Load settings from ...", UI_MENU_TYPE_ITEM_ACTION,
         "settings-load-custom", settings_load_custom_callback, NULL,
-        0, 0 },
+        0, 0, true },
+    { "Load extra settings from ...", UI_MENU_TYPE_ITEM_ACTION,
+        "settings-load-extra", settings_load_custom_callback, (void*)1,
+        0, 0, true },
     { "Save settings", UI_MENU_TYPE_ITEM_ACTION,
         "settings-save", settings_save_callback, NULL,
-        0, 0 },
+        0, 0, false },
     { "Save settings to ...", UI_MENU_TYPE_ITEM_ACTION,
         "settings-save-custom", settings_save_custom_callback, NULL,
-        0, 0 },
+        0, 0, true },
     { "Restore default settings", UI_MENU_TYPE_ITEM_ACTION,
         "settings-restore", (void *)ui_restore_default_settings, NULL,
-        0, 0 },
+        0, 0, true },
     UI_MENU_TERMINATOR
 };
 
@@ -687,44 +732,48 @@ static ui_menu_item_t settings_menu_tail[] = {
  */
 static ui_menu_item_t debug_menu[] = {
     { "Trace mode ...", UI_MENU_TYPE_ITEM_ACTION,
-        "tracemode", uidebug_trace_mode_callback, NULL,
-        0, 0 },
+        "tracemode", ui_debug_trace_mode_dialog_show, NULL,
+        0, 0, true },
 
     UI_MENU_SEPARATOR,
 
     { "Main CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-maincpu", (void *)(ui_toggle_resource), (void *)"MainCPU_TRACE",
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
     { "IEC bus trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-iec", (void *)(ui_toggle_resource), (void *)"IEC_TRACE",
-        0, 0 },
+        0, 0, false },
+
+    { "IEEE-488 bus trace", UI_MENU_TYPE_ITEM_CHECK,
+        "trace-ieee", (void *)(ui_toggle_resource), (void *)"IEEE_TRACE",
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
     { "Drive #8 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive8", (void *)(ui_toggle_resource), (void *)"Drive0CPU_TRACE",
-        0, 0 },
+        0, 0, false },
     { "Drive #9 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive9", (void *)(ui_toggle_resource), (void *)"Drive1CPU_TRACE",
-        0, 0 },
+        0, 0, false },
     { "Drive #10 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive10", (void *)(ui_toggle_resource), (void *)"Drive2CPU_TRACE",
-        0, 0 },
+        0, 0, false },
     { "Drive #11 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive11", (void *)(ui_toggle_resource), (void *)"Drive3CPU_TRACE",
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
     { "Autoplay playback frames ...", UI_MENU_TYPE_ITEM_ACTION,
-        "playframes", uidebug_playback_frames_callback, NULL,
-        0, 0 },
+        "playframes", ui_debug_playback_frames_dialog_show, NULL,
+        0, 0, true },
     { "Save core dump", UI_MENU_TYPE_ITEM_CHECK,
         "coredump", (void *)(ui_toggle_resource), (void *)"DoCoreDump",
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_TERMINATOR
 };
@@ -734,54 +783,54 @@ static ui_menu_item_t debug_menu[] = {
  */
 static ui_menu_item_t debug_menu_c64dtv[] = {
     { "Trace mode ...", UI_MENU_TYPE_ITEM_ACTION,
-        "tracemode", uidebug_trace_mode_callback, NULL,
-        0, 0 },
+        "tracemode", ui_debug_trace_mode_dialog_show, NULL,
+        0, 0, true },
 
     UI_MENU_SEPARATOR,
 
     { "Main CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-maincpu", (void *)(ui_toggle_resource), (void *)"MainCPU_TRACE",
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
     { "IEC bus trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-iec", (void *)(ui_toggle_resource), (void *)"IEC_TRACE",
-        0, 0 },
+        0, 0, false },
 
     { "Drive #8 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive8", (void *)(ui_toggle_resource), (void *)"Drive0CPU_TRACE",
-        0, 0 },
+        0, 0, false },
     { "Drive #9 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive9", (void *)(ui_toggle_resource), (void *)"Drive1CPU_TRACE",
-        0, 0 },
+        0, 0, false },
     { "Drive #10 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive10", (void *)(ui_toggle_resource), (void *)"Drive2CPU_TRACE",
-        0, 0 },
+        0, 0, false },
     { "Drive #11 CPU trace", UI_MENU_TYPE_ITEM_CHECK,
         "trace-drive11", (void *)(ui_toggle_resource), (void *)"Drive3CPU_TRACE",
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_SEPARATOR,
 
     { "Blitter log", UI_MENU_TYPE_ITEM_CHECK,
       "blitter-log", ui_toggle_resource, (void *)"DtvBlitterLog",
-      0, 0 },
+      0, 0, false },
     { "DMA log", UI_MENU_TYPE_ITEM_CHECK,
       "dma-log", ui_toggle_resource, (void *)"DtvDMALog",
-      0, 0 },
+      0, 0, false },
     { "Flash log", UI_MENU_TYPE_ITEM_CHECK,
       "flash-log", ui_toggle_resource, (void*)"DtvFlashLog",
-      0, 0 },
+      0, 0, false },
 
     UI_MENU_SEPARATOR,
 
     { "Autoplay playback frames ...", UI_MENU_TYPE_ITEM_ACTION,
-        "playframes", uidebug_playback_frames_callback, NULL,
-        0, 0 },
+        "playframes", ui_debug_playback_frames_dialog_show, NULL,
+        0, 0, true },
     { "Save core dump", UI_MENU_TYPE_ITEM_CHECK,
         "coredump", ui_toggle_resource, (void *)"DoCoreDump",
-        0, 0 },
+        0, 0, false },
 
     UI_MENU_TERMINATOR
 };
@@ -794,19 +843,19 @@ static ui_menu_item_t debug_menu_c64dtv[] = {
 static ui_menu_item_t help_menu[] = {
     { "Browse manual", UI_MENU_TYPE_ITEM_ACTION,
         "manual", ui_open_manual_callback, NULL,
-        0, 0 },
+        0, 0, true },
     { "Command line options ...", UI_MENU_TYPE_ITEM_ACTION,
         "cmdline", uicmdline_dialog_show, NULL,
-        0, 0 },
+        0, 0, true },
     { "Compile time features ...", UI_MENU_TYPE_ITEM_ACTION,
         "features", uicompiletimefeatures_dialog_show, NULL,
-        0, 0 },
+        0, 0, true },
     { "Hotkeys", UI_MENU_TYPE_ITEM_ACTION,
         "hotkeys", uihotkeys_dialog_show, NULL,
-        0, 0 },
+        0, 0, true },
     { "About VICE", UI_MENU_TYPE_ITEM_ACTION,
         "about", ui_about_dialog_callback, NULL,
-        0, 0 },
+        0, 0, true },
 
     UI_MENU_TERMINATOR
 };
@@ -917,6 +966,8 @@ GtkWidget *ui_machine_menu_bar_create(void)
 
 
 /** \brief  Add missing settings load/save items
+ *
+ * \param[in,out]   menu    GtkMenu
  */
 void ui_machine_menu_bar_vsid_patch(GtkWidget *menu)
 {

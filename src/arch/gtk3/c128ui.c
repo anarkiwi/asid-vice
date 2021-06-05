@@ -56,6 +56,7 @@
 #include "expertwidget.h"
 #include "isepicwidget.h"
 #include "gmod2widget.h"
+#include "gmod3widget.h"
 #include "mmcrwidget.h"
 #include "mmc64widget.h"
 #include "retroreplaywidget.h"
@@ -154,6 +155,7 @@ int c128ui_init_early(void)
 int c128ui_init(void)
 {
     int forty;
+    int hide_vdc;
 
     machine_model_widget_getter(c128model_get);
     machine_model_widget_setter(c128model_set);
@@ -176,13 +178,13 @@ int c128ui_init(void)
             cartridge_can_save_image,
             cartridge_can_flush_image);
 
-    /* uicart_set_detect_func(cartridge_detect); only cbm2/plus4 */
-    uicart_set_list_func(cartridge_get_info_list);
-    uicart_set_attach_func(cartridge_attach_image);
-    uicart_set_freeze_func(cartridge_trigger_freeze);
-    uicart_set_detach_func(cartridge_detach_image);
-    uicart_set_set_default_func(cartridge_set_default);
-    uicart_set_unset_default_func(cartridge_unset_default);
+    /* ui_cart_set_detect_func(cartridge_detect); only cbm2/plus4 */
+    ui_cart_set_list_func(cartridge_get_info_list);
+    ui_cart_set_attach_func(cartridge_attach_image);
+    ui_cart_set_freeze_func(cartridge_trigger_freeze);
+    ui_cart_set_detach_func(cartridge_detach_image);
+    ui_cart_set_set_default_func(cartridge_set_default);
+    ui_cart_set_unset_default_func(cartridge_unset_default);
 
     /* set tapecart flush function */
     tapeport_devices_widget_set_tapecart_flush_func(tapecart_flush_tcrt);
@@ -201,9 +203,25 @@ int c128ui_init(void)
             }
         }
     }
+
+    /* Hide VDC window, ignoring the stuff before this */
+    if (resources_get_int("C128HideVDC", &hide_vdc) >= 0) {
+        GtkWidget *window;
+
+        if (hide_vdc) {
+            debug_gtk3("Attempting to hide the VDC window according to C128HideVDC");
+            window = ui_get_window_by_index(1); /* VDC */
+            if (window != NULL) {
+                gtk_widget_hide(window);
+            }
+        }
+    }
+
     /* crt preview widget functions */
     crt_preview_widget_set_open_func(crt_open);
     crt_preview_widget_set_chip_func(crt_read_chip_header);
+
+
     return 0;
 }
 

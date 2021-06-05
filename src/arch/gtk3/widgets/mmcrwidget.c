@@ -50,6 +50,7 @@
 #include "cartimagewidget.h"
 #include "cartridge.h"
 #include "carthelpers.h"
+#include "ui.h"
 
 #include "mmcrwidget.h"
 
@@ -65,16 +66,23 @@ static const vice_gtk3_radiogroup_entry_t card_types[] = {
 };
 
 
-/** \brief  Handler for the "clicked" event of the Save Image button
- *
- * \param[in]   widget      button
- * \param[in]   user_data   unused
+/* FIXME:   The eeprom handling uses seperate widgets to handle the entry and
+ *          button while the card widget uses a widget in widgets/base, why?
  */
-static void on_save_clicked(GtkWidget *widget, gpointer user_data)
+static GtkWidget *eeprom_entry;
+static GtkWidget *card_widget;
+
+
+/** \brief  Callback for the save-dialog response handler
+ *
+ * \param[in,out]   dialog      save-file dialog
+ * \param[in,out]   filename    filename
+ * \param[in]       data        extra data (unused)
+ */
+static void save_filename_callback(GtkDialog *dialog,
+                                   gchar *filename,
+                                   gpointer data)
 {
-    /* TODO: retrieve filename of cart image */
-    gchar *filename = vice_gtk3_save_file_dialog("Save Cartridge image",
-            NULL, TRUE, NULL);
     if (filename != NULL) {
         debug_gtk3("saving MMCR cart image as '%s'.", filename);
         if (carthelpers_save_func(CARTRIDGE_MMC_REPLAY, filename) < 0) {
@@ -84,6 +92,21 @@ static void on_save_clicked(GtkWidget *widget, gpointer user_data)
         }
         g_free(filename);
     }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+/** \brief  Handler for the "clicked" event of the Save Image button
+ *
+ * \param[in]   widget      button
+ * \param[in]   user_data   unused
+ */
+static void on_save_clicked(GtkWidget *widget, gpointer user_data)
+{
+    vice_gtk3_save_file_dialog("Save cartridge image",
+                               NULL, TRUE, NULL,
+                               save_filename_callback,
+                               NULL);
 }
 
 
@@ -102,11 +125,10 @@ static void on_flush_clicked(GtkWidget *widget, gpointer user_data)
 }
 
 
-static void on_eeprom_browse_clicked(GtkWidget *button, gpointer data)
+static void eeprom_filename_callback(GtkDialog *dialog,
+                                     gchar *filename,
+                                     gpointer data)
 {
-    gchar *filename = vice_gtk3_open_file_dialog("Open EEMPROM image",
-                NULL, NULL, NULL);
-
     if (filename != NULL) {
         debug_gtk3("Loading MMCR EEPROM image '%s'.", filename);
         if (resources_set_string("MMCREEPROMImage", filename) < 0) {
@@ -114,11 +136,38 @@ static void on_eeprom_browse_clicked(GtkWidget *button, gpointer data)
                     "Failed to load EEPROM image file '%s'",
                     filename);
         } else {
-            gtk_entry_set_text(GTK_ENTRY(data), filename);
+            gtk_entry_set_text(GTK_ENTRY(eeprom_entry), filename);
         }
         g_free(filename);
     }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
 }
+
+
+
+static void on_eeprom_browse_clicked(GtkWidget *button, gpointer data)
+{
+    vice_gtk3_open_file_dialog(
+            "Open EEMPROM image",
+             NULL, NULL, NULL,
+             eeprom_filename_callback,
+             NULL);
+}
+
+
+
+static void card_filename_callback(GtkDialog *dialog,
+                                   gchar *filename,
+                                   gpointer data)
+{
+    if (filename != NULL) {
+        vice_gtk3_resource_entry_full_set(card_widget, filename);
+        g_free(filename);
+    }
+
+}
+
+
 
 
 /** \brief  Handler for the "clicked" event of the memory card browse button
@@ -128,20 +177,12 @@ static void on_eeprom_browse_clicked(GtkWidget *button, gpointer data)
  */
 static void on_card_browse_clicked(GtkWidget *button, gpointer user_data)
 {
-    char *filename;
+    vice_gtk3_open_file_dialog(
+            "Open memory card file",
+            NULL, NULL, NULL,
+            card_filename_callback,
+            NULL);
 
-    filename = vice_gtk3_open_file_dialog("Open memory card file",
-            NULL, NULL, NULL);
-    if (filename != NULL) {
-        GtkWidget *parent;
-        GtkWidget *entry;
-
-        parent = gtk_widget_get_parent(button);
-        entry= gtk_grid_get_child_at(GTK_GRID(parent), 1, 1);
-        /* trigger resource update */
-        vice_gtk3_resource_entry_full_set(entry, filename);
-        g_free(filename);
-    }
 }
 
 
@@ -225,7 +266,6 @@ static GtkWidget *create_eeprom_image_widget(GtkWidget *parent)
     GtkWidget *grid;
     GtkWidget *readwrite;
     GtkWidget *label;
-    GtkWidget *entry;
     GtkWidget *browse;
 
     grid = uihelpers_create_grid_with_label("MMC Replay EEPROM image", 3);
@@ -236,15 +276,15 @@ static GtkWidget *create_eeprom_image_widget(GtkWidget *parent)
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     g_object_set(label, "margin-left", 16, NULL);
 
-    entry = vice_gtk3_resource_entry_full_new("MMCREEPROMImage");
-    gtk_widget_set_hexpand(entry, TRUE);
+    eeprom_entry = vice_gtk3_resource_entry_full_new("MMCREEPROMImage");
+    gtk_widget_set_hexpand(eeprom_entry, TRUE);
 
     browse = gtk_button_new_with_label("Browse ...");
     g_signal_connect(browse, "clicked", G_CALLBACK(on_eeprom_browse_clicked),
-            (gpointer)entry);
+            NULL);
 
     gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry, 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), eeprom_entry, 1, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), browse, 2, 1, 1, 1);
 
 
@@ -359,8 +399,8 @@ GtkWidget *mmcr_widget_create(GtkWidget *parent)
     gtk_grid_attach(GTK_GRID(grid), create_eeprom_image_widget(parent),
             0, 2, 3, 1);
 
-    gtk_grid_attach(GTK_GRID(grid), create_card_image_widget(parent),
-            0, 3, 3, 1);
+    card_widget = create_card_image_widget(parent);
+    gtk_grid_attach(GTK_GRID(grid), card_widget, 0, 3, 3, 1);
 
     gtk_grid_attach(GTK_GRID(grid), create_card_type_widget(), 0, 4, 3, 1);
 

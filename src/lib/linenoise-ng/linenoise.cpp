@@ -485,7 +485,12 @@ static int write32(int fd, char32_t* text32, int len32) {
 
   copyString32to8(text8.get(), len8, &count8, text32, len32);
 
-  return write(fd, text8.get(), count8);
+  /* Compyx, 2020-07-24: fix -Wshorten-64-to-32 warning
+   *
+   * Do not ask me if this clean C++ or whatever, just shutting up the compiler
+   * at this point.
+   */
+  return (int)write(fd, text8.get(), count8);
 #endif
 }
 
@@ -1916,10 +1921,10 @@ static char32_t linenoiseReadChar(void) {
         "this mode\n");
     while (true) {
       unsigned char keys[10];
-      int ret = read(0, keys, 10);
+      long ret = read(0, keys, 10);
 
       if (ret <= 0) {
-        printf("\nret: %d\n", ret);
+        printf("\nret: %ld\n", ret);
       }
       for (int i = 0; i < ret; ++i) {
         char32_t key = static_cast<char32_t>(keys[i]);
@@ -1947,7 +1952,7 @@ static char32_t linenoiseReadChar(void) {
           friendlyTextBuf[2] = 0;
           friendlyTextPtr = friendlyTextBuf;
         }
-        printf("%d x%02X (%s%s)  ", key, key, prefixText, friendlyTextPtr);
+        printf("%u x%02X (%s%s)  ", key, key, prefixText, friendlyTextPtr);
       }
       printf("\x1b[1G\n");  // go to first column of new line
 
@@ -3480,20 +3485,19 @@ void linenoisePrintKeyCodes(void) {
   memset(quit, ' ', 4);
   while (1) {
     char c;
-    int nread;
-
 #if _WIN32
-    nread = _read(STDIN_FILENO, &c, 1);
+    /* Windows' _read() seems to return int, which is stupid */
+    int nread = _read(STDIN_FILENO, &c, 1);
 #else
-    nread = read(STDIN_FILENO, &c, 1);
+    long nread = read(STDIN_FILENO, &c, 1);
 #endif
     if (nread <= 0) continue;
     memmove(quit, quit + 1, sizeof(quit) - 1); /* shift string to left. */
     quit[sizeof(quit) - 1] = c; /* Insert current char on the right. */
     if (memcmp(quit, "quit", sizeof(quit)) == 0) break;
 
-    printf("'%c' %02x (%d) (type quit to exit)\n", isprint(c) ? c : '?', (int)c,
-           (int)c);
+    printf("'%c' %02x (%d) (type quit to exit)\n", isprint(c) ? c : '?',
+            (unsigned int)c, (int)c);
     printf("\r"); /* Go left edge manually, we are in raw mode. */
     fflush(stdout);
   }

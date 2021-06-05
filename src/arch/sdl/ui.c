@@ -42,6 +42,7 @@
 #include "fullscreenarch.h"
 #include "joy.h"
 #include "kbd.h"
+#include "keyboard.h"
 #include "lib.h"
 #include "lightpen.h"
 #include "log.h"
@@ -94,7 +95,8 @@ void ui_handle_misc_sdl_event(SDL_Event e)
     if (e.type == SDL_WINDOWEVENT) {
         switch (e.window.event) {
             case SDL_WINDOWEVENT_RESIZED:
-                DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_RESIZED (%d,%d)", (unsigned int)e.window.data1, (unsigned int)e.window.data2));
+                DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_RESIZED (%d,%d)", 
+                     e.window.data1, e.window.data2));
                 sdl_video_resize_event((unsigned int)e.window.data1, (unsigned int)e.window.data2);
                 video_canvas_refresh_all(sdl_active_canvas);
                 break;
@@ -105,6 +107,10 @@ void ui_handle_misc_sdl_event(SDL_Event e)
             case SDL_WINDOWEVENT_EXPOSED:
                 DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_EXPOSED"));
                 video_canvas_refresh_all(sdl_active_canvas);
+                break;
+            case SDL_WINDOWEVENT_FOCUS_LOST:
+                DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_FOCUS_LOST"));
+                keyboard_key_clear();
                 break;
         }
     }
@@ -185,28 +191,6 @@ int old_joy_direction = 0;
 extern int mouse_x, mouse_y;
 #endif
 
-#if 0
-/* unused ? */
-void ui_dispatch_next_event(void)
-{
-#ifdef ANDROID_COMPILE
-    struct locnet_al_event event;
-
-    if (Android_PollEvent(&event)) {
-#else
-    SDL_Event e;
-
-    if (SDL_PollEvent(&e)) {
-        ui_handle_misc_sdl_event(e);
-#endif
-    } else {
-        /* Add a small delay to not hog the host CPU when remote
-           monitor is being used. */
-        SDL_Delay(10);
-    }
-}
-#endif
-
 /* Main event handler */
 ui_menu_action_t ui_dispatch_events(void)
 {
@@ -233,12 +217,6 @@ ui_menu_action_t ui_dispatch_events(void)
 
         loader_turbo = 0;
         loader_set_warpmode((value == 1) ? 1 : 0);
-    }
-    if (loadf->frameskip) {
-        int value = loadf->frameskip;
-
-        loadf->frameskip = 0;
-        resources_set_int("RefreshRate", ((value > 0) && (value <= 10)) ? value : 1);
     }
     if (loadf->abort) {
         loadf->abort = 0;
@@ -490,7 +468,7 @@ ui_menu_action_t ui_dispatch_events(void)
             case SDL_MOUSEMOTION:
                 sdl_ui_consume_mouse_event(&e);
                 if (_mouse_enabled) {
-                    mouse_move((int)(e.motion.xrel), (int)(e.motion.yrel));
+                    mouse_move(e.motion.xrel, e.motion.yrel);
                 }
                 break;
             case SDL_MOUSEBUTTONDOWN:
@@ -506,7 +484,8 @@ ui_menu_action_t ui_dispatch_events(void)
                 break;
         }
         /* When using the menu or vkbd, pass every meaningful event to the caller */
-        if (((sdl_menu_state) || (sdl_vkbd_state & SDL_VKBD_ACTIVE)) && (retval != MENU_ACTION_NONE) && (retval != MENU_ACTION_NONE_RELEASE)) {
+        if (((sdl_menu_state) ||
+             (sdl_vkbd_state & SDL_VKBD_ACTIVE)) && (retval != MENU_ACTION_NONE) && (retval != MENU_ACTION_NONE_RELEASE)) {
             break;
         }
     }
@@ -541,6 +520,8 @@ static void set_crosshair_cursor(void)
 }
 #endif
 
+static int mouse_pointer_hidden = 0;
+
 void ui_check_mouse_cursor(void)
 {
     if (_mouse_enabled && !lightpen_enabled && !sdl_menu_state) {
@@ -572,8 +553,8 @@ void ui_check_mouse_cursor(void)
             SDL_SetRelativeMouseMode(SDL_FALSE);
 #endif
         } else {
-            /* windowed, TODO: disable pointer after time-out */
-            SDL_ShowCursor(SDL_DISABLE);
+            /* windowed */
+            SDL_ShowCursor(mouse_pointer_hidden ? SDL_DISABLE : SDL_ENABLE);
 #ifndef USE_SDLUI2
             SDL_WM_GrabInput(SDL_GRAB_OFF);
 #else
@@ -582,6 +563,57 @@ void ui_check_mouse_cursor(void)
 #endif
         }
     }
+}
+
+#ifdef MACOSX_SUPPORT
+#define VICE_MOD_MASK_TEXT "Option"
+#else
+#define VICE_MOD_MASK_TEXT "Alt"
+#endif
+
+void ui_set_mouse_grab_window_title(int enabled)
+{
+    char title[256];
+    char name[32];
+
+    if (machine_class != VICE_MACHINE_C64SC) {
+        strcpy(name, machine_get_name());
+    } else {
+        strcpy(name, "C64 (x64sc)");
+    }
+    if (enabled) {
+        snprintf(title, 256, "VICE: %s%s Use %s+M to disable mouse grab.",
+            name, archdep_extra_title_text(), VICE_MOD_MASK_TEXT);
+    } else {
+        snprintf(title, 256, "VICE: %s%s", name, archdep_extra_title_text());
+    }        
+
+    sdl_ui_set_window_title(title);
+}
+
+void ui_autohide_mouse_cursor(void)
+{
+    int local_x, local_y;
+    static int last_x = 0, last_y = 0;
+    static int hidecounter = 60;
+    SDL_GetMouseState(&local_x, &local_y);
+    if ((local_x != last_x) || (local_y != last_y)) {
+        /* mouse was moved, reset counter and unhide */
+        hidecounter = 60;
+        mouse_pointer_hidden = 0;
+        ui_check_mouse_cursor();
+    } else {
+        /* mouse was not moved, decrement counter and hide on underflow */
+        if (hidecounter > 0) {
+            hidecounter--;
+            if (hidecounter == 0) {
+                mouse_pointer_hidden = 1;
+                ui_check_mouse_cursor();
+            }
+        }
+    }
+    last_x = local_x;
+    last_y = local_y;
 }
 
 void ui_message(const char* format, ...)
@@ -710,12 +742,7 @@ void ui_sdl_quit(void)
             return;
         }
     }
-
-    if (save_resources_on_exit) {
-        if (resources_save(NULL) < 0) {
-            ui_error("Cannot save current settings.");
-        }
-    }
+    
     archdep_vice_exit(0);
 }
 
@@ -924,17 +951,21 @@ ui_jam_action_t ui_jam_dialog(const char *format, ...)
 
     retval = message_box("VICE CPU JAM", "a CPU JAM has occured, choose the action to take", MESSAGE_CPUJAM);
     if (retval == 0) {
-        return UI_JAM_HARD_RESET;
+        return UI_JAM_RESET;
     }
     if (retval == 1) {
+        return UI_JAM_HARD_RESET;
+    }
+    if (retval == 2) {
+        return UI_JAM_NONE;
+    }
+    if (retval == 3) {
         return UI_JAM_MONITOR;
     }
+    if (retval == 4) {
+        archdep_vice_exit(0);
+    }
     return UI_JAM_NONE;
-}
-
-/* Update all menu entries.  */
-void ui_update_menus(void)
-{
 }
 
 /* ----------------------------------------------------------------- */
