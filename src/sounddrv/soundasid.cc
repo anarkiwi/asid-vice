@@ -208,7 +208,9 @@ std::vector<unsigned char> message;
      asid_close,
      NULL,
      NULL,
-     0
+     0,
+     1,
+     false
     };
 
   int sound_init_asid_device(void)
