@@ -40,10 +40,14 @@
 #define UIDATA_ROOT_PATH    "/org/pokefinder/vice"
 
 
-int         uidata_init(void);
-void        uidata_shutdown(void);
+int                 uidata_init(void);
+void                uidata_shutdown(void);
 
-GdkPixbuf * uidata_get_pixbuf(const char *name);
-GBytes * uidata_get_bytes(const char *name);
+GdkPixbuf *         uidata_get_pixbuf(const char *name);
+GdkPixbuf *         uidata_get_pixbuf_at_scale(const char *name, int width, int height, gboolean preserve_aspect_ratio);
+#if 0
+GdkPixbufAnimation *uidata_get_pixbuf_animated(const char *name, gboolean loop);
+#endif
+GBytes *            uidata_get_bytes(const char *name);
 
 #endif

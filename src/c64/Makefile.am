@@ -7,6 +7,7 @@ AM_CPPFLAGS = \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/c64/cart \
+	-I$(top_srcdir)/src/datasette \
 	-I$(top_srcdir)/src/drive \
 	-I$(top_srcdir)/src/drive/iec/c64exp \
 	-I$(top_srcdir)/src/raster \
@@ -29,9 +30,16 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
+AM_LDFLAGS = @VICE_LDFLAGS@
+
+
 noinst_LIBRARIES = libvsid.a libc64.a libc64sc.a libc64c128.a libc64c64dtv.a libc64scpu64.a
 
 libvsid_a_SOURCES = \
+	vsid-cmdline-options.c \
+	vsid-cmdline-options.h \
+	vsid-resources.c \
+	vsid-snapshot.c \
 	c64embedded.c \
 	c64gluelogic.c \
 	c64gluelogic.h \
@@ -64,10 +72,6 @@ libvsid_a_SOURCES = \
 	psiddrv.h \
 	reloc65.c \
 	vsid.c \
-	vsid-cmdline-options.c \
-	vsid-cmdline-options.h \
-	vsid-resources.c \
-	vsid-snapshot.c \
 	vsidcia1.c \
 	vsidcia2.c \
 	vsidcpu.c \

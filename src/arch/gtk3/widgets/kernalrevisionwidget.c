@@ -2,6 +2,7 @@
  * \brief   GTK3 KERNAL revision widget
  *
  * \author  Bas Wassink <b.wassink@ziggo.nl>
+ * \author  Groepaz <groepaz@gmx.de>
  */
 
 /*
@@ -33,12 +34,12 @@
 
 #include <gtk/gtk.h>
 
+#include "c64-resources.h"
+#include "debug_gtk3.h"
 #include "lib.h"
 #include "resources.h"
-#include "c64-resources.h"
 #include "vsync.h"
 #include "widgethelpers.h"
-#include "debug_gtk3.h"
 
 #include "kernalrevisionwidget.h"
 
@@ -48,13 +49,18 @@
  * Taken from scr/c64/c64-resources.h
  */
 static const vice_gtk3_radiogroup_entry_t revisions[] = {
-    { "Revision 1", C64_KERNAL_REV1 },
-    { "Revision 2", C64_KERNAL_REV2 },
-    { "Revision 3", C64_KERNAL_REV3 },
-    { "SX-64", C64_KERNAL_SX64 },
-    { "PET64/Educator64", C64_KERNAL_4064 },
+    { "Revision 1",         C64_KERNAL_REV1 },
+    { "Revision 2",         C64_KERNAL_REV2 },
+    { "Revision 3",         C64_KERNAL_REV3 },
+    { "SX-64",              C64_KERNAL_SX64 },
+    { "PET64/Educator64",   C64_KERNAL_4064 },
     { NULL, -1 }
 };
+
+
+/** \brief  Optional extra callback function
+ */
+static void (*widget_callback)(int) = NULL;
 
 
 /** \brief  Look up index of revision ID \a rev
@@ -79,8 +85,11 @@ static void on_revision_toggled(GtkWidget *widget, gpointer user_data)
     int rev = GPOINTER_TO_INT(user_data);
 
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
-        debug_gtk3("setting KERNAL revision to %d.", rev);
         resources_set_int("KernalRev", rev);
+        if (widget_callback != NULL) {
+            widget_callback(rev);
+        }
+
     }
 }
 
@@ -150,4 +159,31 @@ void kernal_revision_widget_update(GtkWidget *widget, int revision)
         radio = gtk_grid_get_child_at(GTK_GRID(widget), 0, index + 2);
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
     }
+}
+
+
+/** \brief  Synchronize the KERNAL widget with its current value
+ *
+ * \param[in,out]   widget  KERNAL version widget
+ */
+void kernal_revision_widget_sync(GtkWidget *widget)
+{
+    int revision, index;
+    GtkWidget *radio;
+
+    resources_get_int("KernalRev", &revision);
+    index = get_revision_index(revision);
+    /* when index == -1 the 'Unknown' radio button is activated */
+    radio = gtk_grid_get_child_at(GTK_GRID(widget), 0, index + 2);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
+}
+
+
+/** \brief  Add extra callback
+ *
+ * \param[in[   callback    extra callback for widget changes
+ */
+void kernal_revision_widget_add_callback(void (*callback)(int))
+{
+    widget_callback = callback;
 }

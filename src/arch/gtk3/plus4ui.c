@@ -36,12 +36,14 @@
 #include "crtcontrolwidget.h"
 #include "machine.h"
 #include "machinemodelwidget.h"
+#include "plus4memhacks.h"
 #include "plus4model.h"
 #include "sampler.h"
 #include "ted.h"
 #include "ui.h"
 #include "uicart.h"
 #include "uimachinewindow.h"
+#include "settings_model.h"
 #include "settings_sampler.h"
 #include "videomodelwidget.h"
 #include "widgethelpers.h"
@@ -140,13 +142,16 @@ int plus4ui_init(void)
             NULL, /* cartridge_can_save_image */
             NULL  /* cartridge_can_flush_image */);
 
-    /* uicart_set_detect_func(cartridge_detect); only cbm2/plus4 */
-/*    uicart_set_list_func(cartridge_get_info_list); */
-    uicart_set_attach_func(cartridge_attach_image);
-/*    uicart_set_freeze_func(cartridge_trigger_freeze); */
-    uicart_set_detach_func(cartridge_detach_image);
-    /*uicart_set_set_default_func(cartridge_set_default);*/
-    /*uicart_set_unset_default_func(cartridge_unset_default);*/
+    /* ui_cart_set_detect_func(cartridge_detect); only cbm2/plus4 */
+/*    ui_cart_set_list_func(cartridge_get_info_list); */
+    ui_cart_set_attach_func(cartridge_attach_image);
+/*    ui_cart_set_freeze_func(cartridge_trigger_freeze); */
+    ui_cart_set_detach_func(cartridge_detach_image);
+    /*ui_cart_set_set_default_func(cartridge_set_default);*/
+    /*ui_cart_set_unset_default_func(cartridge_unset_default);*/
+
+    settings_model_widget_set_memhack_func(plus4_memory_hacks_desc);
+
     return 0;
 }
 

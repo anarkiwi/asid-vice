@@ -29,10 +29,10 @@
 
 #include <gtk/gtk.h>
 
-#include "widgethelpers.h"
 #include "debug_gtk3.h"
-#include "resources.h"
 #include "machine.h"
+#include "resources.h"
+#include "widgethelpers.h"
 
 #include "machinemodelwidget.h"
 
@@ -61,13 +61,46 @@ static void (*user_callback)(int) = NULL;
 static void on_model_toggled(GtkWidget *widget, gpointer user_data)
 {
     int model = GPOINTER_TO_INT(user_data);
+#if 0
+#ifdef HAVE_DEBUG_GTK3UI
+    if (machine_class == VICE_MACHINE_C128) {
+        int res_board_type = -1;
+        int res_vdc_revision = -1;
+        int res_vdc_64kb = -1;
+        int res_machine_type = -1;
+        int res_video_standard = -1;
+        int res_cia1 = -1;
+        int res_cia2 = -1;
+        int res_sid = -1;
+
+        debug_gtk3("Got model change for C128: %d.", model);
+
+        printf("=== %s ===\n", __func__);
+        resources_get_int("BoardType",      &res_board_type);
+        resources_get_int("VDCRevision",    &res_vdc_revision);
+        resources_get_int("VDC64KB",        &res_vdc_64kb);
+        resources_get_int("MachineType",    &res_machine_type);
+        resources_get_int("MachineVideoStandard",    &res_video_standard);
+        resources_get_int("CIA1Model",      &res_cia1);
+        resources_get_int("CIA2Model",      &res_cia2);
+        resources_get_int("SIDModel",       &res_sid);
+
+        printf("    BoardType             : %d\n", res_board_type);
+        printf("    VDCRevision           : %d\n", res_vdc_revision);
+        printf("    VDC64KB               : %d\n", res_vdc_64kb);
+        printf("    MachineType           : %d\n", res_machine_type);
+        printf("    MachineVideoStandard: : %d\n", res_video_standard);
+        printf("    CIA1                  : %d\n", res_cia1);
+        printf("    CIA2                  : %d\n", res_cia2);
+        printf("    SIDModel              : %d\n", res_sid);
+    }
+#endif
+#endif
 
     if (model_set != NULL &&
             gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
-        debug_gtk3("setting model to %d.", model);
         model_set(model);
         if (user_callback != NULL) {
-            debug_gtk3("calling user-callback with model %d.", model);
             user_callback(model);
         }
     }
@@ -168,8 +201,9 @@ void machine_model_widget_update(GtkWidget *widget)
             model -= 2; /*adjust since cbm2/cbm5 share defines */
         }
     }
+#if 0
     debug_gtk3("model ID = %d.", model);
-
+#endif
     if (model == 99) {
         /* invalid model, make all radio buttons unselected
          *
@@ -195,7 +229,7 @@ void machine_model_widget_update(GtkWidget *widget)
  */
 void machine_model_widget_connect_signals(GtkWidget *widget)
 {
-    size_t i = 0;
+    int i = 0;
 
     while (1) {
         GtkWidget *radio = gtk_grid_get_child_at(GTK_GRID(widget), 0, i + 2);

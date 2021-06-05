@@ -3,32 +3,17 @@
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
-/* Should we enable AROS support. */
-#undef AMIGA_AROS
-
-/* Should we enable M68K AmigaOS support. */
-#undef AMIGA_M68K
-
-/* Should we enable Amiga Morphos support. */
-#undef AMIGA_MORPHOS
-
-/* Should we enable AmigaOS4 support. */
-#undef AMIGA_OS4
-
-/* Should we enable Amigaos support. */
-#undef AMIGA_SUPPORT
-
 /* Are we compiling for either BeOS or Haiku? */
 #undef BEOS_COMPILE
 
 /* Enable support for BSD style joysticks. */
 #undef BSD_JOYSTICK
 
-/* Enable cegcc support. */
-#undef CEGCC_COMPILE
-
 /* Enable plain darwin compilation */
 #undef DARWIN_COMPILE
+
+/* External FFMPEG libraries are used */
+#undef EXTERNAL_FFMPEG
 
 /* Use the 65xx cpu history feature. */
 #undef FEATURE_CPUMEMHISTORY
@@ -51,9 +36,6 @@
 /* Define to 1 if you have the <alsa/asoundlib.h> header file. */
 #undef HAVE_ALSA_ASOUNDLIB_H
 
-/* Define to 1 if you have the <aros/_timeval.h> header file. */
-#undef HAVE_AROS__TIMEVAL_H
-
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
@@ -71,9 +53,6 @@
 
 /* Define to 1 if you have the <ByteOrder.h> header file. */
 #undef HAVE_BYTEORDER_H
-
-/* Enable Cairo rendering support */
-#undef HAVE_CAIRO
 
 /* Support for Catweasel MKIII. */
 #undef HAVE_CATWEASELMKIII
@@ -102,12 +81,12 @@
 /* Add native GTK3 UI debugging code. */
 #undef HAVE_DEBUG_GTK3UI
 
+/* Enable threading debug support */
+#undef HAVE_DEBUG_THREADS
+
 /* Define to 1 if you have the declaration of `sys_siglist', and to 0 if you
    don't. */
 #undef HAVE_DECL_SYS_SIGLIST
-
-/* Define to 1 if you have the <devices/ahi.h> header file. */
-#undef HAVE_DEVICES_AHI_H
 
 /* Define to 1 if you have the <dev/ppbus/ppbconf.h> header file. */
 #undef HAVE_DEV_PPBUS_PPBCONF_H
@@ -145,6 +124,12 @@
 
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
+
+/* External linking for lame libs */
+#undef HAVE_EXTERNAL_LAME
+
+/* This version provides FastSID support. */
+#undef HAVE_FASTSID
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
@@ -208,12 +193,6 @@
 
 /* Can we use the GIF or UNGIF library? */
 #undef HAVE_GIF
-
-/* GTK3 OpenGL support uses GLEW */
-#undef HAVE_GTK3_GLEW
-
-/* Enable OpenGL support in GTK3 UI */
-#undef HAVE_GTK3_OPENGL
 
 /* Support for HardSID. */
 #undef HAVE_HARDSID
@@ -407,7 +386,7 @@
 /* Enable netplay support */
 #undef HAVE_NETWORK
 
-/* Use the experimental new 8580 filter */
+/* Use the new 8580 filter */
 #undef HAVE_NEW_8580_FILTER
 
 /* Define to 1 if you have the `outb' function. */
@@ -446,14 +425,8 @@
 /* Define to 1 if you have the <process.h> header file. */
 #undef HAVE_PROCESS_H
 
-/* Define to 1 if you have the <proto/openpci.h> header file. */
-#undef HAVE_PROTO_OPENPCI_H
-
 /* Define to 1 if you have the <pulse/simple.h> header file. */
 #undef HAVE_PULSE_SIMPLE_H
-
-/* Enable QuickTime support. */
-#undef HAVE_QUICKTIME
 
 /* Define to 1 if you have the `random' function. */
 #undef HAVE_RANDOM
@@ -652,6 +625,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define if Unix domain sockets are supported */
+#undef HAVE_UNIX_DOMAIN_SOCKETS
+
 /* Define to 1 if you have the <usbhid.h> header file. */
 #undef HAVE_USBHID_H
 
@@ -687,6 +663,9 @@
 
 /* Define to 1 if `vfork' works. */
 #undef HAVE_WORKING_VFORK
+
+/* Support X64 images */
+#undef HAVE_X64_IMAGE
 
 /* Can we use the ZLIB compression library? */
 #undef HAVE_ZLIB
@@ -724,17 +703,14 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
-/* Enable morphos shared SDL library support. */
-#undef POWERSDL_AMIGA_INLINE
-
 /* Where do we want to install the executable? */
 #undef PREFIX
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
 
-/* Enable amiga shared SDL library support. */
-#undef SDL_AMIGA_INLINE
+/* Use Linux sandbox mode */
+#undef SANDBOX_MODE
 
 /* FFMPEG libraries are shared */
 #undef SHARED_FFMPEG
@@ -805,9 +781,6 @@
 /* Enable pulseaudio support. */
 #undef USE_PULSE
 
-/* Enable SDL2 prefix for header inclusion. */
-#undef USE_SDL2_PREFIX
-
 /* Enable SDL UI support. */
 #undef USE_SDLUI
 
@@ -823,14 +796,14 @@
 /* define when using the svn revision in addition to the version */
 #undef USE_SVN_REVISION
 
+/* UI and emu each on different threads */
+#undef USE_VICE_THREAD
+
 /* Enable ogg/vorbis support. */
 #undef USE_VORBIS
 
 /* Version number of package */
 #undef VERSION
-
-/* Where should we lookup for data files? */
-#undef VICEDIR
 
 /* Support for The Final Ethernet */
 #undef VICE_USE_LIBNET_1_1
@@ -850,9 +823,6 @@
 # endif
 #endif
 
-/* Define to 1 if aros can handle auto resolving of library bases. */
-#undef WORKING_AROS_AUTO
-
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
 #undef YYTEXT_POINTER
@@ -867,12 +837,6 @@
 
 /* Define for large files, on AIX-style hosts. */
 #undef _LARGE_FILES
-
-/* Define to `__inline__' or `__inline' if that's what the C compiler
-   calls it, or to nothing if 'inline' is not supported under any name.  */
-#ifndef __cplusplus
-#undef inline
-#endif
 
 /* Define to `long int' if <sys/types.h> does not define. */
 #undef off_t

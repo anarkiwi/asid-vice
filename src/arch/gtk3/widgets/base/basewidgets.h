@@ -37,6 +37,7 @@
 #include "cartimagewidget.h"
 #include "carthelpers.h"
 #include "clockportdevicewidget.h"
+#include "csshelpers.h"
 #include "resourcecheckbutton.h"
 #include "resourcecombobox.h"
 #include "resourceentry.h"

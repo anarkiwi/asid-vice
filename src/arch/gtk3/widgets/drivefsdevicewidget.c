@@ -47,30 +47,17 @@
 
 #include <gtk/gtk.h>
 
-#include "basewidgets.h"
-#include "widgethelpers.h"
-#include "debug_gtk3.h"
-#include "resources.h"
-#include "drive.h"
-#include "drive-check.h"
-#include "machine.h"
 #include "attach.h"
+#include "basewidgets.h"
+#include "debug_gtk3.h"
+#include "drive-check.h"
+#include "drive.h"
+#include "machine.h"
+#include "resources.h"
 #include "selectdirectorydialog.h"
+#include "widgethelpers.h"
 
 #include "drivefsdevicewidget.h"
-
-#if 0
-/** \brief  List of file system types
- */
-static const vice_gtk3_combo_entry_int_t device_types[] = {
-    { "None", ATTACH_DEVICE_NONE },
-    { "File system", ATTACH_DEVICE_FS },
-#ifdef HAVE_REALDEVICE
-    { "Real device (OpenCBM)", ATTACH_DEVICE_REAL },
-#endif
-    { NULL, -1 }
-};
-#endif
 
 
 /*
@@ -98,21 +85,6 @@ static void on_fsdir_browse_clicked(GtkWidget *widget, gpointer user_data)
 }
 
 
-#if 0
-/** \brief  Create a combo box with device types
- *
- * \param[in]   unit    unit number
- *
- * \return  GtkComboBoxText
- */
-static GtkWidget *create_device_type_widget(int unit)
-{
-    return vice_gtk3_resource_combo_box_int_new_sprintf(
-            "FileSystemDevice%d", device_types, unit);
-}
-#endif
-
-
 /** \brief  Create text entry for file system directory for \a unit
  *
  * \param[in]   unit    unit number
@@ -128,6 +100,7 @@ static GtkWidget *create_fsdir_entry_widget(int unit)
     entry = vice_gtk3_resource_entry_full_new(resource);
     gtk_widget_set_tooltip_text(entry,
             "Set the host OS directory to use as a virtual drive");
+    gtk_widget_set_hexpand(entry, TRUE);
     return entry;
 }
 
@@ -144,22 +117,30 @@ static GtkWidget *create_p00_widget(int unit)
     GtkWidget *p00_convert;
     GtkWidget *p00_only;
     GtkWidget *p00_save;
-    char resource[256];
 
     grid = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
 
-    g_snprintf(resource, 256, "FSDevice%dConvertP00", unit);
-    p00_convert = vice_gtk3_resource_check_button_new(resource, "Convert P00");
+    /* Label texts have been converted to shorter strings, using vice.texi
+     * So don't blame me.
+     */
+    p00_convert = vice_gtk3_resource_check_button_new_sprintf(
+            "FSDevice%dConvertP00",
+            "Access P00 files with their built-in filename",
+            unit);
     gtk_grid_attach(GTK_GRID(grid), p00_convert, 0, 0, 1, 1);
 
-    g_snprintf(resource, 256, "FSDevice%dSaveP00", unit);
-    p00_save = vice_gtk3_resource_check_button_new(resource, "Save P00");
-    gtk_grid_attach(GTK_GRID(grid), p00_save, 1, 0, 1, 1);
+    p00_save = vice_gtk3_resource_check_button_new_sprintf(
+            "FSDevice%dSaveP00",
+            "Create P00 files on save",
+            unit);
+    gtk_grid_attach(GTK_GRID(grid), p00_save, 0, 1, 1, 1);
 
-    g_snprintf(resource, 256, "FSDevice%dHideCBMFiles", unit);
-    p00_only = vice_gtk3_resource_check_button_new(resource, "Hide non-P00");
-    gtk_grid_attach(GTK_GRID(grid), p00_only, 2, 0, 1, 1);
+    p00_only = vice_gtk3_resource_check_button_new_sprintf(
+            "FSDevice%dHideCBMFiles",
+            "Only show P00 files",
+            unit);
+    gtk_grid_attach(GTK_GRID(grid), p00_only, 0, 2, 1, 1);
 
     gtk_widget_show_all(grid);
     return grid;
@@ -180,19 +161,13 @@ GtkWidget *drive_fsdevice_widget_create(int unit)
     GtkWidget *browse;
     GtkWidget *p00;
 
-    grid = uihelpers_create_grid_with_label("File system device settings", 3);
+    grid = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
-#if 0
-    label = gtk_label_new("device type");
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+
+    label = gtk_label_new("Directory");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-left", 16, NULL);
-    combo = create_device_type_widget(unit);
-    gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), combo, 1, 1, 2, 1);
-#endif
-    label = gtk_label_new("directory");
-    gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-left", 16, NULL);
+    g_object_set(label, "margin-left", 8, NULL);
     entry = create_fsdir_entry_widget(unit);
     browse = gtk_button_new_with_label("Browse ...");
     g_signal_connect(browse, "clicked", G_CALLBACK(on_fsdir_browse_clicked),

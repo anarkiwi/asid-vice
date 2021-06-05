@@ -40,9 +40,8 @@
 void ui_statusbar_init(void);
 void ui_statusbar_shutdown(void);
 
-GtkWidget *ui_statusbar_create(void);
+GtkWidget *ui_statusbar_create(int window_identity);
 
-void ui_display_speed(float percent, float framerate, int warp_flag);
 void ui_display_statustext(const char *text, int fadeout);
 
 gboolean ui_statusbar_crt_controls_enabled(GtkWidget *window);
@@ -50,5 +49,8 @@ gboolean ui_statusbar_mixer_controls_enabled(GtkWidget *window);
 
 
 void ui_statusbar_set_kbd_debug(gboolean state);
+
+GtkWidget *ui_statusbar_get_recording_widget(void);
+
 
 #endif

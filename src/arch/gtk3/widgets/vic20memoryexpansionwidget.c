@@ -61,11 +61,11 @@ typedef struct common_config_s {
 /** \brief  List of available RAM expansions
  */
 static const vice_gtk3_radiogroup_entry_t ram_blocks[] = {
-    { "Block 0 (3KB at $0400-$0FFF)", 0 },
-    { "Block 1 (8KB at $2000-$3FFF)", 1 },
-    { "Block 2 (8KB at $4000-$5FFF)", 2 },
-    { "Block 3 (8KB at $6000-$7FFF)", 3 },
-    { "Block 5 (8KB at $A000-$BFFF)", 5 },
+    { "Block 0 (3KiB at $0400-$0FFF)", 0 },
+    { "Block 1 (8KiB at $2000-$3FFF)", 1 },
+    { "Block 2 (8KiB at $4000-$5FFF)", 2 },
+    { "Block 3 (8KiB at $6000-$7FFF)", 3 },
+    { "Block 5 (8KiB at $A000-$BFFF)", 5 },
     VICE_GTK3_RADIOGROUP_ENTRY_LIST_END
 };
 
@@ -76,10 +76,10 @@ static const vice_gtk3_radiogroup_entry_t ram_blocks[] = {
  */
 static const common_config_t common_configs[] = {
     { "No expansion memory",    { 0, 0, 0, 0, 0 } },
-    { "3KB (block 0)",          { 1, 0, 0, 0, 0 } },
-    { "8KB (block 1)",          { 0, 1, 0, 0, 0 } },
-    { "12KB (block 1/2)",       { 0, 1, 1, 0, 0 } },
-    { "16KB (block 1/2/3)",     { 0, 1, 1, 1, 0 } },
+    { "3KiB (block 0)",         { 1, 0, 0, 0, 0 } },
+    { "8KiB (block 1)",         { 0, 1, 0, 0, 0 } },
+    { "12KiB (block 1/2)",      { 0, 1, 1, 0, 0 } },
+    { "16KiB (block 1/2/3)",    { 0, 1, 1, 1, 0 } },
     { "All (block 0/1/2/3/5)",  { 1 ,1 ,1 ,1 ,1 } },
     { NULL,                     { 0, 0, 0, 0, 0 } }
 };
@@ -237,8 +237,10 @@ static GtkWidget * vic20_common_config_widget_create(void)
     GtkWidget *grid;
     int i;
 
-    grid = uihelpers_create_grid_with_label("Common configurations", 1);
-
+    grid = vice_gtk3_grid_new_spaced_with_label(
+            -1, -1,
+            "Common configurations",
+            1);
     configs_combo = gtk_combo_box_text_new();
     g_object_set(configs_combo, "margin-left", 16, NULL);
     for (i = 0; common_configs[i].text != NULL; i++) {
@@ -263,7 +265,11 @@ static GtkWidget * vic20_ram_blocks_widget_create(void)
     GtkWidget *grid;
     int i;
 
-    grid = uihelpers_create_grid_with_label("RAM blocks", 1);
+    grid = vice_gtk3_grid_new_spaced_with_label(
+            -1, -1,
+            "RAM blocks",
+            1);
+
     for (i = 0; ram_blocks[i].name != NULL; i++) {
 
         GtkWidget *check = gtk_check_button_new_with_label(ram_blocks[i].name);
@@ -295,7 +301,10 @@ GtkWidget *vic20_memory_expansion_widget_create(void)
     GtkWidget *common;
     int cfg_idx;
 
-    grid = uihelpers_create_grid_with_label("Memory expansions", 1);
+    grid = vice_gtk3_grid_new_spaced_with_label(
+            -1, -1,
+            "Memory expansions",
+            1);
 
     common = vic20_common_config_widget_create();
     g_object_set(common, "margin-left", 16, NULL);

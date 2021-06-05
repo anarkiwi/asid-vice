@@ -53,6 +53,7 @@
 #include "expertwidget.h"
 #include "isepicwidget.h"
 #include "gmod2widget.h"
+#include "gmod3widget.h"
 #include "mmcrwidget.h"
 #include "mmc64widget.h"
 #include "retroreplaywidget.h"
@@ -72,7 +73,7 @@
  */
 static const char *c64scpu_model_list[] = {
     "C64 PAL", "C64C PAL", "C64 old PAL",
-    "C64 NTSC", "C64C NTSC" "C64 old NTSC",
+    "C64 NTSC", "C64C NTSC", "C64 old NTSC",
     "Drean",
     "C64 SX PAL", "C64 SX NTSC",
     "Japanese", "C64 GS",
@@ -162,13 +163,13 @@ int scpu64ui_init(void)
             cartridge_can_save_image,
             cartridge_can_flush_image);
 
-    /* uicart_set_detect_func(cartridge_detect); only cbm2/plus4 */
-    uicart_set_list_func(cartridge_get_info_list);
-    uicart_set_attach_func(cartridge_attach_image);
-    uicart_set_freeze_func(cartridge_trigger_freeze);
-    uicart_set_detach_func(cartridge_detach_image);
-    uicart_set_set_default_func(cartridge_set_default);
-    uicart_set_unset_default_func(cartridge_unset_default);
+    /* ui_cart_set_detect_func(cartridge_detect); only cbm2/plus4 */
+    ui_cart_set_list_func(cartridge_get_info_list);
+    ui_cart_set_attach_func(cartridge_attach_image);
+    ui_cart_set_freeze_func(cartridge_trigger_freeze);
+    ui_cart_set_detach_func(cartridge_detach_image);
+    ui_cart_set_set_default_func(cartridge_set_default);
+    ui_cart_set_unset_default_func(cartridge_unset_default);
 
     /* set C64 model_get function */
     settings_model_widget_set_model_func(c64model_get);

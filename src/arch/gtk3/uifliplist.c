@@ -46,6 +46,13 @@
 #define MSGBUF_SIZE 1024
 
 
+/** \brief  Callback to add current image to the fliplist
+ *
+ * \param[in]   widget  widget triggering the event (unused)
+ * \param[in]   data    drive unit
+ *
+ * \return  TRUE to indicate the event has been handled
+ */
 gboolean ui_fliplist_add_current_cb(GtkWidget *widget, gpointer data)
 {
     int unit = GPOINTER_TO_INT(data);
@@ -153,6 +160,11 @@ gboolean ui_fliplist_prev_cb(GtkWidget *widget, gpointer data)
 }
 
 
+/** \brief  Handler for attaching an image from the fliplist
+ *
+ * \param[in]   widget  widget triggering the event
+ * \param[in]   data    unit number and file index
+ */
 static void ui_fliplist_select_cb(GtkWidget *widget, gpointer data)
 {
     int unit = GPOINTER_TO_INT(data) & 0xff;
@@ -161,7 +173,7 @@ static void ui_fliplist_select_cb(GtkWidget *widget, gpointer data)
     if (index == 0) {
         fliplist_t list = fliplist_init_iterate(unit);
         const char *image = fliplist_get_image(list);
-        file_system_attach_disk(unit, image);
+        file_system_attach_disk(unit, 0, image);
     } else {
         for (i = 0; i < index; ++i) {
             fliplist_attach_head(unit, 1);
@@ -281,7 +293,16 @@ void ui_populate_fliplist_menu(GtkWidget *menu, int unit, int separator_count)
     }
 }
 
-static void fliplist_load_response(GtkWidget *widget, gint response_id, gpointer user_data)
+
+/** \brief  Handler for the 'response' event of the 'load fliplist' dialog
+ *
+ * \param[in]   widget      dialog
+ * \param[in]   response_id response ID
+ * \param[in]   user_data   unit number
+ */
+static void fliplist_load_response(GtkWidget *widget,
+                                   gint response_id,
+                                   gpointer user_data)
 {
     int unit = GPOINTER_TO_INT(user_data);
     gchar *filename;
@@ -335,7 +356,16 @@ gboolean ui_fliplist_load_callback(GtkWidget *parent, gpointer data)
     return TRUE;
 }
 
-static void fliplist_save_response(GtkWidget *widget, gint response_id, gpointer user_data)
+
+/** \brief  Handler for the 'response' event of the 'save fliplist' dialog
+ *
+ * \param[in]   widget      dialog
+ * \param[in]   response_id response ID
+ * \param[in]   user_data   unit number
+ */
+static void fliplist_save_response(GtkWidget *widget,
+                                   gint response_id,
+                                   gpointer user_data)
 {
     int unit = GPOINTER_TO_INT(user_data);
     gchar *filename;
@@ -351,6 +381,7 @@ static void fliplist_save_response(GtkWidget *widget, gint response_id, gpointer
     }
     gtk_widget_destroy(widget);
 }
+
 
 /** \brief   Create and show the "save fliplist" dialog.
  *

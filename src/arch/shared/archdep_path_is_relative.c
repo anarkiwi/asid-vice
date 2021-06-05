@@ -32,7 +32,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "archdep_atexit.h"
+#include "archdep_exit.h"
 #include "log.h"
 
 #include "archdep_path_is_relative.h"
@@ -50,11 +50,9 @@ int archdep_path_is_relative(const char *path)
         return 1;   /* yup, */
     }
 
-#if defined(AMIGA_SUPPORT)
-    return strchr(path, ':') == NULL;
-#elif defined(UNIX_COMPILE) || defined(BEOS_COMPILE)
+#if defined(UNIX_COMPILE) || defined(BEOS_COMPILE)
     return *path != '/';
-#elif defined(WIN32_COMPILE) || defined(OS2_COMPILE)
+#elif defined(WIN32_COMPILE)
     if (*path == '\\' || *path == '/') {
         return 0;
     }

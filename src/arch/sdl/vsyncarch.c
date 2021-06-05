@@ -71,16 +71,10 @@ void vsyncarch_init(void)
 #endif
 }
 
-/* Display speed (percentage) and frame rate (frames per second). */
-void vsyncarch_display_speed(double speed, double frame_rate, int warp_enabled)
-{
-    ui_display_speed((float)speed, (float)frame_rate, warp_enabled);
-}
-
 /* Sleep a number of timer units. */
 void vsyncarch_sleep(unsigned long delay)
 {
-    SDL_Delay(delay / VICE_SDL_TICKS_SCALE);
+    SDL_Delay((int)(delay / VICE_SDL_TICKS_SCALE));
 }
 
 void vsyncarch_presync(void)
@@ -104,7 +98,6 @@ void vsyncarch_presync(void)
     }
 
     sdl_lightpen_update();
-    kbdbuf_flush();
 
 #ifdef USE_SDLUI2
     if (!console_mode) {
@@ -115,8 +108,6 @@ void vsyncarch_presync(void)
 
 void vsyncarch_postsync(void)
 {
-    /* (*ui_dispatch_hook)(); */ /* ? */
-
     /* this function is called once a frame, so this
        handles single frame advance */
     if (pause_pending) {

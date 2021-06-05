@@ -31,10 +31,103 @@
 #include "debug_gtk3.h"
 #include "filechooserhelpers.h"
 #include "ui.h"
+#include "mainlock.h"
 
 #include "savefiledialog.h"
 
 
+/** \brief  Callback for the "response" event
+ */
+static void (*filename_cb)(GtkDialog *, char *, gpointer);
+
+
+/** \brief  Handler for the dialog's "response" event
+ *
+ * \param[in,out]   dialog      save-file dialog
+ * \param[in]       response_id response ID
+ * \param[in]       data        extra data to pass to the user callback
+ */
+static void on_response(GtkDialog *dialog, gint response_id, gpointer data)
+{
+    gchar *filename;
+
+    debug_gtk3("Got response ID %d\n", (int)response_id);
+    switch (response_id) {
+        case GTK_RESPONSE_ACCEPT:
+            filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+            if (filename != NULL) {
+                debug_gtk3("Calling callback with '%s'\n", filename);
+                filename_cb(dialog, filename, data);
+            }
+            break;
+        default:
+            filename_cb(dialog, NULL, data);
+            break;
+    }
+}
+
+
+
+
+#ifndef SANDBOX_MODE
+/** \brief  Create a 'save file' dialog
+ *
+ * \param[in]   title       dialog title
+ * \param[in]   proposed    proposed file name (optional)
+ * \param[in]   confirm     confirm overwriting an existing file
+ * \param[in]   path        set starting directory (optional)
+ * \param[in]   callback    function to call on dialog response
+ * \param[in]   param       extra data to pass to callback (optional)
+ *
+ * \return  new dialog
+ *
+ * \note    the filename returned is allocated by GLib and needs to be freed
+ *          after use with g_free()
+ */
+GtkWidget *vice_gtk3_save_file_dialog(
+        const char *title,
+        const char *proposed,
+        gboolean confirm,
+        const char *path,
+        void (*callback)(GtkDialog *, char *, gpointer),
+        gpointer param)
+{
+    GtkWidget *dialog;
+
+    filename_cb = callback;
+
+    mainlock_assert_is_not_vice_thread();
+
+    dialog = gtk_file_chooser_dialog_new(
+            title,
+            ui_get_active_window(),
+            GTK_FILE_CHOOSER_ACTION_SAVE,
+            "Save", GTK_RESPONSE_ACCEPT,
+            "Cancel", GTK_RESPONSE_REJECT,
+            NULL);
+
+    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+    gtk_window_set_transient_for(GTK_WINDOW(dialog), ui_get_active_window());
+
+    /* set overwrite confirmation */
+    gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog),
+            confirm);
+
+    /* set proposed file name, if any */
+    if (proposed != NULL && *proposed != '\0') {
+        gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), proposed);
+    }
+
+    /* change directory if specified */
+    if (path != NULL && *path != '\0') {
+        gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), path);
+    }
+
+    g_signal_connect(dialog, "response", G_CALLBACK(on_response), param);
+    gtk_widget_show(dialog);
+    return dialog;
+}
+#else
 /** \brief  Create a 'save file' dialog
  *
  * \param[in]   title       dialog title
@@ -51,40 +144,28 @@ gchar *vice_gtk3_save_file_dialog(
         const char *title,
         const char *proposed,
         gboolean confirm,
-        const char *path)
+        const char *path,
+        void (*callback)(char *))
 {
-    GtkWidget *dialog;
+    GtkFileChooserNative *dialog;
     gint result;
     gchar *filename;
 
-    dialog = gtk_file_chooser_dialog_new(
+    debug_gtk3("Warning: Using the GtkFileChooserNative!");
+
+    dialog = gtk_file_chooser_native_new(
             title,
             ui_get_active_window(),
             GTK_FILE_CHOOSER_ACTION_SAVE,
-            "Save", GTK_RESPONSE_ACCEPT,
-            "Cancel", GTK_RESPONSE_REJECT,
-            NULL);
+            NULL, NULL);
 
-    /* set overwrite confirmation */
-    gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog),
-            confirm);
-
-    /* set proposed file name, if any */
-    if (proposed != NULL && *proposed != '\0') {
-        gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), proposed);
-    }
-
-    /* change directory if specified */
-    if (path != NULL && *path != '\0') {
-        gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), path);
-    }
-
-    result = gtk_dialog_run(GTK_DIALOG(dialog));
+    result = gtk_native_dialog_run(GTK_NATIVE_DIALOG(dialog));
     if (result == GTK_RESPONSE_ACCEPT) {
         filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
     } else {
         filename = NULL;
     }
-    gtk_widget_destroy(dialog);
+    g_object_unref(dialog);
     return filename;
 }
+#endif

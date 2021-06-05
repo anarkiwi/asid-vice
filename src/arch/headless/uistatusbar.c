@@ -208,7 +208,8 @@ void ui_display_tape_current_image(const char *image)
  *  \todo   The statusbar API does not yet support dual-unit disk
  *          drives.
  */
-void ui_display_drive_led(int drive_number,
+void ui_display_drive_led(unsigned int drive_number,
+                          unsigned int drive_base,
                           unsigned int pwm1,
                           unsigned int led_pwm2)
 {
@@ -241,7 +242,7 @@ void ui_display_drive_track(unsigned int drive_number,
  *                         whether or not drives 8-11 respectively are
  *                         being emulated carefully enough to provide
  *                         LED information.
- *  \param drive_led_color An array of size at least DRIVE_NUM that
+ *  \param drive_led_color An array of size at least NUM_DISK_UNITS that
  *                         provides information about the LEDs on this
  *                         drive. An element of this array will only
  *                         be checked if the corresponding bit in
@@ -267,24 +268,13 @@ void ui_enable_drive_status(ui_drive_enable_t state, int *drive_led_color)
 /** \brief  Statusbar API function to report mounting or unmounting of
  *          a disk image.
  *
- *  \param  drive_number    0-3 to represent drives at device 8-11.
+ *  \param  unit_number     0-3 to represent disk units at device 8-11.
+ *  \param  drive_number    0-1 to represent the drives in a unit
  *  \param  image           The filename of the disk image (if mounted),
  *                          or the empty string or NULL (if unmounting).
  *  \todo This API is insufficient to describe drives with two disk units.
  */
-void ui_display_drive_current_image(unsigned int drive_number, const char *image)
-{
-    /* printf("%s\n", __func__); */
-}
-
-
-/** \brief  Statusbar API to display emulation speed, framerate and warp mode
- *
- * \param[in]   percent     emulation speed in percentage
- * \param[in]   framerate   framerate in frames per second
- * \param[in]   warp_flag   warp mode is enabled
- */
-void ui_display_speed(float percent, float framerate, int warp_flag)
+void ui_display_drive_current_image(unsigned int unit_number, unsigned int drive_number, const char *image)
 {
     /* printf("%s\n", __func__); */
 }

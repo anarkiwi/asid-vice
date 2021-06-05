@@ -41,9 +41,15 @@ static UI_MENU_CALLBACK(monitor_callback)
         if (sdl_menu_state) {
             monitor_startup(e_default_space);
         } else {
-            /* The monitor was activated with a hotkey.
-               In this case, the trap is needed for the machine state to be
-               properly imported. */
+            /* The monitor was activated with a hotkey. */
+            /* we must remember the pause state and unpause, else we can not
+               enter the monitor when the emulation is paused */
+            sdl_pause_state = ui_pause_active();
+            if (sdl_pause_state) {
+                sdl_ui_create_draw_buffer_backup();
+                ui_pause_disable();
+            }
+            /* The trap is needed for the machine state to be properly imported. */
             monitor_startup_trap();
         }
         return sdl_menu_text_exit_ui;
@@ -53,15 +59,22 @@ static UI_MENU_CALLBACK(monitor_callback)
 
 #ifdef ALLOW_NATIVE_MONITOR
 UI_MENU_DEFINE_TOGGLE(NativeMonitor)
+UI_MENU_DEFINE_TOGGLE(RefreshOnBreak)
 #endif
 
 #ifdef HAVE_NETWORK
 UI_MENU_DEFINE_TOGGLE(MonitorServer)
 UI_MENU_DEFINE_STRING(MonitorServerAddress)
+UI_MENU_DEFINE_TOGGLE(BinaryMonitorServer)
+UI_MENU_DEFINE_STRING(BinaryMonitorServerAddress)
 #endif
 
 UI_MENU_DEFINE_TOGGLE(MonitorLogEnabled)
 UI_MENU_DEFINE_STRING(MonitorLogFileName)
+
+#ifdef FEATURE_CPUMEMHISTORY
+UI_MENU_DEFINE_INT(MonitorChisLines)
+#endif
 
 const ui_menu_entry_t monitor_menu[] = {
     { "Start monitor",
@@ -72,6 +85,10 @@ const ui_menu_entry_t monitor_menu[] = {
     { "Native monitor",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_NativeMonitor_callback,
+      NULL },
+    { "Refresh display after command",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_RefreshOnBreak_callback,
       NULL },
 #endif
 #ifdef HAVE_NETWORK
@@ -85,6 +102,16 @@ const ui_menu_entry_t monitor_menu[] = {
       MENU_ENTRY_RESOURCE_STRING,
       string_MonitorServerAddress_callback,
       (ui_callback_data_t)"Set remote monitor server address" },
+    SDL_MENU_ITEM_SEPARATOR,
+    SDL_MENU_ITEM_TITLE("Binary remote monitor"),
+    { "Enable binary remote monitor",
+      MENU_ENTRY_RESOURCE_TOGGLE,
+      toggle_BinaryMonitorServer_callback,
+      NULL },
+    { "Monitor address",
+      MENU_ENTRY_RESOURCE_STRING,
+      string_BinaryMonitorServerAddress_callback,
+      (ui_callback_data_t)"Set remote binary monitor server address" },
 #endif
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("Logging"),
@@ -95,7 +122,15 @@ const ui_menu_entry_t monitor_menu[] = {
     { "Logfile name",
       MENU_ENTRY_RESOURCE_STRING,
       string_MonitorLogFileName_callback,
-      (ui_callback_data_t)"Set remote monitor server address" },
+      (ui_callback_data_t)"Set monitor logfile" },
+#ifdef FEATURE_CPUMEMHISTORY
+    SDL_MENU_ITEM_SEPARATOR,
+    SDL_MENU_ITEM_TITLE("CPU History"),
+    { "Number of lines",
+      MENU_ENTRY_RESOURCE_INT,
+      int_MonitorChisLines_callback,
+      (ui_callback_data_t)"Set number of lines in CPU history" },
+#endif
     SDL_MENU_LIST_END
 };
 

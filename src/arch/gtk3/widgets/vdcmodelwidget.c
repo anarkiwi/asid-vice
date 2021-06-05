@@ -120,7 +120,7 @@ static GtkWidget *create_64kb_widget(void)
     GtkWidget *check;
 
     check = vice_gtk3_resource_check_button_new(
-            "VDC64KB", "Enable 64KB video ram");
+            "VDC64KB", "Enable 64KiB video ram");
     g_object_set(check, "margin-left", 16, NULL);
     return check;
 }
@@ -187,10 +187,14 @@ void vdc_model_widget_update(GtkWidget *widget)
 
         while ((radio = gtk_grid_get_child_at(
                         GTK_GRID(rev_widget), 0, i)) != NULL) {
+#if 0
             debug_gtk3("index = %d, i = %d.", index, i);
+#endif
             if (GTK_IS_RADIO_BUTTON(radio)) {
                 if (i == index) {
+#if 0
                     debug_gtk3("setting toggle button.");
+#endif
                     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio),
                             TRUE);
                     break;
@@ -205,7 +209,7 @@ void vdc_model_widget_update(GtkWidget *widget)
 
     /* update the 16/64 KB widget */
     resources_get_int("VDC64KB", &ram);
-    debug_gtk3("Got 64KB VDC RAM: %s.", ram ? "TRUE" : "FALSE");
+    debug_gtk3("Got 64KiB VDC RAM: %s.", ram ? "TRUE" : "FALSE");
     ram_widget = gtk_grid_get_child_at(GTK_GRID(widget), 0, 1);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(ram_widget), ram);
 
@@ -226,9 +230,13 @@ void vdc_model_widget_connect_signals(GtkWidget *widget)
     grid = gtk_grid_get_child_at(GTK_GRID(widget), 0, 2);
     while ((radio = gtk_grid_get_child_at(
                     GTK_GRID(grid), 0, i)) != NULL) {
+#if 0
         debug_gtk3("Connection signsal handler %d", i);
+#endif
         if (GTK_IS_RADIO_BUTTON(radio)) {
+#if 0
             debug_gtk3("IS RADIO");
+#endif
             g_signal_connect(radio, "toggled", G_CALLBACK(on_revision_toggled),
                     GINT_TO_POINTER(vdc_revs[i].id));
         }

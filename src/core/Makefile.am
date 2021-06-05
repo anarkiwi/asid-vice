@@ -9,6 +9,9 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
+AM_LDFLAGS = @VICE_LDFLAGS@
+
+
 noinst_LIBRARIES = libcore.a
 
 libcore_a_SOURCES = \
@@ -22,6 +25,8 @@ libcore_a_SOURCES = \
 	flash040core.c \
 	fmopl.c \
 	fmopl.h \
+	i8255a.c \
+	i8255a.h \
 	mc6821core.c \
 	mc6821core.h \
 	m93c86.c \
@@ -29,6 +34,10 @@ libcore_a_SOURCES = \
 	riotcore.c \
 	ser-eeprom.c \
 	ser-eeprom.h \
+	scsi.c \
+	scsi.h \
+	spi-flash.c \
+	spi-flash.h \
 	spi-sdcard.c \
 	spi-sdcard.h \
 	t6721.c \

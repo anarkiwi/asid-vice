@@ -169,7 +169,7 @@ static void sdl_ui_display_path(const char *current_dir)
     int amount = 0;
     int i;
 
-    len = strlen(current_dir);
+    len = (int)strlen(current_dir);
 
     if (len > menu_draw->max_text_x) {
         text = lib_strdup(current_dir);
@@ -718,7 +718,7 @@ char* sdl_ui_slot_selection_dialog(const char* title, ui_menu_slot_mode_t mode)
         *temp_name = 0;
     }
     for (i = 0; i < total; ++i) {
-        unsigned int len;
+        size_t len;
         unsigned int isdir;
 
         slots->entries[i].slot_name = lib_msprintf("snapshot_%s_%02d.vsf", progname, i + 1);

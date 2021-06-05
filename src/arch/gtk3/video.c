@@ -58,6 +58,9 @@ static int keepaspect = 0;
 /** \brief  Use true aspect ratio */
 static int trueaspect = 0;
 
+/** \brief  Prevent screen tearing */
+static int vsync = 1;
+
 /** \brief  Display depth in bits (8, 15, 16, 24, 32) */
 static int display_depth = 24;
 
@@ -66,6 +69,11 @@ static int display_filter = 1;
 
 /** \brief  Render Backend (0: Software 1: OpenGL) */
 static int render_backend = 1;
+
+
+/** \brief  Restore window geometry when booting emu
+ */
+static int restore_window_geometry = 0;
 
 
 /** \brief  Set KeepAspectRatio resource (bool)
@@ -101,6 +109,23 @@ static int set_trueaspect(int val, void *param)
     return 0;
 }
 
+
+/** \brief  Set VSync resource (bool)
+ *
+ * The display will be updated to reflect any changes this makes.
+ *
+ * \param[in]   val     new value
+ * \param[in]   param   extra parameter (unused)
+ *
+ * \return 0
+ */
+static int set_vsync(int val, void *param)
+{
+    vsync = val ? 1 : 0;
+    return 0;
+}
+
+
 /** \brief Set the display color depth.
  *  \param     val   new color depth
  *  \param[in] param extra parameter (unused).
@@ -128,6 +153,7 @@ static int set_display_filter(int val, void *param)
     return 0;
 }
 
+
 /** \brief Set the backend for rendering
  *  \param     val   new backend (0: software, 1: opengl)
  *  \param[in] param extra parameter (unused).
@@ -135,9 +161,22 @@ static int set_display_filter(int val, void *param)
  */
 static int set_render_backend(int val, void *param)
 {
+#if 0
     render_backend = val ? 1 : 0;
+#else
+    render_backend = 1; /* always dx / gl now */
+#endif
     return 0;
 }
+
+
+static int set_window_restore_geometry(int val, void *param)
+{
+    restore_window_geometry = val ? 1 : 0;
+    return 0;
+}
+
+
 
 /** \brief  Command line options related to generic video output
  */
@@ -155,12 +194,41 @@ static const cmdline_option_t cmdline_options[] =
     { "+keepaspect", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
       NULL, NULL, "KeepAspectRatio", (resource_value_t)0,
       NULL, "Do not keep aspect ratio when scaling (freescale)" },
+    { "-vsync", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+      NULL, NULL, "VSync", (resource_value_t)1,
+      NULL, "Enable vsync to prevent screen tearing" },
+    { "+vsync", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+      NULL, NULL, "VSync", (resource_value_t)0,
+      NULL, "Disable vsync to allow screen tearing" },
     { "-gtkfilter", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
       NULL, NULL, "GTKFilter", NULL,
       "<mode>", "Set filtering mode (0 = nearest, 1 = bilinear)" },
     { "-gtkbackend", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
       NULL, NULL, "GTKBackend", NULL,
       "<mode>", "Set rendering mode (0 = Software, 1 = OpenGL)" },
+    { "-restore-window-geometry", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+      NULL, NULL, "RestoreWindowGeometry", (resource_value_t)1,
+      NULL, "Restore window geometry from resources" },
+    { "+restore-window-geometry", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+      NULL, NULL, "RestoreWindowGeometry", (resource_value_t)0,
+      NULL, "Do not restore window geometry from resources" },
+
+
+    CMDLINE_LIST_END
+};
+
+
+/** \brief  Command line options related VSID
+ */
+static const cmdline_option_t cmdline_options_vsid[] =
+{
+    { "-restore-window-geometry", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+      NULL, NULL, "RestoreWindowGeometry", (resource_value_t)1,
+      NULL, "Restore window geometry from resources" },
+    { "+restore-window-geometry", SET_RESOURCE, CMDLINE_ATTRIB_NONE,
+      NULL, NULL, "RestoreWindowGeometry", (resource_value_t)0,
+      NULL, "Do not restore window geometry from resources" },
+
     CMDLINE_LIST_END
 };
 
@@ -172,14 +240,28 @@ static const resource_int_t resources_int[] = {
       &keepaspect, set_keepaspect, NULL },
     { "TrueAspectRatio", 1, RES_EVENT_NO, NULL,
       &trueaspect, set_trueaspect, NULL },
+    { "VSync", 1, RES_EVENT_NO, NULL,
+      &vsync, set_vsync, NULL },
     { "DisplayDepth", 0, RES_EVENT_NO, NULL,
       &display_depth, set_display_depth, NULL },
     { "GTKFilter", 1, RES_EVENT_NO, NULL,
       &display_filter, set_display_filter, NULL },
     { "GTKBackend", 1, RES_EVENT_NO, NULL,
       &render_backend, set_render_backend, NULL },
+    { "RestoreWindowGeometry", 1, RES_EVENT_NO, NULL,
+      &restore_window_geometry, set_window_restore_geometry, NULL },
     RESOURCE_INT_LIST_END
 };
+
+
+/** \brief  Integer/boolean resources related to VSID
+ */
+static const resource_int_t resources_int_vsid[] = {
+    { "RestoreWindowGeometry", 1, RES_EVENT_NO, NULL,
+      &restore_window_geometry, set_window_restore_geometry, NULL },
+    RESOURCE_INT_LIST_END
+};
+
 
 /** \brief  Arch-specific initialization for a video canvas
  *  \param[inout] canvas The canvas being initialized
@@ -199,8 +281,9 @@ int video_arch_cmdline_options_init(void)
 {
     if (machine_class != VICE_MACHINE_VSID) {
         return cmdline_register_options(cmdline_options);
+    } else {
+        return cmdline_register_options(cmdline_options_vsid);
     }
-    return 0;
 }
 
 
@@ -212,8 +295,9 @@ int video_arch_resources_init(void)
 {
     if (machine_class != VICE_MACHINE_VSID) {
         return resources_register_int(resources_int);
+    } else {
+        return resources_register_int(resources_int_vsid);
     }
-    return 0;
 }
 
 /** \brief Clean up any memory held by arch-specific video resources. */
@@ -244,8 +328,12 @@ video_canvas_t *video_canvas_create(video_canvas_t *canvas,
                                     unsigned int *width, unsigned int *height,
                                     int mapped)
 {
-    canvas->initialized = 0;
-    canvas->created = 0;
+    pthread_mutexattr_t lock_attributes;
+        
+    pthread_mutexattr_init(&lock_attributes);
+    pthread_mutexattr_settype(&lock_attributes, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&canvas->lock, &lock_attributes);
+
     canvas->renderer_context = NULL;
     canvas->blank_ptr = NULL;
     canvas->pen_ptr = NULL;
@@ -261,7 +349,6 @@ video_canvas_t *video_canvas_create(video_canvas_t *canvas,
     ui_display_main_window(canvas->window_index);
 
     canvas->created = 1;
-    canvas->initialized = 1;
     return canvas;
 }
 
@@ -283,6 +370,8 @@ void video_canvas_destroy(struct video_canvas_s *canvas)
             g_object_unref(G_OBJECT(canvas->pen_ptr));
             canvas->pen_ptr = NULL;
         }
+
+        pthread_mutex_destroy(&canvas->lock);
     }
 }
 
@@ -324,7 +413,7 @@ void video_canvas_refresh(struct video_canvas_s *canvas,
 
 void video_canvas_resize(struct video_canvas_s *canvas, char resize_canvas)
 {
-    if (!canvas || !canvas->drawing_area) {
+    if (!canvas || !canvas->event_box) {
         return;
     } else {
         int new_width = canvas->draw_buffer->canvas_physical_width;
@@ -364,7 +453,7 @@ void video_canvas_adjust_aspect_ratio(struct video_canvas_s *canvas)
     }
 
     /* Finally alter our minimum size so the GUI may respect the new minima/maxima */
-    gtk_widget_set_size_request(canvas->drawing_area, width, height);
+    gtk_widget_set_size_request(canvas->event_box, width, height);
 }
 
 /** \brief Assign a palette to the canvas.

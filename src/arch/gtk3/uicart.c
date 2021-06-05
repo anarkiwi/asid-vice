@@ -52,10 +52,10 @@
 
 /** \brief  Enum with various cart types, independent from cartridge.h
  *
- * The #define's in cartridge.h don't provide the values I need, so this will
+ * The define's in cartridge.h don't provide the values I need, so this will
  * have to do.
  */
-typedef enum uicart_type_e {
+typedef enum ui_cart_type_e {
 
     /* C64 cart types */
     UICART_C64_SMART = 0,
@@ -96,7 +96,7 @@ typedef enum uicart_type_e {
     UICART_CBM2_16KB_4000,
     UICART_CBM2_16KB_6000
 
-} uicart_type_t;
+} ui_cart_type_t;
 
 
 /** \brief  Indici of filename patterns
@@ -117,6 +117,7 @@ typedef struct cart_type_list_s {
 } cart_type_list_t;
 
 
+#ifndef SANDBOX_MODE
 /** \brief  Available C64 cart types
  *
  * When the 'type' is freezer, games or utilities, a second combo box will
@@ -124,8 +125,8 @@ typedef struct cart_type_list_s {
  */
 static const cart_type_list_t c64_cart_types[] = {
     { "Smart-attach",   UICART_C64_SMART },
-    { "Raw 8KB",        UICART_C64_8KB },
-    { "Raw 16KB",       UICART_C64_16KB },
+    { "Raw 8KiB",       UICART_C64_8KB },
+    { "Raw 16iKB",      UICART_C64_16KB },
     { "Raw Ultimax",    UICART_C64_ULTIMAX },
     { "Freezer",        UICART_C64_FREEZER },
     { "Games",          UICART_C64_GAME },
@@ -134,6 +135,10 @@ static const cart_type_list_t c64_cart_types[] = {
 };
 
 
+/** \brief  List of VIC-20 'main' cart types
+ *
+ * The generic type will use the generic carts list in #vic20_cart_types_generic
+ */
 static const cart_type_list_t vic20_cart_types[] = {
     { "Smart-attach",               UICART_VIC20_SMART },
     { "Behr Bonz",                  UICART_VIC20_BEHRBONZ },
@@ -146,44 +151,53 @@ static const cart_type_list_t vic20_cart_types[] = {
     { NULL, -1 }
 };
 
+
+/** \brief  List of Plus4/C16/C116 cart types
+ */
 static const cart_type_list_t plus4_cart_types[] = {
     { "Smart-attach",               UICART_PLUS4_SMART },
     { "NewROM",                     UICART_PLUS4_NEWROM },
-    { "16k C0 Low",                 UICART_PLUS4_16KB_C0LO },
-    { "16k C0 High",                UICART_PLUS4_16KB_C0HI },
-    { "16k C1 Low",                 UICART_PLUS4_16KB_C1LO },
-    { "16k C1 High",                UICART_PLUS4_16KB_C1HI },
-    { "16k C2 Low",                 UICART_PLUS4_16KB_C2LO },
-    { "16k C2 High",                UICART_PLUS4_16KB_C2HI },
-    { "32k C0",                     UICART_PLUS4_32KB_C0 },
-    { "32k C1",                     UICART_PLUS4_32KB_C1 },
-    { "32k C2",                     UICART_PLUS4_32KB_C2 },
+    { "16KiB C0 Low",               UICART_PLUS4_16KB_C0LO },
+    { "16KiB C0 High",              UICART_PLUS4_16KB_C0HI },
+    { "16KiB C1 Low",               UICART_PLUS4_16KB_C1LO },
+    { "16KiB C1 High",              UICART_PLUS4_16KB_C1HI },
+    { "16KiB C2 Low",               UICART_PLUS4_16KB_C2LO },
+    { "16KiB C2 High",              UICART_PLUS4_16KB_C2HI },
+    { "32KiB C0",                   UICART_PLUS4_32KB_C0 },
+    { "32KiB C1",                   UICART_PLUS4_32KB_C1 },
+    { "32KiB C2",                   UICART_PLUS4_32KB_C2 },
     { NULL, -1 }
 };
 
+
+/** \brief  List of CBM-II cart types
+ */
 static const cart_type_list_t cbm2_cart_types[] = {
     /*{ "Smart-attach",               UICART_CBM2_SMART },*/
-    { "8k at $1000",                UICART_CBM2_8KB_1000 },
-    { "8k at $2000",                UICART_CBM2_8KB_2000 },
-    { "16k at $4000",               UICART_CBM2_16KB_4000 },
-    { "16k at $6000",               UICART_CBM2_16KB_6000 },
+    { "8KiB at $1000",              UICART_CBM2_8KB_1000 },
+    { "8KiB at $2000",              UICART_CBM2_8KB_2000 },
+    { "16KiB at $4000",             UICART_CBM2_16KB_4000 },
+    { "16KiB at $6000",             UICART_CBM2_16KB_6000 },
     { NULL, -1 }
 };
 
 
+/** \brief  List of VIC-20 cart types of the 'generic' variety
+ */
 static const cart_type_list_t vic20_cart_types_generic[] = {
-    { "Add smart-attach cartridge image",   CARTRIDGE_VIC20_DETECT },
-    { "Add 4/8/16KB cartridge at $2000",    CARTRIDGE_VIC20_16KB_2000 },
-    { "Add 4/8/16KB cartridge at $4000",    CARTRIDGE_VIC20_16KB_4000 },
-    { "Add 4/8/16KB cartridge at $6000",    CARTRIDGE_VIC20_16KB_6000 },
-    { "Add 4/8KB cartridge at $A000",       CARTRIDGE_VIC20_8KB_A000 },
-    { "Add 4KB cartridge at $B000",         CARTRIDGE_VIC20_4KB_B000 },
+    { "Smart-attach cartridge image",   CARTRIDGE_VIC20_DETECT },
+    { "32KiB cartridge at $2000",       CARTRIDGE_VIC20_32KB_2000 },
+    { "4/8/16KiB cartridge at $2000",   CARTRIDGE_VIC20_16KB_2000 },
+    { "4/8/16KiB cartridge at $4000",   CARTRIDGE_VIC20_16KB_4000 },
+    { "4/8/16KiB cartridge at $6000",   CARTRIDGE_VIC20_16KB_6000 },
+    { "4/8KiB cartridge at $A000",      CARTRIDGE_VIC20_8KB_A000 },
+    { "4KiB cartridge at $B000",        CARTRIDGE_VIC20_4KB_B000 },
     { NULL, -1 }
 };
+#endif
 
 
-
-
+#ifndef SANDBOX_MODE
 /** \brief  File filter pattern for CRT images */
 static const char *pattern_crt[] = { "*.crt", NULL };
 
@@ -193,9 +207,10 @@ static const char *pattern_bin[] = { "*.bin", NULL };
 
 /** \brief  File filter pattern for raw images */
 static const char *pattern_bin_prg[] = { "*.bin", "*.prg", NULL };
+#endif
 
 
-
+#ifndef SANDBOX_MODE
 /** \brief  File type filters for the dialog
  */
 static ui_file_filter_t filters[] = {
@@ -205,42 +220,126 @@ static ui_file_filter_t filters[] = {
     { "All files", file_chooser_pattern_all },
     { NULL, NULL }
 };
+#endif
 
 
 /** \brief  Last used directory
  */
 static gchar *last_dir = NULL;
+static gchar *last_file = NULL;
 
 
 /* list of cartridge handling functions (to avoid vsid link errors) */
+
+/** \brief  Machine-specific cart type detection function pointer */
 static int  (*crt_detect_func)(const char *filename) = NULL;
+
+/** \brief  Machine-specific cart attach function pointer */
 static int  (*crt_attach_func)(int type, const char *filename) = NULL;
+
+/** \brief  Machine-specific cart freeze function pointer */
 static void (*crt_freeze_func)(void) = NULL;
+
+/** \brief  Machine-specific cart detach function pointer */
 static void (*crt_detach_func)(int type) = NULL;
+
+/** \brief  Machine-specific cart info retrieval function pointer */
 static cartridge_info_t *(*crt_list_func)(void) = NULL;
+
+/** \brief  Machine-specific cart set-default function pointer */
 static void (*crt_set_default_func)(void) = NULL;
+
+/** \brief  Machine-specific cart unset-default function pointer */
 static void (*crt_unset_default_func)(void) = NULL;
 
-/* references to widgets used in various event handlers */
+
+/* References to widgets used in various event handlers */
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the cart dialog */
 static GtkWidget *cart_dialog = NULL;
+#endif
+
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the cart dialog */
 static GtkWidget *cart_type_widget = NULL;
+#endif
+
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the cart-id widget */
 static GtkWidget *cart_id_widget = NULL;
+#endif
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the cart content 'preview' widget
+ *
+ * This widget shows the contents of the cart selected in the dialog.
+ */
 static GtkWidget *cart_preview_widget = NULL;
+#endif
+
+
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the cart-set-default widget */
 static GtkWidget *cart_set_default_widget = NULL;
+#endif
 
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the cart ID widget */
 static GtkWidget *cart_id_label = NULL;
+#endif
 
-static GtkFileFilter *flt_crt = NULL;
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the dialog file filter showing only .crt images */
+ GtkFileFilter *flt_crt = NULL;
+#endif
+
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the dialog file filter showing only .bin images */
 static GtkFileFilter *flt_bin = NULL;
+#endif
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the dialog file filter showing .bin + .prg images */
 static GtkFileFilter *flt_bin_prg = NULL;
+#endif
+
+#ifndef SANDBOX_MODE
+/** \brief  Reference to the dialog file filter showing all files */
 static GtkFileFilter *flt_all = NULL;
+#endif
 
 /* forward declarations of functions */
+#ifndef SANDBOX_MODE
 static GtkListStore *create_cart_id_model(unsigned int flags);
 static int get_cart_type(void);
 static int get_cart_id(void);
+#endif
 static int attach_cart_image(int type, int id, const char *path);
+
+#ifndef SANDBOX_MODE
 static GtkListStore *create_cart_id_model_vic20(void);
+#endif
+
+
+/** \brief  Callback for the detach confirm dialog
+ *
+ * If \a result is TRUE, detach all carts.
+ *
+ * \param[in]   dialog  dialog reference (unused)
+ * \param[in]   result  dialog result
+ */
+static void uicart_confirm_detach_callback(GtkDialog *dialog, gboolean result)
+{
+    if (result) {
+        crt_unset_default_func();
+    }
+}
 
 
 /** \brief  Handler for the "response" event of the dialog
@@ -259,28 +358,37 @@ static void on_response(GtkWidget *dialog, gint response_id, gpointer data)
             gtk_widget_destroy(dialog);
             break;
         case GTK_RESPONSE_ACCEPT:
-            lastdir_update(dialog, &last_dir);
+            lastdir_update(dialog, &last_dir, &last_file);
             filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
             if (filename != NULL) {
                 gchar *filename_locale = file_chooser_convert_to_locale(filename);
 
                 debug_gtk3("attaching '%s'.", filename);
+#ifndef SANDBOX_MODE
                 if (!attach_cart_image(get_cart_type(), get_cart_id(),
                             filename_locale)) {
+#else
+                /* FIXME: probably only works for C64/C128 */
+                if (!attach_cart_image(UICART_C64_SMART, 0,
+                            filename_locale)) {
+#endif
                     vice_gtk3_message_error("VICE Error",
                             "Failed to smart-attach '%s'", filename);
                 }
                 g_free(filename);
                 g_free(filename_locale);
             }
+#ifndef SANDBOX_MODE
             gtk_widget_destroy(dialog);
+#else
+            gtk_native_dialog_destroy(GTK_NATIVE_DIALOG(dialog));
+#endif
             break;
     }
-
-    ui_set_ignore_mouse_hide(FALSE);
 }
 
 
+#ifndef SANDBOX_MODE
 /** \brief  Set the file filter pattern for the dialog
  *
  * \param[in]   pattern UICART_PATTERN_\* enum value
@@ -302,10 +410,10 @@ static void set_pattern(int pattern)
     }
     gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(cart_dialog), filter);
 }
+#endif
 
 
-
-
+#ifndef SANDBOX_MODE
 /** \brief  Handler for the "changed" event of the cart type combo box
  *
  * \param[in]   combo   cart type combo
@@ -364,15 +472,16 @@ static void on_cart_type_changed(GtkComboBox *combo, gpointer data)
 
             break;
         case VICE_MACHINE_VIC20:
-            if (crt_type == UICART_VIC20_ADD_GENERIC) {
+            if ((crt_type == UICART_VIC20_GENERIC) ||
+                (crt_type == UICART_VIC20_ADD_GENERIC)) {
                 id_model = create_cart_id_model_vic20();
-                //gtk_widget_set_sensitive(cart_id_widget, TRUE);
+                /* gtk_widget_set_sensitive(cart_id_widget, TRUE); */
                 gtk_widget_show(GTK_WIDGET(cart_id_widget));
                 gtk_widget_show(GTK_WIDGET(cart_id_label));
             } else {
                 /* empty model */
                 id_model = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_INT);
-                //gtk_widget_set_sensitive(cart_id_widget, FALSE);
+                /* gtk_widget_set_sensitive(cart_id_widget, FALSE); */
                 gtk_widget_hide(GTK_WIDGET(cart_id_widget));
                 gtk_widget_hide(GTK_WIDGET(cart_id_label));
             }
@@ -385,8 +494,11 @@ static void on_cart_type_changed(GtkComboBox *combo, gpointer data)
             break;
     }
 }
+#endif
 
 
+
+#ifndef SANDBOX_MODE
 /** \brief  Get the ID of the model for the 'cart type' combo box
  *
  * \return  ID or -1 on error
@@ -408,8 +520,11 @@ static int get_cart_type(void)
     }
     return crt_type;
 }
+#endif
 
 
+
+#ifndef SANDBOX_MODE
 /** \brief  Get the ID of the model for the 'cart ID' combo box
  *
  * \return  ID or -1 on error
@@ -432,8 +547,10 @@ static int get_cart_id(void)
             gtk_tree_model_get(model, &iter, 1, &crt_id, -1);
         }
     }
+    debug_gtk3("got crt_id: %d (%04x)\n", crt_id, (unsigned int)crt_id);
     return crt_id;
 }
+#endif
 
 
 /** \brief  Cart attach handler
@@ -473,7 +590,9 @@ static int attach_cart_image(int type, int id, const char *path)
                     id = CARTRIDGE_VIC20_DETECT;
                     break;
                 case UICART_VIC20_GENERIC:
-                    id = CARTRIDGE_VIC20_GENERIC;
+                    /* we also want to select an id for generic type. some day
+                       we need to fix "generic" vs "add to generic" */
+                    /* id = CARTRIDGE_VIC20_GENERIC; */
                     break;
                 case UICART_VIC20_BEHRBONZ:
                     id = CARTRIDGE_VIC20_BEHRBONZ;
@@ -573,6 +692,7 @@ static int attach_cart_image(int type, int id, const char *path)
     debug_gtk3("attaching cart type %d, cart ID %04x.", type, (unsigned int)id);
     if ((crt_attach_func(id, path) == 0)) {
         /* check 'set default' */
+#ifndef SANDBOX_MODE
         if ((cart_set_default_widget != NULL)
                 & (gtk_toggle_button_get_active(
                         GTK_TOGGLE_BUTTON(cart_set_default_widget)))) {
@@ -581,6 +701,7 @@ static int attach_cart_image(int type, int id, const char *path)
             debug_gtk3("setting cart with ID %04x as default.", (unsigned int)id);
             crt_set_default_func();
         }
+#endif
         return 1;
     }
     return 0;
@@ -588,6 +709,7 @@ static int attach_cart_image(int type, int id, const char *path)
 
 
 
+#ifndef SANDBOX_MODE
 /** \brief  Create model for the 'cart type' combo box
  *
  * This depends on the `machine_class`, so for some machines, this may return
@@ -630,12 +752,15 @@ static GtkListStore *create_cart_type_model(void)
     }
     return model;
 }
+#endif
 
 
-
+#ifndef SANDBOX_MODE
 /** \brief  Create a list of cartridges, filtered with \a flags
  *
  * Only valid for c64/c128/scpu
+ *
+ * \param[in]   flags   flags determining what cart types to use
  *
  * \return  Three-column list store (name, crtid, flags)
  */
@@ -667,8 +792,10 @@ static GtkListStore *create_cart_id_model(unsigned int flags)
     }
     return model;
 }
+#endif
 
 
+#ifndef SANDBOX_MODE
 /** \brief  Create a list of cartridges for VIC-20
  *
  * Only valid for VIC-20
@@ -692,9 +819,10 @@ static GtkListStore *create_cart_id_model_vic20(void)
     }
     return model;
 }
+#endif
 
 
-
+#ifndef SANDBOX_MODE
 /** \brief  Create combo box with main cartridge types
  *
  * \return  GtkComboBox
@@ -722,8 +850,10 @@ static GtkWidget *create_cart_type_combo_box(void)
     g_signal_connect(combo, "changed", G_CALLBACK(on_cart_type_changed), NULL);
     return combo;
 }
+#endif
 
 
+#ifndef SANDBOX_MODE
 /** \brief  Create combo box with cartridges with adhere to \a mask
  *
  * \param[in]   mask    bitmask to filter cartridges
@@ -753,8 +883,9 @@ static GtkWidget *create_cart_id_combo_box(unsigned int mask)
     gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
     return combo;
 }
+#endif
 
-
+#ifndef SANDBOX_MODE
 /** \brief  Create combo box with generic VIC-20 cartridges
  *
  * \return  GtkComboBox
@@ -780,9 +911,10 @@ static GtkWidget *create_cart_id_combo_box_vic20(void)
     gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
     return combo;
 }
+#endif
 
 
-
+#ifndef SANDBOX_MODE
 /** \brief  Create the 'extra' widget for the dialog
  *
  * \return  GtkGrid
@@ -848,8 +980,10 @@ static GtkWidget *create_extra_widget(void)
     gtk_widget_show_all(grid);
     return grid;
 }
+#endif
 
 
+#ifndef SANDBOX_MODE
 /** \brief  Create the 'preview' widget for the dialog
  *
  * \return  GtkGrid
@@ -880,8 +1014,13 @@ static GtkWidget *create_preview_widget(void)
     }
 
 }
+#endif
 
+#ifndef SANDBOX_MODE
 /** \brief  Update the 'preview' widget for the dialog
+ *
+ * \param[in,out]   file_chooser    GtkFileChooser instance
+ * \param[in]       data            extra event data (unused)
  *
  * \return  GtkGrid
  */
@@ -898,12 +1037,14 @@ static void  update_preview(GtkFileChooser *file_chooser, gpointer data)
         g_free(path_locale);
     }
 }
+#endif
+
 
 /** \brief  Set function to get a list of cartridges
  *
  * \param[in]   func    list function
  */
-void uicart_set_list_func(cartridge_info_t *(*func)(void))
+void ui_cart_set_list_func(cartridge_info_t *(*func)(void))
 {
     crt_list_func = func;
 }
@@ -917,7 +1058,7 @@ void uicart_set_list_func(cartridge_info_t *(*func)(void))
  *
  * \param[in]   func    detect function
  */
-void uicart_set_detect_func(int (*func)(const char *))
+void ui_cart_set_detect_func(int (*func)(const char *))
 {
     crt_detect_func = func;
 }
@@ -927,7 +1068,7 @@ void uicart_set_detect_func(int (*func)(const char *))
  *
  * \param[in]   func    attach function
  */
-void uicart_set_attach_func(int (*func)(int, const char *))
+void ui_cart_set_attach_func(int (*func)(int, const char *))
 {
     crt_attach_func = func;
 }
@@ -937,7 +1078,7 @@ void uicart_set_attach_func(int (*func)(int, const char *))
  *
  * \param[in]   func    freeze function
  */
-void uicart_set_freeze_func(void (*func)(void))
+void ui_cart_set_freeze_func(void (*func)(void))
 {
     crt_freeze_func = func;
 }
@@ -947,7 +1088,7 @@ void uicart_set_freeze_func(void (*func)(void))
  *
  * \param[in]   func    freeze function
  */
-void uicart_set_detach_func(void (*func)(int))
+void ui_cart_set_detach_func(void (*func)(int))
 {
     crt_detach_func = func;
 }
@@ -957,7 +1098,7 @@ void uicart_set_detach_func(void (*func)(int))
  *
  * \param[in]   func    default func
  */
-void uicart_set_set_default_func(void (*func)(void))
+void ui_cart_set_set_default_func(void (*func)(void))
 {
     crt_set_default_func = func;
 }
@@ -966,48 +1107,9 @@ void uicart_set_set_default_func(void (*func)(void))
  *
  * \param[in]   func    default func
  */
-void uicart_set_unset_default_func(void (*func)(void))
+void ui_cart_set_unset_default_func(void (*func)(void))
 {
     crt_unset_default_func = func;
-}
-
-/** \brief  Try to smart-attach a cartridge image
- *
- * \param[in]   widget      parent widget (unused)
- * \param[in]   user_data   extra event data (unused)
- *
- * \return  TRUE
- */
-gboolean uicart_smart_attach_dialog(GtkWidget *widget, gpointer user_data)
-{
-    gchar *filename;
-
-    vsync_suspend_speed_eval();
-    ui_set_ignore_mouse_hide(TRUE);
-
-    filename = vice_gtk3_open_file_dialog(
-            "Smart-attach cartridge image",
-            "Cartridge images",
-            file_chooser_pattern_cart,
-            last_dir);
-
-    if (filename != NULL) {
-        debug_gtk3("Got filename '%s'.", filename);
-        lastdir_update(widget, &last_dir);
-        if (crt_attach_func != NULL) {
-            if (crt_attach_func(CARTRIDGE_CRT, filename) < 0) {
-                vice_gtk3_message_error("VICE error",
-                        "Failed to attach '%s' as a cartridge image",
-                        filename);
-            } else {
-                debug_gtk3("Attached '%s' as valid cartridge image.", filename);
-            }
-        }
-        g_free(filename);
-    }
-
-    ui_set_ignore_mouse_hide(FALSE);
-    return TRUE;
 }
 
 
@@ -1018,7 +1120,7 @@ gboolean uicart_smart_attach_dialog(GtkWidget *widget, gpointer user_data)
  *
  * \return  TRUE
  */
-gboolean uicart_trigger_freeze(void)
+gboolean ui_cart_trigger_freeze(void)
 {
     if (crt_freeze_func != NULL) {
         debug_gtk3("triggering cart freeze.");
@@ -1036,10 +1138,9 @@ gboolean uicart_trigger_freeze(void)
  *
  * \return  TRUE
  */
-gboolean uicart_detach(void)
+gboolean ui_cart_detach(void)
 {
     int cartid = CARTRIDGE_NONE;
-    gboolean result;
 
     if (crt_detach_func != NULL) {
 
@@ -1056,13 +1157,17 @@ gboolean uicart_detach(void)
                 resources_get_int("CartridgeType", &cartid);
                 if (cartid != CARTRIDGE_NONE) {
                     /* default is set, ask to remove it */
-                    result = vice_gtk3_message_confirm("Detach cartridge",
+                    vice_gtk3_message_confirm(
+                            uicart_confirm_detach_callback,
+                            "Detach cartridge",
                             "You're detaching the default cartridge.\n\n"
                             "Would you also like to unregister this cartridge"
                             " as the default cartridge?");
+#if 0
                     if (result) {
                         crt_unset_default_func();
                     }
+#endif
                 }
                 /* FIXME: the above will only check/ask for "slot1" cartridges. other
                           cartridges have seperate "enable" resources which would
@@ -1079,6 +1184,8 @@ gboolean uicart_detach(void)
     return TRUE;
 }
 
+
+#ifndef SANDBOX_MODE
 /** \brief  Pop up the cart-attach dialog
  *
  * \param[in]   widget  parent widget (unused)
@@ -1086,11 +1193,9 @@ gboolean uicart_detach(void)
  *
  * \return  TRUE
  */
-gboolean uicart_show_dialog(GtkWidget *widget, gpointer data)
+gboolean ui_cart_show_dialog(GtkWidget *widget, gpointer data)
 {
     GtkWidget *dialog;
-
-    ui_set_ignore_mouse_hide(TRUE);
 
     dialog = gtk_file_chooser_dialog_new(
             "Attach a cartridge image",
@@ -1105,7 +1210,7 @@ gboolean uicart_show_dialog(GtkWidget *widget, gpointer data)
     gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
 
     /* set last directory */
-    lastdir_set(dialog, &last_dir);
+    lastdir_set(dialog, &last_dir, &last_file);
 
     /* add extra widget */
     gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(dialog),
@@ -1157,10 +1262,32 @@ gboolean uicart_show_dialog(GtkWidget *widget, gpointer data)
     return TRUE;
 }
 
+#else
+
+gboolean ui_cart_show_dialog(GtkWidget *widget, gpointer data)
+{
+    GtkFileChooserNative *dialog;
+
+    dialog = gtk_file_chooser_native_new(
+            "Attach a cartridge image",
+            ui_get_active_window(),
+            GTK_FILE_CHOOSER_ACTION_OPEN,
+            /* buttons */
+            NULL, NULL);
+
+    g_signal_connect(dialog, "response",
+            G_CALLBACK(on_response),
+            GINT_TO_POINTER(0));
+
+    gtk_native_dialog_show(GTK_NATIVE_DIALOG(dialog));
+    return TRUE;
+}
+#endif
+
 
 /** \brief  Clean up the last directory string
  */
-void uicart_shutdown(void)
+void ui_cart_shutdown(void)
 {
-    lastdir_shutdown(&last_dir);
+    lastdir_shutdown(&last_dir, &last_file);
 }

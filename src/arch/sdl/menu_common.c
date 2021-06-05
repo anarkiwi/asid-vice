@@ -104,6 +104,7 @@ UI_MENU_CALLBACK(autostart_callback)
                 ui_error("could not start auto-image");
             }
             lib_free(name);
+            sdl_pause_state = 0;
             return sdl_menu_text_exit_ui;
         }
     }
@@ -112,24 +113,38 @@ UI_MENU_CALLBACK(autostart_callback)
 
 UI_MENU_CALLBACK(pause_callback)
 {
+    if (sdl_menu_state) {
+        /* called from menu */
+        if (activated) {
+            sdl_pause_state ^= 1;
+        }
+        return sdl_pause_state ? sdl_menu_text_tick : NULL;
+    }
+    /* called in emulator */
     if (activated) {
         ui_pause_toggle();
-        return sdl_menu_text_exit_ui;
     }
     return NULL;
 }
 
 UI_MENU_CALLBACK(advance_frame_callback)
 {
-    int paused = ui_pause_active();
-
-    if (activated) {
-        if (paused) {
-            vsyncarch_advance_frame();
-        } else {
-            ui_pause_enable();
+    if (sdl_menu_state) {
+        /* called from menu */
+        if (activated) {
+            if (sdl_pause_state) {
+                sdl_pause_state = 0;
+                vsyncarch_advance_frame();
+            }
+            return sdl_menu_text_exit_ui;
         }
-        return sdl_menu_text_exit_ui;
+        return NULL;
+    }
+    /* called in emulator */
+    if (activated) {
+        if (ui_pause_active()) {
+            vsyncarch_advance_frame();
+        }
     }
     return NULL;
 }
@@ -243,7 +258,7 @@ const char *sdl_ui_menu_int_helper(int activated, ui_callback_data_t param, cons
     if (activated) {
         value = sdl_ui_text_input_dialog((const char*)param, buf);
         if (value) {
-            new_value = strtol(value, NULL, 0);
+            new_value = (int)strtol(value, NULL, 0);
             resources_set_int(resource_name, new_value);
             lib_free(value);
         }

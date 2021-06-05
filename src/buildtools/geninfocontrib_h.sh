@@ -28,6 +28,9 @@
 #                             $1
 #
 
+# Fuck.
+export LC_ALL=C
+
 if test "x$1" = "x"; then
   echo no output type chosen
   exit 1
@@ -273,7 +276,7 @@ if test x"$1" = "xinfocontrib.h"; then
       docteamsection=yes
     fi
 
-    if test x"$data" = "x@node Copyright, Contacts, Acknowledgments, Top"; then
+    if test x"$data" = "x@node Copyright"; then
       $ECHO "\"$linefeed\";"
       outputok=no
     fi
@@ -317,45 +320,6 @@ if test x"$1" = "xinfocontrib.h"; then
   $ECHO "    { NULL, NULL, NULL, NULL }"
   $ECHO "};"
   $ECHO "#endif"
-fi
-
-# -----------------------------------------------------------
-# AUTHORS output type
-
-if test x"$1" = "xAUTHORS"; then
-  MEMBERS=`cat team.tmp`
-  buildlists
-  $ECHO "Core Team Members:"
-  $ECHO ""
-  for i in $CORETEAM_MEMBERS
-  do
-    decodedall=`$ECHO "$i" | sed 's/+/ /g'`
-    splititem4 $decodedall
-    decoded=`$ECHO "$item3" | sed 's/_/ /g'`
-    $ECHO "@b{$decoded}"
-  done
-  $ECHO ""
-  $ECHO ""
-  $ECHO "Inactive/Ex Team Members:"
-  $ECHO ""
-  for i in $EXTEAM_MEMBERS
-  do
-    decodedall=`$ECHO "$i" | sed 's/+/ /g'`
-    splititem4 $decodedall
-    decoded=`$ECHO "$item3" | sed 's/_/ /g'`
-    $ECHO "@b{$decoded}"
-  done
-  $ECHO ""
-  $ECHO ""
-  $ECHO "Translation Team Members:"
-  $ECHO ""
-  for i in $TRANSTEAM_MEMBERS
-  do
-    decodedall=`$ECHO "$i" | sed 's/+/ /g'`
-    splititem4 $decodedall
-    decoded=`$ECHO "$item3" | sed 's/_/ /g'`
-    $ECHO "@b{$decoded}"
-  done
 fi
 
 # -----------------------------------------------------------
@@ -442,14 +406,14 @@ if test x"$1" = "xindexhtml"; then
         fi
         decodedall=`$ECHO "$i" | sed 's/+/ /g'`
         splititem4 $decodedall
-        decodedname=`$ECHO "$item3" | sed 's/_/ /g'`
+        decodedname=`$ECHO "$item3" | sed "s/_/ /g;s/È/\&eacute;/g;s/\\\'e/\&eacute;/g"`
       done
       $ECHO "$decodedname."
       $ECHO "</p>"
       $ECHO ""
       $ECHO "<p>Of course our warm thanks go to everyone who has helped us in developing"
       $ECHO "VICE during these past few years. For a more detailed list look in the"
-      $ECHO "<a href=\"vice_16.html\">documentation</a>."
+      $ECHO "<a href=\"vice_18.html\">documentation</a>."
       $ECHO ""
       $ECHO ""
       $ECHO "<hr>"
@@ -457,7 +421,7 @@ if test x"$1" = "xindexhtml"; then
       $ECHO "<h1><a NAME=\"copyright\"></a>Copyright</h1>"
       $ECHO ""
       $ECHO "<p>"
-      $ECHO "The VICE is copyrighted to"
+      $ECHO "The VICE is copyrighted to:"
       buildallmembers
       decodedname=""
       for i in $ALL_MEMBERS
@@ -466,7 +430,7 @@ if test x"$1" = "xindexhtml"; then
           $ECHO "$decodedname,"
         fi
         if test x"$i" != "x"; then
-          decodedname=`$ECHO "$i" | sed 's/_/ /g'`
+          decodedname=`$ECHO "$i" | sed "s/_/ /g;s/È/\&eacute;/g;s/\\\'e/\&eacute;/g"`
         fi
       done
       $ECHO "$decodedname."
@@ -479,38 +443,5 @@ if test x"$1" = "xindexhtml"; then
     fi
 
     $ECHO "$data"
-  done
-fi
-
-# -----------------------------------------------------------
-# vice.1 man output type
-
-if test x"$1" = "xvice1"; then
-  MEMBERS=`cat team.tmp`
-  buildlists
-  buildallmembers
-  foundauthors=no
-
-  while test x"$foundauthors" != "xyes"
-  do
-    read data
-    if test x"$data" = "x.SH AUTHORS"; then
-      $ECHO ".SH AUTHORS"
-      for i in $ALL_MEMBERS
-      do
-        decoded=`$ECHO "$i" | sed 's/_/ /g'`
-        $ECHO "@b{$decoded}"
-        $ECHO ".br"
-      done
-      $ECHO "with several contributions from other people around the world; see the"
-      $ECHO "HTML documentation for more information."
-      $ECHO ""
-      $ECHO ""
-      foundauthors=yes
-    fi
-
-    if test x"$foundauthors" != "xyes"; then
-      $ECHO $data
-    fi
   done
 fi

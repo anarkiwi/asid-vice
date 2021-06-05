@@ -14,7 +14,7 @@
  *
  * The constructor is slightly convoluted, but flexible, see
  * #vice_gtk3_resource_browser_new
- * (todo: figure out how to get Doxygen to print the functio prototype here)
+ * (todo: figure out how to get Doxygen to print the function prototype here)
  *
  * The first argument is required, it's the VICE resource we wish to change, for
  * example "Kernal".
@@ -55,9 +55,11 @@
 #include "log.h"
 #include "resources.h"
 #include "openfiledialog.h"
+#include "savefiledialog.h"
 #include "widgethelpers.h"
 #include "resourcehelpers.h"
 #include "resourceentry.h"
+#include "ui.h"
 
 #include "resourcebrowser.h"
 
@@ -70,6 +72,7 @@ typedef struct resource_browser_state_s {
     char **patterns;            /**< file matching patterns */
     char *pattern_name;         /**< name to display for the file patterns */
     char *browser_title;        /**< title to display for the file browser */
+    char *proposed;
     void (*callback)(GtkWidget *,
                      gpointer); /**< optional callback */
     GtkWidget *entry;           /**< GtkEntry reference */
@@ -112,27 +115,21 @@ static void on_resource_browser_destroy(GtkWidget *widget, gpointer data)
 }
 
 
-/** \brief  Handler for the "clicked" event of the browse button
+/** \brief  Callback for the dialog
  *
- * \param[in]   widget  browse button
- * \param[in]   data    unused
- *
+ * \param[in,out]   dialog      Open file dialog reference
+ * \param[in]       filename    filename or NULL on cancel
+ * \param[in,out]   data        browser state
  */
-static void on_resource_browser_browse_clicked(GtkWidget *widget, gpointer data)
+static void browse_filename_callback(GtkDialog *dialog,
+                                     char *filename,
+                                     gpointer data)
 {
-    GtkWidget *parent;
-    char *filename;
-    resource_browser_state_t *state;
+    resource_browser_state_t *state = data;
 
-    parent = gtk_widget_get_parent(widget);
-    state = g_object_get_data(G_OBJECT(parent), "ViceState");
+    debug_gtk3("Got filename '%s'\n", filename);
 
-    filename = vice_gtk3_open_file_dialog(state->browser_title,
-            state->pattern_name, (const char **)(state->patterns), NULL);
     if (filename != NULL) {
-#if 0
-        debug_gtk3("got image name '%s'.", filename);
-#endif
         if (!vice_gtk3_resource_entry_full_set(state->entry, filename)){
             log_error(LOG_ERR,
                     "failed to set resource %s to '%s', reverting\n",
@@ -142,22 +139,112 @@ static void on_resource_browser_browse_clicked(GtkWidget *widget, gpointer data)
             gtk_entry_set_text(GTK_ENTRY(state->entry), state->res_orig);
         } else {
             if (state->callback != NULL) {
-#if 0
-                debug_gtk3("triggering user-defined callback.");
-#endif
-                state->callback(widget, (gpointer)filename);
+                state->callback(GTK_WIDGET(dialog), (gpointer)filename);
             }
         }
         g_free(filename);
     }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
 }
 
+
+/** \brief  Callback for the save dialog
+ *
+ * \param[in,out]   dialog      Save file dialog reference
+ * \param[in]       filename    filename or NULL on cancel
+ * \param[in,out]   data        browser state
+ */
+static void save_filename_callback(GtkDialog *dialog,
+                                     char *filename,
+                                     gpointer data)
+{
+    resource_browser_state_t *state = data;
+
+    debug_gtk3("Got filename '%s'\n", filename);
+
+    if (filename != NULL) {
+        if (!vice_gtk3_resource_entry_full_set(state->entry, filename)){
+            log_error(LOG_ERR,
+                    "failed to set resource %s to '%s', reverting\n",
+                    state->res_name, filename);
+            /* restore resource to original state */
+            resources_set_string(state->res_name, state->res_orig);
+            gtk_entry_set_text(GTK_ENTRY(state->entry), state->res_orig);
+        } else {
+            if (state->callback != NULL) {
+                state->callback(GTK_WIDGET(dialog), (gpointer)filename);
+            }
+        }
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+
+
+/** \brief  Handler for the "clicked" event of the browse button
+ *
+ * \param[in]   widget  browse button
+ * \param[in]   data    unused
+ *
+ */
+static void on_resource_browser_browse_clicked(GtkWidget *widget, gpointer data)
+{
+    GtkWidget *parent;
+    resource_browser_state_t *state;
+
+    parent = gtk_widget_get_parent(widget);
+    state = g_object_get_data(G_OBJECT(parent), "ViceState");
+
+    vice_gtk3_open_file_dialog(
+            state->browser_title,
+            state->pattern_name,
+            (const char **)(state->patterns),
+            NULL,
+            browse_filename_callback,
+            state);
+}
+
+
+/** \brief  Handler for the "clicked" event of the save button
+ *
+ * \param[in]   widget  save button
+ * \param[in]   data    unused
+ *
+ */
+static void on_resource_browser_save_clicked(GtkWidget *widget, gpointer data)
+{
+    GtkWidget *parent;
+    resource_browser_state_t *state;
+
+    parent = gtk_widget_get_parent(widget);
+    state = g_object_get_data(G_OBJECT(parent), "ViceState");
+#if 0
+    vice_gtk3_open_file_dialog(
+            state->browser_title,
+            state->pattern_name,
+            (const char **)(state->patterns),
+            NULL,
+            browse_filename_callback,
+            state);
+#else
+    vice_gtk3_save_file_dialog(
+            state->browser_title,
+            NULL,
+            FALSE,  /* FIXME: False results in a weird segfault */
+            NULL,
+            save_filename_callback,
+            state);
+#endif
+
+}
 
 /** \brief  Create a heap allocated copy of \a patterns
  *
  * \return  deep copy of \a patterns
  */
-static char **copy_patterns(const char **patterns)
+static char **copy_patterns(const char * const *patterns)
 {
     size_t num = 0;
     char **arr;
@@ -216,7 +303,7 @@ static void free_patterns(char **patterns)
  */
 GtkWidget *vice_gtk3_resource_browser_new(
         const char *resource,
-        const char **patterns,
+        const char * const *patterns,
         const char *pattern_name,
         const char *browser_title,
         const char *label,
@@ -239,8 +326,6 @@ GtkWidget *vice_gtk3_resource_browser_new(
 
     /* get current value of resource */
     if (resources_get_string(resource, &orig) < 0) {
-        debug_gtk3("failed to retrieve current value for resource '%s'.",
-                resource);
         orig = "";
     } else if (orig == NULL) {
         orig = "";
@@ -297,13 +382,12 @@ GtkWidget *vice_gtk3_resource_browser_new(
             grid,
             vice_gtk3_resource_browser_reset,
             vice_gtk3_resource_browser_factory,
-            vice_gtk3_resource_browser_sync,
-            vice_gtk3_resource_browser_apply);
+            vice_gtk3_resource_browser_sync);
 
     /* connect signal handlers */
     g_signal_connect(state->button, "clicked",
             G_CALLBACK(on_resource_browser_browse_clicked), NULL);
-    g_signal_connect(grid, "destroy", G_CALLBACK(on_resource_browser_destroy),
+    g_signal_connect_unlocked(grid, "destroy", G_CALLBACK(on_resource_browser_destroy),
             NULL);
 
     gtk_widget_show_all(grid);
@@ -426,14 +510,84 @@ gboolean vice_gtk3_resource_browser_factory(GtkWidget *widget)
 }
 
 
-/** \brief  Apply the widget's setting to its resource
+
+/** \brief  Resource browser widget to select a file to save
  *
- * \param[in]   resource browser widget
+ * \param[in]   resource        resource name
+ * \param[in]   browser_title   dialog title
+ * \param[in]   label           optional label before the text entry
+ * \param[in]   suggested       suggested filename (unimplemented)
+ * \param[in]   callback        callback
  *
- * \return  bool
+ * \return  GtkGrid
  */
-gboolean vice_gtk3_resource_browser_apply(GtkWidget *widget)
+GtkWidget *vice_gtk3_resource_browser_save_new(
+        const char *resource,
+        char *browser_title,
+        char *label,
+        const char *suggested,
+        void (*callback)(GtkWidget *, gpointer))
 {
-    NOT_IMPLEMENTED_WARN_ONLY();
-    return FALSE;
+    GtkWidget *grid;
+    GtkWidget *lbl;
+    resource_browser_state_t *state;
+    const char *orig = NULL;
+    int column = 0;
+
+    grid = vice_gtk3_grid_new_spaced(16, 0);
+
+    /* alloc and init state object */
+    state = lib_malloc(sizeof *state);
+    state->res_name = lib_strdup(resource);
+    resource_widget_set_resource_name(grid, resource);
+
+    /* get current value, if any */
+    if (resources_get_string(resource, &orig) < 0) {
+        orig = "";
+    } else if (orig == NULL) {
+        orig = "";
+    }
+    state->res_orig = lib_strdup(orig);
+    state->patterns = NULL;
+    state->pattern_name = NULL;
+
+    /* copy browser title */
+    if (browser_title != NULL) {
+        state->browser_title = lib_strdup("Select file");
+    } else {
+        state->browser_title = lib_strdup(browser_title);
+    }
+
+    /*
+     * Add widgets
+     */
+
+    /* label */
+    if (label != NULL) {
+        lbl = gtk_label_new(label);
+        gtk_widget_set_halign(lbl, GTK_ALIGN_START);
+        gtk_grid_attach(GTK_GRID(grid), lbl, 0, 0, 1, 1);
+        column++;
+    }
+
+    /* text entry */
+    state->entry = vice_gtk3_resource_entry_full_new(resource);
+    gtk_widget_set_hexpand(state->entry, TRUE);
+    gtk_grid_attach(GTK_GRID(grid), state->entry, column, 0, 1, 1);
+    column++;
+
+    /* browse button */
+    state->button = gtk_button_new_with_label("Browse ...");
+    gtk_grid_attach(GTK_GRID(grid), state->button, column, 0, 1,1);
+
+    /* store the state object in the widget */
+    g_object_set_data(G_OBJECT(grid), "ViceState", (gpointer)state);
+
+    /* connect signal handlers */
+    g_signal_connect(state->button, "clicked",
+            G_CALLBACK(on_resource_browser_save_clicked), NULL);
+    g_signal_connect_unlocked(grid, "destroy", G_CALLBACK(on_resource_browser_destroy),
+            NULL);
+    gtk_widget_show_all(grid);
+    return grid;
 }

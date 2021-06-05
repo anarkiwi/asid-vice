@@ -31,7 +31,7 @@
 
 #include "uimenu.h"
 
-extern const ui_menu_entry_t drive_menu[];
+extern ui_menu_entry_t drive_menu[];
 extern void uidrive_menu_create(void);
 
 #endif

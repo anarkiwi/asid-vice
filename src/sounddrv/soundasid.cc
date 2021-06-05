@@ -40,6 +40,7 @@ extern "C" {
 #include "types.h"
 
 const uint8_t regmap[]={0,1,2,3,5,6,7,8,9,10,12,13,14,15,16,17,19,20,21,22,23,24,4,11,18,25,26,27};
+
 uint8_t sid_register[sizeof(regmap)];
 bool sid_modified[sizeof(regmap)];
 bool sid_modified_flag = false;
@@ -89,7 +90,7 @@ std::vector<unsigned char> message;
     return 0;
   }
 
-  static int asid_write(int16_t *pbuf, size_t nr)
+  static int asid_flush(char *state)
   {
     return 0;
   }
@@ -135,7 +136,7 @@ std::vector<unsigned char> message;
     return 0;
   }
 
-  static int asid_flush(char *state)
+  static int asid_write(int16_t *pbuf, size_t nr)
   {
     if (!sid_modified_flag) {
       return 0;
@@ -208,7 +209,9 @@ std::vector<unsigned char> message;
      asid_close,
      NULL,
      NULL,
-     0
+     0,
+     1,
+     false
     };
 
   int sound_init_asid_device(void)

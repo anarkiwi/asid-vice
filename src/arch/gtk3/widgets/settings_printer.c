@@ -155,6 +155,38 @@ static GtkWidget *create_real_device7_checkbox(void)
 }
 
 
+/** \brief  Handler for the 'clicked event of the "formfeed" button
+ *
+ * \param[in]   widget  button
+ * \param[in]   data    device number (4-7)
+ */
+static void on_formfeed_clicked(GtkWidget *widget, gpointer data)
+{
+    int device;
+
+    device = GPOINTER_TO_INT(data);
+
+    debug_gtk3("Sending formfeed to device %d.", device);
+    printer_formfeed((unsigned int)device - 4);
+}
+
+
+/** \brief  Create button to send formfeed to the printer
+ *
+ * \param[in]   device  device number (4-7)
+ *
+ * \return  GtkButton
+ */
+static GtkWidget *create_formfeed_button(int device)
+{
+    GtkWidget *button;
+
+    button = gtk_button_new_with_label("Send formfeed");
+    g_signal_connect(button, "clicked", G_CALLBACK(on_formfeed_clicked),
+            GINT_TO_POINTER(device));
+    return button;
+}
+
 
 /** \brief  Create a widget for the settings of printer # \a device
  *
@@ -213,7 +245,8 @@ static GtkWidget *create_printer_widget(int device)
                 printer_output_mode_widget_create(device), 2, 1, 1, 1);
         gtk_grid_attach(GTK_GRID(grid),
                 printer_output_device_widget_create(device), 3, 1, 1, 1);
-
+        gtk_grid_attach(GTK_GRID(grid),
+                create_formfeed_button(device), 0, 6, 1, 1);
 
     } else if (device == 7) {
         /* device 7 is 'special' */
@@ -253,7 +286,7 @@ static GtkWidget *create_printer_text_devices_widget(void)
     GtkWidget *grid;
     int i;
 
-    grid = uihelpers_create_grid_with_label("Printer text output devices", 6);
+    grid = uihelpers_create_grid_with_label("Printer output devices", 6);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
     for (i = 0; i < 3; i++) {
         GtkWidget *label;

@@ -1,5 +1,19 @@
 /** \file   archdep_default_sysfile_pathlist.c
  * \brief   Get a list of paths of required data files
+ *
+ * A note about Gtk3 on Windows:
+ *
+ * For some reason Gtk3/GLib checks the path of a running binary to see if it's
+ * running from a bin/ dir, so it can load stuff from bin/..
+ * Unfortunately this also means running a binary from, say 'C:/bin/foo/bar/vice'
+ * will try to load DLL's and other data from C:/bin/{lib,share} or so, which in
+ * my opinion is a seriouse bug. 
+ * So we had to change the bindist script for Winows, and alter a few archdep
+ * functions to support this weirdness.
+ *
+ * -- compyx, 2020-06-28
+ *    (perhaps move this note/rant somewhere more public?)
+ *
  */
 
 /*
@@ -35,8 +49,10 @@
 #include "util.h"
 
 #include "archdep_boot_path.h"
+#include "archdep_get_vice_datadir.h"
 #include "archdep_join_paths.h"
 #include "archdep_user_config_path.h"
+#include "archdep_xdg.h"
 
 
 #include "archdep_default_sysfile_pathlist.h"
@@ -64,15 +80,18 @@ static char *sysfile_path = NULL;
  */
 char *archdep_default_sysfile_pathlist(const char *emu_id)
 {
-    const char *boot_path = archdep_boot_path();
+    const char *boot_path = NULL;
+    char *datadir = NULL;
 #if !defined(ARCHDEP_OS_WINDOWS) && !defined(ARCHDEP_OS_BEOS)
-    const char *home_path = archdep_user_config_path();
+    char *home_path = NULL;
+# ifdef ARCHDEP_OS_UNIX
+    char *xdg_data = NULL;
+# endif
 #endif
-
-    char *lib_root = NULL;
-    char *lib_machine_roms = NULL;
-    char *lib_drive_roms = NULL;
-    char *lib_printer_roms = NULL;
+    char *datadir_root = NULL;
+    char *datadir_machine_roms = NULL;
+    char *datadir_drive_roms = NULL;
+    char *datadir_printer_roms = NULL;
     char *boot_root = NULL;
     char *boot_machine_roms = NULL;
     char *boot_drive_roms = NULL;
@@ -91,6 +110,19 @@ char *archdep_default_sysfile_pathlist(const char *emu_id)
         return lib_strdup(sysfile_path);
     }
 
+    boot_path = archdep_boot_path();
+    datadir = archdep_get_vice_datadir();
+#if !defined(ARCHDEP_OS_WINDOWS) && !defined(ARCHDEP_OS_BEOS)
+
+# ifdef ARCHDEP_OS_UNIX
+    xdg_data = archdep_xdg_data_home();
+    home_path = archdep_join_paths(xdg_data, "vice", NULL);
+    lib_free(xdg_data);
+# else
+    home_path = archdep_user_config_path();
+# endif
+#endif
+
     /* zero out the array of paths to join later */
     for (i = 0; i <= TOTAL_PATHS; i++) {
         paths[i] = NULL;
@@ -99,74 +131,41 @@ char *archdep_default_sysfile_pathlist(const char *emu_id)
 
 #ifdef ARCHDEP_OS_UNIX
 
-# ifdef ARCHDEP_OS_OSX
-    /* ROM paths relative to the Contents/Resources/bin directory 
-       in the bundle */
-    lib_machine_roms = archdep_join_paths(
-            boot_path, "..", "lib", "vice", emu_id, NULL);
-    lib_drive_roms = archdep_join_paths(
-            boot_path, "..", "lib", "vice", "DRIVES", NULL);
-    lib_printer_roms = archdep_join_paths(
-            boot_path, "..", "lib", "vice", "PRINTER", NULL);
-# else
-    lib_machine_roms = archdep_join_paths(LIBDIR, emu_id, NULL);
-    lib_drive_roms = archdep_join_paths(LIBDIR, "DRIVES", NULL);
-    lib_printer_roms = archdep_join_paths(LIBDIR, "PRINTER", NULL);
+    datadir_machine_roms = archdep_join_paths(datadir, emu_id, NULL);
+    datadir_drive_roms = archdep_join_paths(datadir, "DRIVES", NULL);
+    datadir_printer_roms = archdep_join_paths(datadir, "PRINTER", NULL);
 
     boot_machine_roms = archdep_join_paths(boot_path, emu_id, NULL);
     boot_drive_roms = archdep_join_paths(boot_path, "DRIVES", NULL);
     boot_printer_roms = archdep_join_paths(boot_path, "PRINTER", NULL);
-# endif
 
     /* home path based paths */
     home_machine_roms = archdep_join_paths(home_path, emu_id, NULL);
     home_drive_roms = archdep_join_paths(home_path, "DRIVES", NULL);
     home_printer_roms = archdep_join_paths(home_path, "PRINTER", NULL);
 
-#elif defined(ARCHDEP_OS_WINDOWS) || defined(ARCHDEP_OS_OS2) \
-    || defined(ARCHDEP_OS_MSDOS)
+#elif defined(ARCHDEP_OS_WINDOWS)
+# if defined(USE_SDLUI) || defined(USE_SDLUI2)
     boot_machine_roms = archdep_join_paths(boot_path, emu_id, NULL);
     boot_drive_roms = archdep_join_paths(boot_path, "DRIVES", NULL);
     boot_printer_roms = archdep_join_paths(boot_path, "PRINTER", NULL);
+# else
+    boot_machine_roms = archdep_join_paths(boot_path, "..", emu_id, NULL);
+    boot_drive_roms = archdep_join_paths(boot_path, "..", "DRIVES", NULL);
+    boot_printer_roms = archdep_join_paths(boot_path, "..", "PRINTER", NULL);
+#endif
 #if 0
     home_machine_roms = archdep_join_paths(home_path, emu_id, NULL);
     home_drive_roms = archdep_join_paths(home_path, "DRIVES", NULL);
     home_printer_roms = archdep_join_paths(home_path, "PRINTER", NULL);
 #endif
-#elif defined(ARCHDEP_OS_AMIGA) || defined(ARCHDEP_OS_BEOS)
+#elif defined(ARCHDEP_OS_BEOS)
     boot_machine_roms = archdep_join_paths(boot_path, emu_id, NULL);
     boot_drive_roms = archdep_join_paths(boot_path, "DRIVES", NULL);
     boot_printer_roms = archdep_join_paths(boot_path, "PRINTER", NULL);
 #endif
     /* now join everything together */
     i = 0;
-
-    /* LIBDIR paths */
-    if (lib_root != NULL) {
-        paths[i++] = lib_root;
-    }
-    if (lib_machine_roms != NULL) {
-        paths[i++] = lib_machine_roms;
-    }
-    if (lib_drive_roms != NULL) {
-        paths[i++] = lib_drive_roms;
-    }
-    if (lib_printer_roms != NULL) {
-        paths[i++] = lib_printer_roms;
-    }
-    /* boot paths */
-    if (boot_root != NULL) {
-        paths[i++] = boot_root;
-    }
-    if (boot_machine_roms != NULL) {
-        paths[i++] = boot_machine_roms;
-    }
-    if (boot_drive_roms != NULL) {
-        paths[i++] = boot_drive_roms;
-    }
-    if (boot_printer_roms != NULL) {
-        paths[i++] = boot_printer_roms;
-    }
 
     /* home paths */
     if (home_root != NULL) {
@@ -182,23 +181,55 @@ char *archdep_default_sysfile_pathlist(const char *emu_id)
         paths[i++] = home_printer_roms;
     }
 
+    /* boot paths */
+    if (boot_root != NULL) {
+        paths[i++] = boot_root;
+    }
+    if (boot_machine_roms != NULL) {
+        paths[i++] = boot_machine_roms;
+    }
+    if (boot_drive_roms != NULL) {
+        paths[i++] = boot_drive_roms;
+    }
+    if (boot_printer_roms != NULL) {
+        paths[i++] = boot_printer_roms;
+    }
+
+    /* VICE_DATADIR paths */
+    if (datadir_root != NULL) {
+        paths[i++] = datadir_root;
+    }
+    if (datadir_machine_roms != NULL) {
+        paths[i++] = datadir_machine_roms;
+    }
+    if (datadir_drive_roms != NULL) {
+        paths[i++] = datadir_drive_roms;
+    }
+    if (datadir_printer_roms != NULL) {
+        paths[i++] = datadir_printer_roms;
+    }
+
+
     /* terminate list */
     paths[i] = NULL;
     sysfile_path = util_strjoin(paths, ARCHDEP_FINDPATH_SEPARATOR_STRING);
 
-    /* TODO: free intermediate strings */
-    /* LIBDIR paths */
-    if (lib_root != NULL) {
-        lib_free(lib_root);
+    /* cleanup */
+    if (datadir != NULL) {
+        lib_free(datadir);
     }
-    if (lib_machine_roms != NULL) {
-        lib_free(lib_machine_roms);
+
+    if (datadir_root != NULL) {
+        lib_free(datadir_root);
     }
-    if (lib_drive_roms != NULL) {
-        lib_free(lib_drive_roms);
+    if (datadir_machine_roms != NULL) {
+        lib_free(datadir_machine_roms);
     }
-    if (lib_printer_roms != NULL) {
-        lib_free(lib_printer_roms);
+    if (datadir_drive_roms != NULL) {
+        lib_free(datadir_drive_roms);
+    }
+    if (datadir_printer_roms != NULL) {
+        lib_free(datadir_printer_roms);
     }
     /* boot paths */
     if (boot_root != NULL) {
@@ -227,6 +258,12 @@ char *archdep_default_sysfile_pathlist(const char *emu_id)
     if (home_printer_roms != NULL) {
         lib_free(home_printer_roms);
     }
+
+#if !defined(ARCHDEP_OS_WINDOWS) && !defined(ARCHDEP_OS_BEOS)
+    if (home_path != NULL) {
+        lib_free(home_path);
+    }
+#endif
 
 #if 0
     log_message(LOG_DEFAULT, "Search path = %s", sysfile_path);

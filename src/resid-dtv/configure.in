@@ -53,7 +53,10 @@ if test "$GXX" = yes; then
   fi
   case $host_os in
   darwin*)
+    CFLAGS="$CFLAGS -mmacosx-version-min=10.9"
+    OBJCFLAGS="$OBJCFLAGS -mmacosx-version-min=10.9"
     CXXFLAGS="$CXXFLAGS -mmacosx-version-min=10.9"
+    LDFLAGS="$LDFLAGS -mmacosx-version-min=10.9"
     ;;
   *)
     ;;
@@ -63,7 +66,6 @@ fi
 
 AC_CHECK_PROG(AR, ar, ar, ar)
 AC_PROG_RANLIB
-AC_PATH_PROG(PERL, perl)
 
 dnl Libtool
 

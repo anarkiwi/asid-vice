@@ -51,13 +51,10 @@ typedef enum {
 struct video_canvas_s;
 struct palette_s;
 
-extern void ui_display_speed(float percent, float framerate, int warp_flag);
-extern void ui_display_paused(int flag);
 extern void ui_handle_misc_sdl_event(SDL_Event e);
 extern ui_menu_action_t ui_dispatch_events(void);
 extern void ui_exit(void);
 extern void ui_message(const char *format, ...);
-extern void ui_show_text(const char *title, const char *text, int width, int height);
 extern char *ui_select_file(const char *title, char *(*read_contents_func)(const char *, unsigned int unit), unsigned int unit,
                             unsigned int allow_autostart, const char *default_dir, const char *default_pattern,
                             ui_button_t *button_return, unsigned int show_preview, int *attach_wp);
@@ -66,6 +63,8 @@ extern ui_button_t ui_ask_confirmation(const char *title, const char *text);
 extern void ui_autorepeat_on(void);
 extern void ui_autorepeat_off(void);
 extern void ui_check_mouse_cursor(void);
+extern void ui_set_mouse_grab_window_title(int enabled);
+extern void ui_autohide_mouse_cursor(void);
 extern void ui_restore_mouse(void);
 
 extern void ui_set_application_icon(const char *icon_data[]);

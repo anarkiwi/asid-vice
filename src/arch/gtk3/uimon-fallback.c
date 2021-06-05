@@ -31,6 +31,7 @@
 #include "vice.h"
 
 #include "debug_gtk3.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
@@ -57,7 +58,11 @@
 #include "uimon.h"
 #include "uimon-fallback.h"
 
+
+/** \brief  Reference to the log file
+ */
 static console_t *console_log_local = NULL;
+
 
 /** \brief  NOP
  *
@@ -79,6 +84,15 @@ int consolefb_init(void)
     return native_console_init();
 }
 
+
+/** \brief  Output message on native console
+ *
+ * \param[in]   log     log (unused, console_log_local is used)
+ * \param[in]   format  format string
+ * \param[in]   ...     arguments for \a format
+ *
+ * \return 0
+ */
 int consolefb_out(console_t *log, const char *format, ...)
 {
     va_list ap;
@@ -90,6 +104,11 @@ int consolefb_out(console_t *log, const char *format, ...)
     return 0;
 }
 
+
+/** \brief  Open console window
+ *
+ * \return  console reference
+ */
 console_t *uimonfb_window_open(void)
 {
     console_log_local = native_console_open(0);
@@ -97,7 +116,7 @@ console_t *uimonfb_window_open(void)
         return NULL;
     }
     /* partially implemented */
-    INCOMPLETE_IMPLEMENTATION();
+    /* INCOMPLETE_IMPLEMENTATION(); */
 #ifdef HAVE_MOUSE
     /* ui_restore_mouse(); */
 #endif
@@ -105,6 +124,10 @@ console_t *uimonfb_window_open(void)
     return console_log_local;
 }
 
+
+/** \brief  Close console window
+ *
+ */
 void uimonfb_window_close(void)
 {
     native_console_close(console_log_local);
@@ -112,6 +135,11 @@ void uimonfb_window_close(void)
     uimon_window_suspend();
 }
 
+
+/** \brief  Suspend console window
+ *
+ * Unused.
+ */
 void uimonfb_window_suspend( void )
 {
     /* ui_restore_focus(); */
@@ -121,6 +149,11 @@ void uimonfb_window_suspend( void )
     NOT_IMPLEMENTED_WARN_ONLY();
 }
 
+
+/** \brief  Resume console window
+ *
+ * \return  console
+ */
 console_t *uimonfb_window_resume(void)
 {
     if (console_log_local) {
@@ -136,21 +169,46 @@ console_t *uimonfb_window_resume(void)
     return uimon_window_open();
 }
 
+
+/** \brief  Output string \a buffer to \c console_log_local
+ *
+ * \param[in]   buffer  message
+ *
+ * \return 0
+ */
 int uimonfb_out(const char *buffer)
 {
     native_console_out(console_log_local, "%s", buffer);
     return 0;
 }
 
+
+/** \brief  Read a string
+ *
+ * \param       ppchCommandLine ? (unused)
+ * \param[in]   prompt          prompt to display
+ *
+ * \return  string
+ */
 char *uimonfb_get_in(char **ppchCommandLine, const char *prompt)
 {
     return native_console_in(console_log_local, prompt);
 }
 
+
+/** \brief  NOP
+ */
 void uimonfb_notify_change( void )
 {
 }
 
-void uimonfb_set_interface(struct monitor_interface_s **monitor_interface_init, int count)
+
+/** \brief  NOP
+ *
+ * \param[in]   monitor_interface_init  ? (unused)
+ * \param[in]   count                   ? (unused)
+ */
+void uimonfb_set_interface(struct monitor_interface_s **monitor_interface_init,
+                           int count)
 {
 }

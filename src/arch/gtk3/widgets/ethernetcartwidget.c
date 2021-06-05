@@ -36,26 +36,25 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 
+#include "archdep_defs.h"
+#include "archdep_ethernet_available.h"
+#include "basedialogs.h"
+#include "basewidgets.h"
+#include "cartridge.h"
+#include "debug_gtk3.h"
 #include "machine.h"
 #include "resources.h"
-#include "debug_gtk3.h"
-#include "basewidgets.h"
 #include "widgethelpers.h"
-#include "basedialogs.h"
-#include "cartridge.h"
-
 #include "ethernetcartwidget.h"
 
 
 /** \brief  List of Ethernet Cartridge emulation modes
  */
 static const vice_gtk3_radiogroup_entry_t modes[] = {
-    { "ETFE", 0 },
-    { "RRNet", 1 },
-    { NULL, -1 }
+    { "ETFE",   0 },
+    { "RRNet",  1 },
+    { NULL,     -1 }
 };
-
-
 
 
 /** \brief  Handler for the "changed" event of the I/O base combo box
@@ -72,7 +71,6 @@ static void on_base_changed(GtkWidget *widget, gpointer user_data)
     id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(widget));
     base = (int)strtol(id, &endptr, 10);
     if (*endptr == '\0') {
-        debug_gtk3("setting ETHERNETCARTBase to $%04X.", (unsigned int)base);
         resources_set_int("ETHERNETCARTBase", base);
     }
 }
@@ -215,6 +213,7 @@ GtkWidget *ethernet_cart_widget_create(GtkWidget *parent)
     base_widget = create_cartridge_base_widget();
     gtk_grid_attach(GTK_GRID(grid), base_widget, 1, row, 1, 1);
 
+    gtk_widget_set_sensitive(grid, archdep_ethernet_available());
     gtk_widget_show_all(grid);
     return grid;
 }

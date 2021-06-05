@@ -48,13 +48,14 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 
+#include "basedialogs.h"
+#include "basewidgets.h"
+#include "debug_gtk3.h"
 #include "machine.h"
 #include "resources.h"
-#include "debug_gtk3.h"
-#include "basewidgets.h"
-#include "widgethelpers.h"
 #include "savefiledialog.h"
-#include "basedialogs.h"
+#include "ui.h"
+#include "widgethelpers.h"
 
 #include "tapeportdeviceswidget.h"
 
@@ -78,6 +79,7 @@ static GtkWidget *ds_reset = NULL;
 static GtkWidget *ds_zerogap = NULL;
 static GtkWidget *ds_speed = NULL;
 static GtkWidget *ds_wobble = NULL;
+static GtkWidget *ds_sound = NULL;
 
 static GtkWidget *tape_log = NULL;
 static GtkWidget *tape_log_dest = NULL;
@@ -111,6 +113,7 @@ static void on_datasette_toggled(GtkWidget *widget, gpointer data)
     gtk_widget_set_sensitive(ds_zerogap, state);
     gtk_widget_set_sensitive(ds_speed, state);
     gtk_widget_set_sensitive(ds_wobble, state);
+    gtk_widget_set_sensitive(ds_sound, state);
 }
 
 
@@ -147,6 +150,25 @@ static void on_tape_log_dest_toggled(GtkWidget *widget, gpointer user_data)
 }
 
 
+/** \brief  Callback for the save-dialog response handler
+ *
+ * \param[in,out]   dialog      save-file dialog
+ * \param[in,out]   filename    filename
+ * \param[in]       data        extra data (unused)
+ */
+static void save_filename_callback(GtkDialog *dialog,
+                                   gchar *filename,
+                                   gpointer data)
+{
+    if (filename != NULL) {
+        /* TODO: check if file is writable */
+        gtk_entry_set_text(GTK_ENTRY(tape_log_filename), filename);
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
 /** \brief  Handler for the "clicked" event of the tape log browse button
  *
  * \param[in]   widget      tape log browse button
@@ -154,16 +176,10 @@ static void on_tape_log_dest_toggled(GtkWidget *widget, gpointer user_data)
  */
 static void on_tape_log_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
-    gchar *filename;
-
-    /* TODO: use existing filename, if any */
-    filename = vice_gtk3_save_file_dialog("Select/Create tape log file", NULL,
-            TRUE, NULL);
-    if (filename != NULL) {
-        /* TODO: check if file is writable */
-        gtk_entry_set_text(GTK_ENTRY(tape_log_filename), filename);
-        g_free(filename);
-    }
+    vice_gtk3_save_file_dialog("Select/create tap log file",
+                               NULL, TRUE, NULL,
+                               save_filename_callback,
+                               NULL);
 }
 
 
@@ -196,6 +212,19 @@ static void on_tapecart_enable_toggled(GtkWidget *widget, gpointer user_data)
 }
 
 
+static void browse_filename_callback(GtkDialog *dialog,
+                                     gchar *filename,
+                                     gpointer data)
+{
+    if (filename != NULL) {
+        vice_gtk3_resource_entry_full_set(tapecart_filename, filename);
+        g_free(filename);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+
 /** \brief  Handler for the "clicked" event of the tapecart browse button
  *
  * \param[in]   widget      tapecart browse button
@@ -203,15 +232,14 @@ static void on_tapecart_enable_toggled(GtkWidget *widget, gpointer user_data)
  */
 static void on_tapecart_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
-    gchar *filename;
 
     /* TODO: use existing filename, if any */
-    filename = vice_gtk3_open_file_dialog("Select tapecart file", NULL,
-            NULL, NULL);
-    if (filename != NULL) {
-        vice_gtk3_resource_entry_full_set(tapecart_filename, filename);
-        g_free(filename);
-    }
+
+    vice_gtk3_open_file_dialog(
+            "Select tapecart file",
+            NULL, NULL, NULL,
+            browse_filename_callback,
+            NULL);
 }
 
 
@@ -261,29 +289,34 @@ static GtkWidget *create_datasette_widget(void)
     g_object_set(ds_reset, "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(grid), ds_reset, 0, 1, 4, 1);
 
+    ds_sound = vice_gtk3_resource_check_button_new("DatasetteSound",
+            "Enable datasette sound");
+    g_object_set(ds_sound, "margin-left", 16, NULL);
+    gtk_grid_attach(GTK_GRID(grid), ds_sound, 0, 2, 4, 1);
+
     label = gtk_label_new("Zero gap delay:");
     g_object_set(label, "margin-left", 16, NULL);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     ds_zerogap = vice_gtk3_resource_spin_int_new("DatasetteZeroGapDelay",
             0, 50000, 1000);
-    gtk_grid_attach(GTK_GRID(grid), label, 0, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), ds_zerogap, 1, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), ds_zerogap, 1, 3, 1, 1);
 
     label = gtk_label_new("Speed tuning:");
     g_object_set(label, "margin-left", 16, NULL);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     ds_speed = vice_gtk3_resource_spin_int_new("DatasetteSpeedTuning",
             0, 50000, 1000);
-    gtk_grid_attach(GTK_GRID(grid), label, 2, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), ds_speed, 3, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), label, 2, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), ds_speed, 3, 3, 1, 1);
 
     label = gtk_label_new("Tape wobble:");
     g_object_set(label, "margin-left", 16, NULL);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     ds_wobble = vice_gtk3_resource_spin_int_new("DatasetteTapeWobble",
             0, 100, 10);
-    gtk_grid_attach(GTK_GRID(grid), label, 0, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), ds_wobble, 1, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), ds_wobble, 1, 4, 1, 1);
 
     /* enble/disable sub widgets */
     on_datasette_toggled(ds_enable, NULL);

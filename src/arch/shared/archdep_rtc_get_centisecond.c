@@ -22,35 +22,17 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
  *  02111-1307  USA.
  *
- */ 
+ */
 
 #include "vice.h"
 #include "archdep_defs.h"
 
-/* FIXME: includes for OS2 */
-
 #if defined(ARCHDEP_OS_WINDOWS)
-# include <windows.h>
-#endif
+
+#include <windows.h>
 
 #include "archdep_rtc_get_centisecond.h"
 
-#if defined(ARCHDEP_OS_OS2)
-
-#ifndef HAVE_GETTIMEOFDAY
-int archdep_rtc_get_centisecond(void)
-{
-    struct timeb tb;
-
-    __ftime(&tb);
-
-    return (int)tb.millitm / 10;
-}
-#endif
-
-#endif
-
-#if defined(ARCHDEP_OS_WINDOWS)
 
 int archdep_rtc_get_centisecond(void)
 {
@@ -58,6 +40,26 @@ int archdep_rtc_get_centisecond(void)
 
     GetSystemTime(&t);
     return (int)(t.wMilliseconds / 10);
+}
+
+#else /* other OS */
+
+#include <time.h>
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+int archdep_rtc_get_centisecond(void)
+{
+#ifdef HAVE_GETTIMEOFDAY
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return (int)(t.tv_usec / 10000);
+#else
+#warning "archdep_rtc_get_centisecond implementation missing"
+    return 0;
+#endif
 }
 
 #endif

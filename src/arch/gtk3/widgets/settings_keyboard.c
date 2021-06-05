@@ -36,19 +36,19 @@
 #include <errno.h>
 #include <string.h>
 
-#include "vice_gtk3.h"
+
+#include "kbdlayoutwidget.h"
+#include "kbdmappingwidget.h"
 #include "keyboard.h"
 #include "lib.h"
-#include "util.h"
-#include "ui.h"
 #include "resources.h"
-#include "vsync.h"
-
-#include "kbdmappingwidget.h"
-#include "kbdlayoutwidget.h"
-#include "uistatusbar.h"
-
 #include "settings_keyboard.h"
+#include "ui.h"
+#include "ui.h"
+#include "uistatusbar.h"
+#include "util.h"
+#include "vice_gtk3.h"
+#include "vsync.h"
 
 
 /** \brief  Toggle statusbar keyboard debugging widget display
@@ -64,6 +64,40 @@ static void on_kbd_debug_toggled(GtkWidget *widget, gpointer data)
 }
 
 
+/** \brief  Callback for the save-dialog response handler
+ *
+ * \param[in,out]   dialog      save-file dialog
+ * \param[in,out]   filename    filename
+ * \param[in]       data        extra data (unused)
+ */
+static void save_filename_callback(GtkDialog *dialog,
+                                   gchar *filename,
+                                   gpointer data)
+{
+    if (filename != NULL) {
+        char *path;
+        int oops;
+
+
+        /* `filename` is owned by GLib */
+        path = util_add_extension_const(filename, "vkm");
+
+        oops = keyboard_keymap_dump(path);
+        if (oops == 0) {
+            vice_gtk3_message_info(
+                    "Succesfully saved current keymap",
+                    "Wrote current keymap as '%s'.", filename);
+        } else {
+            vice_gtk3_message_error("Failed to save custom keymap",
+                    "Error %d: %s", errno, strerror(errno));
+        }
+        g_free(filename);
+        lib_free(path);
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
 /** \brief  Write current keymap to host system
  *
  * \param[in]   widget  button triggering the event (ignored)
@@ -71,30 +105,14 @@ static void on_kbd_debug_toggled(GtkWidget *widget, gpointer data)
  */
 static void on_save_custom_keymap_clicked(GtkWidget *widget, gpointer data)
 {
-    gchar *path;
-
-/*    vice_gtk3_message_info("Save current keymap", "Nothing to see here..."); */
-    path = vice_gtk3_save_file_dialog(
+    vice_gtk3_save_file_dialog(
             "Save current keymap",  /* title */
             NULL,                   /* proposed filename: might use this later */
             TRUE,                   /* query user before overwrite */
-            NULL                    /* base path, maybe ~ ?) */
+            NULL,                   /* base path, maybe ~ ?) */
+            save_filename_callback, /* filename callback */
+            NULL                    /* extra data */
          );
-
-    if (path != NULL && *path != '\0') {
-        /* we got something at least */
-
-        util_add_extension(&path, "vkm");
-
-        int oops = keyboard_keymap_dump(path);
-        if (oops == 0) {
-            vice_gtk3_message_info("Succesfully saved current keymap",
-                    "Wrote current keymap as '%s'.", path);
-        } else {
-            vice_gtk3_message_error("Failed to save custom keymap",
-                    "Error %d: %s", errno, strerror(errno));
-        }
-    }
 }
 
 
@@ -136,9 +154,9 @@ GtkWidget *settings_keyboard_widget_create(GtkWidget *widget)
             NULL);
     g_object_set(kbdstatusbar, "margin-top", 16, NULL);
     gtk_widget_show_all(layout);
-    
+
     /* update widget so sym/pos is greyed out correctly */
     kbdmapping_widget_update();
-    
+
     return layout;
 }

@@ -44,8 +44,8 @@
 #include "machine.h"
 #include "resources.h"
 #include "ui.h"
+#include "vice_gtk3.h"
 #include "vsync.h"
-#include "widgethelpers.h"
 
 #include "uidebug.h"
 
@@ -96,10 +96,18 @@ static GtkWidget *create_trace_widget(void)
     GtkWidget *grid;
     GtkWidget *group;
 
-    grid = uihelpers_create_grid_with_label("Select CPU/Drive trace mode", 1);
+    grid = vice_gtk3_grid_new_spaced_with_label(
+            -1, -1,
+            "Select CPU/Drive trace mode",
+            1);
     group = vice_gtk3_resource_radiogroup_new("TraceMode", trace_modes,
             GTK_ORIENTATION_VERTICAL);
-    g_object_set(group, "margin-left", 16, NULL);
+    g_object_set(group,
+            "margin-left", 16,
+            "margin-right", 16,
+            "margin-top", 16,
+            "margin-bottom", 16,
+            NULL);
     gtk_grid_attach(GTK_GRID(grid), group, 0, 1, 1, 1);
 
     gtk_widget_show_all(grid);
@@ -108,8 +116,6 @@ static GtkWidget *create_trace_widget(void)
 
 
 /** \brief  Create dialog to control trace mode
- *
- * \param[in]   parent  parent widget
  *
  * \return  GtkDialog
  */
@@ -124,6 +130,13 @@ static GtkWidget *create_trace_mode_dialog(void)
             NULL);
 
     content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    g_object_set(content,
+            "margin-left", 16,
+            "margin-right", 16,
+            "margin-top", 16,
+            "margin-bottom", 16,
+            NULL);
+
     gtk_container_add(GTK_CONTAINER(content), create_trace_widget());
 
     return dialog;
@@ -131,8 +144,6 @@ static GtkWidget *create_trace_mode_dialog(void)
 
 
 /** \brief  Create dialog to control playback frames
- *
- * \param[in]   parent  parent widget
  *
  * \return  GtkDialog
  */
@@ -157,7 +168,7 @@ static GtkWidget *create_playback_frames_dialog(void)
  *
  * \param[in,out]   dialog      dialog triggering the event
  * \param[in]       response_id response ID
- * \param[in]       extra event data (unused)
+ * \param[in]       data        extra event data (unused)
  */
 static void on_response_trace_mode(GtkDialog *dialog,
                                    gint response_id,
@@ -174,7 +185,7 @@ static void on_response_trace_mode(GtkDialog *dialog,
  *
  * \param[in,out]   dialog      dialog triggering the event
  * \param[in]       response_id response ID
- * \param[in]       extra event data (unused)
+ * \param[in]       data        extra event data (unused)
  */
 static void on_response_playback_frames(GtkDialog *dialog,
                                         gint response_id,
@@ -195,7 +206,7 @@ static void on_response_playback_frames(GtkDialog *dialog,
  *
  * \return  TRUE
  */
-gboolean uidebug_trace_mode_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_debug_trace_mode_dialog_show(GtkWidget *widget, gpointer user_data)
 {
     GtkWidget *dialog;
 
@@ -214,7 +225,8 @@ gboolean uidebug_trace_mode_callback(GtkWidget *widget, gpointer user_data)
 *
 * \return   TRUE
 */
-gboolean uidebug_playback_frames_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_debug_playback_frames_dialog_show(GtkWidget *widget,
+                                              gpointer user_data)
 {
     GtkWidget *dialog;
 

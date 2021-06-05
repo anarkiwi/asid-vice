@@ -47,6 +47,7 @@
 #include "drive.h"
 #include "log.h"
 #include "machine.h"
+#include "mainlock.h"
 #include "util.h"
 #include "vsync.h"
 
@@ -59,6 +60,25 @@
 #include "ui.h"
 #include "uicommands.h"
 #include "uimachinewindow.h"
+#include "widgethelpers.h"
+
+
+/** \brief  Callback for the confirm-on-exit dialog
+ *
+ * Exit VICE if \a result is TRUE.
+ *
+ * \param[in]   dialog  dialog reference (unused)
+ * \param[in]   result  dialog result
+ */
+static void confirm_exit_callback(GtkDialog *dialog, gboolean result)
+{
+    debug_gtk3("called: %s", result ? "TRUE" : "FALSE");
+    if (result) {
+        mainlock_release();
+        archdep_vice_exit(0);
+        mainlock_obtain();
+    }
+}
 
 
 /** \brief  Swap joysticks
@@ -131,15 +151,25 @@ gboolean ui_toggle_keyset_joysticks(GtkWidget *widget, gpointer data)
  */
 gboolean ui_toggle_mouse_grab(GtkWidget *widget, gpointer data)
 {
+    GtkWindow *window;
     int mouse;
+    gchar title[256];
 
     resources_get_int("Mouse", &mouse);
     resources_set_int("Mouse", !mouse);
+    mouse = !mouse;
+
     if (mouse) {
-        ui_mouse_grab_pointer();
+       g_snprintf(title, 256, "VICE (%s) (Use %s+M to disable mouse grab)",
+               machine_get_name(), VICE_MOD_MASK_TEXT);
     } else {
-        ui_mouse_ungrab_pointer();
+       g_snprintf(title, 256, "VICE (%s)",
+               machine_get_name());
     }
+
+    window = ui_get_active_window();
+    gtk_window_set_title(window, title);
+
 
     return TRUE;    /* don't let any shortcut key end up in the emulated machine */
 }
@@ -149,6 +179,8 @@ gboolean ui_toggle_mouse_grab(GtkWidget *widget, gpointer data)
  *
  * \param[in]   widget      menu item triggering the event (unused)
  * \param[in]   user_data   MACHINE_RESET_MODE_SOFT/MACHINE_RESET_MODE_HARD
+ *
+ * \return  TRUE to indicate the event has been handled
  */
 gboolean ui_machine_reset_callback(GtkWidget *widget, gpointer user_data)
 {
@@ -162,6 +194,8 @@ gboolean ui_machine_reset_callback(GtkWidget *widget, gpointer user_data)
  *
  * \param[in]   widget      menu item triggering the event (unused)
  * \param[in]   user_data   drive unit number (8-11) (int)
+ *
+ * \return  TRUE
  */
 gboolean ui_drive_reset_callback(GtkWidget *widget, gpointer user_data)
 {
@@ -184,11 +218,11 @@ static gboolean confirm_exit(void)
         return TRUE;
     }
 
-    if (vice_gtk3_message_confirm("Exit VICE",
-                                  "Do you really wish to exit VICE?")) {
-        return TRUE;
-    }
-    ui_set_ignore_mouse_hide(FALSE);
+    vice_gtk3_message_confirm(
+            confirm_exit_callback,
+            "Exit VICE",
+            "Do you really wish to exit VICE?`");
+
     return FALSE;
 }
 
@@ -203,7 +237,7 @@ static gboolean confirm_exit(void)
 gboolean ui_close_callback(GtkWidget *widget, gpointer user_data)
 {
     if (confirm_exit()) {
-        ui_exit();
+        archdep_vice_exit(0);
     }
     return TRUE;
 }
@@ -222,7 +256,7 @@ gboolean ui_main_window_delete_event(GtkWidget *widget, GdkEvent *event,
 {
     if (confirm_exit()) {
         /* if we reach this point, the function doesn't return */
-        ui_exit();
+        archdep_vice_exit(0);
     }
     return TRUE;
 }
@@ -285,6 +319,16 @@ gboolean ui_toggle_resource(GtkWidget *widget, gpointer resource)
 
 
 /** \brief  Open the Manual
+ *
+ * Event handler for the 'Manual' menu item
+ *
+ * \param[in]   widget      parent widget triggering the event (unused)
+ * \param[in]   user_data   extra event data (unused)
+ *
+ * \return  TRUE if opening the manual succeeded, FALSE otherwise
+ *          (unreliable: gtk_show_uri_on_window() will return TRUE if the
+ *           associated application could be openened but not the actual
+ *           manual file)
  */
 gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
 {
@@ -295,7 +339,7 @@ gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
     gchar *final_uri;
 
     /*
-     * Gget arch-dependent documentation dir (doesn't contain the HTML docs
+     * Get arch-dependent documentation dir (doesn't contain the HTML docs
      * on Windows, but that's an other issue to fix.
      */
     path = archdep_get_vice_docsdir();
@@ -304,22 +348,6 @@ gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
     uri = archdep_join_paths(path, "vice.pdf", NULL);
 
     debug_gtk3("URI before GTK3: %s", uri);
-
-    /*
-     * This should not be used, but rather a helper tool provided by Gtk:
-     * gspawn-winXX-helper-console.exe needs to be installed by the bindist
-     * script.
-     */
-#if 0
-#ifdef WIN32_COMPILE
-    /* Windows: the Gtk/GLib stuff fails whatever I do, so let's use actual
-     *          Windows code. --compyx
-     */
-    ShellExecuteA(NULL, "open", uri, NULL, NULL, SW_SHOW);
-    /* that's right: no error checking and no fallback to HTML */
-    return;
-#endif
-#endif
 
     final_uri = g_filename_to_uri(uri, NULL, &error);
     debug_gtk3("final URI (pdf): %s", final_uri);
@@ -340,43 +368,49 @@ gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
 
     debug_gtk3("pdf uri: '%s'.", final_uri);
 
-#ifdef WIN32_COMPILE
-
-    /*
-     * Silly hack: at least Acrobat reader can't make heads or tails from a
-     * URI, so we remove 'file:///C:' here to at least make Acrobat reader
-     * "work"
+    /* NOTE:
+     *
+     * On Windows this at least opens Acrobat reader with a file-not-found
+     * error message, any other URI/path given to this call results in a
+     * "Operation not supported" message, which doesn't help much.
+     *
+     * Since Windows (or perhaps Gtk3 on Windows) fails, I've removed the
+     * Windows-specific code that didn't work anyway
      */
-    res = gtk_show_uri_on_window(NULL, final_uri + 8, GDK_CURRENT_TIME, &error);
-#else
     res = gtk_show_uri_on_window(NULL, final_uri, GDK_CURRENT_TIME, &error);
-#endif
     if (!res) {
-        vice_gtk3_message_error(
-                "Failed to load PDF, (No more joke here, guess the joke about Germans not having a sense of humor is at least partially true)",
-                error != NULL ? error->message : "<no message>");
+        /* will contain the args for the archep_spawn() call */
+        char *args[3];
+        char *tmp_name;
+
+        debug_gtk3("gtk_show_uri_on_window Failed!");
+
+        /* fallback to xdg-open */
+        args[0] = lib_strdup("xdg-open");
+        args[1] = lib_strdup(uri);
+        args[2] = NULL;
+
+        debug_gtk3("Calling xgd-open");
+        if (archdep_spawn("xdg-open", args, &tmp_name, NULL) < 0) {
+            debug_gtk3("xdg-open Failed!");
+            vice_gtk3_message_error(
+                    "Failed to load PDF",
+                    "Error message: %s",
+                    error != NULL ? error->message : "<no message>");
+        } else {
+            debug_gtk3("OK");
+            res = TRUE;
+        }
+        /* clean up */
+        lib_free(args[0]);
+        lib_free(args[1]);
     }
+
     lib_free(uri);
     g_free(final_uri);
     g_clear_error(&error);
-    if (res) {
-        /* We succesfully managed to open the PDF application, but there's no
-         * way to determine if actually loading the PDF in that application
-         * worked. So we simply exit here to avoid also opening a HTML browser
-         * which on Windows at least seems to completely ignore the default and
-         * always starts Internet Explorer (or Edge, even better).
-         *
-         * Also how do we close the PDF application if we could determine it
-         * failed to load the PDF? We don't get any reference to the application
-         * to be able to terminate it. Gtk3 is awesome!
-         *
-         * -- compyx
-         */
-        return TRUE;
-    }
 
-    /* No HTML for you! */
-    return FALSE;
+    return res;
 }
 
 
@@ -386,6 +420,8 @@ gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
  *
  * \param[in]   widget  widget triggering the event (ignored)
  * \param[in]   data    extra event data (unused)
+ *
+ * \return  TRUE to signal the event was handled
  */
 gboolean ui_restore_display(GtkWidget *widget, gpointer data)
 {
@@ -412,6 +448,25 @@ gboolean ui_restore_display(GtkWidget *widget, gpointer data)
 }
 
 
+/** \brief  Callback for the confirmation dialog to restore settings
+ *
+ * Restore settings to their factory values if \a result is TRUE.
+ *
+ * \param[in]   dialog  confirm-dialog reference
+ * \param[in]   result  result
+ */
+static void restore_default_callback(GtkDialog *dialog, gboolean result)
+{
+    debug_gtk3("Resetting resources to default.");
+    if (result) {
+        mainlock_obtain();
+        resources_set_defaults();
+        mainlock_release();
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
 /** \brief  Restore default settings
  *
  * Resets settings to their defaults, asking the user to confirm.
@@ -423,15 +478,13 @@ gboolean ui_restore_display(GtkWidget *widget, gpointer data)
  */
 gboolean ui_restore_default_settings(GtkWidget *widget, gpointer data)
 {
-    if (vice_gtk3_message_confirm(
-                "Reset all settings to default",
-                "Are you sure you wish to reset all settings to their default"
-                " values?\n\n"
-                "The new settings will not be saved until using the 'Save"
-                " settings' menu item, or having 'Save on exit' enabled and"
-                " exiting VICE.")) {
-        debug_gtk3("Resetting resources to default.");
-        resources_set_defaults();
-    }
+    vice_gtk3_message_confirm(
+            restore_default_callback,
+            "Reset all settings to default",
+            "Are you sure you wish to reset all settings to their default"
+            " values?\n\n"
+            "The new settings will not be saved until using the 'Save"
+            " settings' menu item, or having 'Save on exit' enabled and"
+            " exiting VICE.");
     return TRUE;
 }

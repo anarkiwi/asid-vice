@@ -31,7 +31,7 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-GtkWidget * drive_options_widget_create(int unit);
-void        drive_options_widget_update(GtkWidget *widget, int unit);
+GtkWidget * drive_options_widget_create(int unit,
+                                        void (*iec_callback)(GtkWidget *, int));
 
 #endif

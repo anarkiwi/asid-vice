@@ -46,6 +46,9 @@ OBJDUMP=$9
 shift
 COMPILER=$9
 
+shift
+HTML_DOCS=$9
+
 
 # Try to get the SVN revision
 #echo "Trying to get SVN revision"
@@ -113,20 +116,20 @@ echo "Removing an old $BUILDPATH ..."
 rm -r -f $BUILDPATH
 
 echo "Generating a $WINXX GTK3 port binary distribution..."
-mkdir $BUILDPATH
+mkdir -p $BUILDPATH/bin
 
 # Copy binaries.  Strip them unless VICE is configured with "--enable-debug".
 for i in $EXECUTABLES; do
-  cp $TOPBUILDDIR/src/$i.exe $BUILDPATH
-  $STRIP $BUILDPATH/$i.exe
+  cp $TOPBUILDDIR/src/$i.exe $BUILDPATH/bin
+  $STRIP $BUILDPATH/bin/$i.exe
 done
 
 if test x"$CROSS" != "xtrue"; then
 
 # The following lines assume that this script is run by MSYS2.
-  cp `ntldd -R $BUILDPATH/x64sc.exe|gawk '/\\\\bin\\\\/{print $3;}'|cygpath -f -` $BUILDPATH
+  cp `ntldd -R $BUILDPATH/bin/x64sc.exe|gawk '/\\\\bin\\\\/{print $3;}'|cygpath -f -` $BUILDPATH/bin
   cd $MINGW_PREFIX
-  cp bin/lib{croco-0.6-3,lzma-5,rsvg-2-2,xml2-2}.dll $BUILDPATH
+  cp bin/lib{lzma-5,rsvg-2-2,xml2-2}.dll $BUILDPATH/bin
   cp --parents lib/gdk-pixbuf-2.0/2.*/loaders.cache lib/gdk-pixbuf-2.0/2.*/loaders/libpixbufloader-{png,svg,xpm}.dll $BUILDPATH
   # GTK3 accepts having only scalable icons,
   # which reduces the bindist size considerably.
@@ -134,7 +137,7 @@ if test x"$CROSS" != "xtrue"; then
   rm -r $BUILDPATH/share/icons/Adwaita/scalable/emotes
   cp --parents share/icons/hicolor/index.theme $BUILDPATH
   cp --parents share/glib-2.0/schemas/gschemas.compiled $BUILDPATH
-  cp bin/gspawn-win??-helper*.exe $BUILDPATH
+  cp bin/gspawn-win??-helper*.exe $BUILDPATH/bin
   cd - >/dev/null
 else
 
@@ -144,6 +147,12 @@ else
 # 2019-10-02: Updated to work with FrankenVICE (Debian cross-compiler using
 #             Fedora packages for Gtk3/GLib)
 #             Currently a bit flakey, but it seems to work.
+#
+# 2020-07-07: More hacks added, makes the bindist run again, but on Windows 7
+#             with 'Aero' or Win10, this still displays the white screen and
+#             the screwed up 'X' in the window decorations
+#             Also: liblzma-5.dll is missing, but this doesn't seem to matter
+#             when I copy that DLL from an msys2 build.
 
 
   libm=`$COMPILER -print-file-name=libm.a`
@@ -161,7 +170,7 @@ else
   done
   # A few of these libs cannot be found by frankenvice, so perhaps we need to install
   # these or alter this command:
-  cp $dlldir/lib{bz2-1,freetype-6,gcc_s_*,croco-0.6-3,lzma-5,rsvg-2-2,xml2-2}.dll $BUILDPATH
+  cp $dlldir/lib{bz2-1,freetype-6,gcc_s_*,lzma-5,rsvg-2-2,xml2-2}.dll $BUILDPATH/bin
   gccname=`$COMPILER -print-file-name=libgcc.a`
   gccdir=`dirname $gccname`
   dlls=`find $gccdir -name 'libgcc*.dll' -o -name 'libstdc*.dll'`
@@ -191,8 +200,20 @@ EOF
   # Breaks: no hicolor/ in either Debian or Fedora, but doesn't seem to matter
   cp --parents share/icons/hicolor/index.theme $BUILDPATH
   cp --parents share/glib-2.0/schemas/gschemas.compiled $BUILDPATH
-  cp bin/gspawn-win??-helper*.exe $BUILDPATH
+  cp bin/gspawn-win??-helper*.exe $BUILDPATH/bin
+
+  # Ugly hack since we now have all emulators in bin/ and updating the above
+  # with BUILDDIR/bin seems to miss some DLL's:
+  mv $BUILDPATH/*.dll $BUILDPATH/bin/
+
+  # Some hardcoded stuff, we really should improve this script, separate it
+  # into a new file. (libwinpthread-1.dll is symlinked from libwinphread-1.dll
+  # (note the absence of the 't' in the latter)
+  cp $loc/lib/libwinpthread-1.dll $BUILDPATH/bin
+  # XXX: perhaps also libgcc* ? These are not in $loc
+
   cd $current
+
 fi
 
 cp -a $TOPSRCDIR/data/C128 $TOPSRCDIR/data/C64 $BUILDPATH
@@ -203,30 +224,47 @@ cp -a $TOPSRCDIR/data/SCPU64 $TOPSRCDIR/data/VIC20 $BUILDPATH
 rm -f `find $BUILDPATH -name "Makefile*"`
 rm -f `find $BUILDPATH -name "sdl_*"`
 mkdir $BUILDPATH/common
-cp $TOPBUILDDIR/src/arch/gtk3/data/vice.gresource $BUILDPATH/common
-cp $TOPSRCDIR/data/common/CBM.ttf $BUILDPATH/common
-cp -a $TOPSRCDIR/doc/html $BUILDPATH
-cp -a -u $TOPBUILDDIR/doc/html $BUILDPATH
-rm -f $BUILDPATH/html/Makefile* $BUILDPATH/html/checklinks.sh $BUILDPATH/html/texi2html
-rm -f $BUILDPATH/html/robots.txt $BUILDPATH/html/sitemap.xml
-rm -f $BUILDPATH/html/COPYING $BUILDPATH/html/NEWS
-cp $TOPSRCDIR/COPYING $TOPSRCDIR/FEEDBACK $TOPSRCDIR/NEWS $TOPSRCDIR/README $BUILDPATH
+cp $TOPBUILDDIR/data/common/vice.gresource $BUILDPATH/common
+cp $TOPSRCDIR/data/common/C64_Pro_Mono-STYLE.ttf $BUILDPATH/common
+
+if test x"$HTML_DOCS" = "xyes"; then
+    cp -a $TOPSRCDIR/doc/html $BUILDPATH
+    cp -a -u $TOPBUILDDIR/doc/html $BUILDPATH
+    rm -f $BUILDPATH/html/Makefile* $BUILDPATH/html/checklinks.sh $BUILDPATH/html/texi2html
+    rm -f $BUILDPATH/html/robots.txt $BUILDPATH/html/sitemap.xml
+    rm -f $BUILDPATH/html/COPYING $BUILDPATH/html/NEWS
+fi
+
+cp $TOPSRCDIR/COPYING $TOPSRCDIR/NEWS $TOPSRCDIR/README $BUILDPATH
 cp $TOPSRCDIR/doc/readmes/Readme-GTK3.txt $BUILDPATH
 mkdir $BUILDPATH/doc
 test -e $TOPBUILDDIR/doc/vice.pdf&&cp $TOPBUILDDIR/doc/vice.pdf $BUILDPATH/doc
 
 
-if test x"$ZIPKIND" = "xzip"; then
-  rm -f $BUILDPATH.zip
+if test x"$ZIPKIND" = "xzip" -o x"$ZIPKIND" = "x7zip"; then
+  if test x"$ZIPKIND" = "xzip" -o x"$ZIPKIND" = "x"; then
+    ZIPEXT=zip
+  else
+    ZIPEXT=7z
+  fi
+  rm -f $BUILDPATH.$ZIPEXT
+
   cd $BUILDPATH/..
-  if test x"$ZIP" = "x"
-    then zip -r -9 -q $BUILDPATH.zip $GTK3NAME-$VICEVERSION-$WINXX$SVN_SUFFIX
-    else $ZIP $BUILDPATH.zip $GTK3NAME-$VICEVERSION-$WINXX$SVN_SUFFIX
+
+  if test x"$ZIPKIND" = "x7zip"; then
+    # these args need investigating for max compression:
+    7z a -t7z -m0=lzma2 -mx=9 -ms=on $BUILDPATH.$ZIPEXT $GTK3NAME-$VICEVERSION-$WINXX$SVN_SUFFIX
+  else
+    if test x"$ZIP" = "x"; then
+      zip -r -9 -q $BUILDPATH.$ZIPEXT $GTK3NAME-$VICEVERSION-$WINXX$SVN_SUFFIX
+    else
+      $ZIP $BUILDPATH.$ZIPEXT $GTK3NAME-$VICEVERSION-$WINXX$SVN_SUFFIX
+    fi
   fi
   rm -r -f $BUILDPATH
   echo "$WINXX GTK3 port binary distribution archive generated as:"
-  echo "(Bash path): $BUILDPATH.zip"
-  test x"$CROSS" != "xtrue"&&echo "(Windows path): '`cygpath -wa \"$BUILDPATH.zip\"`'"
+  echo "(Bash path): $BUILDPATH.$ZIPEXT"
+  test x"$CROSS" != "xtrue"&&echo "(Windows path): '`cygpath -wa \"$BUILDPATH.$ZIPEXT\"`'"
 else
   echo "$WINXX GTK3 port binary distribution directory generated as:"
   echo "(Bash path): $BUILDPATH/"

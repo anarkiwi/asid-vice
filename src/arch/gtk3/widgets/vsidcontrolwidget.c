@@ -44,6 +44,7 @@
 
 #include <gtk/gtk.h>
 
+#include "archdep_defs.h"
 #include "vice_gtk3.h"
 #include "debug_gtk3.h"
 #include "debug.h"
@@ -274,7 +275,7 @@ GtkWidget *vsid_control_widget_create(void)
         GtkWidget *button;
         gchar buf[1024];
 
-        g_snprintf(buf, sizeof buf, "%s-symbolic", buttons[i].icon_name);
+        g_snprintf(buf, sizeof(buf), "%s-symbolic", buttons[i].icon_name);
 
         button = gtk_button_new_from_icon_name(buf,
                 GTK_ICON_SIZE_LARGE_TOOLBAR);

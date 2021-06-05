@@ -9,10 +9,6 @@
  *  - Windows
  *  - MacOS
  *  - BeOS/Haiku (untested)
- *  - AmigaOS (untested)
- *  - OS/2 (untested)
- *  - MS-DOS (untested)
- *
  */
 
 /*
@@ -45,10 +41,6 @@
 
 #include "lib.h"
 #include "log.h"
-
-#ifdef AMIGA_SUPPORT
-/* some includes */
-#endif
 
 /* for readlink(2) */
 #ifdef UNIX_COMPILE
@@ -98,7 +90,7 @@ const char *archdep_boot_path(void)
     full_path = archdep_program_path();
 
 
-#if defined(ARCHDEP_OS_WINDOWS) || (ARCHDEP_OS_OS2)
+#if defined(ARCHDEP_OS_WINDOWS)
     p = strrchr(full_path, '\\');
 #else
     p = strrchr(full_path, '/');

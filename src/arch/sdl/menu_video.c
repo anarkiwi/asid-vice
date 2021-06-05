@@ -1243,7 +1243,7 @@ static UI_MENU_CALLBACK(external_palette_file2_callback)
     return NULL;
 }
 
-static int countgroup(palette_info_t *palettelist, char *chip)
+static int countgroup(const palette_info_t *palettelist, char *chip)
 {
     int num = 0;
 
@@ -1257,12 +1257,12 @@ static int countgroup(palette_info_t *palettelist, char *chip)
 }
 
 typedef struct name2func_s {
-    char *name;
+    const char *name;
     const char *(*toggle_func)(int activated, ui_callback_data_t param);
     const char *(*file_func)(int activated, ui_callback_data_t param);
 } name2func_t;
 
-static name2func_t name2func[] = {
+static const name2func_t name2func[] = {
     { "VICII", toggle_VICIIExternalPalette_callback, file_string_VICIIPaletteFile_callback },
     { "VDC", toggle_VDCExternalPalette_callback, file_string_VDCPaletteFile_callback },
     { "Crtc", toggle_CrtcExternalPalette_callback, file_string_CrtcPaletteFile_callback },
@@ -1274,7 +1274,7 @@ static name2func_t name2func[] = {
 void uipalette_menu_create(char *chip1_name, char *chip2_name)
 {
     int num;
-    palette_info_t *palettelist = palette_get_info_list();
+    const palette_info_t *palettelist = palette_get_info_list();
     int i;
     const char *(*toggle_func1)(int activated, ui_callback_data_t param) = NULL;
     const char *(*file_func1)(int activated, ui_callback_data_t param) = NULL;

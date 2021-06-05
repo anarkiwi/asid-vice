@@ -28,6 +28,8 @@
  *
  */
 
+/* #define DBGSDLMENU */
+
 #include "vice.h"
 
 #include "archdep.h"
@@ -62,7 +64,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef DBGSDLMENU
+#define DBG(x) printf x
+#else
+#define DBG(x)
+#endif
+
 int sdl_menu_state = 0;
+int sdl_pause_state = 0;
 
 void (*sdl_ui_set_menu_params)(int index, menu_draw_t *menu_draw);
 
@@ -87,7 +96,6 @@ static uint8_t *draw_buffer_backup = NULL;
  * Used to properly clean up when 'Quit emu' is triggered
  */
 static int *menu_offsets = NULL;
-
 
 static menufont_t activefont = { NULL, sdl_active_translation, 0, 0 };
 static menufont_t menufont = { NULL, sdl_menu_translation, 0, 0 };
@@ -296,7 +304,7 @@ static int *sdl_ui_menu_get_offsets(ui_menu_entry_t *menu, int num_items)
                 j = i;
 
                 while ((j < num_items) && (menu[j].type == block_type)) {
-                    len = strlen(menu[j].string);
+                    len = (int)strlen(menu[j].string);
                     menu_offsets[j] = len;
                     if (len > max_len) {
                         max_len = len;
@@ -507,6 +515,7 @@ static void sdl_ui_menu_redraw_cursor(ui_menu_entry_t *menu, int offset, int *va
 
 static ui_menu_retval_t sdl_ui_menu_display(ui_menu_entry_t *menu, const char *title, int allow_mapping)
 {
+    static int last_cur = -1, last_cur_offset = -1;
     int num_items = 0, cur = 0, cur_old = -1, cur_offset = 0, in_menu = 1, redraw = 1;
     int *value_offsets = NULL;
     ui_menu_retval_t menu_retval = MENU_RETVAL_DEFAULT;
@@ -530,6 +539,13 @@ static ui_menu_retval_t sdl_ui_menu_display(ui_menu_entry_t *menu, const char *t
     /* If a subtitle is at the top of the menu, then start at the next line. */
     if (menu[0].type == MENU_ENTRY_TEXT) {
         cur = 1;
+    }
+    /* restore last position in main menu */
+    if (menu == main_menu) {
+        if ((last_cur >= 0) && (last_cur_offset >= 0)) {
+            cur = last_cur;
+            cur_offset = last_cur_offset;
+        }
     }
 
     while (in_menu) {
@@ -665,6 +681,11 @@ static ui_menu_retval_t sdl_ui_menu_display(ui_menu_entry_t *menu, const char *t
 
     lib_free(value_offsets);
     menu_offsets = NULL;
+    /* remember position in main menu for next time we enter it */
+    if (menu == main_menu) {
+        last_cur = cur;
+        last_cur_offset = cur_offset;
+    }
     return menu_retval;
 }
 
@@ -701,27 +722,59 @@ static ui_menu_retval_t sdl_ui_menu_item_activate(ui_menu_entry_t *item)
     return MENU_RETVAL_DEFAULT;
 }
 
+/* make a backup of the current emulator screen contents */
+void sdl_ui_create_draw_buffer_backup(void)
+{
+    unsigned int width = sdl_active_canvas->draw_buffer->draw_buffer_width;
+    unsigned int height = sdl_active_canvas->draw_buffer->draw_buffer_height;
+    draw_buffer_backup = lib_malloc(width * height);
+    memcpy(draw_buffer_backup, sdl_active_canvas->draw_buffer->draw_buffer, width * height);
+}
+
+/* copy the backup of the emulator output back to the canvas */
+void sdl_ui_restore_draw_buffer_backup(void)
+{
+    unsigned int width = sdl_active_canvas->draw_buffer->draw_buffer_width;
+    unsigned int height = sdl_active_canvas->draw_buffer->draw_buffer_height;
+    if (draw_buffer_backup) {
+        memcpy(sdl_active_canvas->draw_buffer->draw_buffer, draw_buffer_backup, width * height);
+    }
+}
+
+/* free the backup buffer */
+void sdl_ui_destroy_draw_buffer_backup(void)
+{
+    if (draw_buffer_backup) {
+        lib_free(draw_buffer_backup);
+        draw_buffer_backup = NULL;
+    }
+}
+
 static void sdl_ui_trap(uint16_t addr, void *data)
 {
     unsigned int width;
     unsigned int height;
     static char msg[0x40];
 
+    DBG(("sdl_ui_trap start\n"));
+
     width = sdl_active_canvas->draw_buffer->draw_buffer_width;
     height = sdl_active_canvas->draw_buffer->draw_buffer_height;
-    draw_buffer_backup = lib_malloc(width * height);
 
-    memcpy(draw_buffer_backup, sdl_active_canvas->draw_buffer->draw_buffer, width * height);
+    sdl_ui_create_draw_buffer_backup();
 
     sdl_ui_activate_pre_action();
+
     if (machine_class != VICE_MACHINE_VSID) {
         memset(sdl_active_canvas->draw_buffer->draw_buffer, 0, width * height);
     }
 
     if (data == NULL) {
+        /* called via "menu key" to open the menu */
         sprintf(&msg[0], "VICE %s - main menu", machine_name);
         sdl_ui_menu_display(main_menu, msg, 1);
     } else {
+        /* called via hotkey */
         sdl_ui_init_draw_params();
         sdl_ui_menu_item_activate((ui_menu_entry_t *)data);
     }
@@ -729,17 +782,23 @@ static void sdl_ui_trap(uint16_t addr, void *data)
     if (machine_class == VICE_MACHINE_VSID) {
         memset(sdl_active_canvas->draw_buffer_vsid->draw_buffer, 0, width * height);
         sdl_ui_refresh();
-    } else {
-        if (ui_pause_active() && (width == sdl_active_canvas->draw_buffer->draw_buffer_width) && (height == sdl_active_canvas->draw_buffer->draw_buffer_height)) {
+    }
+#if 0
+/* this should be no more needed */
+    else {
+        if (ui_pause_active() && draw_buffer_backup &&
+            (width == sdl_active_canvas->draw_buffer->draw_buffer_width) && 
+            (height == sdl_active_canvas->draw_buffer->draw_buffer_height)) {
             memcpy(sdl_active_canvas->draw_buffer->draw_buffer, draw_buffer_backup, width * height);
             sdl_ui_refresh();
         }
     }
-
+#endif
     sdl_ui_activate_post_action();
 
-    lib_free(draw_buffer_backup);
-    draw_buffer_backup = NULL;
+    sdl_ui_destroy_draw_buffer_backup();
+
+    DBG(("sdl_ui_trap end\n"));
 }
 
 /* ------------------------------------------------------------------ */
@@ -1160,7 +1219,7 @@ static int sdl_ui_slider(const char* title, const int cur, const int min, const 
 
                 /* accept value from user, convert and free */
                 if (value) {
-                    i = strtol(value, NULL, 0);
+                    i = (int)strtol(value, NULL, 0);
 
                     if (i < min) {
                         i = min;
@@ -1215,8 +1274,10 @@ menufont_t *sdl_ui_get_menu_font(void)
     return &activefont;
 }
 
+/* called before the UI runs by sdl_ui_trap, sdl_vkbd_key_map, uimon_window_open */
 void sdl_ui_activate_pre_action(void)
 {
+    DBG(("sdl_ui_activate_pre_action start\n"));
 #ifdef HAVE_FFMPEG
     if (screenshot_is_recording()) {
         screenshot_stop_recording();
@@ -1239,11 +1300,15 @@ void sdl_ui_activate_pre_action(void)
 #endif
     sdl_menu_state = 1;
     ui_check_mouse_cursor();
+    DBG(("sdl_ui_activate_pre_action end\n"));
 }
 
+/* called when UI closes and emulator resumes by sdl_ui_trap, sdl_vkbd_key_map, uimon_window_close */
 void sdl_ui_activate_post_action(void)
 {
     int warp_state;
+
+    DBG(("sdl_ui_activate_post_action start\n"));
 
     sdl_menu_state = 0;
     ui_check_mouse_cursor();
@@ -1261,11 +1326,22 @@ void sdl_ui_activate_post_action(void)
         sdl_vsid_activate();
     }
 
+    sdl_ui_restore_draw_buffer_backup();
+
     /* Force a video refresh */
+    video_canvas_refresh_all(sdl_active_canvas);
     /* SDL mode: prevent core dump - pressing menu key in -console mode causes parent_raster to be NULL */
     if (sdl_active_canvas->parent_raster) {
         raster_force_repaint(sdl_active_canvas->parent_raster);
     }
+
+    /* if the emulator was paused before, enter pause state */
+    if (sdl_pause_state) {
+        sdl_pause_state = 0;
+        ui_pause_enable();
+    }
+
+    DBG(("sdl_ui_activate_post_action end\n"));
 }
 
 void sdl_ui_init_draw_params(void)
@@ -1349,7 +1425,7 @@ int sdl_ui_print_center(const char *text, int pos_y)
         return 0;
     }
 
-    len = strlen(text);
+    len = (int)strlen(text);
 
     if (len == 0) {
         return 0;
@@ -1415,7 +1491,8 @@ void sdl_ui_invert_char(int pos_x, int pos_y)
 
 void sdl_ui_activate(void)
 {
-    if (ui_pause_active()) {
+    sdl_pause_state = ui_pause_active();
+    if (sdl_pause_state) {
         ui_pause_disable();
     }
     interrupt_maincpu_trigger_trap(sdl_ui_trap, NULL);
@@ -1562,7 +1639,7 @@ char* sdl_ui_readline(const char* previous, int pos_x, int pos_y)
                 i = 0;
                 break;
             case VICE_SDLK_END:
-                i = size;
+                i = (int)size;
                 break;
             case PC_VKBD_ACTIVATE:
                 pc_vkbd_state ^= 1;
@@ -1805,9 +1882,8 @@ void sdl_ui_set_monitor_font(uint8_t *font, int w, int h)
  */
 void sdl_ui_menu_shutdown(void)
 {
-    if (draw_buffer_backup != NULL) {
-        lib_free(draw_buffer_backup);
-    }
+    sdl_ui_destroy_draw_buffer_backup();
+
     if (menu_offsets != NULL) {
         lib_free(menu_offsets);
     }

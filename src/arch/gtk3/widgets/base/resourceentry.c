@@ -29,6 +29,7 @@
 
 #include <gtk/gtk.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "debug_gtk3.h"
 #include "lib.h"
@@ -117,11 +118,10 @@ GtkWidget *vice_gtk3_resource_entry_new(const char *resource)
             entry,
             vice_gtk3_resource_entry_reset,
             vice_gtk3_resource_entry_factory,
-            vice_gtk3_resource_entry_sync,
-            vice_gtk3_resource_entry_apply);
+            vice_gtk3_resource_entry_sync);
 
     g_signal_connect(entry, "changed", G_CALLBACK(on_entry_changed), NULL);
-    g_signal_connect(entry, "destroy", G_CALLBACK(on_entry_destroy), NULL);
+    g_signal_connect_unlocked(entry, "destroy", G_CALLBACK(on_entry_destroy), NULL);
 
     gtk_widget_show(entry);
     return entry;
@@ -250,20 +250,6 @@ gboolean vice_gtk3_resource_entry_sync(GtkWidget *widget)
         gtk_entry_set_text(GTK_ENTRY(widget), resource_val);
     }
     return TRUE;
-}
-
-
-/** \brief  Update resource with widget's value
- *
- * \param[in,out]   widget  resource entry widget
- *
- * \return  bool
- */
-gboolean vice_gtk3_resource_entry_apply(GtkWidget *widget)
-{
-    /* TODO: move logic of signal handlers into here */
-    NOT_IMPLEMENTED_WARN_ONLY();
-    return FALSE;
 }
 
 
@@ -427,9 +413,8 @@ GtkWidget *vice_gtk3_resource_entry_full_new(const char *resource)
             entry,
             vice_gtk3_resource_entry_full_reset,
             vice_gtk3_resource_entry_full_factory,
-            vice_gtk3_resource_entry_full_sync,
-            vice_gtk3_resource_entry_full_apply);
-    g_signal_connect(entry, "destroy",
+            vice_gtk3_resource_entry_full_sync);
+    g_signal_connect_unlocked(entry, "destroy",
             G_CALLBACK(on_resource_entry_full_destroy), NULL);
     g_signal_connect(entry, "focus-out-event",
             G_CALLBACK(on_focus_out_event), NULL);
@@ -438,6 +423,37 @@ GtkWidget *vice_gtk3_resource_entry_full_new(const char *resource)
 
     return entry;
 }
+
+
+/** \brief  Create resource entry box that only reacts to 'full' entries
+ *
+ * Creates a resource-connected entry box that only updates the resource when
+ * the either the widget looses focus (due to Tab or mouse click somewhere else
+ * in the UI) or when the user presses 'Enter'. This behaviour differs from the
+ * other resource entry which updates its resource on every key press.
+ *
+ * This is a variant of vice_gtk3_resource_entry_full_new() that allows using
+ * a printf format string to specify the resource name.
+ *
+ * \param[in]   fmt     resource name format string (printf-style)
+ * \param[in]   ...     format string arguments
+ *
+ * \return  GtkEntry
+ */
+GtkWidget *vice_gtk3_resource_entry_full_new_sprintf(const char *fmt, ...)
+{
+    GtkWidget *entry;
+    char *resource;
+    va_list args;
+
+    va_start(args, fmt);
+    resource = lib_mvsprintf(fmt, args);
+    va_end(args);
+    entry = vice_gtk3_resource_entry_full_new(resource);
+    lib_free(resource);
+    return entry;
+}
+
 
 
 /** \brief  Disable the auto updating of the bound resource
@@ -547,7 +563,7 @@ gboolean vice_gtk3_resource_entry_full_factory(GtkWidget *entry)
     return vice_gtk3_resource_entry_full_set(entry, factory);
 }
 
-
+#if 0
 /** \brief  Update resource with widget's value
  *
  * \param[in,out]   widget  resource entry widget (full)
@@ -558,3 +574,4 @@ gboolean vice_gtk3_resource_entry_full_apply(GtkWidget *widget)
 {
     return resource_entry_full_update_resource(GTK_ENTRY(widget));
 }
+#endif
