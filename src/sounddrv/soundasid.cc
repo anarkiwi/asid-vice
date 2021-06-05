@@ -41,7 +41,8 @@ extern "C" {
 
 const uint8_t regmap[]={0,1,2,3,5,6,7,8,9,10,12,13,14,15,16,17,19,20,21,22,23,24,4,11,18,25,26,27};
 uint8_t sid_register[sizeof(regmap)];
-uint8_t sid_modified[sizeof(regmap)];
+bool sid_modified[sizeof(regmap)];
+bool sid_modified_flag = false;
 
 RtMidiOut *midiout = NULL;
 std::vector<unsigned char> message;
@@ -76,7 +77,8 @@ std::vector<unsigned char> message;
     midiout->openPort(asidport);
 
     memset(sid_register, 0, sizeof(sid_register));
-    memset(sid_modified, 0, sizeof(sid_modified));
+    memset(sid_modified, false, sizeof(sid_modified));
+    sid_modified_flag = false;
     message.clear();
     message.push_back(0xf0);
     message.push_back(0x2d);
@@ -92,47 +94,53 @@ std::vector<unsigned char> message;
     return 0;
   }
 
+  static void _set_reg(uint8_t reg, uint8_t byte) {
+    if (sid_register[reg] != byte) {
+       sid_register[reg] = byte;
+       sid_modified[reg] = true;
+       sid_modified_flag = true;
+    }
+  }
+
+  static void _set_sec_reg(uint8_t sec_reg, uint8_t reg, uint8_t byte) {
+    if (sid_modified[sec_reg]) {
+       _set_reg(reg, sid_register[sec_reg]);
+    }
+    _set_reg(sec_reg, byte);
+  }
+
   static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
   {
     int reg = addr & 0x1f;
 
-    if(sid_modified[reg]==0)
-      {
-	sid_register[reg]=byte;
-	sid_modified[reg]++;
-      }
-    else
-      {
+    if (sid_modified[reg]) {
 	switch(reg)
 	  {
 	  case 0x04:
-	    if(sid_modified[0x19]!=0) sid_register[0x04]=sid_register[0x19]; //if already written to secondary,move back to original one
-	    sid_register[0x19]=byte;
-	    sid_modified[0x19]++;
+            _set_sec_reg(0x19, reg, byte);
 	    break;
 	  case 0x0b:
-	    if(sid_modified[0x1a]!=0) sid_register[0x0b]=sid_register[0x1a];
-	    sid_register[0x1a]=byte;
-	    sid_modified[0x1a]++;
+            _set_sec_reg(0x1a, reg, byte);
 	    break;
 	  case 0x12:
-	    if(sid_modified[0x1b]!=0) sid_register[0x12]=sid_register[0x1b];
-	    sid_register[0x1b]=byte;
-	    sid_modified[0x1b]++;
+            _set_sec_reg(0x1b, reg, byte);
 	    break;
-
 	  default:
-	    sid_register[reg]=byte;
-	    sid_modified[reg]++;
+            _set_reg(reg, byte);
 	  }
-      }
-
+    } else {
+       _set_reg(reg, byte);
+    }
 
     return 0;
   }
 
   static int asid_flush(char *state)
   {
+    if (!sid_modified_flag) {
+      return 0;
+    }
+
     uint8_t i,j;
     unsigned int mask=0;
     unsigned int msb=0;
@@ -173,7 +181,8 @@ std::vector<unsigned char> message;
       }
     message.push_back(0xf7);
     midiout->sendMessage(&message);
-    memset(sid_modified, 0, sizeof(sid_modified));
+    memset(sid_modified, false, sizeof(sid_modified));
+    sid_modified_flag = false;
     return 0;
   }
 
