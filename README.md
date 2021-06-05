@@ -10,6 +10,7 @@ or a C64 with a regular MIDI interface and [Station64](https://csdb.dk/release/?
 ## Building
 
 ```
+sudo apt-get update && sudo apt-get install -y libasound2-dev
 LDFLAGS="-lpthread -Wl,--copy-dt-needed-entries" ./configure --with-alsa && make -j && sudo make install
 ```
 
