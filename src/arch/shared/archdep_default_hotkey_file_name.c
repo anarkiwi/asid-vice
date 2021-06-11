@@ -36,9 +36,11 @@
 #include "archdep_home_path.h"
 #include "archdep_default_hotkey_file_name.h"
 
+/* FIXME: includes for OS/2 */
 /* FIXME: includes for beos */
+/* FIXME: includes for amiga */
 
-#ifdef ARCHDEP_OS_UNIX
+#ifdef UNIX_COMPILE
 char *archdep_default_hotkey_file_name(void)
 {
     const char *pref_path = NULL;
@@ -54,15 +56,14 @@ char *archdep_default_hotkey_file_name(void)
 }
 #endif
 
-#ifdef ARCHDEP_OS_WINDOWS
+#if defined(ARCHDEP_OS_WINDOWS) || defined(ARCHDEP_OS_OS2)
 char *archdep_default_hotkey_file_name(void)
 {
-    return util_concat(archdep_boot_path(),
-            "\\" KBD_PORT_PREFIX "-hotkey-", machine_get_name(), ".vkm", NULL);
+    return util_concat(archdep_boot_path(), "\\" KBD_PORT_PREFIX "-hotkey-", machine_get_name(), ".vkm", NULL);
 }
 #endif
 
-#if defined(ARCHDEP_OS_BEOS)
+#if defined(ARCHDEP_OS_BEOS) || defined(ARCHDEP_OS_AMIGA)
 char *archdep_default_hotkey_file_name(void)
 {
     static char *fname;
@@ -72,3 +73,4 @@ char *archdep_default_hotkey_file_name(void)
     return fname;
 }
 #endif
+

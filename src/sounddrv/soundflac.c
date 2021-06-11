@@ -35,8 +35,7 @@
 #include "archdep.h"
 #include "log.h"
 
-/* HACK: Massive fixed size buffer for now, as the sound.c buffer has been made dynamic in size there is no more constant to use here. */
-#define PCM_BUFFER_SIZE (SOUND_CHANNELS_MAX * 1024 * 1024)
+#define PCM_BUFFER_SIZE SOUND_BUFSIZE * 4
 
 static int stereo = 0;
 static FLAC__int32 pcm_buffer[PCM_BUFFER_SIZE];
@@ -162,8 +161,7 @@ static sound_device_t flac_device =
     NULL,
     NULL,
     0,
-    2,
-    false
+    2
 };
 
 int sound_init_flac_device(void)

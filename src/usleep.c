@@ -49,6 +49,9 @@
     WaitSelect(nfds, read_fds, write_fds, except_fds, timeout, NULL)
 #endif
 
+#ifdef __OS2__
+#include <sys/select.h>
+#endif
 
 /* FIXME: this is a replacement function for a standardfunction that should come
           with your c-library in the first place. it is only used in a few
@@ -59,15 +62,20 @@
 int usleep(unsigned long int microSeconds)
 {
     unsigned int Seconds, uSec;
+#ifdef __OS2__
+    int nfds;
+    fd_set readfds, writefds, exceptfds;
+#else
     int nfds, readfds, writefds, exceptfds;
-    struct timeval Timer;
+#endif
 
-    fprintf(stderr,
-            "%s:%d:%s(): I'm surprised anyone actually compiled VICE for an OS"
-            " that doesn't supply usleep(). -- compyx 2020-07-05\n",
-            __FILE__, __LINE__, __func__);
-    abort();
+    struct  timeval Timer;
+
+#ifdef __OS2__
+    nfds = 0;
+#else
     nfds = readfds = writefds = exceptfds = 0;
+#endif
 
     if ((microSeconds == (unsigned long) 0) || microSeconds > (unsigned long) 4000000) {
         errno = ERANGE;                 /* value out of range */
@@ -80,7 +88,7 @@ int usleep(unsigned long int microSeconds)
     Timer.tv_sec = Seconds;
     Timer.tv_usec = uSec;
 
-    if (select(nfds, &readfds, &writefds, &exceptfds, &Timer) < 0) {
+    if (select( nfds, &readfds, &writefds, &exceptfds, &Timer ) < 0) {
         return -1;
     }
 

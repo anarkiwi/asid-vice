@@ -28,6 +28,11 @@
 
 /* #define DEBUG_CONSOLE */
 
+#ifdef AMIGA_SUPPORT
+#define CONSOLE_ARCH_INCLUDED
+#include "console_amiga.c"
+#endif
+
 #ifdef UNIX_COMPILE
 #define CONSOLE_ARCH_INCLUDED
 #include "console_unix.c"

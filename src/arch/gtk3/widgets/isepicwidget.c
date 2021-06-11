@@ -1,7 +1,8 @@
-/** \file   isepicwidget.c
+/**
  * \brief   Widget to control ISEPIC resources
  *
- * \autor   Bas Wassink <b.wassink@ziggo.nl>
+ * Written by
+ *  Bas Wassink <b.wassink@ziggo.nl>
  */
 
 /*
@@ -33,20 +34,19 @@
  */
 
 #include "vice.h"
-
 #include <gtk/gtk.h>
 
-#include "basedialogs.h"
+#include "machine.h"
+#include "resources.h"
+#include "debug_gtk3.h"
 #include "basewidgets.h"
-#include "carthelpers.h"
+#include "widgethelpers.h"
+#include "basedialogs.h"
+#include "openfiledialog.h"
+#include "savefiledialog.h"
 #include "cartimagewidget.h"
 #include "cartridge.h"
-#include "debug_gtk3.h"
-#include "machine.h"
-#include "openfiledialog.h"
-#include "resources.h"
-#include "savefiledialog.h"
-#include "widgethelpers.h"
+#include "carthelpers.h"
 
 #include "isepicwidget.h"
 
@@ -62,6 +62,7 @@
 static gboolean on_isepic_switch_state_set(GtkWidget *widget, gboolean state,
         gpointer user_data)
 {
+    debug_gtk3("setting IsepicSwitch to %s.", state ? "ON" : "OFF");
     resources_set_int("IsepicSwitch", state);
     return FALSE;
 }

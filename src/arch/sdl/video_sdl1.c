@@ -49,7 +49,6 @@
 #include "lightpendrv.h"
 #include "log.h"
 #include "machine.h"
-#include "mousedrv.h"
 #include "palette.h"
 #include "raster.h"
 #include "resources.h"
@@ -789,14 +788,7 @@ static video_canvas_t *sdl_canvas_create(video_canvas_t *canvas, unsigned int *w
         }
     }
 
-    log_message(sdlvideo_log, "%s (%s) %ux%u %ibpp %s%s",
-        canvas->videoconfig->chip_name,
-        (canvas == sdl_active_canvas) ? "active" : "inactive",
-        actual_width,
-        actual_height,
-        sdl_bitdepth,
-        hwscale ? "OpenGL " : "",
-        (canvas->fullscreenconfig->enable) ? "(fullscreen)" : "");
+    log_message(sdlvideo_log, "%s (%s) %ix%i %ibpp %s%s", canvas->videoconfig->chip_name, (canvas == sdl_active_canvas) ? "active" : "inactive", actual_width, actual_height, sdl_bitdepth, hwscale ? "OpenGL " : "", (canvas->fullscreenconfig->enable) ? "(fullscreen)" : "");
 #ifdef SDL_DEBUG
     log_message(sdlvideo_log, "Canvas %ix%i, real %ix%i", new_width, new_height, canvas->real_width, canvas->real_height);
 #endif
@@ -953,7 +945,6 @@ void video_canvas_refresh(struct video_canvas_s *canvas, unsigned int xs, unsign
 #endif
 
     SDL_UpdateRect(canvas->screen, xi, yi, w, h);
-    ui_autohide_mouse_cursor();
 }
 
 int video_canvas_set_palette(struct video_canvas_s *canvas, struct palette_s *palette)
@@ -1208,8 +1199,7 @@ void sdl_ui_init_finalize(void)
     }
 
     sdl_ui_finalized = 1;
-
-    mousedrv_mouse_changed();
+    ui_check_mouse_cursor();
 }
 
 int sdl_ui_get_mouse_state(int *px, int *py, unsigned int *pbuttons)
@@ -1254,16 +1244,4 @@ int sdl_ui_get_mouse_state(int *px, int *py, unsigned int *pbuttons)
 void sdl_ui_consume_mouse_event(SDL_Event *event)
 {
     /* This is a no-op on SDL1 */
-    ui_autohide_mouse_cursor();
-}
-
-void sdl_ui_set_window_title(char *title)
-{
-    char *dummy = NULL;
-    char *icon = NULL;
-
-    if (sdl_ui_finalized) {
-        SDL_WM_GetCaption(&dummy, &icon);
-        SDL_WM_SetCaption(title, icon);
-    }
 }

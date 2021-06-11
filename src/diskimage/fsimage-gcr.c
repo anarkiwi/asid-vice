@@ -178,9 +178,7 @@ static int fsimage_gcr_read_track(const disk_image_t *image, unsigned int track,
 int fsimage_gcr_write_half_track(disk_image_t *image, unsigned int half_track,
                                  const disk_track_t *raw)
 {
-    int gap;
-    int extend = 0;
-    long res;
+    int gap, extend = 0, res;
     uint16_t max_track_length;
     uint8_t buf[4];
     long offset;
@@ -244,12 +242,7 @@ int fsimage_gcr_write_half_track(disk_image_t *image, unsigned int half_track,
         }
 
         if (extend) {
-            /* FIXME: danger zone: 'DWORD' is a loose term, doesn't indicate
-             *        a size, just that's the next bigger size of 'WORD'.
-             *        Probably these terms are taken from the horrible Win API.
-             *        -- compyx 2020-07-24
-             */
-            util_dword_to_le_buf(buf, (uint32_t)offset);
+            util_dword_to_le_buf(buf, offset);
             if (util_fpwrite(fsimage->fd, buf, 4, 12 + (half_track - 2) * 4) < 0) {
                 log_error(fsimage_gcr_log, "Could not write GCR disk image.");
                 return -1;

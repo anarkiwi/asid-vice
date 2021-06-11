@@ -110,6 +110,8 @@ static int set_ieee488_enabled(int value, void *param)
         ieee488_enabled = 0;
     }
 
+    ui_update_menus();
+
     return 0;
 }
 

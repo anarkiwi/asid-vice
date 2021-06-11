@@ -30,6 +30,8 @@
 
 #include <stdio.h>
 
+#include "debug_gtk3.h"
+
 #include "vice_gtk3.h"
 #include "machine.h"
 #include "ui.h"
@@ -260,5 +262,7 @@ int vsid_ui_init(void)
     ui_create_main_window(canvas);
     ui_display_main_window(canvas->window_index);
 
+    /* for debugging */
+    debug_gtk3("libhvsc version: %s.", hvsc_lib_version_str());
     return 0;
 }

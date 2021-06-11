@@ -75,8 +75,6 @@ static int tapecart_loglevel      = 0;
 
 /* ------------------------------------------------------------------------- */
 
-#undef max
-#undef min
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -1158,7 +1156,7 @@ static clock_t cmd_erase_flash_64k(void)
 
         if (tapecart_loglevel > 1) {
             log_message(tapecart_log,
-                        "erasing 64KiB starting at flash address 0x%X", address);
+                        "erasing 64K starting at flash address 0x%X", address);
         }
 
         memset(tapecart_memory->flash + address, 0xff, 65536);
@@ -1328,8 +1326,7 @@ static clock_t cmdmode_dispatch_command(void)
             break;
 
         case CMD_READ_DEVICEINFO:
-            transmit_1bit(0, (uint8_t *)idstring,
-                          (unsigned int)(strlen(idstring) + 1U),
+            transmit_1bit(0, (uint8_t *)idstring, strlen(idstring) + 1,
                           cmdmode_receive_command);
             break;
 
@@ -1506,7 +1503,7 @@ static void tapecart_set_mode(tapecart_mode_t mode)
     }
 
     if (delay) {
-        alarm_set(tapecart_logic_alarm, (CLOCK)(maincpu_clk + delay));
+        alarm_set(tapecart_logic_alarm, maincpu_clk + delay);
     }
 }
 
@@ -1523,7 +1520,7 @@ static void tapecart_pulse_alarm_handler(CLOCK offset, void *data)
             set_sense(1);
             sense_pause_ticks = 210; /* slightly more because of rounding */
             alarm_set(tapecart_logic_alarm,
-                      (CLOCK)(maincpu_clk + machine_get_cycles_per_second() / 1000));
+                      maincpu_clk + machine_get_cycles_per_second() / 1000);
         } else {
             tapeport_trigger_flux_change(1, tapecart_device.id);
             alarm_set(tapecart_pulse_alarm, maincpu_clk + pulselen - offset);
@@ -1569,7 +1566,7 @@ static void tapecart_logic_alarm_handler(CLOCK offset, void *data)
                         default:
                             /* nothing, check again in one ms */
                             alarm_set(tapecart_logic_alarm,
-                                      maincpu_clk + (CLOCK)machine_get_cycles_per_second() / 1000);
+                                      maincpu_clk + machine_get_cycles_per_second() / 1000);
                             break;
                     }
                 }
@@ -1585,8 +1582,7 @@ static void tapecart_logic_alarm_handler(CLOCK offset, void *data)
             next_alarm = alarm_trigger_callback();
 
             if (next_alarm != 0) {
-                alarm_set(tapecart_logic_alarm,
-                        (CLOCK)(maincpu_clk + next_alarm - offset));
+                alarm_set(tapecart_logic_alarm, maincpu_clk + next_alarm - offset);
             }
             break;
 
@@ -1670,7 +1666,7 @@ static void tapecart_store_write(int state)
         delta_ticks = wait_handler();
 
         if (delta_ticks > 0) {
-            alarm_set(tapecart_logic_alarm, (CLOCK)(maincpu_clk + delta_ticks));
+            alarm_set(tapecart_logic_alarm, maincpu_clk + delta_ticks);
         }
     }
 }
@@ -1689,7 +1685,7 @@ static void tapecart_store_sense(int inv_state)
         delta_ticks = wait_handler();
 
         if (delta_ticks > 0) {
-            alarm_set(tapecart_logic_alarm, (CLOCK)(maincpu_clk + delta_ticks));
+            alarm_set(tapecart_logic_alarm, maincpu_clk + delta_ticks);
         }
     }
 }
@@ -1970,18 +1966,16 @@ static int tapecart_write_snapshot(struct snapshot_s *s, int write_image)
 {
     /* FIXME: Implement */
     log_error(tapecart_log,
-              "taking tapecart snapshot not implemented yet");
+              "ERROR: taking tapecart snapshot not implemented yet");
 
-    return 0; /* should be -1 */
+    return 0;
 }
 
 static int tapecart_read_snapshot(struct snapshot_s *s)
 {
-    /* enable device */
-    set_tapecart_enabled(1, NULL);
     /* FIXME: Implement */
     log_error(tapecart_log,
-              "restoring tapecart from snapshot not implemented yet");
+              "ERROR: restoring tapecart from snapshot not implemented yet");
 
-    return 0; /* should be -1 */
+    return 0;
 }

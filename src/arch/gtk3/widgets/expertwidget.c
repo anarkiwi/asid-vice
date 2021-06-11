@@ -32,20 +32,19 @@
  */
 
 #include "vice.h"
-
 #include <gtk/gtk.h>
 
-#include "basedialogs.h"
-#include "basewidgets.h"
-#include "carthelpers.h"
-#include "cartimagewidget.h"
-#include "cartridge.h"
-#include "debug_gtk3.h"
 #include "machine.h"
-#include "openfiledialog.h"
 #include "resources.h"
-#include "savefiledialog.h"
+#include "debug_gtk3.h"
+#include "basewidgets.h"
 #include "widgethelpers.h"
+#include "basedialogs.h"
+#include "cartimagewidget.h"
+#include "openfiledialog.h"
+#include "savefiledialog.h"
+#include "cartridge.h"
+#include "carthelpers.h"
 
 #include "expertwidget.h"
 
@@ -53,10 +52,10 @@
 /** \brief  List of 'modes' for the Expert Cartridge
  */
 static const vice_gtk3_radiogroup_entry_t mode_list[] = {
-    { "Off",            0 },
-    { "Programmable",   1 },
-    { "On",             2 },
-    { NULL,             -1 }
+    { "Off", 0 },
+    { "Programmable", 1 },
+    { "On", 2 },
+    { NULL, -1 }
 };
 
 

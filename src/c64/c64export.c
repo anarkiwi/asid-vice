@@ -61,7 +61,6 @@ void export_dump(void)
 {
     export_list_t *current = NULL;
     io_source_t *io;
-    int cartid;
 
     current = export_query_list(current);
 
@@ -76,12 +75,7 @@ void export_dump(void)
             } else {
                 mon_out("  ");
             }
-            cartid = ((int)current->device->cartid);
-            if (cartid < 0) {
-                mon_out("0/%d  ", cartid);
-            } else {
-                mon_out("%5d ", cartid);
-            }
+            mon_out("%5u ", current->device->cartid);
             mon_out("%4s ", current->device->game ? "*" : "-");
             mon_out("%5s ", current->device->exrom ? "*" : "-");
             io = current->device->io1;
@@ -108,10 +102,8 @@ void export_dump(void)
             mon_out("%s\n", current->device->name);
             current = current->next;
         }
-        mon_out("Current mode: %s, GAME status: (%d) (%s), EXROM status: (%d) (%s)\n", 
-                cart_config_string(((export.exrom ^ 1) << 1) | export.game),
-                !export.game, (export.game) ? "active" : "inactive",
-                !export.exrom, (export.exrom) ? "active" : "inactive");
+        mon_out("Current GAME status: (%d) (%s)\n", !export.game, (export.game) ? "active" : "inactive");
+        mon_out("Current EXROM status: (%d) (%s)\n", !export.exrom, (export.exrom) ? "active" : "inactive");
     }
 }
 

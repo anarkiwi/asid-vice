@@ -172,7 +172,7 @@ int flash_trap_seek_next(void)
             if (fi) {
                 fileio_close(fi);
             }
-            fi = fileio_open(name, path, FILEIO_FORMAT_RAW, FILEIO_COMMAND_READ, FILEIO_TYPE_ANY, NULL);
+            fi = fileio_open(name, path, FILEIO_FORMAT_RAW, FILEIO_COMMAND_READ, FILEIO_TYPE_ANY);
             if (fi) {
                 uint8_t addr[2];
                 fileio_read(fi, addr, 2);

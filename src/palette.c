@@ -290,7 +290,7 @@ int palette_save(const char *file_name, const palette_t *palette)
        - existing .vpl files must be extended to contain CHIP and NAME info
        - when generating the list, sort by NAME
  */
-static const palette_info_t palettelist[] = {
+static palette_info_t palettelist[] = {
     /* data/C64/ */
     /* data/C128/ */
     /* data/CBM-II/ */
@@ -333,13 +333,13 @@ static const palette_info_t palettelist[] = {
     { NULL, 0, 0 }
 };
 
-static const palette_info_t palettelist_dtv[] = {
+static palette_info_t palettelist_dtv[] = {
     /* data/C64dtv/ */
     { "VICII","Spiff", "spiff"}, /* default */
     { NULL, 0, 0 }
 };
 
-const palette_info_t *palette_get_info_list(void)
+palette_info_t *palette_get_info_list(void)
 {
     /* special case handling is needed to distinguish from regular VICII */
     if (machine_class == VICE_MACHINE_C64DTV) {

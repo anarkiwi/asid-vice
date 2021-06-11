@@ -169,8 +169,7 @@ void gcr_convert_sector_to_GCR(const uint8_t *buffer, uint8_t *data, const gcr_h
 
 static int gcr_find_sync(const disk_track_t *raw, int p, int s)
 {
-    unsigned int w;
-    int b;
+    int w, b;
 
     if (!raw->data || !raw->size) {
         return -CBMDOS_FDC_ERR_SYNC;

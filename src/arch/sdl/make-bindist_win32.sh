@@ -28,7 +28,7 @@
 #
 # Usage: make-bindist.sh <strip=$1> <vice-version=$2> <--enable-arch=$3> <zip|nozip=$4> <x64-included=$5>
 #                        <top-srcdir=$6> <top-builddir=$7> <cpu=$8> <SDL-version=$9> <sdl-config=$10>
-#                        <cross=$11> <objdump=$12> <compiler=$13> <--enable-html-docs=$14>
+#                        <cross=$11> <objdump=$12> <compiler=$13>
 #
 
 STRIP=$1
@@ -41,20 +41,17 @@ TOPBUILDDIR=$7
 CPU=$8
 SDLVERSION=$9
 
-shift   # $10
+shift
 SDLCONFIG=$9
 
-shift   # $11
+shift
 CROSS=$9
 
-shift   # $12
+shift
 OBJDUMP=$9
 
-shift   # $13
+shift
 COMPILER=$9
-
-shift   # $14
-HTML_DOCS=$9
 
 
 # Try to get the SVN revision
@@ -110,10 +107,8 @@ fi
 
 BINDIST_DIR="$SDLNAME-$VICEVERSION-$WINXX$SVN_SUFFIX"
 
-if test -e "$BINDIST_DIR"; then
-    echo "Removing an old $BINDIST_DIR"
-    rm -f -r $BINDIST_DIR
-fi
+echo "Removing an old $BINDIST_DIR"
+rm -f -r $BINDIST_DIR
 mkdir $BINDIST_DIR
 
 
@@ -169,34 +164,22 @@ cp -a $TOPSRCDIR/data/SCPU64 $TOPSRCDIR/data/VIC20 $BINDIST_DIR
 rm -f `find $BINDIST_DIR -name "Makefile*"`
 rm -f `find $BINDIST_DIR -name "gtk3_*"`
 mkdir $BINDIST_DIR/doc
-if test x"$HTML_DOCS" = "xyes"; then
-    cp -a $TOPSRCDIR/doc/html/* $BINDIST_DIR/doc
-    cp -a -u $TOPBUILDDIR/doc/html/* $BINDIST_DIR/doc
-fi
+cp -a $TOPSRCDIR/doc/html/* $BINDIST_DIR/doc
+cp -a -u $TOPBUILDDIR/doc/html/* $BINDIST_DIR/doc
 rm -f $BINDIST_DIR/doc/Makefile* $BINDIST_DIR/doc/texi2html
 rm -f $BINDIST_DIR/doc/checklinks.sh $BINDIST_DIR/doc/sitemap.xml
 rm -f $BINDIST_DIR/doc/robots.txt $BINDIST_DIR/doc/COPYING $BINDIST_DIR/doc/NEWS
-cp $TOPSRCDIR/NEWS $TOPSRCDIR/COPYING $TOPSRCDIR/README $BINDIST_DIR
+cp $TOPSRCDIR/FEEDBACK $TOPSRCDIR/NEWS $BINDIST_DIR
+cp $TOPSRCDIR/COPYING $TOPSRCDIR/README $BINDIST_DIR
 cp $TOPSRCDIR/doc/readmes/Readme-SDL.txt $BINDIST_DIR
 test -e "$TOPBUILDDIR/doc/vice.pdf"&&cp "$TOPBUILDDIR/doc/vice.pdf" $BINDIST_DIR/doc
 
-
-if test x"$ZIPKIND" = "xzip" -o x"$ZIPKIND" = "x7zip"; then
-  if test x"$ZIPKIND" = "xzip" -o x"$ZIPKIND" = "x"; then
-    ZIPEXT=zip
-  else
-    ZIPEXT=7z
-  fi
-  rm -f $BINDIST_DIR.$ZIPEXT
-
-  if test x"$ZIPKIND" = "x7zip"; then
-    7z a -t7z -m0=lzma2 -mx=9 -ms=on $BINDIST_DIR.$ZIPEXT $BINDIST_DIR
-  else
-    if test x"$ZIP" = "x"; then
-      zip -r -9 -q $BINDIST_DIR.zip $BINDIST_DIR
-    else
-      $ZIP $BINDIST_DIR.zip $BINDIST_DIR
-    fi
+if test x"$ZIPKIND" = "xzip"; then
+  cd $BINDIST_DIR/..
+  rm -f $BINDIST_DIR.zip
+  if test x"$ZIP" = "x"
+  then zip -r -9 -q $BINDIST_DIR.zip $BINDIST_DIR
+  else $ZIP $BINDIST_DIR.zip $BINDIST_DIR
   fi
   rm -f -r $BINDIST_DIR
   echo $WINXX SDL$SDLVERSION port binary distribution archive generated as

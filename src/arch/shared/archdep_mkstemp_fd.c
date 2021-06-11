@@ -2,7 +2,7 @@
  * \brief   Create temporary file, return file pointer
  *
  * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
- * \author  Bas Wassink <b.wassink@ziggo.nl>
+ * \auhtor  Bas Wassink <b.wassink@ziggo.nl>
  *
  * \note    Only tested on Windows and Linux
  */
@@ -40,7 +40,9 @@
 #include "archdep_mkstemp_fd.h"
 
 
-#if defined(ARCHDEP_OS_BEOS)
+#if defined(ARCHDEP_OS_AMIGA) || defined(ARCHDEP_OS_BEOS) \
+    || defined(ARCHDEP_OS_OS2)
+
 /*
  * Looks like this can be used as a fallback for some of the other functions
  */

@@ -31,13 +31,12 @@
 #include "vice.h"
 
 #include <gtk/gtk.h>
-
 #include "debug_gtk3.h"
+#include "widgethelpers.h"
 #include "machine.h"
 #include "resources.h"
 #include "uicommands.h"
 #include "uisettings.h"
-#include "widgethelpers.h"
 
 #include "joystickmenupopup.h"
 
@@ -172,18 +171,15 @@ GtkWidget *joystick_menu_popup_create(void)
     menu = gtk_menu_new();
 
     if (joystick_swap_possible()) {
-        item = gtk_menu_item_new_with_label("");
-        child = gtk_bin_get_child(GTK_BIN(item));
-        gtk_label_set_markup(GTK_LABEL(child), "Swap joysticks (" VICE_MOD_MASK_HTML "+J)");
+        item = gtk_menu_item_new_with_label("Swap joysticks (Alt+J)");
         gtk_container_add(GTK_CONTAINER(menu), item);
         g_signal_connect(item, "activate",
                 G_CALLBACK(ui_swap_joysticks_callback), NULL);
     }
 
     if (userport_joystick_swap_possible()) {
-        item = gtk_menu_item_new_with_label("");
-        child = gtk_bin_get_child(GTK_BIN(item));
-        gtk_label_set_markup(GTK_LABEL(child), "Swap userport joysticks (" VICE_MOD_MASK_HTML "+Shift+U)");
+        item = gtk_menu_item_new_with_label
+            ("Swap userport joysticks (Shift+Alt+U)");
         gtk_container_add(GTK_CONTAINER(menu), item);
         g_signal_connect(item, "activate",
                 G_CALLBACK(ui_swap_userport_joysticks_callback), NULL);
@@ -193,10 +189,11 @@ GtkWidget *joystick_menu_popup_create(void)
     }
 
     /* Enable keyset joysticks */
-    item = gtk_check_menu_item_new_with_label("");
+    item = gtk_check_menu_item_new_with_label(
+            "Allow keyset joysticks (Alt+Shift+J)");
     child = gtk_bin_get_child(GTK_BIN(item));
     gtk_label_set_markup(GTK_LABEL(child),
-            "Enable keyboard joysticks (" VICE_MOD_MASK_HTML "+Shift+J)");
+            "Allow keyset joysticks (" VICE_MOD_MASK_HTML "+Shift+J)");
     resources_get_int("KeySetEnable", &keyset);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), (gboolean)keyset);
     gtk_container_add(GTK_CONTAINER(menu), item);

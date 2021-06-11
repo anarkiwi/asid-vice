@@ -246,12 +246,10 @@ static uint8_t easyflash_io1_peek(uint16_t addr)
 
 static int easyflash_io1_dump(void)
 {
-    mon_out("Mode: %s, Bank: %d, LED %s, jumper %s\n",
-            cart_config_string(easyflash_memconfig[(easyflash_jumper << 3) | (easyflash_register_02 & 0x07)]),
-            easyflash_register_00,
+    mon_out("Mode %i, LED %s, jumper %s\n",
+            easyflash_memconfig[(easyflash_jumper << 3) | (easyflash_register_02 & 0x07)],
             (easyflash_register_02 & 0x80) ? "on" : "off",
             easyflash_jumper ? "on" : "off");
-    mon_out("EAPI found: %s\n", (memcmp(&romh_banks[0x1800], "eapi", 4) == 0) ? "yes" : "no");
     return 0;
 }
 
@@ -663,8 +661,8 @@ int easyflash_crt_save(const char *filename)
    ARRAY | ROMH       | 524288 BYTES of ROMH data
  */
 
-static const char snap_module_name[] = "CARTEF";
-static const char flash_snap_module_name[] = "FLASH040EF";
+static char snap_module_name[] = "CARTEF";
+static char flash_snap_module_name[] = "FLASH040EF";
 #define SNAP_MAJOR   0
 #define SNAP_MINOR   0
 

@@ -67,10 +67,6 @@ static unsigned int eeprom_status = 0;
 
 static unsigned int eeprom_readbit = 0;
 
-static const uint8_t bits[8] = {
-    0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01
-};
-
 
 /* TODO */
 void eeprom_data_readadvance(void)
@@ -87,6 +83,7 @@ uint8_t eeprom_data_readbyte(void)
 uint8_t eeprom_data_readbit(void)
 {
     uint8_t value;
+    static uint8_t bits[8] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
     int bitpos;
     bitpos = eeprom_readpos & 7;
     value = eeprom_data_readbyte();
@@ -133,6 +130,7 @@ void eeprom_cmd_reset (void)
 
 void eeprom_cmd_write(uint8_t value)
 {
+    static uint8_t bits[8] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
 /*LOG(("EEPROM: eeprom_cmd_write bit: %d:%02x",eeprom_cmdbit,value));*/
     if (value) {
         eeprom_cmdval |= bits[eeprom_cmdbit];
@@ -166,7 +164,8 @@ void eeprom_seq_reset(void)
 
 void eeprom_seq_write(uint8_t value)
 {
-    /*LOG(("EEPROM: eeprom_seq_write bit: %d:%02x",eeprom_seqbit,value));*/
+    static uint8_t bits[8] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
+/*LOG(("EEPROM: eeprom_seq_write bit: %d:%02x",eeprom_seqbit,value));*/
     if (value) {
         eeprom_seqval |= bits[eeprom_seqbit];
         eeprom_seqbuf[eeprom_seqpos] = eeprom_seqval;

@@ -8,6 +8,10 @@
  * $VICERES DriveTrueEmulation          -vsid
  * $VICERES DriveSoundEmulation         -vsid
  * $VICERES DriveSoundEmulationVolume   -vsid
+ * $VICERES FileSystemDevice8           -vsid
+ * $VICERES FileSystemDevice9           -vsid
+ * $VICERES FileSystemDevice10          -vsid
+ * $VICERES FileSystemDevice11          -vsid
  *
  *  (for more, see used widgets)
  */
@@ -57,6 +61,7 @@
 #include "driverpmwidget.h"
 #include "driveramwidget.h"
 #include "drivedoswidget.h"
+#include "drivefsdevicewidget.h"
 #include "driveoptionswidget.h"
 
 #include "settings_drive.h"
@@ -65,8 +70,8 @@
 /** \brief  List of file system types
  */
 static const vice_gtk3_combo_entry_int_t device_types[] = {
-    { "Disk images", ATTACH_DEVICE_NONE },
-    { "Host file system", ATTACH_DEVICE_FS },
+    { "None", ATTACH_DEVICE_NONE },
+    { "File system", ATTACH_DEVICE_FS },
 #ifdef HAVE_REALDEVICE
     { "Real device (OpenCBM)", ATTACH_DEVICE_REAL },
 #endif
@@ -75,15 +80,16 @@ static const vice_gtk3_combo_entry_int_t device_types[] = {
 
 
 /* FIXME: this needs proper documentation */
-static GtkWidget *drive_model[NUM_DISK_UNITS];
-static GtkWidget *drive_options[NUM_DISK_UNITS];
-static GtkWidget *drive_extend[NUM_DISK_UNITS];
-static GtkWidget *drive_idle[NUM_DISK_UNITS];
-static GtkWidget *drive_parallel[NUM_DISK_UNITS];
-static GtkWidget *drive_rpm[NUM_DISK_UNITS];
-static GtkWidget *drive_ram[NUM_DISK_UNITS];
-static GtkWidget *drive_dos[NUM_DISK_UNITS];
-static GtkWidget *drive_device_type[NUM_DISK_UNITS];
+static GtkWidget *drive_model[DRIVE_NUM];
+static GtkWidget *drive_options[DRIVE_NUM];
+static GtkWidget *drive_extend[DRIVE_NUM];
+static GtkWidget *drive_idle[DRIVE_NUM];
+static GtkWidget *drive_parallel[DRIVE_NUM];
+static GtkWidget *drive_rpm[DRIVE_NUM];
+static GtkWidget *drive_ram[DRIVE_NUM];
+static GtkWidget *drive_dos[DRIVE_NUM];
+static GtkWidget *drive_fsdevice[DRIVE_NUM];
+static GtkWidget *drive_device_type[DRIVE_NUM];
 
 
 /** \brief  Callback for changes in the drive type widget
@@ -144,19 +150,6 @@ static void stack_child_drive_type_callback(GtkWidget *widget, gpointer data)
 }
 
 
-/** \brief  Custom callback for the IEC widget in driveoptions.c
- *
- * \param[in]   widget  IEC toggle button
- * \param[in]   unit    unit number (8-11)
- */
-static void iec_callback(GtkWidget *widget, int unit)
-{
-    debug_gtk3("Got unit %d", unit);
-    gtk_widget_set_sensitive(drive_device_type[unit - DRIVE_UNIT_MIN],
-            gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
-}
-
-
 /** \brief  Extra event handler for the drive model changes
  *
  * \param[in]   widget      drive type radio button
@@ -213,16 +206,12 @@ static void on_model_changed(GtkWidget *widget, gpointer user_data)
     /* drive options widget */
     option = drive_options[unit - DRIVE_UNIT_MIN];
     if (option != NULL) {
-#if 0
         GtkWidget *iec = gtk_grid_get_child_at(GTK_GRID(option), 1, 0);
-#endif
         GtkWidget *rtc = gtk_grid_get_child_at(GTK_GRID(option), 2, 0);
 
-#if 0
         if (iec != NULL) {
             gtk_widget_set_sensitive(iec, drive_check_iec(model));
         }
-#endif
         if (rtc != NULL) {
             gtk_widget_set_sensitive(rtc, drive_check_rtc(model));
         }
@@ -260,13 +249,13 @@ static GtkWidget *create_drive_volume_widget(void)
             GTK_ORIENTATION_HORIZONTAL, 0, 4000, 100);
     gtk_widget_set_hexpand(scale, TRUE);
     gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_RIGHT);
-    g_signal_connect_unlocked(scale, "format-value", G_CALLBACK(on_drive_volume_format),
+    g_signal_connect(scale, "format-value", G_CALLBACK(on_drive_volume_format),
             NULL);
     return scale;
 }
 
 
-/** \brief  Create widget to control IEC device type
+/** \brief  Create widget to control drive device type
  *
  * \param[in]   unit    unit number (8-11)
  *
@@ -281,7 +270,7 @@ static GtkWidget *create_drive_device_type_widget(int unit)
     grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT);
     g_object_set(grid, "margin-top", 8, NULL);
 
-    label = gtk_label_new("IEC-Device type");
+    label = gtk_label_new("Device type");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     g_object_set(label, "margin-left", 24, NULL);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
@@ -317,8 +306,7 @@ static GtkWidget *create_vic20_layout(GtkWidget *grid, int unit)
             (gpointer)(grid));
     gtk_grid_attach(GTK_GRID(wrapper),
             drive_model[unit - DRIVE_UNIT_MIN], 0, 0, 1, 1);
-    drive_options[unit - DRIVE_UNIT_MIN] = drive_options_widget_create(
-            unit, iec_callback);
+    drive_options[unit - DRIVE_UNIT_MIN] = drive_options_widget_create(unit);
     gtk_grid_attach(GTK_GRID(wrapper),
             drive_options[unit - DRIVE_UNIT_MIN], 0, 1, 1, 1);
     drive_device_type[unit - DRIVE_UNIT_MIN] = create_drive_device_type_widget(unit);
@@ -353,6 +341,10 @@ static GtkWidget *create_vic20_layout(GtkWidget *grid, int unit)
     drive_rpm[unit - DRIVE_UNIT_MIN] = drive_rpm_widget_create(unit);
     gtk_grid_attach(GTK_GRID(grid), drive_rpm[unit - DRIVE_UNIT_MIN], 0, 2, 1, 1);
 
+    /* row 2, column 1 & 2 */
+    drive_fsdevice[unit - DRIVE_UNIT_MIN] = drive_fsdevice_widget_create(unit);
+    gtk_grid_attach(GTK_GRID(grid),
+            drive_fsdevice[unit - DRIVE_UNIT_MIN], 1, 2, 2, 1);
     drive_model_widget_add_callback(drive_model[unit - DRIVE_UNIT_MIN],
             on_model_changed, GINT_TO_POINTER(unit));
     return grid;
@@ -383,8 +375,7 @@ static GtkWidget *create_c64_layout(GtkWidget *grid, int unit)
             drive_model[unit - DRIVE_UNIT_MIN], 0, 0, 1, 1);
 
     /*    debug_gtk3("ADDING DRIVE OPTIONS WIDGET");    */
-    drive_options[unit - DRIVE_UNIT_MIN] = drive_options_widget_create(
-            unit, iec_callback);
+    drive_options[unit - DRIVE_UNIT_MIN] = drive_options_widget_create(unit);
     gtk_grid_attach(GTK_GRID(wrapper),
             drive_options[unit - DRIVE_UNIT_MIN], 0, 1, 1, 1);
 
@@ -423,6 +414,11 @@ static GtkWidget *create_c64_layout(GtkWidget *grid, int unit)
     gtk_widget_show_all(wrapper);
     gtk_grid_attach(GTK_GRID(grid), wrapper, 2, 0, 1, 2);
 
+    /* row 2, column 0 */
+    drive_fsdevice[unit - DRIVE_UNIT_MIN] = drive_fsdevice_widget_create(unit);
+    gtk_grid_attach(GTK_GRID(grid),
+            drive_fsdevice[unit - DRIVE_UNIT_MIN], 0, 2, 1, 1);
+
     /* row 2, column 1 & 2 */
     drive_rpm[unit - DRIVE_UNIT_MIN] = drive_rpm_widget_create(unit);
     gtk_grid_attach(GTK_GRID(grid), drive_rpm[unit - DRIVE_UNIT_MIN], 1, 2, 2, 1);
@@ -457,8 +453,7 @@ static GtkWidget *create_plus4_layout(GtkWidget *grid, int unit)
             (gpointer)(grid));
     gtk_grid_attach(GTK_GRID(wrapper),
             drive_model[unit - DRIVE_UNIT_MIN], 0, 0, 1, 1);
-    drive_options[unit - DRIVE_UNIT_MIN] = drive_options_widget_create(
-            unit, iec_callback);
+    drive_options[unit - DRIVE_UNIT_MIN] = drive_options_widget_create(unit);
     gtk_grid_attach(GTK_GRID(wrapper),
             drive_options[unit - DRIVE_UNIT_MIN], 0, 1, 1, 1);
     drive_device_type[unit - DRIVE_UNIT_MIN] = create_drive_device_type_widget(unit);
@@ -500,6 +495,11 @@ static GtkWidget *create_plus4_layout(GtkWidget *grid, int unit)
     /* row 2, column 0 */
     drive_rpm[unit - DRIVE_UNIT_MIN] = drive_rpm_widget_create(unit);
     gtk_grid_attach(GTK_GRID(grid), drive_rpm[unit - DRIVE_UNIT_MIN], 0, 2, 1, 1);
+
+    /* row 2, column 1 & 2 */
+    drive_fsdevice[unit - DRIVE_UNIT_MIN] = drive_fsdevice_widget_create(unit);
+    gtk_grid_attach(GTK_GRID(grid),
+            drive_fsdevice[unit - DRIVE_UNIT_MIN], 1, 2, 2, 1);
 
     drive_model_widget_add_callback(
             drive_model[unit - DRIVE_UNIT_MIN],
@@ -602,9 +602,7 @@ GtkWidget *settings_drive_widget_create(GtkWidget *parent)
         char title[256];
 
         g_snprintf(title, 256, "Drive %d", unit);
-#if 0
         debug_gtk3("ADDING STACK WIDGET");
-#endif
         gtk_stack_add_titled(GTK_STACK(stack),
                 create_stack_child_widget(unit),
                 title, title);
@@ -624,18 +622,6 @@ GtkWidget *settings_drive_widget_create(GtkWidget *parent)
 
     gtk_grid_attach(GTK_GRID(layout), switcher, 0, 1, 3, 1);
     gtk_grid_attach(GTK_GRID(layout), stack, 0, 2, 3, 1);
-
-    /* set sensitivity of the filesystem-type comboboxes, depending on the
-     * IECDevice resource
-     */
-    for (unit = DRIVE_UNIT_MIN; unit <= DRIVE_UNIT_MAX; unit++) {
-        int state = 0;
-
-        if (resources_get_int_sprintf("IECDevice%d", &state, unit) < 0) {
-            state = 0;
-        }
-        gtk_widget_set_sensitive(drive_device_type[unit - DRIVE_UNIT_MIN], state);
-    }
 
     gtk_widget_show_all(layout);
     return layout;

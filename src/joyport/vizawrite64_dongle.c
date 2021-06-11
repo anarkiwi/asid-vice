@@ -55,7 +55,7 @@ static int joyport_vizawrite64_dongle_enable(int port, int value)
     return 0;
 }
 
-static uint8_t vizawrite64_dongle_read_potx(int port)
+static uint8_t vizawrite64_dongle_read_potx(void)
 {
     uint8_t retval = values[counter++];
 
@@ -66,7 +66,7 @@ static uint8_t vizawrite64_dongle_read_potx(int port)
     return retval;
 }
 
-static uint8_t vizawrite64_dongle_read_poty(int port)
+static uint8_t vizawrite64_dongle_read_poty(void)
 {
     uint8_t retval = values[counter++];
 

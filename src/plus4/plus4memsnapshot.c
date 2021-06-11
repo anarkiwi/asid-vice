@@ -80,6 +80,8 @@ static int plus4_snapshot_write_rom_module(snapshot_t *s)
         goto fail;
     }
 
+    ui_update_menus();
+
     if (snapshot_module_close(m) < 0) {
         goto fail2;
     }
@@ -244,6 +246,8 @@ int plus4_snapshot_read_module(snapshot_t *s)
         goto fail;
     }
 #endif
+    ui_update_menus();
+
     return 0;
 
 fail:

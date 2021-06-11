@@ -7,14 +7,12 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/sounddrv \
 	@FFMPEG_INCLUDES@ \
+	@QUICKTIME_INCLUDES@ \
 	@ARCH_INCLUDES@
 
 AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
-
-AM_LDFLAGS = @VICE_LDFLAGS@
-
 
 noinst_LIBRARIES = libgfxoutputdrv.a
 
@@ -29,13 +27,15 @@ EXTRA_libgfxoutputdrv_a_SOURCES = \
 	jpegdrv.c \
 	jpegdrv.h \
 	pngdrv.c \
-	pngdrv.h
+	pngdrv.h \
+	quicktimedrv.h \
+	quicktimedrv.c
 
 # These sources are always built.
 libgfxoutputdrv_a_SOURCES = \
 	bmpdrv.c \
 	bmpdrv.h \
-	artstudiodrv.c \
+	doodledrv.c \
 	gfxoutput.c \
 	godotdrv.c \
 	godotdrv.h \

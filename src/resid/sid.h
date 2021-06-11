@@ -98,7 +98,7 @@ public:
   void input(short sample);
 
   // 16-bit output (AUDIO OUT).
-  int output();
+  short output();
 
  protected:
   static double I0(double x);
@@ -180,7 +180,7 @@ public:
 // Read 16-bit sample from audio output.
 // ----------------------------------------------------------------------------
 RESID_INLINE
-int SID::output()
+short SID::output()
 {
   return extfilt.output();
 }

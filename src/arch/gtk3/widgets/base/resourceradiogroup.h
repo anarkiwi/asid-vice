@@ -52,6 +52,7 @@ gboolean vice_gtk3_resource_radiogroup_get(GtkWidget *widget, int *id);
 gboolean vice_gtk3_resource_radiogroup_sync(GtkWidget *widget);
 gboolean vice_gtk3_resource_radiogroup_factory(GtkWidget *widget);
 gboolean vice_gtk3_resource_radiogroup_reset(GtkWidget *widget);
+gboolean vice_gtk3_resource_radiogroup_apply(GtkWidget *widget);
 
 gboolean vice_gtk3_resource_radiogroup_item_set_sensitive(GtkWidget *widget, int index, int sensitive);
 

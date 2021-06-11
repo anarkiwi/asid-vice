@@ -76,6 +76,8 @@ static int c64_snapshot_write_rom_module(snapshot_t *s)
         goto fail;
     }
 
+    ui_update_menus();
+
     if (snapshot_module_close(m) < 0) {
         goto fail;
     }
@@ -217,6 +219,8 @@ int c64_snapshot_read_module(snapshot_t *s)
     if (c64_snapshot_read_rom_module(s) < 0) {
         goto fail;
     }
+
+    ui_update_menus();
 
     return 0;
 

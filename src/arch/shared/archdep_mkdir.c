@@ -31,6 +31,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef AMIGA_SUPPORT
+/* includes? */
+#endif
 
 #if defined(BEOS_COMPILE) || defined(UNIX_COMPILE)
 # include <unistd.h>
@@ -42,7 +45,7 @@
 # include <direct.h>
 #endif
 
-#include "archdep_exit.h"
+#include "archdep_atexit.h"
 #include "log.h"
 
 #include "archdep_mkdir.h"
@@ -57,8 +60,11 @@
  */
 int archdep_mkdir(const char *pathname, int mode)
 {
-#if defined(BEOS_COMPILE) || defined(UNIX_COMPILE)
+#if defined(AMIGA_SUPPORT) || defined(BEOS_COMPILE) || defined(UNIX_COMPILE)
     return mkdir(pathname, (mode_t)mode);
+#elif defined(OS2_COMPILE)
+    return mkdir(pathname); /* appears to need char*, let's see how long it
+                               takes for an OS/2 user to notice this */
 #elif defined(WIN32_COMPILE)
     return _mkdir(pathname);
 #else

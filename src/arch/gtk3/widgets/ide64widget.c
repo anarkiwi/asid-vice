@@ -62,13 +62,12 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-
-#include "ide64.h"
-#include "ide64widget.h"
+#include "vice_gtk3.h"
 #include "machine.h"
 #include "resources.h"
-#include "ui.h"
-#include "vice_gtk3.h"
+#include "ide64.h"
+
+#include "ide64widget.h"
 
 
 /** \brief  List of IDE64 revisions
@@ -77,30 +76,29 @@ static const vice_gtk3_radiogroup_entry_t revisions[] = {
     { "Version 3",      IDE64_VERSION_3 },
     { "Version 4.1",    IDE64_VERSION_4_1 },
     { "Version 4.2",    IDE64_VERSION_4_2 },
-    { NULL,             -1 }
+    { NULL, -1 }
 };
 
 
 /** \brief  List of ShortBus DIGIMAX I/O bases
  */
 static const vice_gtk3_combo_entry_int_t digimax_addresses[] = {
-    { "$DE40",  0xde40 },
-    { "$DE48",  0xde48 },
-    { NULL,     -1 }
+    { "$DE40", 0xde40 },
+    { "$DE48", 0xde48 },
+    { NULL, -1 }
 };
 
 #ifdef HAVE_RAWNET
 /** \brief  List of ShortBus ETFE I/O bases
  */
 static const vice_gtk3_combo_entry_int_t etfe_addresses[] = {
-    { "$DE00",  0xde00 },
-    { "$DE10",  0xde10 },
-    { "$DF00",  0xdf00 },
-    { NULL,     -1 }
+    { "$DE00", 0xde00 },
+    { "$DE10", 0xde10 },
+    { "$DF00", 0xdf00 },
+    { NULL, -1 }
 };
 #endif
 
-static GtkWidget *image_entry[4];
 
 
 
@@ -116,27 +114,6 @@ static void on_usb_enable_toggled(GtkWidget *widget, gpointer user_data)
 }
 
 
-/** \brief  Callback for the open-file dialog
- *
- * \param[in,out]   dialog      open-file dialog
- * \param[in]       filename    filename or NULL on cancel
- * \param[in]       data        extra data (unused)
- */
-static void browse_filename_callback(GtkDialog *dialog,
-                                     gchar *filename,
-                                     gpointer data)
-{
-    int device = GPOINTER_TO_INT(data);
-
-    if (filename != NULL) {
-        vice_gtk3_resource_entry_full_set(image_entry[device - 1], filename);
-        g_free(filename);
-    }
-    gtk_widget_destroy(GTK_WIDGET(dialog));
-}
-
-
-
 /** \brief  Handler for the "clicked" event of the HD image "browse" buttons
  *
  * \param[in]       widget      button
@@ -144,17 +121,17 @@ static void browse_filename_callback(GtkDialog *dialog,
  */
 static void on_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
+    gchar *filename;
     const char *filter_list[] = {
-        "*.hdd", "*.iso", "*.fdd", "*.cfa", "*.dsk", "*.img", NULL
+        "*.hdd", "*.iso", "*.fdd", "*.cfa", NULL
     };
 
-    int device = GPOINTER_TO_INT(user_data);
-
-    vice_gtk3_open_file_dialog(
-            "Select disk image file",
-            "HD image files", filter_list, NULL,
-            browse_filename_callback,
-            GINT_TO_POINTER(device));
+    filename = vice_gtk3_open_file_dialog("Select disk image file",
+            "HD image files", filter_list, NULL);
+    if (filename != NULL) {
+        vice_gtk3_resource_entry_full_set(GTK_WIDGET(user_data), filename);
+        g_free(filename);
+    }
 }
 
 
@@ -305,6 +282,7 @@ static GtkWidget *create_ide64_device_widget(int device)
 {
     GtkWidget *grid;
     GtkWidget *label;
+    GtkWidget *entry;
     GtkWidget *browse;
     GtkWidget *autosize;
     GtkWidget *geometry;
@@ -317,22 +295,24 @@ static GtkWidget *create_ide64_device_widget(int device)
 
     g_snprintf(buffer, 256, "Device %d settings", device);
 
-    grid = vice_gtk3_grid_new_spaced_with_label(16, 8, buffer, 3);
+    grid = uihelpers_create_grid_with_label(buffer, 3);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
 
     label = gtk_label_new("Image file");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     g_object_set(label, "margin-left", 16, NULL);
 
     g_snprintf(resource, 256, "IDE64image%d", device);
-    image_entry[device - 1] = vice_gtk3_resource_entry_full_new(resource);
-    gtk_widget_set_hexpand(image_entry[device - 1], TRUE);
+    entry = vice_gtk3_resource_entry_full_new(resource);
+    gtk_widget_set_hexpand(entry, TRUE);
 
     browse = gtk_button_new_with_label("Browse ...");
     g_signal_connect(browse, "clicked", G_CALLBACK(on_browse_clicked),
-            GINT_TO_POINTER(device));
+            (gpointer)entry);
 
     gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), image_entry[device - 1], 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), entry, 1, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), browse, 2, 1, 1, 1);
 
     autosize = vice_gtk3_resource_check_button_new_sprintf(
@@ -407,10 +387,8 @@ static GtkWidget *create_ide64_shortbus_widget(void)
     GtkWidget *etfe_address;
 #endif
 
-    grid = vice_gtk3_grid_new_spaced_with_label(
-            -1, -1,
-            "ShortBus settings",
-            3);
+    grid = uihelpers_create_grid_with_label("ShortBus settings", 3);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
 
     digimax_enable = vice_gtk3_resource_check_button_new("SBDIGIMAX",
             "Enable DigiMAX");

@@ -39,18 +39,17 @@
 #include <gtk/gtk.h>
 
 #include "basewidgets.h"
+#include "widgethelpers.h"
 #include "debug_gtk3.h"
 #include "resources.h"
-#include "widgethelpers.h"
 
 #include "cbm2rammappingwidget.h"
-
 
 /** \brief  Struct with ram mapping resource names and labels
  */
 typedef struct ram_mapping_s {
-    const char *text;   /**< displayed text */
-    char *resource;     /**< resource name */
+    const char *text;
+    char *resource;
 } ram_mapping_t;
 
 

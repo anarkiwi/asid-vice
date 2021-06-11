@@ -170,6 +170,8 @@ static struct kernal_s kernal_match[] = {
 
 static int set_kernal_revision(const char *param, void *extra_param)
 {
+    uint16_t sum;                   /* ROM checksum */
+    int id;                     /* ROM identification number */
     int rev = C64_KERNAL_UNKNOWN;
     int i = 0;
 
@@ -184,8 +186,21 @@ static int set_kernal_revision(const char *param, void *extra_param)
         i++;
     } while ((rev == C64_KERNAL_UNKNOWN) && (kernal_match[i].name != NULL));
 
-    log_verbose("set_kernal_revision (\"-kernalrev\") val:'%s' rev: %d", param, rev);
-    kernal_revision_cmdline = rev;
+    if(!c64rom_isloaded()) {
+        kernal_revision = rev;
+        return 0;
+    }
+
+    if (c64rom_get_kernal_chksum_id(&sum, &id) < 0) {
+        id = C64_KERNAL_UNKNOWN;
+        kernal_revision = id;
+    } else {
+        if (patch_rom_idx(rev) >= 0) {
+            kernal_revision = rev;
+        } else {
+            kernal_revision = id;
+        }
+    }
     return 0;
 }
 

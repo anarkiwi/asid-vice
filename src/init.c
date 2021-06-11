@@ -42,7 +42,6 @@
 #include "maincpu.h"
 #include "monitor.h"
 #ifdef HAVE_NETWORK
-#include "monitor_binary.h"
 #include "monitor_network.h"
 #endif
 #include "palette.h"
@@ -133,10 +132,6 @@ int init_resources(void)
         init_resource_fail("MONITOR_NETWORK");
         return -1;
     }
-    if (monitor_binary_resources_init() < 0) {
-        init_resource_fail("MONITOR_BINARY");
-        return -1;
-    }
 #endif
     return 0;
 }
@@ -213,10 +208,6 @@ int init_cmdline_options(void)
 #ifdef HAVE_NETWORK
     if (monitor_network_cmdline_options_init() < 0) {
         init_cmdline_options_fail("MONITOR_NETWORK");
-        return -1;
-    }
-    if (monitor_binary_cmdline_options_init() < 0) {
-        init_cmdline_options_fail("MONITOR_BINARY");
         return -1;
     }
 #endif

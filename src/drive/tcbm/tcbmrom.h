@@ -29,10 +29,10 @@
 
 #include "types.h"
 
-struct diskunit_context_s;
+struct drive_s;
 
 extern void tcbmrom_init(void);
-extern void tcbmrom_setup_image(struct diskunit_context_s *unit);
+extern void tcbmrom_setup_image(struct drive_s *drive);
 extern int tcbmrom_check_loaded(unsigned int type);
 
 extern int tcbmrom_load_1551(void);

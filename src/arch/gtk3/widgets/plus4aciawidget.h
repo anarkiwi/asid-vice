@@ -31,8 +31,6 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-GtkWidget *plus4_acia_widget_create(void);
-void plus4_acia_widget_sync(void);
-void plus4_acia_widget_add_callback(void (*callback)(GtkWidget *, int value));
+GtkWidget *plus4_acia_widget_create(GtkWidget *parent);
 
 #endif
