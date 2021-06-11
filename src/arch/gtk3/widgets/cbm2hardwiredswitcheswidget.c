@@ -32,13 +32,14 @@
 #include "vice.h"
 
 #include <gtk/gtk.h>
+#include <glib/gstdio.h>
 
-#include "basewidgets.h"
-#include "debug_gtk3.h"
 #include "lib.h"
-#include "machine.h"
-#include "resources.h"
+#include "basewidgets.h"
 #include "widgethelpers.h"
+#include "debug_gtk3.h"
+#include "resources.h"
+#include "machine.h"
 
 #include "cbm2hardwiredswitcheswidget.h"
 
@@ -46,19 +47,19 @@
 /** \brief  Hardwired switches for 5x0 models
  */
 static const vice_gtk3_radiogroup_entry_t models_cbm5x0[] = {
-    { "50Hz 5x0",   2 },
-    { "60Hz 5x0",   1 },
-    { NULL,         -1 }
+    { "50Hz 5x0", 2 },
+    { "60Hz 5x0", 1 },
+    { NULL, -1 }
 };
 
 
 /** \brief  Hardwired switches for 6x0 models
  */
 static const vice_gtk3_radiogroup_entry_t models_cbm6x0[] = {
-    { "50Hz 6x0",   2 },
-    { "60Hz 6x0",   1 },
-    { "50Hz 7x0",   0 },
-    { NULL,         -1 }
+    { "50Hz 6x0", 2 },
+    { "60Hz 6x0", 1 },
+    { "50Hz 7x0", 0 },
+    { NULL, -1 }
 };
 
 
@@ -99,3 +100,4 @@ void cbm2_hardwired_switches_widget_set_callback(
         vice_gtk3_resource_radiogroup_add_callback(group, callback);
     }
 }
+

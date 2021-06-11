@@ -42,8 +42,6 @@
 #define DBG(x)
 #endif
 
-#define SERIAL_DEVICE_NOT_PRESENT       (0x80)
-
 /* Call this if device is not attached: -128 == device not present.  */
 
 /*
@@ -53,25 +51,25 @@
 
 static int fn_getf(struct vdrive_s *foo, uint8_t *bar, unsigned int bas)
 {
-    return SERIAL_DEVICE_NOT_PRESENT;
+    return 0x80;
 }
 
 static int fn_putf(struct vdrive_s *foo, uint8_t bar, unsigned int bas)
 {
-    return SERIAL_DEVICE_NOT_PRESENT;
+    return 0x80;
 }
 
 
 static int fn_openf(struct vdrive_s *foo, const uint8_t *bar, unsigned int bas,
         unsigned int meloen, struct cbmdos_cmd_parse_s *appel)
 {
-    return SERIAL_DEVICE_NOT_PRESENT;
+    return 0x80;
 }
 
 
 static int fn_closef(struct vdrive_s *foo, unsigned int bar)
 {
-    return SERIAL_DEVICE_NOT_PRESENT;
+    return 0x80;
 }
 
 static void fn_flushf(struct vdrive_s *foo, unsigned int bar)

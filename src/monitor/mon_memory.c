@@ -46,9 +46,8 @@
 
 void mon_memory_move(MON_ADDR start_addr, MON_ADDR end_addr, MON_ADDR dest)
 {
-    long i;
-    unsigned int dst;
-    long len;
+    unsigned int i, dst;
+    int len;
     uint16_t start;
     MEMSPACE src_mem, dest_mem;
     uint8_t *buf;
@@ -67,11 +66,11 @@ void mon_memory_move(MON_ADDR start_addr, MON_ADDR end_addr, MON_ADDR dest)
 
     buf = lib_malloc(sizeof(uint8_t) *len);
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; (int)i < len; i++) {
         buf[i] = mon_get_mem_val(src_mem, (uint16_t)ADDR_LIMIT(start + i));
     }
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; (int)i < len; i++) {
         mon_set_mem_val(dest_mem, (uint16_t)ADDR_LIMIT(dst + i), buf[i]);
     }
 
@@ -83,9 +82,8 @@ void mon_memory_compare(MON_ADDR start_addr, MON_ADDR end_addr, MON_ADDR dest)
     uint16_t start;
     MEMSPACE src_mem, dest_mem;
     uint8_t byte1, byte2;
-    long i;
-    unsigned int dst;
-    long len;
+    unsigned int i, dst;
+    int len;
 
     len = mon_evaluate_address_range(&start_addr, &end_addr, TRUE, -1);
     if (len < 0) {
@@ -99,7 +97,7 @@ void mon_memory_compare(MON_ADDR start_addr, MON_ADDR end_addr, MON_ADDR dest)
     dst = addr_location(dest);
     dest_mem = addr_memspace(dest);
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; (int)i < len; i++) {
         byte1 = mon_get_mem_val(src_mem, (uint16_t)ADDR_LIMIT(start + i));
         byte2 = mon_get_mem_val(dest_mem, (uint16_t)ADDR_LIMIT(dst + i));
 
@@ -115,9 +113,8 @@ void mon_memory_fill(MON_ADDR start_addr, MON_ADDR end_addr,
 {
     uint16_t start;
     MEMSPACE dest_mem;
-    unsigned int mon_index;
-    long i;
-    long len;
+    unsigned int i, mon_index;
+    int len;
 
     len = mon_evaluate_address_range(&start_addr, &end_addr, FALSE,
                                      (uint16_t)data_buf_len);
@@ -136,7 +133,7 @@ void mon_memory_fill(MON_ADDR start_addr, MON_ADDR end_addr,
 
     i = 0;
     mon_index = 0;
-    while (i < len) {
+    while ((int)i < len) {
         mon_set_mem_val(dest_mem, (uint16_t)ADDR_LIMIT(start + i),
                         data_buf[mon_index++]);
         if (mon_index >= data_buf_len) {
@@ -154,18 +151,18 @@ void mon_memory_hunt(MON_ADDR start_addr, MON_ADDR end_addr,
     uint8_t *buf;
     uint16_t start, next_read;
     MEMSPACE mem;
-    long i;
-    long len;
+    unsigned int i;
+    int len;
 
     len = mon_evaluate_address_range(&start_addr, &end_addr, TRUE, -1);
-    if (len < 0 || len < data_buf_len) {
+    if (len < 0 || len < (int)(data_buf_len)) {
         mon_out("Invalid range.\n");
         return;
     }
     mem = addr_memspace(start_addr);
     start = addr_location(start_addr);
 
-    buf = lib_malloc(data_buf_len);
+    buf = lib_malloc(sizeof(uint8_t) * data_buf_len);
 
     /* Fill buffer */
     for (i = 0; i < data_buf_len; i++) {
@@ -253,12 +250,7 @@ static void set_addr_location(MON_ADDR *a, unsigned l)
 
 void mon_memory_display(int radix_type, MON_ADDR start_addr, MON_ADDR end_addr, mon_display_format_t format)
 {
-    long i;
-    unsigned int m;
-    unsigned int cnt = 0;
-    long len;
-    unsigned int max_width;
-    unsigned int real_width;
+    unsigned int i, m, cnt = 0, len, max_width, real_width;
     uint16_t addr = 0;
     char *printables;
     char prefix;
@@ -398,10 +390,7 @@ void mon_memory_display(int radix_type, MON_ADDR start_addr, MON_ADDR end_addr, 
 void mon_memory_display_data(MON_ADDR start_addr, MON_ADDR end_addr,
                              unsigned int x, unsigned int y)
 {
-    long i;
-    long j;
-    long len;
-    long cnt = 0;
+    unsigned i, j, len, cnt = 0;
     uint16_t addr = 0;
     MEMSPACE mem;
 
@@ -415,11 +404,8 @@ void mon_memory_display_data(MON_ADDR start_addr, MON_ADDR end_addr,
             mon_out(">%s:%04x ", mon_memspace_string[mem], addr);
             for (j = 0; j < (x / 8); j++) {
                 mon_print_bin(mon_get_mem_val(mem,
-                                              (uint16_t)(ADDR_LIMIT(addr + j))), '#', '.');
+                                              (uint16_t)(ADDR_LIMIT(addr + j))), '*', '.');
                 cnt++;
-            }
-            for (j = 0; j < (x / 8); j++) {
-                mon_out(" %02x", mon_get_mem_val(mem,(uint16_t)(ADDR_LIMIT(addr + j))));
             }
             mon_out("\n");
             addr = ADDR_LIMIT(addr + (x / 8));
@@ -432,10 +418,10 @@ void mon_memory_display_data(MON_ADDR start_addr, MON_ADDR end_addr,
         if (mon_stop_output != 0) {
             break;
         }
-        if ((x == 24) && (y == 21)) {
-            addr++; /* continue at next even address when showing sprites */
-        }
     }
 
+    if ((x == 24) && (y == 21)) {
+        addr++; /* continue at next even address when showing sprites */
+    }
     set_addr_location(&(dot_addr[mem]), addr);
 }

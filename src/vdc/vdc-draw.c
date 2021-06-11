@@ -682,10 +682,8 @@ static void draw_std_text(void)
         + vdc.xsmooth * ((vdc.regs[25] & 0x10) ? 2 : 1)
         - (vdc.regs[22] >> 4) * ((vdc.regs[25] & 0x10) ? 2 : 1);
 
-    /* attr_ptr = vdc.ram + ((vdc.attribute_adr + vdc.mem_counter) & vdc.vdc_address_mask);*/    /* keep pre-buffer pointer set-up for testing */
-    attr_ptr = &vdc.attrbuf[vdc.attrbufdraw];
-    /* screen_ptr = vdc.ram + ((vdc.screen_adr + vdc.mem_counter) & vdc.vdc_address_mask);*/ /* as above */
-    screen_ptr = &vdc.scrnbuf[vdc.attrbufdraw];
+    attr_ptr = vdc.ram + vdc.attribute_adr + vdc.mem_counter;
+    screen_ptr = vdc.ram + vdc.screen_adr + vdc.mem_counter;
     char_ptr = vdc.ram + vdc.chargen_adr + vdc.raster.ycounter;
     
     calculate_draw_masks();
@@ -872,7 +870,7 @@ static int get_std_bitmap(raster_cache_t *cache, unsigned int *xs,
         /* attribute mode */
         r |= raster_cache_data_fill(cache->color_data_1,
                                     vdc.ram + vdc.attribute_adr
-                                    + vdc.mem_counter,
+                                    + vdc.mem_counter + vdc.attribute_offset,
                                     vdc.screen_text_cols + 1,
                                     xs, xe,
                                     rr);
@@ -1008,9 +1006,8 @@ static void draw_std_bitmap(void)
         + vdc.xsmooth * ((vdc.regs[25] & 0x10) ? 2 : 1)
         - (vdc.regs[22] >> 4) * ((vdc.regs[25] & 0x10) ? 2 : 1);
 
-    /*attr_ptr = vdc.ram + ((vdc.attribute_adr + vdc.mem_counter) & vdc.vdc_address_mask);*/    /* keep pre-buffer pointer set-up for testing */
-    attr_ptr = &vdc.attrbuf[vdc.attrbufdraw];
-    bitmap_ptr = vdc.ram + ((vdc.screen_adr + vdc.bitmap_counter) & vdc.vdc_address_mask);
+    attr_ptr = vdc.ram + vdc.attribute_adr + vdc.mem_counter + vdc.attribute_offset;
+    bitmap_ptr = vdc.ram + vdc.screen_adr + vdc.bitmap_counter;
 
     calculate_draw_masks();
     

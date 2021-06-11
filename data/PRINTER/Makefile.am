@@ -1,4 +1,4 @@
-prtdir = $(VICE_DATADIR)/PRINTER
+prtdir = $(VICEDIR)/PRINTER
 
 # cbm1526 and mps801 are not used anywhere (yet),
 # should they really go into bindist ?

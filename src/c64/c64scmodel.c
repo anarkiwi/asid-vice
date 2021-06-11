@@ -95,12 +95,12 @@ struct model_s {
     int iec;
     int userport;
     int keyboard;
-    const char *kernalname;
-    const char *chargenname;
+    char *kernalname;
+    char *chargenname;
     int kernalrev;
 };
 
-static const struct model_s c64models[] = {
+static struct model_s c64models[] = {
 
     /* C64 PAL */
     { VICII_MODEL_6569, MACHINE_SYNC_PAL,

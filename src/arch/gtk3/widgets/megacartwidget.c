@@ -33,31 +33,15 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-#include "basedialogs.h"
-#include "basewidgets.h"
-#include "debug_gtk3.h"
 #include "machine.h"
-#include "openfiledialog.h"
 #include "resources.h"
+#include "debug_gtk3.h"
+#include "basewidgets.h"
 #include "widgethelpers.h"
-#include "ui.h"
+#include "basedialogs.h"
+#include "openfiledialog.h"
 
 #include "megacartwidget.h"
-
-
-static GtkWidget *filename_entry;
-
-
-static void browse_filename_callback(GtkDialog *dialog,
-                                     gchar *filename,
-                                     gpointer data)
-{
-    if (filename != NULL) {
-        vice_gtk3_resource_entry_full_set(filename_entry, filename);
-        g_free(filename);
-    }
-    gtk_widget_destroy(GTK_WIDGET(dialog));
-}
 
 
 
@@ -71,11 +55,15 @@ static void browse_filename_callback(GtkDialog *dialog,
  */
 static void on_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
-    vice_gtk3_open_file_dialog(
-            "Open NvRAM image file",
-            NULL, NULL, NULL,
-            browse_filename_callback,
+    gchar *filename;
+
+    filename = vice_gtk3_open_file_dialog("Open NvRAM image file", NULL, NULL,
             NULL);
+    if (filename != NULL) {
+        debug_gtk3("setting 'MegaCartNvRAMfilename' to '%s'.", filename);
+        vice_gtk3_resource_entry_full_set(GTK_WIDGET(user_data), filename);
+        g_free(filename);
+    }
 }
 
 
@@ -90,6 +78,7 @@ GtkWidget *mega_cart_widget_create(GtkWidget *parent)
     GtkWidget *grid;
     GtkWidget *write_back;
     GtkWidget *label;
+    GtkWidget *entry = NULL;
     GtkWidget *browse = NULL;
 
     grid = gtk_grid_new();
@@ -98,13 +87,14 @@ GtkWidget *mega_cart_widget_create(GtkWidget *parent)
 
     label = gtk_label_new("NvRAM image file");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    filename_entry = vice_gtk3_resource_entry_full_new("MegaCartNvRAMfilename");
-    gtk_widget_set_hexpand(filename_entry, TRUE);
+    entry = vice_gtk3_resource_entry_full_new("MegaCartNvRAMfilename");
+    gtk_widget_set_hexpand(entry, TRUE);
     browse = gtk_button_new_with_label("Browse ...");
-    g_signal_connect(browse, "clicked", G_CALLBACK(on_browse_clicked), NULL);
+    g_signal_connect(browse, "clicked", G_CALLBACK(on_browse_clicked),
+            (gpointer)entry);
 
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), filename_entry, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), entry, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), browse, 2, 0, 1, 1);
 
     write_back = vice_gtk3_resource_check_button_new(

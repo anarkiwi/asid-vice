@@ -19,9 +19,6 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
-AM_LDFLAGS = @VICE_LDFLAGS@
-
-
 noinst_LIBRARIES = libc64cartsystem.a libc64cart.a libc64commoncart.a
 
 libc64cartsystem_a_SOURCES = \
@@ -44,16 +41,6 @@ libc64cart_a_SOURCES = \
 	actionreplay.h \
 	atomicpower.c \
 	atomicpower.h \
-	blackbox3.c \
-	blackbox3.h \
-	blackbox4.c \
-	blackbox4.h \
-	blackbox8.c \
-	blackbox8.h \
-	blackbox9.c \
-	blackbox9.h \
-	bisplus.c \
-	bisplus.h \
 	c64-generic.c \
 	c64-generic.h \
 	c64-midi.c \
@@ -116,12 +103,8 @@ libc64cart_a_SOURCES = \
 	gamekiller.h \
 	gmod2.c \
 	gmod2.h \
-	gmod3.c \
-	gmod3.h \
 	gs.c \
 	gs.h \
-	hero.c \
-	hero.h \
 	ide64.c \
 	ide64.h \
 	isepic.c \
@@ -130,8 +113,6 @@ libc64cart_a_SOURCES = \
 	kcs.h \
 	kingsoft.c \
 	kingsoft.h \
-	ltkernal.c \
-	ltkernal.h \
 	mach5.c \
 	mach5.h \
 	magicdesk.c \
@@ -148,8 +129,6 @@ libc64cart_a_SOURCES = \
 	mmcreplay.h \
 	mmc64.c \
 	mmc64.h \
-	multimax.c \
-	multimax.h \
 	ocean.c \
 	ocean.h \
 	pagefox.c \
@@ -158,16 +137,12 @@ libc64cart_a_SOURCES = \
 	prophet64.h \
 	ramcart.c \
 	ramcart.h \
-	ramlink.c \
-	ramlink.h \
 	retroreplay.c \
 	retroreplay.h \
 	reu.c \
 	reu.h \
 	rexep256.c \
 	rexep256.h \
-	rexramfloppy.c \
-	rexramfloppy.h \
 	rexutility.c \
 	rexutility.h \
 	rgcd.c \
@@ -176,8 +151,6 @@ libc64cart_a_SOURCES = \
 	ross.h \
 	rrnetmk3.c \
 	rrnetmk3.h \
-	sdbox.c \
-	sdbox.h \
 	shortbus.c \
 	shortbus.h \
 	shortbus_digimax.c \
@@ -207,9 +180,7 @@ libc64cart_a_SOURCES = \
 	westermann.c \
 	westermann.h \
 	zaxxon.c \
-	zaxxon.h \
-	zippcode48.c \
-	zippcode48.h
+	zaxxon.h
 
 libc64commoncart_a_SOURCES = \
 	c64acia.h \

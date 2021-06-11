@@ -31,8 +31,6 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-GtkWidget *v364_speech_widget_create(void);
-void v364_speech_widget_sync(void);
-void v364_speech_widget_add_callback(void (*callback)(GtkWidget *, int value));
+GtkWidget *v364_speech_widget_create(GtkWidget *parent);
 
 #endif

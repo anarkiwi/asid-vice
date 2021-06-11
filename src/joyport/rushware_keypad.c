@@ -35,7 +35,7 @@
 
 #include "rushware_keypad.h"
 
-/* Control port <--> rushware keypad connections:
+/* Control port <--> coplin keypad connections:
 
    cport | keypad  | I/O
    --------------------------

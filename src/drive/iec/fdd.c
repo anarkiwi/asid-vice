@@ -90,9 +90,6 @@ fd_drive_t *fdd_init(int num, drive_t *drive)
     drv->rate = 2;
     drv->image_sectors = 40;
     drv->drive = drive;
-    /* TODO: What about the other fields in raw? */
-    drv->raw.data = NULL;
-    drv->raw.sync = NULL;
     return drv;
 }
 

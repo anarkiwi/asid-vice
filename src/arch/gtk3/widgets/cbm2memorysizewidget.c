@@ -9,6 +9,9 @@
  */
 
 /*
+ * Written by
+ *  Bas Wassink <b.wassink@ziggo.nl>
+ *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -34,34 +37,34 @@
 #include <gtk/gtk.h>
 
 #include "basewidgets.h"
-#include "debug_gtk3.h"
-#include "machine.h"
-#include "resources.h"
 #include "widgethelpers.h"
+#include "debug_gtk3.h"
+#include "resources.h"
+#include "machine.h"
 
 #include "cbm2memorysizewidget.h"
 
 
-/** \brief  List of RAM sizes for 5x0 in KiB
+/** \brief  List of RAM sizes for 5x0
  */
 static const vice_gtk3_radiogroup_entry_t ram_sizes_cbm5x0[] = {
-    { "64KiB",      64 },
-    { "128KiB",     128 },
-    { "256KiB",     256 },
-    { "512KiB",     512 },
-    { "1024KiB",    1024 },
-    { NULL,         -1 }
+    { "64KB",   64 },
+    { "128KB",  128 },
+    { "256KB",  256 },
+    { "512KB",  512 },
+    { "1024KB", 1024 },
+    { NULL, -1 }
 };
 
 
-/** \brief  List of RAM sizes for 6x0/7x0 in KiB
+/** \brief  List of RAM sizes for 6x0/7x0
  */
 static const vice_gtk3_radiogroup_entry_t ram_sizes_cbm6x0[] = {
-    { "128KiB",     128 },
-    { "256KiB",     256 },
-    { "512KiB",     512 },
-    { "1024KiB",    1024 },
-    { NULL,         -1 }
+    { "128KB",  128 },
+    { "256KB",  256 },
+    { "512KB",  512 },
+    { "1024KB", 1024 },
+    { NULL, -1 }
 };
 
 

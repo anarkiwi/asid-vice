@@ -33,12 +33,12 @@
 
 #include <gtk/gtk.h>
 
+#include "resources.h"
+#include "vice_gtk3.h"
 #include "debug_gtk3.h"
 #include "hvsc.h"
-#include "resources.h"
-#include "ui.h"
-#include "vice_gtk3.h"
 #include "vsidtuneinfowidget.h"
+#include "ui.h"
 
 #include "hvscstilwidget.h"
 
@@ -48,10 +48,6 @@
 static GtkWidget *stil_view;
 
 
-/** \brief  Create tags for the textview displaying info on a SID via STIL
- *
- * \return  1
- */
 static int hvsc_stil_widget_create_tags(void)
 {
 
@@ -123,6 +119,7 @@ static int hvsc_stil_widget_create_tags(void)
 }
 
 
+
 /** \brief  Create TextView widget for the STIL entry text
  *
  * \return  GtkTextView
@@ -137,6 +134,7 @@ static GtkWidget *create_view(void)
     gtk_widget_set_vexpand(textview, TRUE);
     return textview;
 }
+
 
 
 /** \brief  Create HVSC STIL widget
@@ -197,12 +195,7 @@ GtkWidget *hvsc_stil_widget_create(void)
 
 
 
-/** \brief  Set new PSID file
- *
- * \param[in]   psid    path to .sid file
- *
- * \return  boolean
- */
+
 int hvsc_stil_widget_set_psid(const char *psid)
 {
     hvsc_stil_t stil;

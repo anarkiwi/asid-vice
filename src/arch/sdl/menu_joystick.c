@@ -139,14 +139,6 @@ static const ui_menu_entry_t define_keyset_menu[] = {
       MENU_ENTRY_DIALOG,
       custom_keyset_callback,
       (ui_callback_data_t)"KeySet1Fire" },
-    { "Keyset 1 2nd Fire",
-      MENU_ENTRY_DIALOG,
-      custom_keyset_callback,
-      (ui_callback_data_t)"KeySet1Fire2" },
-    { "Keyset 1 3rd Fire",
-      MENU_ENTRY_DIALOG,
-      custom_keyset_callback,
-      (ui_callback_data_t)"KeySet1Fire3" },
     SDL_MENU_ITEM_SEPARATOR,
     { "Keyset 2 Up",
       MENU_ENTRY_DIALOG,
@@ -168,14 +160,6 @@ static const ui_menu_entry_t define_keyset_menu[] = {
       MENU_ENTRY_DIALOG,
       custom_keyset_callback,
       (ui_callback_data_t)"KeySet2Fire" },
-    { "Keyset 2 2nd Fire",
-      MENU_ENTRY_DIALOG,
-      custom_keyset_callback,
-      (ui_callback_data_t)"KeySet2Fire2" },
-    { "Keyset 2 3rd Fire",
-      MENU_ENTRY_DIALOG,
-      custom_keyset_callback,
-      (ui_callback_data_t)"KeySet2Fire3" },
     SDL_MENU_LIST_END
 };
 
@@ -185,9 +169,7 @@ static const char *joy_pin[] = {
     "Down",
     "Left",
     "Right",
-    "Fire",
-    "Fire 2 (POTX)",
-    "Fire 3 (POTY)"
+    "Fire"
 };
 
 static UI_MENU_CALLBACK(custom_joymap_callback)
@@ -240,14 +222,6 @@ static UI_MENU_CALLBACK(custom_joymap_callback)
           MENU_ENTRY_DIALOG,                                       \
           custom_joymap_callback,                                  \
           (ui_callback_data_t)(4 | ((port - 1) << 4)) },           \
-        { "Fire 2 (POTX)",                                         \
-          MENU_ENTRY_DIALOG,                                       \
-          custom_joymap_callback,                                  \
-          (ui_callback_data_t)(5 | ((port - 1) << 4)) },           \
-        { "Fire 3 (POTY)",                                         \
-          MENU_ENTRY_DIALOG,                                       \
-          custom_joymap_callback,                                  \
-          (ui_callback_data_t)(6 | ((port - 1) << 4)) },           \
         SDL_MENU_LIST_END                                          \
     };
 

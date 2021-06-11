@@ -52,20 +52,18 @@
 #include "reuwidget.h"
 
 
-/** \brief  List of supported RAM sizes in KiB/MiB
- *
- * REU sizes tend to be specified in MiB when being 1MiB or higher, not KiB.
+/** \brief  List of supported RAM sizes
  */
 static const vice_gtk3_radiogroup_entry_t ram_sizes[] = {
-    { "128KiB",     128 },
-    { "256KiB",     256 },
-    { "512KiB",     512 },
-    { "1MiB",       1024 },
-    { "2MiB",       2048 },
-    { "4MiB",       4096 },
-    { "8MiB",       8192 },
-    { "16MiB",      16384 },
-    { NULL,         -1 }
+    { "128KB", 128 },
+    { "256KB", 256 },
+    { "512KB", 512 },
+    { "1MB", 1024 },
+    { "2MB", 2048 },
+    { "4MB", 4096 },
+    { "8MB", 8192 },
+    { "16MB", 16384 },
+    { NULL, -1 }
 };
 
 

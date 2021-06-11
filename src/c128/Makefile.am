@@ -4,7 +4,6 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/arch/shared \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/src/datasette \
 	-I$(top_srcdir)/src/drive \
 	-I$(top_srcdir)/src/c64 \
 	-I$(top_srcdir)/src/c64/cart \
@@ -26,9 +25,6 @@ AM_CPPFLAGS = \
 AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
-
-AM_LDFLAGS = @VICE_LDFLAGS@
-
 
 noinst_LIBRARIES = libc128.a
 

@@ -32,34 +32,12 @@
 
 #ifdef HAVE_MOUSE
 
-#include "vice_sdl.h"
-
-#include "archdep.h"
-#include "machine.h"
 #include "menu_common.h"
 #include "mouse.h"
-#include "resources.h"
 #include "uimenu.h"
-#include "videoarch.h"
 
-static UI_MENU_CALLBACK(toggle_Mouse_callback)
-{
-    int mouse;
-
-    if (activated) {
-        resources_get_int("Mouse", &mouse);
-        resources_set_int("Mouse", !mouse);
-    } else {
-        resources_get_int("Mouse", &mouse);
-        if (mouse) {
-            return sdl_menu_text_tick;
-        }
-    }
-    return NULL;
-}
-
+UI_MENU_DEFINE_TOGGLE(Mouse)
 UI_MENU_DEFINE_TOGGLE(SmartMouseRTCSave)
-UI_MENU_DEFINE_TOGGLE(ps2mouse)
 
 const ui_menu_entry_t mouse_menu[] = {
     { "Grab mouse events",
@@ -81,18 +59,4 @@ const ui_menu_entry_t mouse_grab_menu[] = {
       NULL },
     SDL_MENU_LIST_END
 };
-
-const ui_menu_entry_t mouse_c64dtv_menu[] = {
-    { "Enable PS/2 mouse on userport",
-      MENU_ENTRY_RESOURCE_TOGGLE,
-      toggle_ps2mouse_callback,
-      NULL },
-    SDL_MENU_ITEM_SEPARATOR,
-    { "Grab mouse events",
-      MENU_ENTRY_RESOURCE_TOGGLE,
-      toggle_Mouse_callback,
-      NULL },
-    SDL_MENU_LIST_END
-};
-
 #endif

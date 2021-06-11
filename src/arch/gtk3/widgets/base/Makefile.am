@@ -28,8 +28,6 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
-AM_LDFLAGS = @VICE_LDFLAGS@
-
 
 noinst_LIBRARIES = libbasewidgets.a
 
@@ -38,7 +36,6 @@ libbasewidgets_a_SOURCES = \
 	carthelpers.c \
 	cartimagewidget.c \
 	clockportdevicewidget.c \
-	csshelpers.c \
 	filechooserhelpers.c \
 	lastdir.c \
 	openfiledialog.c \
@@ -51,6 +48,7 @@ libbasewidgets_a_SOURCES = \
 	resourcescale.c \
 	resourcespinbutton.c \
 	resourceswitch.c \
+	resourcewidgetmanager.c \
 	savefiledialog.c \
 	selectdirectorydialog.c \
 	widgethelpers.c
@@ -62,7 +60,6 @@ EXTRA_DIST = \
 	carthelpers.h \
 	cartimagewidget.h \
 	clockportdevicewidget.h \
-	csshelpers.h \
 	filechooserhelpers.h \
 	lastdir.h \
 	openfiledialog.h \
@@ -75,6 +72,7 @@ EXTRA_DIST = \
 	resourcescale.h \
 	resourcespinbutton.h \
 	resourceswitch.h \
+	resourcewidgetmanager.h \
 	savefiledialog.h \
 	selectdirectorydialog.h \
 	vice_gtk3.h \

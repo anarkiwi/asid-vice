@@ -31,10 +31,11 @@
 #include <gtk/gtk.h>
 #include <glib/gstdio.h>
 
-#include "debug_gtk3.h"
 #include "lib.h"
+#include "widgethelpers.h"
+#include "debug_gtk3.h"
 #include "resources.h"
-#include "vice_gtk3.h"
+#include "selectdirectorydialog.h"
 
 #include "cwdwidget.h"
 
@@ -53,6 +54,7 @@ static void on_entry_changed(GtkWidget *widget, gpointer user_data)
 {
     const char *cwd = gtk_entry_get_text(GTK_ENTRY(widget));
 
+    debug_gtk3("setting cwd to '%s'.", cwd);
     /* TODO: make the entry background 'red' or so when chdir() fails */
     g_chdir(cwd);
 }
@@ -75,22 +77,18 @@ static void on_browse_clicked(GtkWidget *widget, gpointer user_data)
 }
 
 
+
 /** \brief  Create widget to change the current working directory
- *
- * \param[in]   parent  parent widget (unused)
  *
  * \return  GtkGrid
  */
-GtkWidget *cwd_widget_create(GtkWidget *parent)
+GtkWidget *cwd_widget_create(void)
 {
     GtkWidget *grid;
     GtkWidget *wrapper;
     GtkWidget *browse;
 
-    grid = vice_gtk3_grid_new_spaced_with_label(
-            -1, -1,
-            "Current working directory",
-            1);
+    grid = uihelpers_create_grid_with_label("Current working directory", 1);
 
     wrapper = gtk_grid_new();
     g_object_set(wrapper, "margin", 8, NULL);

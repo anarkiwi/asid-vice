@@ -331,8 +331,7 @@ int supersnapshot_v4_bin_attach(const char *filename, uint8_t *rawcart)
  */
 int supersnapshot_v4_crt_attach(FILE *fd, uint8_t *rawcart)
 {
-    int i, banks, chips;
-    size_t pos;
+    int i, pos, banks, chips;
     crt_chip_header_t chip;
 
     /* find out how many banks and chips are in the file */
@@ -410,7 +409,7 @@ void supersnapshot_v4_detach(void)
    ARRAY | RAM        | 8192 BYTES of RAM data
  */
 
-static const char snap_module_name[] = "CARTSS4";
+static char snap_module_name[] = "CARTSS4";
 #define SNAP_MAJOR   0
 #define SNAP_MINOR   0
 

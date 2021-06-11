@@ -70,14 +70,14 @@ static UI_MENU_CALLBACK(attach_cart_callback)
             case CARTRIDGE_VIC20_16KB_2000:
             case CARTRIDGE_VIC20_16KB_4000:
             case CARTRIDGE_VIC20_16KB_6000:
-                title = "Select 4/8/16KiB image";
+                title = "Select 4/8/16kB image";
                 break;
             case CARTRIDGE_VIC20_8KB_A000:
-                title = "Select 4/8KiB image";
+                title = "Select 4/8kB image";
                 break;
             case CARTRIDGE_VIC20_4KB_B000:
             default:
-                title = "Select 4KiB image";
+                title = "Select 4kB image";
                 break;
         }
         name = sdl_ui_file_selection_dialog(title, FILEREQ_MODE_CHOOSE_FILE);
@@ -96,23 +96,23 @@ static const ui_menu_entry_t add_to_generic_cart_submenu[] = {
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_DETECT },
-    { "Attach 4/8/16KiB image at $2000",
+    { "Attach 4/8/16kB image at $2000",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_16KB_2000 },
-    { "Attach 4/8/16KiB image at $4000",
+    { "Attach 4/8/16kB image at $4000",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_16KB_4000 },
-    { "Attach 4/8/16KiB image at $6000",
+    { "Attach 4/8/16kB image at $6000",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_16KB_6000 },
-    { "Attach 4/8KiB image at $A000",
+    { "Attach 4/8kB image at $A000",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_8KB_A000 },
-    { "Attach 4KiB image at $B000",
+    { "Attach 4kB image at $B000",
       MENU_ENTRY_DIALOG,
       attach_cart_callback,
       (ui_callback_data_t)CARTRIDGE_VIC20_4KB_B000 },
@@ -198,31 +198,31 @@ static ui_menu_entry_t georam_menu[] = {
       NULL },
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("Memory size"),
-    { "64KiB",
+    { "64kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)64 },
-    { "128KiB",
+    { "128kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)128 },
-    { "256KiB",
+    { "256kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)256 },
-    { "512KiB",
+    { "512kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)512 },
-    { "1MiB",
+    { "1024kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)1024 },
-    { "2MiB",
+    { "2048kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)2048 },
-    { "4MiB",
+    { "4096kB",
       MENU_ENTRY_RESOURCE_RADIO,
       radio_GEORAMsize_callback,
       (ui_callback_data_t)4096 },

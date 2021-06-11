@@ -49,28 +49,26 @@ void vdrive_snapshot_init(void)
     vdrive_snapshot_log = log_open("VDriveSnapshot");
 }
 
-#define SNAP_MAJOR 2
+#define SNAP_MAJOR 1
 #define SNAP_MINOR 0
 
 int vdrive_snapshot_module_write(snapshot_t *s, int start)
 {
-    int i, j;
+    int i;
     char snap_module_name[SNAP_MODNAME_SIZE];
     snapshot_module_t *m;
     vdrive_t *floppy;
 
     for (i = start; i <= 11; i++) {
-        for (j = 0; j <= 1; j++) {
-            floppy = file_system_get_vdrive(i, j);
-            if (floppy->image != NULL) {
-                snprintf(snap_module_name, SNAP_MODNAME_SIZE, "VDRIVEIMAGE%i", i);
-                m = snapshot_module_create(s, snap_module_name, ((uint8_t)SNAP_MAJOR),
-                                        ((uint8_t)SNAP_MINOR));
-                if (m == NULL) {
-                    return -1;
-                }
-                snapshot_module_close(m);
+        floppy = file_system_get_vdrive(i);
+        if (floppy->image != NULL) {
+            snprintf(snap_module_name, SNAP_MODNAME_SIZE, "VDRIVEIMAGE%i", i);
+            m = snapshot_module_create(s, snap_module_name, ((uint8_t)SNAP_MAJOR),
+                                       ((uint8_t)SNAP_MINOR));
+            if (m == NULL) {
+                return -1;
             }
+            snapshot_module_close(m);
         }
     }
     return 0;
@@ -79,27 +77,25 @@ int vdrive_snapshot_module_write(snapshot_t *s, int start)
 int vdrive_snapshot_module_read(snapshot_t *s, int start)
 {
     uint8_t major_version, minor_version;
-    int i, j;
+    int i;
     snapshot_module_t *m;
     char snap_module_name[SNAP_MODNAME_SIZE];
 
     for (i = start; i <= 11; i++) {
-        for (j = 0; j <= 1; j++) {
-            snprintf(snap_module_name, SNAP_MODNAME_SIZE, "VDRIVEIMAGE%i", i);
-            m = snapshot_module_open(s, snap_module_name, &major_version, &minor_version);
-            if (m == NULL) {
-                return 0;
-            }
-
-            /* FIXME: this gives a linker error? */
-            /* if (snapshot_version_is_bigger(major_version, minor_version, SNAP_MAJOR, SNAP_MINOR)) { */
-            if (major_version > SNAP_MAJOR || minor_version > SNAP_MINOR) {
-                log_message(vdrive_snapshot_log,
-                            "Snapshot module version (%d.%d) newer than %d.%d.",
-                            major_version, minor_version, SNAP_MAJOR, SNAP_MINOR);
-            }
-            snapshot_module_close(m);
+        snprintf(snap_module_name, SNAP_MODNAME_SIZE, "VDRIVEIMAGE%i", i);
+        m = snapshot_module_open(s, snap_module_name, &major_version, &minor_version);
+        if (m == NULL) {
+            return 0;
         }
+
+        /* FIXME: this gives a linker error? */
+        /* if (snapshot_version_is_bigger(major_version, minor_version, SNAP_MAJOR, SNAP_MINOR)) { */
+        if (major_version > SNAP_MAJOR || minor_version > SNAP_MINOR) {
+            log_message(vdrive_snapshot_log,
+                        "Snapshot module version (%d.%d) newer than %d.%d.",
+                        major_version, minor_version, SNAP_MAJOR, SNAP_MINOR);
+        }
+        snapshot_module_close(m);
     }
     return 0;
 }

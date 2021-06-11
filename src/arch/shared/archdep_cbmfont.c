@@ -36,11 +36,6 @@
 #include "archdep_cbmfont.h"
 
 
-/** \brief  Filename of the TrueType CBM font used for directory display
- */
-#define VICE_CBM_FONT_TTF "C64_Pro_Mono-STYLE.ttf"
-
-
 /** \fn  int archdep_register_cbmfont(void)
  * \brief    Try to register the CBM font with the OS
  *
@@ -49,25 +44,22 @@
  * \return    bool as int
  */
 
-#ifdef ARCHDEP_OS_MACOS
+#ifdef ARCHDEP_OS_OSX
 
 # include <CoreText/CTFontManager.h>
 
 int archdep_register_cbmfont(void)
 {
-    char *datadir;
     char *fontPath;
     CFStringRef fontPathStringRef;
     CFURLRef fontUrl;
     CFArrayRef fontUrls;
     CFArrayRef errors;
-    size_t len;
+    unsigned int len;
     unsigned int isdir;
 
-    datadir = archdep_get_vice_datadir();
-    fontPath = archdep_join_paths(datadir, "common", VICE_CBM_FONT_TTF, NULL);
-    lib_free(datadir);
-
+    fontPath = archdep_join_paths(archdep_boot_path(),
+            "..", "lib", "vice", "common", "CBM.ttf", NULL);
     if (-1 == archdep_stat(fontPath, &len, &isdir)) {
         lib_free(fontPath);
 
@@ -114,11 +106,11 @@ int archdep_register_cbmfont(void)
 
     fc_config = FcConfigGetCurrent();
     datadir = archdep_get_vice_datadir();
-    path = archdep_join_paths(datadir, "common", VICE_CBM_FONT_TTF, NULL);
-    lib_free(datadir);
+    path = archdep_join_paths(datadir, "CBM.ttf", NULL);
 #if 0
     printf("Path = '%s'\n", path);
 #endif
+    lib_free(datadir);
 
     if (!FcConfigAppFontAddFile(fc_config, (FcChar8 *)path)) {
         lib_free(path);
@@ -167,10 +159,10 @@ int archdep_register_cbmfont(void)
     int result;
 
     datadir = archdep_get_vice_datadir();
-    path = archdep_join_paths(datadir, "common", VICE_CBM_FONT_TTF, NULL);
+    path = archdep_join_paths(datadir, "CBM.ttf", NULL);
     lib_free(datadir);
 
-    result = AddFontResourceEx(path, FR_PRIVATE, 0);
+    result = AddFontResourceEx(path, 0, 0);
     if (result == 0) {
         lib_free(path);
         return 0;
@@ -198,14 +190,15 @@ int archdep_register_cbmfont(void)
 void archdep_unregister_cbmfont(void)
 {
 #ifdef ARCHDEP_OS_WINDOWS
+
     char *datadir;
     char *path;
 
     datadir = archdep_get_vice_datadir();
-    path = archdep_join_paths(datadir, "common", VICE_CBM_FONT_TTF, NULL);
+    path = archdep_join_paths(datadir, "CBM.ttf", NULL);
     lib_free(datadir);
 
-    RemoveFontResourceExA(path, FR_PRIVATE, 0);
+    RemoveFontResourceEx(path, 0, 0);
     lib_free(path);
 #endif
 }

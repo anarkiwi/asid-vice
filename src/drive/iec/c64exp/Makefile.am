@@ -12,9 +12,6 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
-AM_LDFLAGS = @VICE_LDFLAGS@
-
-
 noinst_LIBRARIES = libdriveiecc64exp.a
 
 libdriveiecc64exp_a_SOURCES = \

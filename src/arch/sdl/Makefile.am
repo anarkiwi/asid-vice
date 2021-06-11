@@ -1,9 +1,13 @@
 # Makefile.am for the SDL version of `libarch.a'.
 
-sdldatadir = $(VICE_DATADIR)/common
+sdldatadir = $(VICEDIR)/common
 
 if WIN32_COMPILE
 extra_includes = -I$(top_srcdir)/src/arch/mingw32-pcap/wpcap
+# Icon
+WINDRES_RC_PROTO = $(top_srcdir)/src/arch/gtk3/data/icon.rc.proto
+WINDRES_RC_TARGET = $(top_builddir)/src/arch/sdl/icon.rc
+WINDRES_COFF = $(top_builddir)/src/arch/sdl/icon.res
 else
 extra_includes =
 endif
@@ -37,17 +41,13 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/gfxoutputdrv \
 	-I$(top_srcdir)/src/tapeport \
 	-I$(top_srcdir)/src/imagecontents \
-	-I$(top_srcdir)/src/datasette \
 	-I$(top_srcdir)/src
 
 AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
-AM_LDFLAGS = @VICE_LDFLAGS@
-
-
-noinst_LIBRARIES = libarch.a libtoolarch.a
+noinst_LIBRARIES = libarch.a
 
 if SDL2_COMPILE
 
@@ -212,24 +212,30 @@ libarch_a_SOURCES = \
 	xscpu64_ui.c \
 	xvic_ui.c
 
-libtoolarch_a_SOURCES = \
-	archdep.c
-
 EXTRA_DIST = \
 	make-bindist_amiga.sh \
 	make-bindist_beos.sh \
 	make-bindist_osx.sh \
+	make-bindist_scosol.sh \
+	make-bindist_skyos.sh \
 	make-bindist_win32.sh \
-	macOS-ui-runtime.sh \
+	Info.plist \
+	macOS-launcher.sh \
 	Resources/VICE.icns \
 	vice-launcher.sh \
 	x11-launcher.sh
 
 if WIN32_COMPILE
 
-# Use Gtk's icon stuff to generate icon sets
-all:
-	(cd ../gtk3/data/win32 && $(MAKE))
+sdldata_DATA = $(WINDRES_COFF)
+
+all: $(WINDRESS_COFF)
+
+$(WINDRES_RC_TARGET): $(WINDRES_RC_PROTO)
+	cat $< | sed -e "s@__PREFIX__@$(top_srcdir)@g" > $@
+
+$(WINDRES_COFF): $(WINDRES_RC_TARGET)
+	$(WINDRES) $< -O coff -o $@
 
 endif
 

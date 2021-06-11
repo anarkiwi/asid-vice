@@ -34,18 +34,6 @@
 namespace reSID
 {
 
-inline short clip(int input)
-{
-    // Saturated arithmetics to guard against 16 bit sample overflow.
-    if (unlikely(input > 32767)) {
-      return 32767;
-    }
-    if (unlikely(input < -32768)) {
-      return -32768;
-    }
-    return (short)input;
-}
-
 // ----------------------------------------------------------------------------
 // Constructor.
 // ----------------------------------------------------------------------------
@@ -922,7 +910,7 @@ int SID::clock_resample(cycle_count& delta_t, short* buf, int n, int interleave)
 
     for (int i = 0; i < delta_t_sample; i++) {
       clock();
-      sample[sample_index] = sample[sample_index + RINGSIZE] = clip(output());
+      sample[sample_index] = sample[sample_index + RINGSIZE] = output();
       ++sample_index &= RINGMASK;
     }
 
@@ -965,7 +953,16 @@ int SID::clock_resample(cycle_count& delta_t, short* buf, int n, int interleave)
 
     v >>= FIR_SHIFT;
 
-    buf[s*interleave] = clip(v);
+    // Saturated arithmetics to guard against 16 bit sample overflow.
+    const int half = 1 << 15;
+    if (v >= half) {
+      v = half - 1;
+    }
+    else if (v < -half) {
+      v = -half;
+    }
+
+    buf[s*interleave] = v;
   }
 
   return s;
@@ -1012,7 +1009,16 @@ int SID::clock_resample_fastmem(cycle_count& delta_t, short* buf, int n, int int
 
     v >>= FIR_SHIFT;
 
-    buf[s*interleave] = clip(v);
+    // Saturated arithmetics to guard against 16 bit sample overflow.
+    const int half = 1 << 15;
+    if (v >= half) {
+      v = half - 1;
+    }
+    else if (v < -half) {
+      v = -half;
+    }
+
+    buf[s*interleave] = v;
   }
 
   return s;

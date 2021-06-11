@@ -27,8 +27,9 @@
 #ifndef VICE_JAMACTIONWIDGET_H
 #define VICE_JAMACTIONWIDGET_H
 
+#include "vice.h"
 #include <gtk/gtk.h>
 
-GtkWidget *jam_action_widget_create(GtkWidget *parent);
+GtkWidget *jam_action_widget_create(void);
 
 #endif

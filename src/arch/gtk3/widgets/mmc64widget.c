@@ -40,18 +40,17 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-#include "basedialogs.h"
+#include "machine.h"
+#include "resources.h"
+#include "debug_gtk3.h"
 #include "basewidgets.h"
-#include "carthelpers.h"
+#include "widgethelpers.h"
+#include "basedialogs.h"
+#include "openfiledialog.h"
+#include "savefiledialog.h"
 #include "cartimagewidget.h"
 #include "cartridge.h"
-#include "debug_gtk3.h"
-#include "machine.h"
-#include "openfiledialog.h"
-#include "resources.h"
-#include "savefiledialog.h"
-#include "ui.h"
-#include "widgethelpers.h"
+#include "carthelpers.h"
 
 #include "mmc64widget.h"
 
@@ -84,28 +83,9 @@ static GtkWidget *bios_filename_widget = NULL;
 static GtkWidget *bios_browse_widget = NULL;
 static GtkWidget *bios_write_widget = NULL;
 static GtkWidget *card_widget = NULL;
-static GtkWidget *card_filename_entry = NULL;
 static GtkWidget *card_type_widget = NULL;
 static GtkWidget *save_button = NULL;
 static GtkWidget *flush_button = NULL;
-
-
-/** \brief  Callback for the BIOS file dilaog
- *
- * \param[in,out]   dialog      BIOS file dialog
- * \param[in]       filename    filename or NULL on cancel
- * \param[in]       data        extra data (unused)
- */
-static void bios_filename_callback(GtkDialog *dialog,
-                                   gchar *filename,
-                                   gpointer data)
-{
-    if (filename != NULL) {
-        vice_gtk3_resource_entry_full_set(bios_filename_widget, filename);
-        g_free(filename);
-    }
-    gtk_widget_destroy(GTK_WIDGET(dialog));
-}
 
 
 /** \brief  Handler for the "clicked" event of the BIOS browse button
@@ -115,32 +95,16 @@ static void bios_filename_callback(GtkDialog *dialog,
  */
 static void on_bios_browse_clicked(GtkWidget *button, gpointer user_data)
 {
-    vice_gtk3_open_file_dialog(
-            "Open MMC64 BIOS image file",
-            NULL, NULL, NULL,
-            bios_filename_callback,
-            NULL);
-}
+    char *filename;
 
-
-/** \brief  Callback for the card file dilaog
- *
- * \param[in,out]   dialog      card file dialog
- * \param[in]       filename    filename or NULL on cancel
- * \param[in]       data        extra data (unused)
- */
-static void card_filename_callback(GtkDialog *dialog,
-                                   gchar *filename,
-                                   gpointer data)
-{
+    filename = vice_gtk3_open_file_dialog("Open MMC64 BIOS image file",
+            NULL, NULL, NULL);
     if (filename != NULL) {
-        gtk_entry_set_text(GTK_ENTRY(card_filename_entry), filename);
+        /* trigger resource update */
+        vice_gtk3_resource_entry_full_set(GTK_WIDGET(user_data), filename);
         g_free(filename);
     }
-
-    gtk_widget_destroy(GTK_WIDGET(dialog));
 }
-
 
 
 /** \brief  Handler for the "clicked" event of the memory card browse button
@@ -150,12 +114,20 @@ static void card_filename_callback(GtkDialog *dialog,
  */
 static void on_card_browse_clicked(GtkWidget *button, gpointer user_data)
 {
-    vice_gtk3_open_file_dialog(
-            "Open memory card file",
-            NULL, NULL, NULL,
-            card_filename_callback,
-            NULL);
+    char *filename;
 
+    filename = vice_gtk3_open_file_dialog("Open memory card file",
+            NULL, NULL, NULL);
+    if (filename != NULL) {
+        GtkWidget *parent;
+        GtkWidget *entry;
+
+        parent = gtk_widget_get_parent(button);
+        entry= gtk_grid_get_child_at(GTK_GRID(parent), 1, 1);
+        /* trigger resource update */
+        gtk_entry_set_text(GTK_ENTRY(entry), filename);
+        g_free(filename);
+    }
 }
 
 /** \brief  Handler for the "toggled" event of the "MMC64 Enabled" widget
@@ -195,16 +167,16 @@ static void on_enable_toggled(GtkWidget *check, gpointer user_data)
 }
 
 
-/** \brief  Callback for the save-dialog response handler
+/** \brief  Handler for the "clicked" event of the Save Image button
  *
- * \param[in,out]   dialog      save-file dialog
- * \param[in,out]   filename    filename
- * \param[in]       data        extra data (unused)
+ * \param[in]   widget      button
+ * \param[in]   user_data   unused
  */
-static void save_filename_callback(GtkDialog *dialog,
-                                   gchar *filename,
-                                   gpointer data)
+static void on_save_clicked(GtkWidget *widget, gpointer user_data)
 {
+    /* TODO: retrieve filename of cart image */
+    gchar *filename = vice_gtk3_save_file_dialog("Save Cartridge image",
+            NULL, TRUE, NULL);
     if (filename != NULL) {
         debug_gtk3("saving MMC64 cart image as '%s'.", filename);
         if (carthelpers_save_func(CARTRIDGE_MMC64, filename) < 0) {
@@ -214,21 +186,6 @@ static void save_filename_callback(GtkDialog *dialog,
         }
         g_free(filename);
     }
-    gtk_widget_destroy(GTK_WIDGET(dialog));
-}
-
-
-/** \brief  Handler for the "clicked" event of the Save Image button
- *
- * \param[in]   widget      button
- * \param[in]   user_data   unused
- */
-static void on_save_clicked(GtkWidget *widget, gpointer user_data)
-{
-    vice_gtk3_save_file_dialog("Save cartridge image",
-                               NULL, TRUE, NULL,
-                               save_filename_callback,
-                               NULL);
 }
 
 
@@ -377,6 +334,7 @@ static GtkWidget *create_card_image_widget(GtkWidget *parent)
 {
     GtkWidget *grid;
     GtkWidget *label;
+    GtkWidget *entry;
     GtkWidget *browse;
     GtkWidget *card_writes;
 
@@ -388,9 +346,9 @@ static GtkWidget *create_card_image_widget(GtkWidget *parent)
     g_object_set(label, "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
 
-    card_filename_entry = vice_gtk3_resource_entry_full_new("MMC64Imagefilename");
-    gtk_widget_set_hexpand(card_filename_entry, TRUE);
-    gtk_grid_attach(GTK_GRID(grid), card_filename_entry, 1, 1, 1, 1);
+    entry = vice_gtk3_resource_entry_full_new("MMC64Imagefilename");
+    gtk_widget_set_hexpand(entry, TRUE);
+    gtk_grid_attach(GTK_GRID(grid), entry, 1, 1, 1, 1);
 
     browse = gtk_button_new_with_label("Browse ...");
     gtk_grid_attach(GTK_GRID(grid), browse, 2, 1, 1, 1);

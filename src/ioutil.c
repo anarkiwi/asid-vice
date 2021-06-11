@@ -99,11 +99,13 @@ int ioutil_chdir(const char *path)
 int ioutil_errno(unsigned int check)
 {
     switch (check) {
+#ifndef __OS2__
         case IOUTIL_ERRNO_EPERM:
             if (errno == EPERM) {
                 return 1;
             }
             break;
+#endif
         case IOUTIL_ERRNO_EEXIST:
             if (errno == EEXIST) {
                 return 1;
@@ -119,11 +121,13 @@ int ioutil_errno(unsigned int check)
                 return 1;
             }
             break;
+#ifndef __OS2__
         case IOUTIL_ERRNO_ERANGE:
             if (errno == ERANGE) {
                 return 1;
             }
             break;
+#endif
         default:
             return 0;
     }
@@ -184,7 +188,7 @@ int ioutil_rename(const char *oldpath, const char *newpath)
     return archdep_rename(oldpath, newpath);
 }
 
-int ioutil_stat(const char *file_name, size_t *len, unsigned int *isdir)
+int ioutil_stat(const char *file_name, unsigned int *len, unsigned int *isdir)
 {
     return archdep_stat(file_name, len, isdir);
 }
@@ -243,8 +247,7 @@ static int ioutil_count_dir_items(const char *path, int mode)
     DIR *dirp;
     struct dirent *dp;
 /* #ifndef _DIRENT_HAVE_D_TYPE */
-    size_t len;
-    unsigned int isdir;
+    unsigned int len, isdir;
     char *filename;
     int retval;
 /* #endif */
@@ -317,8 +320,7 @@ static void ioutil_filldir(const char *path, ioutil_name_table_t *dirs, ioutil_n
     int dir_count = 0;
     int file_count = 0;
 /* #ifndef _DIRENT_HAVE_D_TYPE */
-    size_t len;
-    unsigned int isdir;
+    unsigned int len, isdir;
     char *filename;
     int retval;
 /* #endif */
@@ -440,19 +442,3 @@ void ioutil_closedir(ioutil_dir_t *ioutil_dir)
     lib_free(ioutil_dir->files);
     lib_free(ioutil_dir);
 }
-
-void ioutil_resetdir(ioutil_dir_t *ioutil_dir)
-{
-    ioutil_dir->counter = 0;
-}
-
-void ioutil_setdirpos(ioutil_dir_t *ioutil_dir, int pos)
-{
-    ioutil_dir->counter = pos;
-}
-
-int ioutil_getdirpos(ioutil_dir_t *ioutil_dir)
-{
-    return ioutil_dir->counter;
-}
-
