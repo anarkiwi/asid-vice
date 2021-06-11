@@ -3239,6 +3239,8 @@ Implemented drivers are:
 @item
 @code{arts}, for the *nix ARTS sound driver.
 @item
+@code{asid}, for the ASID protocol, ALSA-based sound driver.
+@item
 @code{beos}, for the BeOS/Zeta/Haiku sound driver.
 @item
 @code{bsp}, for the BeOS/Zeta/Haiku BeOS Media Kit sound driver.
@@ -3403,7 +3405,7 @@ Set sound fragment size
 @item -sounddev <Name>
 Specifies the name of the audio device
 (@code{SoundDeviceName}).
-(ahi, aix, allegro, alsa, arts, beos, bsp, coreaudio, dart, dummy, dx, hpux, midas, pulse, sdl, sgi, sun, uss, wmm)
+(ahi, aix, allegro, alsa, arts, asid, beos, bsp, coreaudio, dart, dummy, dx, hpux, midas, pulse, sdl, sgi, sun, uss, wmm)
 
 @findex -soundarg
 @item -soundarg <args>
