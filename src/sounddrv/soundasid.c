@@ -35,6 +35,7 @@
 #include "types.h"
 
 #include <alsa/asoundlib.h>
+#include <stdbool.h>
 
 #define SYSEX_START 0xf0
 #define SYSEX_MAN_ID 0x2d
@@ -359,7 +360,6 @@ static sound_device_t asid_device =
     NULL,
     0,
     1,
-    false
 };
 
 int sound_init_asid_device(void)
