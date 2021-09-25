@@ -28,7 +28,10 @@
 #include "archdep.h"
 #include "ioutil.h"
 
-#if defined(ARCHDEP_OS_WINDOWS)
+/* FIXME: includes for os/2 */
+/* FIXME: includes for amiga */
+
+#if defined(ARCHDEP_OS_WINDOWS) || defined(__OS2__)
 
 /* FIXME: is this needed* */
 #ifdef SDL_CHOOSE_DRIVES
@@ -44,3 +47,23 @@ char *archdep_get_current_drive(void)
 
 #endif
 
+#if defined(ARCHDEP_OS_AMIGA)
+
+/* FIXME: is this needed* */
+#ifdef SDL_CHOOSE_DRIVES
+char *archdep_get_current_drive(void)
+{
+    char *p = ioutil_current_dir();
+    char *p2 = strchr(p, ':');
+
+    if (p2 == NULL) {
+        return lib_strdup("PROGDIR:");
+    }
+
+    p2[1] = '\0';
+
+    return p;
+}
+#endif
+
+#endif

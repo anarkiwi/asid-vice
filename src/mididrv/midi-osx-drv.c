@@ -262,13 +262,12 @@ static void midi_read_proc(const MIDIPacketList *pktlist, void *refCon, void *co
 
 static void dump_sources(void)
 {
-    int i;
-    unsigned long n;
+    int i,n;
     CFStringRef pname;
     char name[64];
     
     n = MIDIGetNumberOfSources();
-    log_message(mididrv_log,"found %lu sources", n);
+    log_message(mididrv_log,"found %d sources", n);
     for (i = 0 ; i < n; ++i) {
         MIDIEndpointRef endpnt = MIDIGetSource(i);
         MIDIObjectGetStringProperty(endpnt, kMIDIPropertyName, &pname);
@@ -281,13 +280,12 @@ static void dump_sources(void)
 
 static void dump_destinations(void)
 {
-    int i;
-    unsigned long n;
+    int i,n;
     CFStringRef pname;
     char name[64];
     
     n = MIDIGetNumberOfDestinations();
-    log_message(mididrv_log, "found %lu destinations", n);
+    log_message(mididrv_log, "found %d destinations", n);
     for (i = 0; i < n; ++i) {
         MIDIEndpointRef endpnt = MIDIGetDestination(i);
         MIDIObjectGetStringProperty(endpnt, kMIDIPropertyName, &pname);

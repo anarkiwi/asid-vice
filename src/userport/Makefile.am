@@ -14,9 +14,6 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
-AM_LDFLAGS = @VICE_LDFLAGS@
-
-
 noinst_LIBRARIES = libuserport.a
 
 libuserport_a_SOURCES = \

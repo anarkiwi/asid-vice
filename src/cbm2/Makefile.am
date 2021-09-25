@@ -17,15 +17,11 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/samplerdrv \
 	-I$(top_srcdir)/src/tape \
 	-I$(top_srcdir)/src/rs232drv \
-	-I$(top_srcdir)/src/tapeport \
-	-I$(top_srcdir)/src/datasette
+	-I$(top_srcdir)/src/tapeport
 
 AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
-
-AM_LDFLAGS = @VICE_LDFLAGS@
-
 
 noinst_LIBRARIES = libcbm2.a libcbm5x0.a
 

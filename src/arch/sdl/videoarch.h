@@ -45,11 +45,7 @@
 typedef void (*video_refresh_func_t)(struct video_canvas_s *, int, int, int, int, unsigned int, unsigned int);
 
 struct video_canvas_s {
-    /** \brief Nonzero if it is safe to access other members of the
-     *         structure. */
     unsigned int initialized;
-    
-    /** \brief Nonzero if the structure has been fully realized. */
     unsigned int created;
 
     /* Index of the canvas, needed for x128 and xcbm2 */
@@ -124,7 +120,5 @@ extern uint8_t *draw_buffer_vsid;
 #define SDL_FILTER_NEAREST     0
 #define SDL_FILTER_LINEAR      1
 #endif
-
-extern void sdl_ui_set_window_title(char *title);
 
 #endif

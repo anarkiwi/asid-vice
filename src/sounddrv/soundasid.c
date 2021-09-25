@@ -35,6 +35,7 @@
 #include "types.h"
 
 #include <alsa/asoundlib.h>
+#include <stdbool.h>
 
 #define SYSEX_START 0xf0
 #define SYSEX_MAN_ID 0x2d
@@ -71,6 +72,7 @@ static snd_midi_event_t *coder;
 static uint8_t asid_buffer[sizeof(asid_update) + 8 + sizeof(regmap) + 1];
 static uint8_t sid_register[sizeof(regmap)];
 static uint8_t sid_modified[sizeof(regmap)];
+static bool sid_modified[sizeof(regmap)];
 static bool sid_modified_flag = false;
 
 /* TODO: refactor libmididrv API for cross platform support. */
@@ -214,11 +216,13 @@ static int _send_message(const uint8_t *message, uint8_t message_len)
     snd_seq_ev_set_subs(&ev);
     snd_seq_ev_set_direct(&ev);
     result = snd_midi_event_encode(coder, message, message_len, &ev);
-    if (result < (int)message_len) {
+    if (result < (int)message_len)
+    {
         return -1;
     }
     result = snd_seq_event_output(seq, &ev);
-    if (result < 0) {
+    if (result < 0)
+    {
         return -1;
     }
     snd_seq_drain_output(seq);

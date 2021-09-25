@@ -30,7 +30,6 @@
 #include <stdio.h>
 
 #include "console.h"
-#include "log.h"
 #include "uimon.h"
 
 
@@ -45,10 +44,7 @@ console_t *uimon_window_resume(void)
 {
     /* printf("%s\n", __func__); */
 
-    /* TODO: get actual values from the console the program runs in? */
-    static console_t console_log = { 1024, 1024, 0, 0, NULL };
-    
-    return &console_log;
+    return NULL;
 }
 
 void uimon_window_suspend(void)
@@ -59,8 +55,6 @@ void uimon_window_suspend(void)
 int uimon_out(const char *buffer)
 {
     /* printf("%s\n", __func__); */
-    
-    log_message(LOG_DEFAULT, "Monitor: %s", buffer);
 
     return 0;
 }

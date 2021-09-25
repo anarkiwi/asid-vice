@@ -39,7 +39,6 @@
 #include "cbmdos.h"
 #include "fileio.h"
 #include "fsdevice-close.h"
-#include "fsdevice-read.h"
 #include "fsdevicetypes.h"
 #include "ioutil.h"
 #include "tape.h"
@@ -50,38 +49,35 @@ int fsdevice_close(vdrive_t *vdrive, unsigned int secondary)
 {
     bufinfo_t *bufinfo;
 
-    bufinfo = &fsdevice_dev[vdrive->unit - 8].bufinfo[secondary];
+    bufinfo = fsdevice_dev[vdrive->unit - 8].bufinfo;
 
     if (secondary == 15) {
         fsdevice_error(vdrive, CBMDOS_IPE_OK);
         return FLOPPY_COMMAND_OK;
     }
 
-    switch (bufinfo->mode) {
-        case Relative:
-            fsdevice_relative_pad_record(bufinfo);
-            /* fall through */
+    switch (bufinfo[secondary].mode) {
         case Write:
         case Read:
         case Append:
-            if (bufinfo->tape->name) {
-                tape_image_close(bufinfo->tape);
+            if (bufinfo[secondary].tape->name) {
+                tape_image_close(bufinfo[secondary].tape);
             } else {
-                if (bufinfo->fileio_info != NULL) {
-                    fileio_close(bufinfo->fileio_info);
-                    bufinfo->fileio_info = NULL;
+                if (bufinfo[secondary].fileio_info != NULL) {
+                    fileio_close(bufinfo[secondary].fileio_info);
+                    bufinfo[secondary].fileio_info = NULL;
                 } else {
                     return FLOPPY_ERROR;
                 }
             }
             break;
         case Directory:
-            if (bufinfo->ioutil_dir == NULL) {
+            if (bufinfo[secondary].ioutil_dir == NULL) {
                 return FLOPPY_ERROR;
             }
 
-            ioutil_closedir(bufinfo->ioutil_dir);
-            bufinfo->ioutil_dir = NULL;
+            ioutil_closedir(bufinfo[secondary].ioutil_dir);
+            bufinfo[secondary].ioutil_dir = NULL;
             break;
     }
 

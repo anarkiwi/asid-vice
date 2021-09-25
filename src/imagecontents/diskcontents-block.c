@@ -115,8 +115,7 @@ image_contents_t *diskcontents_block_read(vdrive_t *vdrive)
 
     retval = vdrive_bam_read_bam(vdrive);
 
-    /* vdrive_bam_read_bam returns CBM error, so not zero is a problem */
-    if (retval != 0) {
+    if (retval < 0) {
         vdrive_internal_close_disk_image(vdrive);
         return NULL;
     }

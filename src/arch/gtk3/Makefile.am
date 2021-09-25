@@ -16,7 +16,6 @@ AM_CPPFLAGS = \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/crtc \
-	-I$(top_srcdir)/src/datasette \
 	-I$(top_srcdir)/src/drive \
 	-I$(top_srcdir)/src/joyport \
 	-I$(top_srcdir)/src/lib/p64 \
@@ -47,12 +46,8 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
-AM_OBJCFLAGS = @VICE_OBJCFLAGS@
 
-AM_LDFLAGS = @VICE_LDFLAGS@
-
-
-noinst_LIBRARIES = libarch.a libtoolarch.a
+noinst_LIBRARIES = libarch.a
 
 libarch_a_SOURCES = \
 	archdep.c \
@@ -60,6 +55,7 @@ libarch_a_SOURCES = \
 	c64dtvui.c \
 	c64scui.c \
 	c64ui.c \
+	cairo_renderer.c \
 	cbm2ui.c \
 	cbm5x0ui.c \
 	gtk3main.c \
@@ -74,10 +70,10 @@ libarch_a_SOURCES = \
 	kbd.c \
 	linenoise.c \
 	mousedrv.c \
+	opengl_renderer.c \
 	petui.c \
 	plus4ui.c \
-	render_queue.c \
-	render_thread.c \
+	quartz_renderer.c \
 	scpu64ui.c \
 	ui.c \
 	uiabout.c \
@@ -99,6 +95,8 @@ libarch_a_SOURCES = \
 	uimenu.c \
 	uimon-fallback.c \
 	uimon.c \
+	uinetplay.c \
+	uinetplay_new.c \
 	uisettings.c \
 	uisidattach.c \
 	uismartattach.c \
@@ -110,32 +108,16 @@ libarch_a_SOURCES = \
 	uivsidmenu.c \
 	uivsidwindow.c \
 	vic20ui.c \
-	vice_gtk3_locking.c \
 	video.c \
 	vsidui.c \
 	vsyncarch.c
 
-if WIN32_COMPILE
-libarch_a_SOURCES += directx_renderer.c directx_renderer_impl.cc
-else
-libarch_a_SOURCES += opengl_renderer.c
-if UNIX_MACOSX_COMPILE
-libarch_a_SOURCES += opengl_renderer_macos.m
-else
-libarch_a_SOURCES += opengl_renderer_unix.c
-endif
-endif
-
-libtoolarch_a_SOURCES = \
-	archdep.c
-
 EXTRA_DIST = \
+	Info.plist \
 	Resources/VICE.icns \
 	archdep.h \
-	unused_cairo_renderer.h \
+	cairo_renderer.h \
 	debug_gtk3.h \
-	directx_renderer.h \
-	directx_renderer_impl.h \
 	joy-osx-hid.h \
 	joy-osx-hidlib.h \
 	joy-osx.h \
@@ -145,13 +127,12 @@ EXTRA_DIST = \
 	joy.h \
 	kbd.h \
 	linenoise.h \
-	macOS-ui-runtime.sh \
+	macOS-launcher.sh \
 	make-bindist_osx.sh \
 	make-bindist_win32.sh \
 	mousedrv.h \
 	opengl_renderer.h \
-	render_queue.h \
-	render_thread.h \
+	quartz_renderer.h \
 	ui.h \
 	uiabout.h \
 	uicart.h \
@@ -172,6 +153,8 @@ EXTRA_DIST = \
 	uimenu.h \
 	uimon-fallback.h \
 	uimonarch.h \
+	uinetplay.h \
+	uinetplay_new.h \
 	uisettings.h \
 	uisidattach.h \
 	uismartattach.h \
@@ -182,7 +165,6 @@ EXTRA_DIST = \
 	uivideo.h \
 	uivsidmenu.h \
 	uivsidwindow.h \
-	vice_gtk3_locking.h \
 	vice-launcher.sh \
 	videoarch.h \
 	winjoy.h \

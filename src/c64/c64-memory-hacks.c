@@ -43,6 +43,12 @@
 
 static int memory_hack = 0;
 
+
+/** \brief  Pause state before switching memory hack
+ */
+static int old_pause_state;
+
+
 /** \brief  Set memory hack
  *
  * Pauses emulation when switching to another memory expansion hack to avoid
@@ -60,6 +66,11 @@ static int set_memory_hack(int value, void *param)
         return 0;
     }
 
+    old_pause_state = ui_pause_active();
+    if (!old_pause_state) {
+        ui_pause_enable();
+    }
+
     /* check if the new memory hack is a valid one */
     switch (value) {
         case MEMORY_HACK_NONE:
@@ -68,6 +79,9 @@ static int set_memory_hack(int value, void *param)
         case MEMORY_HACK_PLUS256K:
             break;
         default:
+            if (!old_pause_state) {
+                ui_pause_disable();
+            }
             return -1;
     }
 
@@ -101,12 +115,18 @@ static int set_memory_hack(int value, void *param)
         case MEMORY_HACK_NONE:
             break;
         default:
+            if (!old_pause_state) {
+                ui_pause_disable();
+            }
             return -1;
             break;
     }
 
     memory_hack = value;
 
+    if (!old_pause_state) {
+        ui_pause_disable();
+    }
     return 0;
 }
 

@@ -38,7 +38,7 @@
 
 fileio_info_t *fileio_open(const char *file_name, const char *path,
                            unsigned int format, unsigned int command,
-                           unsigned int type, int *reclenp)
+                           unsigned int type)
 {
     fileio_info_t *info = NULL;
     char *new_file, *new_path;
@@ -56,7 +56,7 @@ fileio_info_t *fileio_open(const char *file_name, const char *path,
 
     do {
         if (format & FILEIO_FORMAT_P00) {
-            info = p00_open(new_file, new_path, command, type, reclenp);
+            info = p00_open(new_file, new_path, command, type);
         }
 
         if (info != NULL) {
@@ -65,9 +65,6 @@ fileio_info_t *fileio_open(const char *file_name, const char *path,
 
         if (format & FILEIO_FORMAT_RAW) {
             info = cbmfile_open(new_file, new_path, command, type);
-            if (reclenp) {
-                *reclenp = 0;
-            }
         }
 
         if (info != NULL) {
@@ -128,30 +125,6 @@ unsigned int fileio_get_bytes_left(fileio_info_t *info)
             return cbmfile_get_bytes_left(info);
         case FILEIO_FORMAT_P00:
             return p00_get_bytes_left(info);
-    }
-
-    return 0;
-}
-
-unsigned int fileio_seek(fileio_info_t *info, off_t offset, int whence)
-{
-    switch (info->format) {
-        case FILEIO_FORMAT_RAW:
-            return cbmfile_seek(info, offset, whence);
-        case FILEIO_FORMAT_P00:
-            return p00_seek(info, offset, whence);
-    }
-
-    return 0;
-}
-
-unsigned int fileio_tell(fileio_info_t *info)
-{
-    switch (info->format) {
-        case FILEIO_FORMAT_RAW:
-            return cbmfile_tell(info);
-        case FILEIO_FORMAT_P00:
-            return p00_tell(info);
     }
 
     return 0;

@@ -300,13 +300,6 @@ static void on_drag_data_received(
 
 }
 
-/** \brief Called each frame for UI updates
- */
-void vsid_main_widget_update(void)
-{
-    vsid_tune_info_widget_update();
-}
-
 
 /** \brief  Create VSID main widget
  *

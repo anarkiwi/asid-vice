@@ -3,7 +3,7 @@
  * Version 1.07 + stereo sid support
  *
  * Written by
- *  Lasse ï¿½ï¿½rni <loorni@student.oulu.fi>
+ *  Lasse ™”rni <loorni@student.oulu.fi>
  *  Andreas Matthies <andreas.matthies@gmx.net>
  *
  * Based on the DirectSound driver by
@@ -36,9 +36,11 @@
 
 #include <stdio.h>
 
+#if __GNUC__>2 || (__GNUC__==2 && __GNUC_MINOR__>=91)
 #include <windows.h>
 #include <mmsystem.h>
 #include <string.h>
+#endif
 
 #include "lib.h"
 #include "sound.h"
@@ -111,6 +113,7 @@ static WAVEFORMATEX wavfmt;
 /* Initialization flags */
 static int sndinitted = 0;
 static int headerprepared = 0;
+static int beginperiod = 0;
 
 /* Buffer writing pos */
 static int write_cursor = 0;
@@ -281,6 +284,8 @@ WAVEOUT_OK:
         return -1;
     }
 
+    timeBeginPeriod(wmm_tc.wPeriodMin);
+    beginperiod = 1;
     wmm_timer_id = timeSetEvent((*fragsize * 1000) / (*speed), 0, wmm_timercallback, 0, TIME_PERIODIC);
     if (!wmm_timer_id) {
         ui_error("Couldn't set sound timer callback\n");
@@ -301,6 +306,10 @@ static void wmm_close(void)
     if (wmm_timer_id) {
         timeKillEvent(wmm_timer_id);
         wmm_timer_id = 0;
+    }
+    if (beginperiod) {
+        timeEndPeriod(wmm_tc.wPeriodMin);
+        beginperiod = 0;
     }
     if (headerprepared) {
         waveOutReset(hwaveout);
@@ -545,8 +554,7 @@ static sound_device_t wmm_device =
     wmm_suspend,
     wmm_resume,
     0,
-    2,
-    true
+    2
 };
 
 int sound_init_wmm_device(void)

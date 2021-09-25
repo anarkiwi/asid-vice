@@ -43,7 +43,6 @@ static char *dos_rom_name_1001 = NULL;
 static char *dos_rom_name_2040 = NULL;
 static char *dos_rom_name_3040 = NULL;
 static char *dos_rom_name_4040 = NULL;
-static char *dos_rom_name_9000 = NULL;
 
 static int set_dos_rom_name_2040(const char *val, void *param)
 {
@@ -81,15 +80,6 @@ static int set_dos_rom_name_1001(const char *val, void *param)
     return ieeerom_load_1001();
 }
 
-static int set_dos_rom_name_9000(const char *val, void *param)
-{
-    if (util_string_set(&dos_rom_name_9000, val)) {
-        return 0;
-    }
-
-    return ieeerom_load_9000();
-}
-
 static int set_dos_rom_name_2031(const char *val, void *param)
 {
     if (util_string_set(&dos_rom_name_2031, val)) {
@@ -111,8 +101,6 @@ static const resource_string_t resources_string[] = {
       &dos_rom_name_4040, set_dos_rom_name_4040, NULL },
     { "DosName1001", "dos1001", RES_EVENT_NO, NULL,
       &dos_rom_name_1001, set_dos_rom_name_1001, NULL },
-    { "DosName9000", "dos9000", RES_EVENT_NO, NULL,
-      &dos_rom_name_9000, set_dos_rom_name_9000, NULL },
     RESOURCE_STRING_LIST_END
 };
 
@@ -128,5 +116,4 @@ void ieee_resources_shutdown(void)
     lib_free(dos_rom_name_2040);
     lib_free(dos_rom_name_3040);
     lib_free(dos_rom_name_4040);
-    lib_free(dos_rom_name_9000);
 }

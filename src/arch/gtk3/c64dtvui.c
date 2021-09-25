@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 
+#include "debug_gtk3.h"
 #include "c64dtvmodel.h"
 #include "crtcontrolwidget.h"
 #include "machine.h"

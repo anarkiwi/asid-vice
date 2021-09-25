@@ -27,44 +27,35 @@
 
 #include "vice.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "archdep_boot_path.h"
 #include "archdep_defs.h"
-#include "archdep_is_macos_bindist.h"
+#include "archdep_boot_path.h"
 #include "archdep_join_paths.h"
 #include "archdep_user_config_path.h"
-
-#include "lib.h"
 
 #include "archdep_get_vice_datadir.h"
 
 
-/** \brief  Get the absolute path to the VICE data directory
+/** \brief  Get the absolute path to the directory that contains GUI data
  *
- * \return  Path to VICE data directory (typically /usr/local/share/vice)
+ * \return  Path to the gui data directory
  */
 char *archdep_get_vice_datadir(void)
 {
     char *path;
-
-#ifdef ARCHDEP_OS_WINDOWS
-# if defined(USE_SDLUI) || defined(USE_SDLUI2)
-    path = lib_strdup(archdep_boot_path());
+#ifdef ARCHDEP_OS_UNIX
+# ifdef ARCHDEP_OS_OSX
+    /* this would work on Linux, too.
+     * Probably not --cpx */
+    path = archdep_join_paths(archdep_boot_path(),
+            "..", "lib", "vice", "common", NULL);
 # else
-    path = archdep_join_paths(archdep_boot_path(), "..", NULL);
+    path = archdep_join_paths(LIBDIR, "common", NULL);
 # endif
-#elif defined(ARCHDEP_OS_MACOS)
-    if (archdep_is_macos_bindist()) {
-        path = archdep_join_paths(archdep_boot_path(), "..", "share", "vice", NULL);
-    } else {
-        path = lib_strdup(VICE_DATADIR);
-    }
 #else
-    path = lib_strdup(VICE_DATADIR);
+    /* windows */
+    path = archdep_join_paths(archdep_boot_path(), "common", NULL);
 #endif
-
     return path;
 }

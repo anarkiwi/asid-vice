@@ -45,8 +45,7 @@
 static void (*dialog_cb)(GSList *) = NULL;
 
 
-static gchar *last_used_dir = NULL;
-static gchar *last_used_file = NULL;
+static char *last_used_dir = NULL;
 
 
 
@@ -127,10 +126,10 @@ static GtkWidget *vsid_playlist_add_dialog_create(void)
     }
 
     debug_gtk3("Setting last user dir to '%s'.", last_used_dir);
-    lastdir_set(dialog, &last_used_dir, &last_used_file);
+    lastdir_set(dialog, &last_used_dir);
 
     g_signal_connect(dialog, "response", G_CALLBACK(on_response), NULL);
-    g_signal_connect_unlocked(dialog, "destroy", G_CALLBACK(on_destroy), NULL);
+    g_signal_connect(dialog, "destroy", G_CALLBACK(on_destroy), NULL);
     return dialog;
 }
 
@@ -150,5 +149,5 @@ void vsid_playlist_add_dialog_exec(void (*callback)(GSList *files))
 
 void vsid_playlist_add_dialog_free(void)
 {
-    lastdir_shutdown(&last_used_dir, &last_used_file);
+    lastdir_shutdown(&last_used_dir);
 }

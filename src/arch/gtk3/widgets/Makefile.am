@@ -34,9 +34,6 @@ AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
 
-AM_LDFLAGS = @VICE_LDFLAGS@
-
-
 noinst_LIBRARIES = libwidgets.a
 
 libwidgets_a_SOURCES = \
@@ -46,7 +43,6 @@ libwidgets_a_SOURCES = \
 	c128functionromwidget.c \
 	c128machinetypewidget.c \
 	c64dtvflashsettingswidget.c \
-	c64memhackswidget.c \
 	canvasrenderbackendwidget.c \
 	canvasrenderfilterwidget.c \
 	cbm2hardwiredswitcheswidget.c \
@@ -71,7 +67,6 @@ libwidgets_a_SOURCES = \
 	driveramwidget.c \
 	driverpmwidget.c \
 	driveunitwidget.c \
-	drivenowidget.c \
 	drivewidgethelpers.c \
 	ds12c887widget.c \
 	easyflashwidget.c \
@@ -79,9 +74,7 @@ libwidgets_a_SOURCES = \
 	expertwidget.c \
 	ffmpegwidget.c \
 	finalexpansionwidget.c \
-	georamwidget.c \
 	gmod2widget.c \
-	gmod3widget.c \
 	hvscsettingswidget.c \
 	hvscstilwidget.c \
 	ide64widget.c \
@@ -97,7 +90,6 @@ libwidgets_a_SOURCES = \
 	kbdmappingwidget.c \
 	kernalrevisionwidget.c \
 	keysetdialog.c \
-	ltkernalwidget.c \
 	machinemodelwidget.c \
 	magicvoicewidget.c \
 	megacartwidget.c \
@@ -105,14 +97,11 @@ libwidgets_a_SOURCES = \
 	mixerwidget.c \
 	mmc64widget.c \
 	mmcrwidget.c \
-	netplaywidget.c \
 	petcolourgraphicswidget.c \
 	petdiagpinwidget.c \
 	petdwwwidget.c \
 	pethrewidget.c \
 	petiosizewidget.c \
-	petram9widget.c \
-	petramawidget.c \
 	petkeyboardtypewidget.c \
 	petmiscwidget.c \
 	petramsizewidget.c \
@@ -121,13 +110,12 @@ libwidgets_a_SOURCES = \
 	plus4aciawidget.c \
 	plus4digiblasterwidget.c \
 	plus4memoryexpansionwidget.c \
-	plus4memorysizewidget.c \
 	printerdriverwidget.c \
 	printeremulationtypewidget.c \
 	printeroutputdevicewidget.c \
 	printeroutputmodewidget.c \
 	ramcartwidget.c \
-	ramlinkwidget.c \
+	refreshratewidget.c \
 	retroreplaywidget.c \
 	reuwidget.c \
 	romsetmanagerwidget.c \
@@ -138,16 +126,16 @@ libwidgets_a_SOURCES = \
 	settings_crt.c \
 	settings_drive.c \
 	settings_ethernet.c \
-	settings_fsdevice.c \
-	settings_host_display.c \
 	settings_io.c \
+	settings_io_c64_memhacks.c \
+	settings_io_georam.c \
 	settings_joystick.c \
 	settings_keyboard.c \
 	settings_misc.c \
 	settings_mixer.c \
 	settings_model.c \
 	settings_monitor.c \
-	settings_peripherals_generic.c \
+	settings_mouse.c \
 	settings_printer.c \
 	settings_ramreset.c \
 	settings_romset.c \
@@ -170,6 +158,7 @@ libwidgets_a_SOURCES = \
 	soundoutputmodewidget.c \
 	soundsampleratewidget.c \
 	soundsuspendtimewidget.c \
+	soundsyncwidget.c \
 	speedwidget.c \
 	statusbarrecordingwidget.c \
 	statusbarspeedwidget.c \
@@ -207,7 +196,6 @@ EXTRA_DIST = \
 	cbm2hardwiredswitcheswidget.h \
 	cbm2memorysizewidget.h \
 	cbm2rammappingwidget.h \
-	c64memhackswidget.h \
 	canvasrenderbackendwidget.h \
 	canvasrenderfilterwidget.h \
 	ciamodelwidget.h \
@@ -229,7 +217,6 @@ EXTRA_DIST = \
 	driveramwidget.h \
 	driverpmwidget.h \
 	driveunitwidget.h \
-	drivenowidget.h \
 	drivewidgethelpers.h \
 	ds12c887widget.h \
 	easyflashwidget.h \
@@ -237,9 +224,7 @@ EXTRA_DIST = \
 	expertwidget.h \
 	ffmpegwidget.h \
 	finalexpansionwidget.h \
-	georamwidget.h \
 	gmod2widget.h \
-	gmod3widget.h \
 	hvscsettingswidget.h \
 	hvscstilwidget.h \
 	ide64widget.h \
@@ -255,7 +240,6 @@ EXTRA_DIST = \
 	kbdmappingwidget.h \
 	kernalrevisionwidget.h \
 	keysetdialog.h \
-	ltkernalwidget.h \
 	machinemodelwidget.h \
 	magicvoicewidget.h \
 	megacartwidget.h \
@@ -263,14 +247,11 @@ EXTRA_DIST = \
 	mixerwidget.h \
 	mmc64widget.h \
 	mmcrwidget.h \
-	netplaywidget.h \
 	petcolourgraphicswidget.h \
 	petdiagpinwidget.h \
 	petdwwwidget.h \
 	pethrewidget.h \
 	petiosizewidget.h \
-	petram9widget.h \
-	petramawidget.h \
 	petkeyboardtypewidget.h \
 	petmiscwidget.h \
 	petramsizewidget.h \
@@ -279,13 +260,12 @@ EXTRA_DIST = \
 	plus4aciawidget.h \
 	plus4digiblasterwidget.h \
 	plus4memoryexpansionwidget.h \
-	plus4memorysizewidget.h \
 	printerdriverwidget.h \
 	printeremulationtypewidget.h \
 	printeroutputdevicewidget.h \
 	printeroutputmodewidget.h \
 	ramcartwidget.h \
-	ramlinkwidget.h \
+	refreshratewidget.h \
 	retroreplaywidget.h \
 	reuwidget.h \
 	romsetmanagerwidget.h \
@@ -296,16 +276,16 @@ EXTRA_DIST = \
 	settings_crt.h \
 	settings_drive.h \
 	settings_ethernet.h \
-	settings_fsdevice.h \
-	settings_host_display.h \
 	settings_io.h \
+	settings_io_c64_memhacks.h \
+	settings_io_georam.h \
 	settings_joystick.h \
 	settings_keyboard.h \
 	settings_misc.h \
 	settings_mixer.h \
 	settings_model.h \
 	settings_monitor.h \
-	settings_peripherals_generic.h \
+	settings_mouse.h \
 	settings_printer.h \
 	settings_ramreset.h \
 	settings_romset.h \
@@ -328,6 +308,7 @@ EXTRA_DIST = \
 	soundoutputmodewidget.h \
 	soundsampleratewidget.h \
 	soundsuspendtimewidget.h \
+	soundsyncwidget.h \
 	speedwidget.h \
 	statusbarrecordingwidget.h \
 	statusbarspeedwidget.h \

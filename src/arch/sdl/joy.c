@@ -415,11 +415,6 @@ int joy_arch_init(void)
     return 0;
 }
 
-void joystick(void)
-{
-    /* Provided only for archdep joy.h. TODO: Migrate joystick polling in here if any needed? */
-}
-
 void joystick_close(void)
 {
     int i;
@@ -569,7 +564,7 @@ int joy_arch_mapping_dump(const char *filename)
             "#\n"
             "# action [action_parameters]:\n"
             "# 0               none\n"
-            "# 1 port pin      joystick (pin: 1/2/4/8/16/32/64 = u/d/l/r/fire/fire2/fire3)\n"
+            "# 1 port pin      joystick (pin: 1/2/4/8/16 = u/d/l/r/fire)\n"
             "# 2 row col       keyboard\n"
             "# 3               map\n"
             "# 4               UI activate\n"
@@ -756,22 +751,16 @@ int joy_arch_mapping_load(const char *filename)
                 *p = 0;
             }
 
-            /* remove whitespace at the beginning of the line */
-            p = buffer;
-            while (((*p == ' ') || (*p == '\t')) && (*p != 0)) {
-                ++p;
-            }
-
-            switch (*p) {
+            switch (*buffer) {
                 case 0:
                     break;
                 case '!':
                     /* keyword handling */
-                    joy_arch_parse_keyword(p);
+                    joy_arch_parse_keyword(buffer);
                     break;
                 default:
                     /* table entry handling */
-                    joy_arch_parse_entry(p);
+                    joy_arch_parse_entry(buffer);
                     break;
             }
         }
@@ -1222,11 +1211,6 @@ void sdljoy_swap_ports(void)
     resources_get_int("JoyDevice2", &k);
     resources_set_int("JoyDevice1", k);
     resources_set_int("JoyDevice2", i);
-}
-
-void joystick(void)
-{
-    /* Provided only for archdep joy.h. TODO: Migrate joystick polling in here if any needed? */
 }
 
 void joystick_close(void)

@@ -48,7 +48,8 @@ void resource_widget_register_methods(
         GtkWidget *widget,
         gboolean (*reset)(GtkWidget *),
         gboolean (*factory)(GtkWidget *),
-        gboolean (*sync)(GtkWidget *));
+        gboolean (*sync)(GtkWidget *),
+        gboolean (*apply)(GtkWidget *));
 
 /*
  * These prototypes are incorrect, do not use yet

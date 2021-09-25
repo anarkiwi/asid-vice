@@ -34,24 +34,6 @@
 #include "serial.h"
 #include "types.h"
 
-/*
- * This code named "fsdrive" is not to be confused with "fsdevice".
- *
- * Together with serial/serial-iec-device.c it does much the same thing as
- * parallel/parallel-trap.c, but in a somewhat different way, and it has
- * serial/serial-iec-bus.c wedged in between...
- *
- * serial/serial-trap.c corresponds somewhat with serial-iec-bus.c when
- * kernel traps are in use.
- */
-/* #define FSDRIVE_DEBUG */
-#define FSDRIVE_DEBUG
-#ifdef FSDRIVE_DEBUG
-#define DBG(_x_)        log_debug _x_
-#else
-#define DBG(_x_)
-#endif
-
 #define SERIAL_NAMELENGTH 255
 
 static log_t fsdrive_log = LOG_ERR;
@@ -86,8 +68,7 @@ static uint8_t serialcommand(unsigned int device, uint8_t secondary)
     channel = secondary & 0x0f;
 
     if ((device & 0x0f) >= 8) {
-        /* TODO serial devices only have a single drive */
-        vdrive = (void *)file_system_get_vdrive(device & 0x0f, 0);
+        vdrive = (void *)file_system_get_vdrive(device & 0x0f);
     } else {
         vdrive = NULL;
     }
@@ -97,26 +78,15 @@ static uint8_t serialcommand(unsigned int device, uint8_t secondary)
         p->nextok[channel] = 0;
     }
     switch (secondary & 0xf0) {
-        case 0x20:
-        case 0x30:
-            DBG(("2x/3x: LISTEN, DEV = %d (no call to driver)", secondary & 0x1F));
-            break;
-        case 0x40:
-        case 0x50:
-            DBG(("4x/5x: TALK, DEV = %d (no call to driver)", secondary & 0x1F));
-            break;
         /*
          * Open Channel
          */
         case 0x60:
-            DBG(("6x: OPEN CHANNEL, SA = %d (isopen[channel]=%d, 1 calls ->openf) SerialPtr=%d", secondary & 0x0F, p->isopen[channel], SerialPtr));
-            if (p->isopen[channel] == ISOPEN_AWAITING_NAME) {
-                p->isopen[channel] = ISOPEN_OPEN;
+            if (p->isopen[channel] == 1) {
+                p->isopen[channel] = 2;
                 st = (uint8_t)((*(p->openf))(vdrive, NULL, 0, channel, NULL));
-
                 for (i = 0; i < SerialPtr; i++) {
                     (*(p->putf))(vdrive, ((uint8_t)(SerialBuffer[i])), channel);
-                    DBG(("SerialBuffer: %c", SerialBuffer[i]));
                 }
                 SerialPtr = 0;
             }
@@ -129,8 +99,7 @@ static uint8_t serialcommand(unsigned int device, uint8_t secondary)
          * Close File
          */
         case 0xE0:
-            DBG(("Ex: CLOSE FILE, SA = %d", secondary & 0x0F));
-            p->isopen[channel] = ISOPEN_CLOSED;
+            p->isopen[channel] = 0;
             st = (uint8_t)((*(p->closef))(vdrive, channel));
             break;
 
@@ -138,21 +107,20 @@ static uint8_t serialcommand(unsigned int device, uint8_t secondary)
          * Open File
          */
         case 0xF0:
-            DBG(("Fx: OPEN FILE, SA = %d", secondary & 0x0F));
-            if (p->isopen[channel] != ISOPEN_CLOSED) {
+            if (p->isopen[channel]) {
 #ifndef DELAYEDCLOSE
-                if (p->isopen[channel] == ISOPEN_OPEN) {
+                if (p->isopen[channel] == 2) {
                     log_warning(fsdrive_log, "Bogus close?");
                     (*(p->closef))(vdrive, channel);
                 }
-                p->isopen[channel] = ISOPEN_OPEN;
+                p->isopen[channel] = 2;
                 SerialBuffer[SerialPtr] = 0;
                 st = (uint8_t)((*(p->openf))(vdrive, SerialBuffer, SerialPtr,
                                           channel, NULL));
                 SerialPtr = 0;
 
                 if (st) {
-                    p->isopen[channel] = ISOPEN_CLOSED;
+                    p->isopen[channel] = 0;
                     (*(p->closef))(vdrive, channel);
 
                     log_error(fsdrive_log, "Cannot open file. Status $%02x.", st);
@@ -160,13 +128,13 @@ static uint8_t serialcommand(unsigned int device, uint8_t secondary)
 #else
                 if (SerialPtr != 0 || channel == 0x0f) {
                     (*(p->closef))(vdrive, channel);
-                    p->isopen[channel] = ISOPEN_OPEN;
+                    p->isopen[channel] = 2;
                     SerialBuffer[SerialPtr] = 0;
                     st = (uint8_t)((*(p->openf))(vdrive, SerialBuffer, SerialPtr,
                                               channel, NULL));
                     SerialPtr = 0;
                     if (st) {
-                        p->isopen[channel] = ISOPEN_CLOSED;
+                        p->isopen[channel] = 0;
                         (*(p->closef))(vdrive, channel);
 
                         log_error(fsdrive_log, "Cannot open file. Status $%02x.", st);
@@ -196,9 +164,8 @@ void fsdrive_open(unsigned int device, uint8_t secondary, void (*st_func)(uint8_
 #endif
 
     p = serial_device_get(device & 0x0f);
-    DBG(("fsdrive_open %u,%d", device & 0xF, secondary & 0xF));
 #ifndef DELAYEDCLOSE
-    if (p->isopen[secondary & 0x0f] == ISOPEN_OPEN) {
+    if (p->isopen[secondary & 0x0f] == 2) {
         if ((device & 0x0f) >= 8) {
             vdrive = (void *)file_system_get_vdrive(device & 0x0f);
         } else {
@@ -207,7 +174,7 @@ void fsdrive_open(unsigned int device, uint8_t secondary, void (*st_func)(uint8_
         (*(p->closef))(vdrive, secondary & 0x0f);
     }
 #endif
-    p->isopen[secondary & 0x0f] = ISOPEN_AWAITING_NAME;
+    p->isopen[secondary & 0x0f] = 1;
 }
 
 void fsdrive_close(unsigned int device, uint8_t secondary, void (*st_func)(uint8_t))
@@ -232,8 +199,7 @@ void fsdrive_listentalk(unsigned int device, uint8_t secondary, void (*st_func)(
         /* send listen/talk to emulated devices for flushing of
            REL file write buffer. */
         if ((device & 0x0f) >= 8) {
-            /* single drive only */
-            vdrive = (void *)file_system_get_vdrive(device & 0x0f, 0);
+            vdrive = (void *)file_system_get_vdrive(device & 0x0f);
             (*(p->listenf))(vdrive, secondary & 0x0f);
         }
     }
@@ -256,8 +222,7 @@ void fsdrive_unlisten(unsigned int device, uint8_t secondary, void (*st_func)(ui
         /* send unlisten to emulated devices for flushing of
            REL file write buffer. */
         if ((device & 0x0f) >= 8) {
-            /* single drive only */
-            vdrive = (void *)file_system_get_vdrive(device & 0x0f, 0);
+            vdrive = (void *)file_system_get_vdrive(device & 0x0f);
             (*(p->listenf))(vdrive, secondary & 0x0f);
         }
     }
@@ -276,16 +241,15 @@ void fsdrive_write(unsigned int device, uint8_t secondary, uint8_t data, void (*
     p = serial_device_get(device & 0x0f);
 
     if ((device & 0x0f) >= 8) {
-        vdrive = (void *)file_system_get_vdrive(device & 0x0f, 0);
+        vdrive = (void *)file_system_get_vdrive(device & 0x0f);
     } else {
         vdrive = NULL;
     }
 
     if (p->inuse) {
-        if (p->isopen[secondary & 0x0f] == ISOPEN_AWAITING_NAME) {
+        if (p->isopen[secondary & 0x0f] == 1) {
             /* Store name here */
             if (SerialPtr < SERIAL_NAMELENGTH) {
-                DBG(("SerialBuffer[%d] = '%c'", SerialPtr, data));
                 SerialBuffer[SerialPtr++] = data;
             }
         } else {
@@ -308,7 +272,7 @@ uint8_t fsdrive_read(unsigned int device, uint8_t secondary, void (*st_func)(uin
     p = serial_device_get(device & 0x0f);
 
     if ((device & 0x0f) >= 8) {
-        vdrive = (void *)file_system_get_vdrive(device & 0x0f, 0);
+        vdrive = (void *)file_system_get_vdrive(device & 0x0f);
     } else {
         vdrive = NULL;
     }
@@ -346,9 +310,9 @@ void fsdrive_reset(void)
         p = serial_device_get(i);
         if (p->inuse) {
             for (j = 0; j < 16; j++) {
-                if (p->isopen[j] != ISOPEN_CLOSED) {
-                    vdrive = (void *)file_system_get_vdrive(i, 0);
-                    p->isopen[j] = ISOPEN_CLOSED;
+                if (p->isopen[j]) {
+                    vdrive = (void *)file_system_get_vdrive(i);
+                    p->isopen[j] = 0;
                     (*(p->closef))(vdrive, j);
                 }
             }

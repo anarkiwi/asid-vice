@@ -56,8 +56,14 @@ inline static int bcd_to_int(int bcd)
 /* get 1/100 seconds from clock */
 uint8_t rtc_get_centisecond(int bcd)
 {
-    return (uint8_t)((bcd) ? (uint8_t)int_to_bcd(archdep_rtc_get_centisecond())
-                           : archdep_rtc_get_centisecond());
+#ifdef HAVE_GETTIMEOFDAY
+    struct timeval t;
+
+    gettimeofday(&t, NULL);
+    return (uint8_t)((bcd) ? int_to_bcd(t.tv_usec / 10000) : t.tv_usec / 10000);
+#else
+    return (uint8_t)((bcd) ? int_to_bcd(archdep_rtc_get_centisecond()) : archdep_rtc_get_centisecond());
+#endif
 }
 
 /* get seconds from time value

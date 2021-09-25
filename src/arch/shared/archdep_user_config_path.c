@@ -12,6 +12,7 @@
  *  - BeOS/Haiku (untested)
  *  - AmigaOS (untested)
  *  - OS/2 (untested)
+ *  - MS-DOS (untested)
  *
  */
 
@@ -106,7 +107,7 @@ char *archdep_user_config_path(void)
         return user_config_dir;
     }
 
-#if defined(ARCHDEP_OS_UNIX) || defined(ARCHDEP_OS_HAIKU)
+#if defined(ARCHDEP_OS_UNIX)
     char *xdg_config = archdep_xdg_config_home();
     user_config_dir = archdep_join_paths(xdg_config, "vice", NULL);
     lib_free(xdg_config);
@@ -128,6 +129,9 @@ char *archdep_user_config_path(void)
 #endif
         user_config_dir = NULL;
     }
+#elif defined(ARCHDEP_OS_BEOS)
+    user_config_dir = archdep_join_paths(archdep_home_path(),
+                                         "config", "settings", "vice", NULL);
 #else
     user_config_dir = lib_strdup(archdep_boot_path());
 #endif

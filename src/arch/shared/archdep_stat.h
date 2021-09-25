@@ -27,8 +27,6 @@
 #ifndef ARCHDEP_STAT_H
 #define ARCHDEP_STAT_H
 
-#include <stddef.h>
-
-int archdep_stat(const char *filename, size_t *len, unsigned int *isdir);
+int archdep_stat(const char *filename, unsigned int *len, unsigned int *isdir);
 
 #endif
