@@ -95,6 +95,7 @@ static sound_register_devices_t sound_register_devices[] = {
 #endif
 #ifdef USE_ALSA
     { "alsa", sound_init_alsa_device, SOUND_PLAYBACK_DEVICE },
+    { "asid", sound_init_asid_device, SOUND_PLAYBACK_DEVICE },
 #endif
 #ifdef USE_COREAUDIO
     { "coreaudio", sound_init_coreaudio_device, SOUND_PLAYBACK_DEVICE },

@@ -18168,7 +18168,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_asound_snd_pcm_open" >&5
 $as_echo "$ac_cv_lib_asound_snd_pcm_open" >&6; }
 if test "x$ac_cv_lib_asound_snd_pcm_open" = xyes; then :
-  SOUND_DRIVERS="$SOUND_DRIVERS soundalsa.o";
+  SOUND_DRIVERS="$SOUND_DRIVERS soundalsa.o soundasid.o";
                       SOUND_LIBS="$SOUND_LIBS -lasound";
                       USE_ALSA_SUPPORT="yes";
 
