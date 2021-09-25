@@ -55,6 +55,12 @@ const uint8_t max_sid_reg = 24;
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
 const uint8_t regmap[] = {
     0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 4, 11, 18};
+/* Mask out unused bits - e.g. high bits from pulse width. */
+const uint8_t regsigmask[] = {
+    255, 255, 255, 15, 255, 255, 255,
+    255, 255, 255, 15, 255, 255, 255,
+    255, 255, 255, 15, 255, 255, 255,
+    7, 255, 255, 255 };
 
 static snd_seq_t *seq;
 static int vport;
@@ -64,7 +70,7 @@ static snd_midi_event_t *coder;
 /* update preamble, mask/MSB, register map, stop. */
 static uint8_t asid_buffer[sizeof(asid_update) + 8 + sizeof(regmap) + 1];
 static uint8_t sid_register[sizeof(regmap)];
-static bool sid_modified[sizeof(regmap)];
+static uint8_t sid_modified[sizeof(regmap)];
 static bool sid_modified_flag = false;
 
 /* TODO: refactor libmididrv API for cross platform support. */
@@ -231,7 +237,7 @@ static int asid_init(const char *param, int *speed,
     *channels = 1;
     memcpy(asid_buffer, asid_update, sizeof(asid_update));
     memset(sid_register, 0, sizeof(sid_register));
-    memset(sid_modified, false, sizeof(sid_modified));
+    memset(sid_modified, 0, sizeof(sid_modified));
     sid_modified_flag = false;
 
     if (_initialize_midi()) {
@@ -267,21 +273,15 @@ static int asid_init(const char *param, int *speed,
     return _send_message(asid_start, sizeof(asid_start));
 }
 
-static int asid_flush(char *state)
-{
-    return 0;
-}
-
 static bool _set_reg(uint8_t reg, uint8_t byte) {
     if (sid_register[reg] != byte) {
         sid_register[reg] = byte;
-        sid_modified[reg] = true;
+        ++sid_modified[reg];
         sid_modified_flag = true;
         return true;
     }
     return false;
 }
-
 
 static int asid_write(int16_t *pbuf, size_t nr)
 {
@@ -300,10 +300,11 @@ static int asid_write(int16_t *pbuf, size_t nr)
     for(i = 0; i < sizeof(regmap); ++i)
     {
         mapped_reg = regmap[i];
-        if (sid_modified[mapped_reg])
+        if (!sid_modified[mapped_reg])
         {
-            mask = mask | (1<<i);
+            continue;
         }
+        mask = mask | (1<<i);
         if (sid_register[mapped_reg] > 0x7f)
         {
             msb = msb | (1<<i);
@@ -323,23 +324,20 @@ static int asid_write(int16_t *pbuf, size_t nr)
         if (sid_modified[mapped_reg])
         {
             asid_buffer[++p] = sid_register[mapped_reg] & 0x7f;
+            sid_modified[mapped_reg] = false;
         }
     }
     asid_buffer[++p] = SYSEX_STOP;
-    memset(sid_modified, false, sizeof(sid_modified));
     sid_modified_flag = false;
     return _send_message(asid_buffer, p + 1);
 }
 
-
 static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
 {
     uint8_t reg = addr & 0x1f;
-    if (reg > max_sid_reg) {
-        return 0;
+    if (reg <= max_sid_reg) {
+        _set_reg(reg, byte);
     }
-
-    _set_reg(reg, byte);
     return 0;
 }
 
@@ -355,7 +353,7 @@ static sound_device_t asid_device =
     asid_init,
     asid_write,
     asid_dump,
-    asid_flush,
+    NULL,
     NULL,
     asid_close,
     NULL,
