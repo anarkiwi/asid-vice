@@ -91,7 +91,7 @@ const char *file_chooser_pattern_tape[] = {
 /** \brief  Patterns for fliplists
  */
 const char *file_chooser_pattern_fliplist[] = {
-    "*.[vV][fF][lL]", NULL
+    "*.[vV][fF][lL]", "*.[lL][sS][tT]", NULL
 };
 
 /** \brief  Patterns for program files
@@ -101,11 +101,12 @@ const char *file_chooser_pattern_program[] = {
 };
 
 
-/** \brief  Patterns for PSID/SID files
+/** \brief  Patterns for PSID/SID/MUS files
  */
 const char *file_chooser_pattern_sid[] = {
     "*.[sD][iI][dD]",
     "*.[pP][sD][iI][dD]",
+    "*.[mM][uU][sS]",
     NULL
 };
 
@@ -145,51 +146,61 @@ const char *file_chooser_pattern_snapshot [] = {
  * 'Stock' filters, for convenience
  */
 
+/** \brief  Filter for all files */
 const ui_file_filter_t file_chooser_filter_all = {
     "All files",
     file_chooser_pattern_all
 };
 
+/** \brief  Filter for cartridge images */
 const ui_file_filter_t file_chooser_filter_cart = {
     "Cartridge images",
     file_chooser_pattern_cart
 };
 
+/** \brief  Filter for disk images */
 const ui_file_filter_t file_chooser_filter_disk = {
     "Disk images",
     file_chooser_pattern_disk
 };
 
+/** \brief  Filter for tape images */
 const ui_file_filter_t file_chooser_filter_tape = {
     "Tape images",
     file_chooser_pattern_tape
 };
 
+/** \brief  Filter for SID files */
 const ui_file_filter_t file_chooser_filter_sid = {
     "PSID/SID files",
     file_chooser_pattern_sid
 };
 
+/** \brief  Filter for fliplist files */
 const ui_file_filter_t file_chooser_filter_fliplist = {
     "Flip lists",
     file_chooser_pattern_fliplist
 };
 
+/** \brief  Filter for program files */
 const ui_file_filter_t file_chooser_filter_program = {
     "Program files",
     file_chooser_pattern_program
 };
 
+/** \brief  Filter for archives */
 const ui_file_filter_t file_chooser_filter_archive = {
     "Archive files",
     file_chooser_pattern_archive
 };
 
+/** \brief  Filter for compressed files */
 const ui_file_filter_t file_chooser_filter_compressed = {
     "Compressed files",
     file_chooser_pattern_compressed
 };
 
+/** \brief  Filter for snapshot files */
 const ui_file_filter_t file_chooser_filter_snapshot = {
     "Snapshot files",
     file_chooser_pattern_snapshot
@@ -199,7 +210,8 @@ const ui_file_filter_t file_chooser_filter_snapshot = {
 
 /** \brief  Create a GtkFileFilter instance from \a filter
  *
- * \param[in]   filter  name and patterns for the filter
+ * \param[in]   filter      name and patterns for the filter
+ * \param[in]   show_globs  show file globbing pattern in the filter description
  *
  * Example:
  * \code{.c}
@@ -210,7 +222,7 @@ const ui_file_filter_t file_chooser_filter_snapshot = {
  *  GtkFileFilter *filter = create_file_chooser_filter(data);
  * \endcode
  *
- * \return  a new GtkFileFilter instance
+ * \return  GtkFileFilter
  */
 GtkFileFilter *create_file_chooser_filter(const ui_file_filter_t filter,
                                           gboolean show_globs)

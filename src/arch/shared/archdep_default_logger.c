@@ -32,7 +32,6 @@
 #include "archdep_defs.h"
 
 #include <stdio.h>
-#include <string.h>
 #include <errno.h>
 
 #ifdef ARCHDEP_OS_WINDOWS
@@ -50,8 +49,8 @@
 
 /** \brief  Write message to Windows debugger/logger
  *
- * param[in]    level_string    log level string
- * param[in]    txt             log message
+ * \param[in]   level_string    log level string
+ * \param[in]   txt             log message
  *
  * \note    Shamelessly copied from win32/archdep.c
  *
@@ -59,14 +58,14 @@
  */
 int archdep_default_logger(const char *level_string, const char *txt)
 {
-    const char *out;
-    
-    if (strlen(level_string)) {
+    char *out;
+
+    if (level_string != NULL && *level_string != '\0') {
         out = lib_msprintf("%s %s", level_string, txt);
     } else {
-        out = txt;
+        out = lib_strdup(txt);
     }
-    
+
     /* If a console is attached, spit out the log entry */
     if (!GetConsoleTitle(NULL, 0) && GetLastError() == ERROR_SUCCESS) {
         puts(out);
@@ -75,19 +74,16 @@ int archdep_default_logger(const char *level_string, const char *txt)
         OutputDebugString(out);
     }
 
-    if (out != txt) {
-        lib_free((void *)out);
-    }
-
+    lib_free(out);
     return 0;
 }
 
-#elif defined(ARCHDEP_OS_UNIX)
+#elif defined(ARCHDEP_OS_UNIX) || defined(ARCHEP_OS_BEOS)
 
 /** \brief  Write log message to stdout
  *
- * param[in]    level_string    log level string
- * param[in]    txt             log message
+ * \param[in]   level_string    log level string
+ * \param[in]   txt             log message
  *
  * \note    Shamelessly copied from unix/archdep.c
  *
@@ -103,24 +99,18 @@ int archdep_default_logger(const char *level_string, const char *txt)
     return 0;
 }
 
-#elif defined(ARCHDEP_OS_BEOS)
-
-int archdep_default_logger(const char *level_string, const char *txt)
-{
-    /* this is just silly */
-    if (fputs(level_string, stdout) == EOF
-            || fprintf(stdout, txt) < 0
-            || fputc ('\n', stdout) == EOF) {
-        return -1;
-    }
-    return 0;
-}
-
-
 #else
-    /* Unsupported OS's (AmigaOS,*/
 
-int archdep_default_logger(const char *level_string, const char *text)
+/** \brief  Write log message to stdout
+ *
+ * Stub: doesn't do anything but return 0.
+ *
+ * \param[in]   level_string    log level string
+ * \param[in]   txt             log message
+ *
+ * \return  0
+ */
+int archdep_default_logger(const char *level_string, const char *txt)
 {
     return 0;
 }

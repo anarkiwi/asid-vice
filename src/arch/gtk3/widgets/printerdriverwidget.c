@@ -3,7 +3,7 @@
  *
  * \author  Bas Wassink <b.wassink@ziggo.nl>
  *
- * Allows selecting drives for printers #4, #5 and #6.
+ * Allows selecting drivers for printers \#4, \#5 and \#6.
  */
 
 /*
@@ -40,10 +40,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "vice_gtk3.h"
 #include "archdep.h"
-#include "widgethelpers.h"
-#include "resourcehelpers.h"
-#include "debug_gtk3.h"
 #include "resources.h"
 #include "printer.h"
 
@@ -66,7 +64,6 @@ static void on_radio_toggled(GtkWidget *radio, gpointer user_data)
          * button */
         device = resource_widget_get_int(radio, "DeviceNumber");
         type = (const char *)user_data;
-        debug_gtk3("setting Printer%dDriver to '%s'.", device, type);
         resources_set_string_sprintf("Printer%dDriver", type, device);
     }
 }
@@ -75,6 +72,7 @@ static void on_radio_toggled(GtkWidget *radio, gpointer user_data)
 /** \brief  Create printer driver selection widget
  *
  * Creates a group of radio buttons to select the driver of printer # \a device.
+ *
  * Uses a custom property "DeviceNumber" for the radio buttons and the widget
  * itself to pass the device number to the event handler and to allow
  * printer_driver_widget_update() to select the proper radio button index.
@@ -98,7 +96,7 @@ GtkWidget *printer_driver_widget_create(int device)
     const char *driver;
 
     /* build grid */
-    grid = uihelpers_create_grid_with_label("Driver", 1);
+    grid = vice_gtk3_grid_new_spaced_with_label(-1, -1, "Driver", 1);
     /* set DeviceNumber property to allow the update function to work */
     resource_widget_set_int(grid, "DeviceNumber", device);
 
@@ -190,8 +188,8 @@ GtkWidget *printer_driver_widget_create(int device)
 
 /** \brief  Update the printer driver widget
  *
- * \param[in]   widget  printer driver widget
- * \param[in]   driver  driver name
+ * \param[in,out]   widget  printer driver widget
+ * \param[in]       driver  driver name
  */
 void printer_driver_widget_update(GtkWidget *widget, const char *driver)
 {

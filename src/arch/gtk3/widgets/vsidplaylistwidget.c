@@ -56,8 +56,6 @@
 #include "resources.h"
 #include "uiapi.h"
 #include "uivsidwindow.h"
-
-/* TODO: move and rename `convert_to_utf8()` */
 #include "vsidtuneinfowidget.h"
 #include "vsidplaylistadddialog.h"
 
@@ -211,7 +209,10 @@ static GtkListStore *playlist_model;
  */
 static GtkWidget *playlist_view;
 
-
+/** \brief  Playlist title widget
+ *
+ * Gets updated with the number of tunes in the list.
+ */
 static GtkWidget *title_widget;
 
 
@@ -402,7 +403,7 @@ static void update_title(void)
 /** \brief  Event handler for the 'destroy' event of the playlist widget
  *
  * \param[in]   widget  playlist widget
- * \param[in    data    extra event data (unused)
+ * \param[in]   data    extra event data (unused)
  */
 static void on_destroy(GtkWidget *widget, gpointer data)
 {
@@ -482,6 +483,11 @@ static void on_playlist_remove_clicked(GtkWidget *widget, gpointer data)
 }
 
 
+/** \brief  Event handler for the 'first' button
+ *
+ * \param[in]   widget  button triggering the event
+ * \param[in]   data    extra event data (unused)
+ */
 static void on_playlist_first_clicked(GtkWidget *widget, gpointer data)
 {
     plist_state_t state;
@@ -508,6 +514,11 @@ static void on_playlist_first_clicked(GtkWidget *widget, gpointer data)
 }
 
 
+/** \brief  Event handler for the 'last' button
+ *
+ * \param[in]   widget  button triggering the event
+ * \param[in]   data    extra event data (unused)
+ */
 static void on_playlist_last_clicked(GtkWidget *widget, gpointer data)
 {
     plist_state_t state;
@@ -537,12 +548,22 @@ static void on_playlist_last_clicked(GtkWidget *widget, gpointer data)
 }
 
 
+/** \brief  Event handler for the 'clear' button
+ *
+ * \param[in]   widget  button triggering the event
+ * \param[in]   data    extra event data (unused)
+ */
 static void on_playlist_clear_clicked(GtkWidget *widget, gpointer data)
 {
     delete_all_rows(NULL, NULL);
 }
 
 
+/** \brief  Event handler for the 'next' button
+ *
+ * \param[in]   widget  button triggering the event
+ * \param[in]   data    extra event data (unused)
+ */
 static void on_playlist_next_clicked(GtkWidget *widget, gpointer data)
 {
     plist_state_t state;
@@ -824,7 +845,7 @@ GtkWidget *vsid_playlist_widget_create(void)
     grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT);
 
     label = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(label), "<b>Playlist</b>");
+    gtk_label_set_markup(GTK_LABEL(label), "<b>Playlist:</b>");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     g_object_set(label, "margin-bottom", 8, NULL);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
@@ -833,6 +854,7 @@ GtkWidget *vsid_playlist_widget_create(void)
     scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_widget_set_size_request(scroll, 400, 500);
     gtk_widget_set_hexpand(scroll, TRUE);
+    gtk_widget_set_vexpand(scroll, TRUE);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
             GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
@@ -841,8 +863,8 @@ GtkWidget *vsid_playlist_widget_create(void)
     gtk_grid_attach(GTK_GRID(grid), scroll, 0, 1, 1, 1);
 
     gtk_grid_attach(GTK_GRID(grid),
-            vsid_playlist_controls_create(),
-            0, 2, 1, 1);
+                    vsid_playlist_controls_create(),
+                    0, 2, 1, 1);
 
     g_signal_connect_unlocked(grid, "destroy", G_CALLBACK(on_destroy), NULL);
 
@@ -853,7 +875,7 @@ GtkWidget *vsid_playlist_widget_create(void)
 
 /** \brief  Append \a path to the playlist
  *
- * \param[in[   path    path to SID file
+ * \param[in]   path    path to SID file
  *
  * \return  TRUE on success, FALSE on failure
  */
@@ -871,30 +893,46 @@ gboolean vsid_playlist_widget_append_file(const gchar *path)
         vice_gtk3_message_error("VSID",
                 "Failed to parse PSID header of '%s'.",
                 path);
-        return FALSE;
+
+
+         debug_gtk3("Perhaps it's a MUS?");
+        /* append MUS to playlist
+         *
+         * TODO: somehow parse the .mus file for author/tune name,
+         *       which is pretty much impossible.
+         */
+        gtk_list_store_append(playlist_model, &iter);
+        gtk_list_store_set(playlist_model, &iter,
+                0, "n/a",
+                1, "n/a",
+                2, path,
+                -1);
+
+
+    } else {
+
+        /* get SID name and author */
+        memcpy(name, psid.name, HVSC_PSID_TEXT_LEN);
+        name[HVSC_PSID_TEXT_LEN] = '\0';
+        memcpy(author, psid.author, HVSC_PSID_TEXT_LEN);
+        author[HVSC_PSID_TEXT_LEN] = '\0';
+
+        name_utf8 = convert_to_utf8(name);
+        author_utf8 = convert_to_utf8(author);
+
+        /* append SID to playlist */
+        gtk_list_store_append(playlist_model, &iter);
+        gtk_list_store_set(playlist_model, &iter,
+                0, name_utf8,
+                1, author_utf8,
+                2, path,
+                -1);
+
+        /* clean up */
+        g_free(name_utf8);
+        g_free(author_utf8);
+        hvsc_psid_close(&psid);
     }
-
-    /* get SID name and author */
-    memcpy(name, psid.name, HVSC_PSID_TEXT_LEN);
-    name[HVSC_PSID_TEXT_LEN] = '\0';
-    memcpy(author, psid.author, HVSC_PSID_TEXT_LEN);
-    author[HVSC_PSID_TEXT_LEN] = '\0';
-
-    name_utf8 = convert_to_utf8(name);
-    author_utf8 = convert_to_utf8(author);
-
-    /* append SID to playlist */
-    gtk_list_store_append(playlist_model, &iter);
-    gtk_list_store_set(playlist_model, &iter,
-            0, name_utf8,
-            1, author_utf8,
-            2, path,
-            -1);
-
-    /* clean up */
-    g_free(name_utf8);
-    g_free(author_utf8);
-    hvsc_psid_close(&psid);
 
     update_title();
     return TRUE;

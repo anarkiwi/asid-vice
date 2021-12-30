@@ -46,20 +46,14 @@
 #include "ciamodelwidget.h"
 
 
+/** List of CIA models
+ */
 static const vice_gtk3_radiogroup_entry_t cia_models[] = {
     { "6526 (old)", CIA_MODEL_6526 },
     { "8521 (new)", CIA_MODEL_6526A },
     { NULL, -1 }
 };
 
-/** \brief  Reference to machine model widget
- *
- * Used to update the machine model widget when a CIA model is changed
- *
- * XXX: Not sure this is needed anymore since any model changes/updates go
- *      through callbacks/event handlers.
- */
-static GtkWidget *machine_widget = NULL;
 
 /** \brief  Reference to the radiobutton group used for CIA1
  */
@@ -129,24 +123,23 @@ static GtkWidget *create_cia_widget(int num)
 /** \brief  Create CIA model(s) widget
  *
  * Creates a CIA model widget for either one or two CIA's.
- * The \a machine_model_widget argument is used to update the machine model
- * widget when a CIA model changes.
  *
- * \param[in,out]   machine_model_widget    machine model widget
  * \param[in]       count                   number of CIA's (1 or 2)
  *
  * \return  GtkGrid
  */
-GtkWidget *cia_model_widget_create(GtkWidget *machine_model_widget, int count)
+GtkWidget *cia_model_widget_create(int count)
 {
     GtkWidget *grid;
     GtkWidget *cia1_widget;
     GtkWidget *cia2_widget;
+    GtkWidget *title;
 
-    machine_widget = machine_model_widget;
     cia_model_callback = NULL;
 
-    grid = uihelpers_create_grid_with_label("CIA Model", 1);
+    grid = vice_gtk3_grid_new_spaced_with_label(-1, 0, "CIA model", 1);
+    title = gtk_grid_get_child_at(GTK_GRID(grid), 0, 0);
+    g_object_set(title, "margin-bottom", 8, NULL);
 
     cia1_widget = create_cia_widget(1);
     gtk_grid_attach(GTK_GRID(grid), cia1_widget, 0, 1, 1, 1);

@@ -39,11 +39,16 @@
 #import <os/log.h>
 #import <os/signpost.h>
 
-#include "log.h"
-#include "resources.h"
+#import "log.h"
+#import "resources.h"
 
 #define NANOS_PER_MICRO 1000ULL
 #define MICROS_PER_SEC  1000000ULL
+
+#ifdef USE_NATIVE_GTK3
+/* For some reason this isn't in the GDK quartz headers */
+id gdk_quartz_window_get_nswindow (GdkWindow *window);
+#endif
 
 void vice_macos_set_main_thread(void)
 {
@@ -63,11 +68,8 @@ void vice_macos_set_main_thread(void)
     [[NSProcessInfo processInfo] beginActivityWithOptions: NSActivityUserInitiated | NSActivityLatencyCritical
                                                    reason: @"Accurate emulation requires low latency access to resources."];
 
-    /* Available from OSX 10.10+ */
-    if ([NSThread instancesRespondToSelector:@selector(setQualityOfService:)]) {
-        /* The main thread benefits from interactive response levels */
-        [[NSThread currentThread] setQualityOfService: NSQualityOfServiceUserInteractive];
-    }
+    /* The main thread benefits from interactive response levels */
+    [[NSThread currentThread] setQualityOfService: NSQualityOfServiceUserInteractive];
 }
 
 static void move_pthread_to_normal_scheduling_class(pthread_t pthread)
@@ -175,3 +177,14 @@ void vice_macos_set_render_thread_priority(void)
     /* Likely a 60fps system, passing rendered buffer to OpenGL shouldn't take more than a couple of ms. */
     move_pthread_to_realtime_scheduling_class(pthread_self(), 0, MICROS_PER_SEC / 1000 * 5, MICROS_PER_SEC / 1000 * 17);
 }
+
+#ifdef USE_NATIVE_GTK3
+void vice_macos_get_widget_frame_and_content_rect(GtkWidget *widget, CGRect *native_frame, CGRect *content_rect)
+{
+    id native_window  = gdk_quartz_window_get_nswindow(gtk_widget_get_window(widget));
+    id content_view   = [native_window contentView];
+
+    *native_frame = [native_window frame];
+    *content_rect = [content_view frame];
+}
+#endif

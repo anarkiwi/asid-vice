@@ -61,6 +61,8 @@ libarchdep_a_SOURCES = \
 	archdep_get_runtime_info.c \
 	archdep_get_vice_datadir.c \
 	archdep_get_vice_docsdir.c \
+	archdep_get_vice_drivesdir.c \
+	archdep_get_vice_machinedir.c \
 	archdep_home_path.c \
 	archdep_icon_path.c \
 	archdep_is_haiku.c \
@@ -74,11 +76,12 @@ libarchdep_a_SOURCES = \
 	archdep_mkstemp_fd.c \
 	archdep_open_default_log_file.c \
 	archdep_path_is_relative.c \
-	archdep_pref_path.c \
 	archdep_program_name.c \
 	archdep_program_path.c \
 	archdep_quote_parameter.c \
 	archdep_quote_unzip.c \
+	archdep_rawnet_capability.c \
+	archdep_real_path.c \
 	archdep_rename.c \
 	archdep_require_vkbd.c \
 	archdep_rmdir.c \
@@ -101,6 +104,12 @@ libarchdep_a_SOURCES = \
 	rawnetarch.c \
 	rs232dev.c \
 	signals.c
+
+if UNIX_COMPILE
+libarchdep_a_SOURCES += \
+	rawnetarch_tuntap.c \
+	rawnetarch_unix.c
+endif
 
 if UNIX_MACOSX_COMPILE
 libarchdep_a_SOURCES += macOS-util.m
@@ -130,9 +139,12 @@ EXTRA_DIST = \
 	archdep_file_is_chardev.h \
 	archdep_filename_parameter.h \
 	archdep_fix_permissions.h \
+	archdep_get_current_drive.h \
 	archdep_get_runtime_info.h \
 	archdep_get_vice_datadir.h \
 	archdep_get_vice_docsdir.h \
+	archdep_get_vice_drivesdir.h \
+	archdep_get_vice_machinedir.h \
 	archdep_home_path.h \
 	archdep_icon_path.h \
 	archdep_is_haiku.h \
@@ -140,16 +152,18 @@ EXTRA_DIST = \
 	archdep_is_macos_bindist.h \
 	archdep_join_paths.h \
 	archdep_kbd_get_host_mapping.h \
+	archdep_list_drives.h \
 	archdep_make_backup_filename.h \
 	archdep_mkdir.h \
 	archdep_mkstemp_fd.h \
 	archdep_open_default_log_file.h \
 	archdep_path_is_relative.h \
-	archdep_pref_path.h \
 	archdep_program_name.h \
 	archdep_program_path.h \
 	archdep_quote_parameter.h \
 	archdep_quote_unzip.h \
+	archdep_rawnet_capability.h \
+	archdep_real_path.h \
 	archdep_rename.h \
 	archdep_require_vkbd.h \
 	archdep_rmdir.h \
@@ -174,7 +188,6 @@ EXTRA_DIST = \
 	coproc.h \
 	dynlib-unix.c \
 	dynlib-win32.c \
-	rawnetarch_unix.c \
 	rawnetarch_win32.c \
 	rs232-unix-dev.c \
 	rs232-win32-dev.c \
@@ -184,6 +197,8 @@ EXTRA_DIST = \
 	macOS-wrap-ar.sh \
 	macOS-wrap-ranlib.sh \
 	macOS-util.h \
-	make-bindist_osx.sh
+	make-bindist_osx.sh \
+	make_bindist_win32.sh \
+	README-bindist.txt
 
 # FIXME: the Extra MacOS script stuff should live elsewhere

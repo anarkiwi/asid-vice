@@ -27,6 +27,7 @@
 #include "vice.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 
 #include "archdep.h"
@@ -45,10 +46,15 @@
 #include "archdep_file_exists.h"
 
 
+/** \brief  Check if file at \a path exists
+ *
+ * \param[in]   path    path to file
+ *
+ * \return  bool
+ */
 bool archdep_file_exists(const char *path)
 {
 #ifdef ARCHDEP_OS_UNIX
-
     if (access(path, F_OK) == 0) {
         return true;
     }
@@ -61,8 +67,5 @@ bool archdep_file_exists(const char *path)
         return true;
     }
 #endif
-    
     return false;
-
 }
-

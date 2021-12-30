@@ -30,9 +30,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if !defined(USE_HEADLESSUI) && !defined(USE_SDLUI2) && !defined(USE_SDLUI)
 #ifdef UNIX_COMPILE
 #ifndef MACOSX_SUPPORT
 #include <X11/Xlib.h>
+#endif
 #endif
 #endif
 
@@ -61,6 +63,10 @@ static pthread_t main_thread;
 #include "macOS-util.h"
 #endif
 
+#include "archdep_exit.h"
+#include "log.h"
+
+
 static volatile bool is_exiting;
 
 bool archdep_is_exiting(void) {
@@ -69,6 +75,12 @@ bool archdep_is_exiting(void) {
 
 static void actually_exit(int exit_code)
 {
+    if (is_exiting) {
+        log_message(LOG_DEFAULT, "Ignoring recursive call to archdep_vice_exit()");
+        return;
+    }
+    is_exiting = true;
+
     /* Some exit stuff not safe to run afer exit() is called so we do it here */
     main_exit();
 
@@ -119,28 +131,32 @@ void archdep_set_main_thread(void)
     main_thread = pthread_self();
 
 #if defined(MACOSX_SUPPORT)
-    
+
     /* macOS specific main thread init written in objective-c */
     vice_macos_set_main_thread();
-    
+
 #elif defined(UNIX_COMPILE)
-    
+
+#ifdef USE_NATIVE_GTK3
     /* Our GLX OpenGL init stuff will crash if we let GDK use wayland directly */
     putenv("GDK_BACKEND=x11");
+#endif
 
+#ifndef USE_HEADLESSUI
     /* We're calling xlib from our own thread so need this to avoid problems */
     XInitThreads();
+#endif
 
     /* TODO - set UI/main thread priority for X11 */
 
 #elif defined(WIN32_COMPILE)
-    
+
     /* Increase Windows scheduler accuracy */
     timeBeginPeriod(1);
 
     /* Of course VICE is more important than other puny Windows applications */
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-    
+
 #endif
 }
 
@@ -150,7 +166,6 @@ void archdep_set_main_thread(void)
  */
 void archdep_vice_exit(int exit_code)
 {
-    is_exiting = true;
     vice_exit_code = exit_code;
 
     if (pthread_equal(pthread_self(), main_thread)) {

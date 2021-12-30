@@ -31,13 +31,14 @@
 
 #include <windows.h>
 
-#include <d2d1.h>
+#include <d3d11_1.h>
+#include <d2d1_1.h>
 #include <glib.h>
 #include <pthread.h>
 #include <stdbool.h>
 
-#ifdef __cplusplus  
-extern "C" { 
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #include "render_thread.h"
@@ -66,14 +67,41 @@ typedef struct vice_directx_renderer_context_s {
     /** \brief minimum size for the drawing area, based on emu and aspect ratio settings */
     unsigned int window_min_height;
 
-    /** \brief Direct2D factory. x128 is weird if shared between VDC and VICII. */
-    ID2D1Factory* factory;
+    /* So many DirectX */
+    ID3D11Device1 *d3d_device;
+    ID3D11DeviceContext1 *d3d_device_context;
+    IDXGIDevice1 *dxgi_device;
+    ID2D1Factory1 *d2d_factory;
+    ID2D1Device *d2d_device;
+    ID2D1DeviceContext *d2d_device_context;
+    ID2D1Effect *d2d_effect_strip_alpha;
+    ID2D1Effect *d2d_effect_premultiply_alpha;
+    ID2D1Effect *d2d_effect_combine;
+    ID2D1Effect *d2d_effect_scale;
 
-    /** \brief Direct2D render target that renders on window */
-    ID2D1HwndRenderTarget *render_target;
+    IDXGIAdapter *dxgi_adapter;
+    IDXGIFactory2 *dxgi_factory;
+    IDXGISwapChain1 *d3d_swap_chain;
+    IDXGISurface *dxgi_surface;
+    ID2D1Bitmap1 *dxgi_bitmap;
 
     /** \brief Direct2D bitmap used to get emu bitmap into the GPU */
     ID2D1Bitmap *render_bitmap;
+
+    /** \brief size of the current gpu bitmap in pixels */
+    unsigned int bitmap_width;
+
+    /** \brief size of the current gpu bitmap in pixels */
+    unsigned int bitmap_height;
+
+    /** \brief Direct2D bitmap used to retain the last frame */
+    ID2D1Bitmap *previous_frame_render_bitmap;
+
+    /** \brief size of the current gpu bitmap in pixels */
+    unsigned int previous_frame_bitmap_width;
+
+    /** \brief size of the current gpu bitmap in pixels */
+    unsigned int previous_frame_bitmap_height;
 
     /** \brief Where emu bitmap gets placed on the target surface */
     D2D1_RECT_F render_dest_rect;
@@ -83,46 +111,48 @@ typedef struct vice_directx_renderer_context_s {
 
     /** \brief location of the directx viewport in window pixels */
     unsigned int viewport_x;
-    
+
     /** \brief size of the directx viewport in window pixels */
     unsigned int viewport_y;
 
     /** \brief size of the directx viewport in window pixels */
     unsigned int viewport_width;
-    
+
     /** \brief size of the directx viewport in window pixels */
     unsigned int viewport_height;
 
-    /** \brief size of the current gpu bitmap in pixels */
-    unsigned int bitmap_width;
-    
-    /** \brief size of the current gpu bitmap in pixels */
-    unsigned int bitmap_height;
+    /** \brief used to signal that the viewport has resized */
+    bool resized;
 
     /** \brief aspect ratio of each pixel in the current gpu bitmap */
-    float bitmap_pixel_aspect_ratio;
+    float pixel_aspect_ratio;
 
     /** \brief size of the next emulated frame */
     unsigned int emulated_width_next;
-    
+
     /** \brief size of the NEXT emulated frame */
     unsigned int emulated_height_next;
 
     /** \brief pixel aspect ratio of the next emulated frame */
     float pixel_aspect_ratio_next;
 
+    /** \brief if the next render should use interlaced mode */
+    bool interlaced;
+
+    /** \brief the even/odd of the most recent interlaced field */
+    int current_interlace_field;
+
 } vice_directx_renderer_context_t;
 
 void vice_directx_impl_log_windows_error(const char *prefix);
 
-void vice_directx_impl_on_window_resize(vice_directx_renderer_context_t *context);
 void vice_directx_destroy_context_impl(vice_directx_renderer_context_t *context);
 
 void vice_directx_impl_async_render(void *pool_data, void *job_data);
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 } /* extern "C" { */
-#endif 
+#endif
 
 #endif /* #ifdef WIN32_COMPILE */
 

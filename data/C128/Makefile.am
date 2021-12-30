@@ -42,22 +42,35 @@ palettes = \
 	ptoing.vpl \
 	deekay.vpl \
 	cjam.vpl \
+	palette.vpl \
+	pixcen.vpl \
 	rgb.vpl
 
 gtk3_keymaps = \
 	gtk3_sym.vkm \
+	gtk3_sym_fr.vkm \
+	gtk3_sym_de.vkm \
 	gtk3_pos.vkm
 
+gtk3_hotkeys = \
+	gtk3-hotkeys.vhk
+
 sdl_keymaps = \
-	sdl_hotkeys.vkm \
-	sdl_pos.vkm
+	sdl_sym.vkm \
+	sdl_sym_de.vkm \
+	sdl_sym_fr.vkm \
+	sdl_pos.vkm \
+	sdl_v128.vkm
+
+sdl_hotkeys = \
+	sdl-hotkeys.vhk
 
 if SDL_COMPILE
-c128_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps)
+c128_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sdl_hotkeys)
 
-EXTRA_DIST = $(c128_DATA) $(gtk3_keymaps)
+EXTRA_DIST = $(c128_DATA) $(gtk3_keymaps) $(gtk3_hotkeys)
 else
-c128_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps)
+c128_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(gtk3_hotkeys)
 
-EXTRA_DIST = $(c128_DATA) $(sdl_keymaps)
+EXTRA_DIST = $(c128_DATA) $(sdl_keymaps) $(sdl_hotkeys)
 endif

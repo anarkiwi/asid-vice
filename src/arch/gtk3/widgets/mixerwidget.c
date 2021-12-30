@@ -126,7 +126,8 @@ static GtkCssProvider *scale_css_provider;
 
 
 
-/* depending on what SID type is being used, show the right widgets */
+/** \brief  Depending on what SID type is being used, show the right widgets
+ */
 void mixer_widget_sid_type_changed(void)
 {
     int model = 0;
@@ -142,7 +143,8 @@ void mixer_widget_sid_type_changed(void)
 #endif
 
     if (resources_get_int("SidModel", &model) < 0) {
-        debug_gtk3("failed to get SidModel resource");
+        log_error(LOG_ERR, "failed to get SidModel resource, bailing!");
+        return;
     }
 
     if (machine_class == VICE_MACHINE_VSID) {
@@ -188,12 +190,9 @@ void mixer_widget_sid_type_changed(void)
 #endif
 
     /* disable sliders when not ReSID */
-    debug_gtk3("Getting SID engine...");
     if (resources_get_int("SidEngine", &engine) < 0) {
-        debug_gtk3("Failed, using FastSID.");
-        engine = SID_ENGINE_FASTSID;
-    } else {
-        debug_gtk3("OK: engine = %d.", engine);
+        log_error(LOG_ERR, "failed to reead 'SidEngine' resource, bailing!");
+        return;
     }
     enabled = engine == SID_ENGINE_FASTSID ? 0 : 1;
 
@@ -241,14 +240,16 @@ static void on_reset_clicked(GtkWidget *widget, gpointer data)
 }
 
 
-/** \brief  Create a right-align label
+/** \brief  Create a horizontally aligned label
  *
- * \param[in]   text    text for the label
- * \param[in]   minimal use CSS to reduce size of use as statusbar widget
+ * \param[in]   text        text for the label
+ * \param[in]   minimal     use CSS to reduce size of use as statusbar widget
+ * \param[in]   alignment   label alignment (see `GtkAlingn` enum`)
  *
  * \return  GtkLabel
  */
-static GtkWidget *create_label(const char *text, gboolean minimal,
+static GtkWidget *create_label(const char *text,
+                               gboolean minimal,
                                GtkAlign alignment)
 {
     GtkWidget *label;
@@ -422,11 +423,11 @@ GtkWidget *mixer_widget_create(gboolean minimal, GtkAlign alignment)
             || machine_class == VICE_MACHINE_PLUS4) {
         /* check for presence of SidCart */
         if (resources_get_int("SidCart", &tmp) < 0) {
-            debug_gtk3("failed to get value for resource SidCart, disabling.");
-            sid_present = FALSE;
-        } else {
-            sid_present = (gboolean)tmp;
+            log_error(LOG_ERR,
+                    "failed to get value for resource SidCart, bailing!");
+            return NULL;
         }
+        sid_present = (gboolean)tmp;
     }
 #endif
 
@@ -473,7 +474,8 @@ GtkWidget *mixer_widget_create(gboolean minimal, GtkAlign alignment)
     row++;
 
     if (resources_get_int("SidModel", &model) < 0) {
-        debug_gtk3("failed to get SidModel resource");
+        log_error(LOG_ERR, "failed to get SidModel resource");
+        return NULL;
     }
 
 #ifdef HAVE_RESID

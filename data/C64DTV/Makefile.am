@@ -12,6 +12,9 @@ romsets = \
 palettes = \
 	spiff.vpl
 
+gtk3_hotkeys = \
+	gtk3-hotkeys.vhk
+
 gtk3_keymaps = \
 	gtk3_keyrah.vkm \
 	gtk3_keyrah_de.vkm \
@@ -19,15 +22,18 @@ gtk3_keymaps = \
 	gtk3_pos.vkm \
 	gtk3_pos_de.vkm \
 	gtk3_pos_se.vkm \
+	gtk3_pos_it.vkm \
+	gtk3_pos_es.vkm \
 	gtk3_sym.vkm \
 	gtk3_sym_de.vkm \
 	gtk3_sym_da.vkm \
 	gtk3_sym_nl.vkm \
 	gtk3_sym_it.vkm \
-	gtk3_sym_se.vkm
+	gtk3_sym_se.vkm \
+	gtk3_sym_fr.vkm \
+	gtk3_pos_bmc64.vkm
 
 sdl_keymaps = \
-	sdl_hotkeys.vkm \
 	sdl_keyrah.vkm \
 	sdl_keyrah_de.vkm \
 	sdl_keyrah_retropie.vkm \
@@ -41,18 +47,22 @@ sdl_keymaps = \
 	sdl_pos_no.vkm \
 	sdl_sym.vkm \
 	sdl_sym_de.vkm \
+	sdl_sym_fr.vkm \
 	sdl_sym_nl.vkm \
 	sdl_sym_da.vkm
+
+sdl_hotkeys = \
+	sdl-hotkeys.vhk
 
 sym_file = \
 	c64mem.sym
 
 if SDL_COMPILE
-c64dtv_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sym_file)
+c64dtv_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sym_file) $(sdl_hotkeys)
 
-EXTRA_DIST = $(c64dtv_DATA) $(gtk3_keymaps)
+EXTRA_DIST = $(c64dtv_DATA) $(gtk3_keymaps) $(gtk3_hotkeys)
 else
-c64dtv_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(sym_file)
+c64dtv_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(sym_file) $(gtk3_hotkeys)
 
-EXTRA_DIST = $(c64dtv_DATA) $(sdl_keymaps)
+EXTRA_DIST = $(c64dtv_DATA) $(sdl_keymaps) $(sdl_hotkeys)
 endif

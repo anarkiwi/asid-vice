@@ -32,12 +32,20 @@
 cd "$(dirname "$0")"
 set -o errexit
 set -o nounset
+set -o allexport
 
 # Remove any previous run
 find . -type f -name 'CMakeLists.txt' -exec rm {} \;
 find . -type f -name 'CMakeCache.txt' -exec rm {} \;
 find . -type f -name 'cmake_install.cmake' -exec rm {} \;
 find . -type d -name 'CMakeFiles' | xargs -IQQQ rm -rf "QQQ"
+find . -type d -name '.cmake_bootstrap_cache' | xargs -IQQQ rm -rf "QQQ"
+
+function cleanup {
+    # Get rid of our cached extract_make_var results
+	find . -type d -name '.cmake_bootstrap_cache' | xargs -IQQQ rm -rf "QQQ"
+}
+trap cleanup EXIT
 
 # Initialise user variables if not set
 if [ -z ${CFLAGS+x} ]
@@ -60,6 +68,14 @@ then
 	LDFLAGS=""
 fi
 
+if which parallel > /dev/null; then
+	USE_PARALLEL=true
+	HOW_PARALLEL=200%
+else
+	echo "NOTE: Install GNU parallel for faster execution"
+	USE_PARALLEL=false
+fi
+
 # Quiet versions of pushd and popd
 function pushdq {
 	pushd $1 > /dev/null
@@ -80,32 +96,43 @@ function space {
 function extract_make_var {
 	local varname=$1
 
+	if [ -d .cmake_bootstrap_cache ]; then
+		# If we already extracted this, use the cached version
+		if [ -f .cmake_bootstrap_cache/$1 ]; then
+			cat .cmake_bootstrap_cache/$1
+			return
+		fi
+	else
+		mkdir .cmake_bootstrap_cache
+	fi
+
 	#
 	# Sadly make --eval doesn't work in macOS, so we simulate a
 	# make --eval='extract_make_var: ; @echo TESTS $(TESTS)' extract_make_var
 	# by modifying a copy of the Makefile.
 	#
 
-	function cleanup {
-		[ -f Makefile.bak ] && mv Makefile.bak Makefile
-	}
+	TMP_MAKEFILE=$(mktemp -t cmake_bootstrap_Makefile.XXXXXXXX)
+	cp Makefile $TMP_MAKEFILE
 
-	# Try to make this non-destuctive on ctrl-c
-	trap cleanup EXIT
-
-	cp Makefile Makefile.bak
-	echo -e "\nextract_make_var:\n\t@echo \$($varname)" >> Makefile
+	echo -e "\nextract_make_var:\n\t@echo \$($varname)" >> $TMP_MAKEFILE
+	local result=$(make -f $TMP_MAKEFILE extract_make_var)
 	
-	local result=$(make extract_make_var)
-	echo -n $result
+	# cache for next time
+	echo -n $result > .cmake_bootstrap_cache/$1
 
-	cleanup
-	trap - EXIT
+    rm $TMP_MAKEFILE
+	echo -n $result
 }
 
 function extract_include_dirs {
 	(extract_make_var AM_CPPFLAGS; space; extract_make_var VICE_CFLAGS; space; extract_make_var VICE_CXXFLAGS) \
 		| sed $'s/ -/\\\n-/g' | grep '^-I' | sed 's/^-I//' | unique_preserve_order | tr "\n" " "
+}
+
+function extract_link_dirs {
+	(extract_make_var AM_LDFLAGS; space; extract_make_var VICE_LDFLAGS; ) \
+		| sed $'s/ -/\\\n-/g' | grep '^-L' | sed 's/^-L//' | unique_preserve_order | tr "\n" " "
 }
 
 function extract_c_compile_definitions {
@@ -123,12 +150,14 @@ function extract_objc_compile_definitions {
 		| sed $'s/ -/\\\n-/g' | grep '^-D' | sed -e 's/^-D//g' | tr "\n" " "
 }
 
-function extract_non_include_non_def_flags {
+function extract_c_cxx_objc_flags {
 	local flags=""
 
 	#
 	# We handling include dirs and definitiions directly, so
 	# we exclude these from the extracted cflags/cxxflags.
+	# Also don't include macos sdk target flags to avoid
+	# lots of warnings when linking to newer deps.
 	#
 
 	while (( "$#" )); do
@@ -148,6 +177,9 @@ function extract_non_include_non_def_flags {
 			-D*)
 				shift
 				;;
+			-mmacosx-version*)
+				shift 
+				;;
 			*)
 				if [ -z "$flags" ]
 				then
@@ -160,24 +192,31 @@ function extract_non_include_non_def_flags {
 		esac
 	done
 
-	echo -n -e "$flags" | tr "\n" " "
+	#
+	# Echo the extracted flags.
+	#
+	# But also don't warn about using deprecated macOS stuff. We are supporting
+	# old versions of macOS so we need to use them.
+	#
+
+	echo -n -e "-Wno-deprecated-declarations $flags" | tr "\n" " "
 }
 
 function extract_cflags {
-	extract_non_include_non_def_flags $(extract_make_var AM_CFLAGS; space; extract_make_var CFLAGS; echo -n " $CFLAGS")
+	extract_c_cxx_objc_flags $(extract_make_var AM_CFLAGS; space; extract_make_var CFLAGS; echo -n " $CFLAGS")
 }
 
 function extract_cxxflags {
-	extract_non_include_non_def_flags $(extract_make_var AM_CXXFLAGS; space; extract_make_var CXXFLAGS; echo -n " $CXXFLAGS")
+	extract_c_cxx_objc_flags $(extract_make_var AM_CXXFLAGS; space; extract_make_var CXXFLAGS; echo -n " $CXXFLAGS")
 }
 
 function extract_objcflags {
-	extract_non_include_non_def_flags $(extract_make_var AM_OBJCFLAGS; space; extract_make_var OBJCFLAGS; echo -n " $OBJCFLAGS")
+	extract_c_cxx_objc_flags $(extract_make_var AM_OBJCFLAGS; space; extract_make_var OBJCFLAGS; echo -n " $OBJCFLAGS")
 }
 
 function extract_ldflags {
 	local executable=$1
-	extract_non_include_non_def_flags \
+	extract_c_cxx_objc_flags \
 		$(extract_make_var \
 			${executable}_LDFLAGS; space; \
 			extract_make_var AM_LDFLAGS; space; \
@@ -191,7 +230,7 @@ function extract_internal_libs {
 	while (( "$#" )); do
 		case "$1" in
 			*.a)
-				lib=$(echo $1 | sed -e 's/.*\(lib.*\)\.a/\1/')
+				local lib=$(echo $1 | sed -e 's/.*\(lib.*\)\.a/\1/')
 				if [ -z "$libs" ]
 				then
 					libs=$lib
@@ -249,6 +288,31 @@ function extract_sources {
 		| grep '\.\(c\|cc\|cpp\|m\)$' \
 		| tr "\n" " " \
 		| sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+function extract_object_sources {
+	for object_file_basename in $(extract_make_var $1 | tr " " "\n" | grep '\.o$' | sed 's/\.o$//')
+	do
+		ls -1 \
+			| grep "^${object_file_basename}\.\(c\|cc\|cpp\|m\)$" \
+			| tr "\n" " "
+	done
+}
+
+function extract_headers {
+	extract_make_var $1 \
+		| tr " " "\n" \
+		| grep '\.\(h\|hh\|hpp\)$' \
+		| tr "\n" " " \
+		| sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+function extract_macos_target_sdk_version {
+	extract_make_var VICE_CFLAGS \
+		| tr " " "\n" \
+		| grep -- '-mmacosx-version-min=' \
+		| head -n1 \
+		| sed -e 's/-mmacosx-version-min=//'
 }
 
 function project_relative_folder {
@@ -315,8 +379,13 @@ function process_source_makefile {
 			    $lib_to_build
 			    PRIVATE
 			        $(extract_sources ${lib_to_build}_a_SOURCES)
-			        $(extract_sources EXTRA_${lib_to_build}_a_SOURCES)
+			        $(extract_headers ${lib_to_build}_a_SOURCES)
+			        $(extract_object_sources ${lib_to_build}_a_DEPENDENCIES)
+			        $(extract_object_sources ${lib_to_build}_a_LIBADD)
 			        $(extract_sources BUILT_SOURCES)
+			        $(extract_headers BUILT_SOURCES)
+			        $(extract_headers noinst_HEADERS)
+					$(extract_headers EXTRA_DIST)
 			    )
 
 		HEREDOC
@@ -331,12 +400,12 @@ function process_source_makefile {
 	local generated_sources=$(extract_make_var BUILT_SOURCES)
 	if [ ! -z "$generated_sources" ]
 	then
-		echo "- generating sources: $generated_sources"
+		echo "- generating sources in $(project_relative_folder): $generated_sources"
 		make -s $generated_sources
 	fi
 
 	#
-	# Recursively process subdirs.
+	# Let cmake know about subdirs
 	#
 
 	for subdir in $(extract_make_var SUBDIRS)
@@ -344,59 +413,55 @@ function process_source_makefile {
 		cat <<-HEREDOC >> CMakeLists.txt
 			add_subdirectory($subdir)
 		HEREDOC
-
-		process_source_makefile $subdir
 	done
 
 	popdq
 }
 
-process_source_makefile src
+function find_all_makefile_dirs {
+	local dir=$1
+	
+	pushdq $dir
+	pwd
 
-#
-# The src folder also defines all the executables and what they link to.
-#
+	for subdir in $(extract_make_var SUBDIRS)
+	do
+		find_all_makefile_dirs $subdir
+	done
+
+	popdq
+}
+
+if $USE_PARALLEL; then
+	find_all_makefile_dirs src | parallel -j $HOW_PARALLEL process_source_makefile {}
+else
+	for dir in $(find_all_makefile_dirs src); do
+		process_source_makefile $dir
+	done
+fi
 
 function external_lib_label {
 	echo -n "LIB_$(echo "$1" | tr '[a-z]' '[A-Z]' | sed -e 's/[^A-Z0-9_]/_/g')"
 }
 
-pushdq src
+function generate_executable_target {
+	local executable=$1
 
-EXECUTABLES="x64sc x128 x64dtv xscpu64 xvic xpet xplus4 xcbm2 xcbm5x0 c1541 petcat cartconv vsid"
-
-#
-# Find all the libraries first
-#
-
-echo >> CMakeLists.txt
-
-for executable in $EXECUTABLES
-do	
+	#
+	# Each executable has its own list of external libs to be linked with.
+	#
+	
 	LIB_ARGS="$(extract_make_var LIBS) $(extract_make_var ${executable}_LDADD)"
+	LIB_LIST="$(extract_internal_libs $LIB_ARGS)"
 
 	for lib in $(extract_external_libs $LIB_ARGS)
 	do
-		label=$(external_lib_label $lib)
-
-		if ! fgrep -q "find_library($label " CMakeLists.txt
-		then
-			cat <<-HEREDOC >> CMakeLists.txt
-				find_library($label $lib)
-			HEREDOC
-		fi
+		local label=$(external_lib_label $lib)
+		
+		LIB_LIST="$LIB_LIST \${$label}"
 	done
-done
-
-#
-# Finally, the executable build targets
-#
-
-for executable in $EXECUTABLES
-do
-	echo "Executable: $executable"
-
-	cat <<-HEREDOC >> CMakeLists.txt
+	
+	cat <<-HEREDOC
 
 		add_executable($executable)
 
@@ -433,32 +498,108 @@ do
 		    $executable
 		    PRIVATE
 		        $(extract_sources ${executable}_SOURCES)
+		        $(extract_headers ${executable}_SOURCES)
+		        $(extract_sources EXTRA_${executable}_SOURCES)
+		        $(extract_headers EXTRA_${executable}_SOURCES)
+		        $(extract_sources BUILT_SOURCES)
+		        $(extract_headers BUILT_SOURCES)
+		        $(extract_headers noinst_HEADERS)
 		    )
-	HEREDOC
-
-	#
-	# Each executable has its own list of external libs to be linked with.
-	#
-	
-	LIB_ARGS="$(extract_make_var LIBS) $(extract_make_var ${executable}_LDADD)"
-	LIB_LIST="$(extract_internal_libs $LIB_ARGS)"
-
-	for lib in $(extract_external_libs $LIB_ARGS)
-	do
-		label=$(external_lib_label $lib)
 		
-		LIB_LIST="$LIB_LIST \${$label}"
-	done
-
-	cat <<-HEREDOC >> CMakeLists.txt
-
 		target_link_libraries(
 		    $executable
 		    PRIVATE
 		    	$LIB_LIST
 		    )
 	HEREDOC
+}
+
+#
+# Filter the list of excutables to those in the Makefile (x64 is optional)
+#
+
+POSSIBLE_EMULATORS="x64 x64sc x128 x64dtv xscpu64 xvic xpet xplus4 xcbm2 xcbm5x0 c1541 vsid"
+EMULATORS=""
+
+for executable in $POSSIBLE_EMULATORS
+do
+    if ! grep -q "^$executable:" Makefile
+    then
+        echo "Executable $executable not configured"
+        continue
+    fi
+
+    EMULATORS="$EMULATORS $executable"
 done
+
+#
+# The src folder Makefile also defines all the non-tool executables and what they link to.
+#
+
+pushdq src
+
+#
+# Find all the libraries first
+#
+
+echo >> CMakeLists.txt
+
+for executable in $EMULATORS
+do	
+	LIB_ARGS="$(extract_make_var LIBS) $(extract_make_var ${executable}_LDADD)"
+
+	for lib in $(extract_external_libs $LIB_ARGS)
+	do
+		label=$(external_lib_label $lib)
+
+		if ! fgrep -q "find_library($label " CMakeLists.txt
+		then
+			cat <<-HEREDOC >> CMakeLists.txt
+				find_library($label $lib \${CMAKE_C_IMPLICIT_LINK_DIRECTORIES} $(extract_link_dirs))
+			HEREDOC
+		fi
+	done
+done
+
+#
+# Executable build targets
+#
+
+PARALLEL_JOBS=""
+
+for executable in $EMULATORS
+do
+	if $USE_PARALLEL; then
+		PARALLEL_JOBS="${PARALLEL_JOBS}cd $(pwd); >&2 echo \"Emulator: ${executable}\"; generate_executable_target ${executable}\n"
+	else
+		echo "Emulator: $executable"
+		generate_executable_target $executable >> CMakeLists.txt
+	fi
+done
+
+#
+# Tools, executable targets in src/tools/x with simpler linking
+#
+
+TOOLS="petcat cartconv"
+
+for executable in $TOOLS
+do
+	pushdq "tools/$executable"
+
+	if $USE_PARALLEL; then
+		PARALLEL_JOBS="${PARALLEL_JOBS}cd $(pwd); >&2 echo \"Tool: ${executable}\"; generate_executable_target ${executable} >> CMakeLists.txt\n"
+	else
+		echo "Tool: $executable"
+		generate_executable_target $executable >> CMakeLists.txt
+	fi
+
+	popdq
+done
+
+if $USE_PARALLEL; then
+	echo -e "$PARALLEL_JOBS" | parallel -j $HOW_PARALLEL --no-run-if-empty >> CMakeLists.txt
+fi
 
 popdq
 
@@ -475,8 +616,8 @@ HEREDOC
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
 	cat <<-HEREDOC >> CMakeLists.txt
-		set(CMAKE_OSX_SYSROOT "$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/")                       
-		set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment version")
+		set(CMAKE_OSX_SYSROOT "$(xcrun --show-sdk-path)")
+		set(CMAKE_OSX_DEPLOYMENT_TARGET "$(extract_macos_target_sdk_version)" CACHE STRING "Minimum OS X deployment version")
 		set(CMAKE_CXX_SOURCE_FILE_EXTENSIONS cc;cpp)
 		set(CMAKE_CXX_STANDARD 11)
 
@@ -496,3 +637,4 @@ else
 		add_subdirectory(src)
 	HEREDOC
 fi
+

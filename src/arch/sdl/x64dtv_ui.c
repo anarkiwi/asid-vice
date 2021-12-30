@@ -42,6 +42,7 @@
 #include "menu_help.h"
 #include "menu_jam.h"
 #include "menu_joyport.h"
+#include "menu_joystick.h"
 #include "menu_media.h"
 #include "menu_monitor.h"
 #include "menu_network.h"
@@ -54,6 +55,7 @@
 #include "menu_snapshot.h"
 #include "menu_sound.h"
 #include "menu_speed.h"
+#include "menu_userport.h"
 #include "menu_video.h"
 #include "ui.h"
 #include "uifonts.h"
@@ -221,7 +223,9 @@ int c64dtvui_init(void)
 
     sdl_ui_set_menu_params = c64dtvui_set_menu_params;
 
-    uijoyport_menu_create(1, 1, 1, 0, 0);
+    uijoyport_menu_create(1, 1, 1, 1, 1);
+    uijoystick_menu_create(1, 1, 1, 1, 1);
+    uiuserport_menu_create(0);
     uisampler_menu_create();
     uidrive_menu_create();
     uikeyboard_menu_create();
@@ -229,7 +233,7 @@ int c64dtvui_init(void)
     uimedia_menu_create();
 
     sdl_ui_set_main_menu(x64dtv_main_menu);
-    sdl_ui_vicii_font_init();
+    sdl_ui_font_init("chargen", 0, 0x800, 0);
     sdl_vkbd_set_vkbd(&vkbd_c64dtv);
 
 #ifdef HAVE_FFMPEG
@@ -244,6 +248,8 @@ void c64dtvui_shutdown(void)
     uikeyboard_menu_shutdown();
     uisid_menu_shutdown();
     uijoyport_menu_shutdown();
+    uijoystick_menu_shutdown();
+    uiuserport_menu_shutdown();
     uimedia_menu_shutdown();
 #ifdef SDL_DEBUG
     fprintf(stderr,"%s\n",__func__);
@@ -252,5 +258,5 @@ void c64dtvui_shutdown(void)
 #ifdef HAVE_FFMPEG
     sdl_menu_ffmpeg_shutdown();
 #endif
-    sdl_ui_vicii_font_shutdown();
+    sdl_ui_font_shutdown();
 }

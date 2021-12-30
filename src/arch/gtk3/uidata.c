@@ -5,8 +5,6 @@
  * handle binary resources in Gtk3 applications.
  *
  * \author  Bas Wassink <b.wassink@ziggo.nl>
- *
- * \note    WORK IN PROGRESS, leave this alone for now -- compyx
  */
 
 /*
@@ -40,6 +38,7 @@
 #include "debug_gtk3.h"
 #include "lib.h"
 #include "log.h"
+#include "sysfile.h"
 #include "util.h"
 
 #include "uidata.h"
@@ -53,28 +52,29 @@ static GResource *gresource = NULL;
 
 /** \brief  Intialize the GResource binary blob handling
  *
- * \return  bool
+ * \return  non-0 on success
  */
 int uidata_init(void)
 {
     GError *err = NULL;
 #ifdef HAVE_DEBUG_GTK3UI
+# if 0
     char **files;
     int i;
+# endif
 #endif
     char *path;
-    char *dir;
+    const char* filename = "vice.gresource";
 
-    /* try directory with VICE's data files */
-    dir = archdep_get_vice_datadir();
-    debug_gtk3("trying archdep_get_vice_datadir() %s/common", dir);
-    path = archdep_join_paths(dir, "common", "vice.gresource", NULL);
-    debug_gtk3("Loading gresource from '%s'\n", path);
-    lib_free(dir);
+    if (sysfile_locate(filename, "common", &path) < 0) {
+        log_error(LOG_ERR, "failed to find resource data '%s'.",
+                filename);
+        return 0;
+    }
 
     gresource = g_resource_load(path, &err);
     if (gresource == NULL && err != NULL) {
-        debug_gtk3("failed to load resource data '%s': %s.",
+        log_error(LOG_ERR, "failed to load resource data '%s': %s.",
                 path, err->message);
         g_clear_error(&err);
         lib_free(path);
@@ -85,6 +85,7 @@ int uidata_init(void)
 
     /* debugging: show files in the resource blob */
 #ifdef HAVE_DEBUG_GTK3UI
+# if 0
     files = g_resource_enumerate_children(
             gresource,
             UIDATA_ROOT_PATH,
@@ -99,6 +100,7 @@ int uidata_init(void)
     for (i = 0; files[i] != NULL; i++) {
         debug_gtk3("%d: %s.", i, files[i]);
     }
+# endif
 #endif
     return 1;
 }
@@ -108,7 +110,6 @@ int uidata_init(void)
  */
 void uidata_shutdown(void)
 {
-    debug_gtk3("freeing GResource data.");
     if (gresource != NULL) {
         g_free(gresource);
         gresource = NULL;
@@ -118,9 +119,9 @@ void uidata_shutdown(void)
 
 /** \brief  Get a pixbuf from the GResource blob
  *
- * \param   name    virtual path to the file
+ * \param[in]   name    virtual path to the file
  *
- * \return  pixbuf or `NULL` on error
+ * \return  GdkPixbuf or `NULL` on error
  */
 GdkPixbuf * uidata_get_pixbuf(const char *name)
 {
@@ -129,7 +130,6 @@ GdkPixbuf * uidata_get_pixbuf(const char *name)
     char *path;
 
     path = util_concat(UIDATA_ROOT_PATH, "/", name, NULL);
-    debug_gtk3("attempting to load resource '%s'.", path);
     buf = gdk_pixbuf_new_from_resource(path, &err);
     lib_free(path);
     if (err) {
@@ -141,18 +141,23 @@ GdkPixbuf * uidata_get_pixbuf(const char *name)
 
 /** \brief  Get a pixbuf from the GResource blob and scale it
  *
- * \param   name    virtual path to the file
+ * \param[in]   name                    path in gresource
+ * \param[in]   width                   width of rescaled pixbuf
+ * \param[in]   height                  height of rescaled pixbuf
+ * \param[in]   preserve_aspect_ratio   preserve aspect ratio
  *
  * \return  pixbuf or `NULL` on error
  */
-GdkPixbuf * uidata_get_pixbuf_at_scale(const char *name, int width, int height, gboolean preserve_aspect_ratio)
+GdkPixbuf * uidata_get_pixbuf_at_scale(const char *name,
+                                       int width,
+                                       int height,
+                                       gboolean preserve_aspect_ratio)
 {
     GdkPixbuf *buf;
     GError *err = NULL;
     char *path;
 
     path = util_concat(UIDATA_ROOT_PATH, "/", name, NULL);
-    debug_gtk3("attempting to load resource '%s'.", path);
     buf = gdk_pixbuf_new_from_resource_at_scale(path, width, height, preserve_aspect_ratio, &err);
     lib_free(path);
     if (err) {
@@ -193,23 +198,22 @@ GdkPixbufAnimation *uidata_get_pixbuf_animated(const char *name, gboolean loop)
 
 /** \brief  Get a bytes from the GResource blob
  *
- * \param   name    virtual path to the file
+ * \param[in]   name    path in gresource
  *
  * \return  GBytes* or `NULL` on error
  */
-GBytes * uidata_get_bytes(const char *name)
+GBytes *uidata_get_bytes(const char *name)
 {
     GBytes *bytes;
     GError *err = NULL;
     char *path;
 
     path = util_concat(UIDATA_ROOT_PATH, "/", name, NULL);
-    debug_gtk3("attempting to load resource '%s'.", path);
-    bytes = g_resource_lookup_data(gresource, path, G_RESOURCE_LOOKUP_FLAGS_NONE, &err);
+    bytes = g_resource_lookup_data(gresource, path,
+            G_RESOURCE_LOOKUP_FLAGS_NONE, &err);
     lib_free(path);
     if (bytes == NULL) {
-        debug_gtk3("failed: %s.", err->message);
-        /* TODO: log error */
+        log_error(LOG_ERR, "failed: %s.", err->message);
         g_clear_error(&err);
     }
     return bytes;

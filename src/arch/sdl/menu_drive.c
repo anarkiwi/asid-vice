@@ -150,9 +150,7 @@ static char *get_drive_type_string(int drive)
     }
 }
 
-UI_MENU_DEFINE_TOGGLE(DriveTrueEmulation)
 UI_MENU_DEFINE_TOGGLE(DriveSoundEmulation)
-UI_MENU_DEFINE_TOGGLE(VirtualDevices)
 UI_MENU_DEFINE_TOGGLE(FSDeviceLongNames)
 UI_MENU_DEFINE_TOGGLE(FSDeviceOverwrite)
 
@@ -482,11 +480,11 @@ static UI_MENU_CALLBACK(set_par_callback)
     current = drive_get_type_by_devnr(drive);
 
     if (activated) {
-        if (machine_class != VICE_MACHINE_VIC20 && drive_check_parallel_cable(current)) {
+        if (machine_class != VICE_MACHINE_VIC20 && machine_class != VICE_MACHINE_C64DTV && drive_check_parallel_cable(current)) {
             resources_set_int_sprintf("Drive%iParallelCable", type, drive);
         }
     } else {
-        if (machine_class == VICE_MACHINE_VIC20 || !drive_check_parallel_cable(current)) {
+        if (machine_class == VICE_MACHINE_VIC20 || machine_class == VICE_MACHINE_C64DTV || !drive_check_parallel_cable(current)) {
             return MENU_NOT_AVAILABLE_STRING;
         } else {
             resources_get_int_sprintf("Drive%iParallelCable", &par, drive);
@@ -540,46 +538,6 @@ UI_MENU_DEFINE_SLIDER(Drive10WobbleFrequency, 0, 10000)
 UI_MENU_DEFINE_SLIDER(Drive11WobbleFrequency, 0, 10000)
 
 extern ui_menu_entry_t reset_menu[];
-
-/* patch some things that are slightly different in the emulators */
-void uidrive_menu_create(void)
-{
-    int newend = 4;
-    int i, d0, d1;
-
-    if (machine_class == VICE_MACHINE_VIC20) {
-        newend = 1;
-    } else if (machine_class == VICE_MACHINE_PLUS4) {
-        newend = 2;
-    }
-    memset(&drive_8_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
-    memset(&drive_9_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
-    memset(&drive_10_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
-    memset(&drive_11_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
-
-    /* depending on the active drive type, enable the attach and detach
-       menu items in the drive menu */
-    for (i = 0; i < 4; i++) {
-        d0 = d1 = MENU_STATUS_INACTIVE;
-        if (drive_get_type_by_devnr(8 + i) != 0) {
-            d0 = MENU_STATUS_ACTIVE;
-            if (drive_is_dualdrive_by_devnr(8 + i)) {
-                d1 = MENU_STATUS_ACTIVE;
-            }
-        }
-        drive_menu[0 + (i * 2)].status = d0;
-        drive_menu[1 + (i * 2)].status = d1;
-        drive_menu[9 + (i * 2)].status = d0;
-        drive_menu[10 + (i * 2)].status = d1;
-
-        d0 = MENU_STATUS_INACTIVE;
-        if (drive_get_type_by_devnr(8 + i) == DRIVE_TYPE_CMDHD) {
-            d0 = MENU_STATUS_ACTIVE;
-        }
-        reset_menu[7 + (i * 2) + 0].status = d0;
-        reset_menu[7 + (i * 2) + 1].status = d0;
-    }
-}
 
 static UI_MENU_CALLBACK(set_expand_callback)
 {
@@ -752,7 +710,7 @@ static UI_MENU_CALLBACK(create_disk_image_callback)
                     return NULL;
                 }
                 /* convert to PETSCII */
-                charset_petconvstring((uint8_t *)format_name, 0);
+                charset_petconvstring((uint8_t *)format_name, CONVERT_TO_PETSCII);
 
                 /* try to create the new image */
                 if (vdrive_internal_create_format_disk_image(name, format_name,
@@ -782,6 +740,10 @@ static const ui_menu_entry_t create_disk_image_type_menu[] = {
       MENU_ENTRY_RESOURCE_RADIO,
       set_disk_type_callback,
       (ui_callback_data_t)DISK_IMAGE_TYPE_D64 },
+    { "D67",
+      MENU_ENTRY_RESOURCE_RADIO,
+      set_disk_type_callback,
+      (ui_callback_data_t)DISK_IMAGE_TYPE_D67 },
     { "D71",
       MENU_ENTRY_RESOURCE_RADIO,
       set_disk_type_callback,
@@ -1030,8 +992,19 @@ UI_MENU_DEFINE_TOGGLE(AttachDevice9Readonly)
 UI_MENU_DEFINE_TOGGLE(AttachDevice10Readonly)
 UI_MENU_DEFINE_TOGGLE(AttachDevice11Readonly)
 
+UI_MENU_DEFINE_TOGGLE(Drive8TrueEmulation)
+UI_MENU_DEFINE_TOGGLE(Drive9TrueEmulation)
+UI_MENU_DEFINE_TOGGLE(Drive10TrueEmulation)
+UI_MENU_DEFINE_TOGGLE(Drive11TrueEmulation)
+
+UI_MENU_DEFINE_TOGGLE(VirtualDevice8)
+UI_MENU_DEFINE_TOGGLE(VirtualDevice9)
+UI_MENU_DEFINE_TOGGLE(VirtualDevice10)
+UI_MENU_DEFINE_TOGGLE(VirtualDevice11)
+
+/* CAUTION: the position of the menu items is hardcoded in uidrive_menu_create() */
 #define DRIVE_MENU(x)                                           \
-    static const ui_menu_entry_t drive_##x##_menu[] = {         \
+    static ui_menu_entry_t drive_##x##_menu[] = {               \
         { "Drive " #x " type",                                  \
           MENU_ENTRY_SUBMENU,                                   \
           drive_##x##_show_type_callback,                       \
@@ -1081,6 +1054,15 @@ UI_MENU_DEFINE_TOGGLE(AttachDevice11Readonly)
         { "Save Drive " #x" FD2000/4000 RTC data",              \
           MENU_ENTRY_RESOURCE_TOGGLE,                           \
           toggle_Drive##x##RTCSave_callback,                    \
+          NULL },                                               \
+        SDL_MENU_ITEM_SEPARATOR,                                \
+        { "Drive " #x" True Drive Emulation",                   \
+          MENU_ENTRY_RESOURCE_TOGGLE,                           \
+          toggle_Drive##x##TrueEmulation_callback,              \
+          NULL },                                               \
+        { "Drive " #x" Virtual Device",                         \
+          MENU_ENTRY_RESOURCE_TOGGLE,                           \
+          toggle_VirtualDevice##x##_callback,                   \
           NULL },                                               \
         SDL_MENU_LIST_END                                       \
     };
@@ -1328,11 +1310,6 @@ ui_menu_entry_t drive_menu[] = {
       submenu_callback,
       (ui_callback_data_t)drive_11_menu },
     SDL_MENU_ITEM_SEPARATOR,
-    { "True drive emulation",
-      MENU_ENTRY_RESOURCE_TOGGLE,
-      toggle_DriveTrueEmulation_callback,
-      NULL },
-    SDL_MENU_ITEM_SEPARATOR,
     { "Drive sound emulation",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_DriveSoundEmulation_callback,
@@ -1342,10 +1319,6 @@ ui_menu_entry_t drive_menu[] = {
       custom_drive_volume_callback,
       NULL },
     SDL_MENU_ITEM_SEPARATOR,
-    { "Virtual device traps",
-      MENU_ENTRY_RESOURCE_TOGGLE,
-      toggle_VirtualDevices_callback,
-      NULL },
     { "FS-Device uses long names",
       MENU_ENTRY_RESOURCE_TOGGLE,
       toggle_FSDeviceLongNames_callback,
@@ -1365,3 +1338,50 @@ ui_menu_entry_t drive_menu[] = {
       (ui_callback_data_t)fliplist_menu },
     SDL_MENU_LIST_END
 };
+
+/* patch some things that are slightly different in the emulators */
+void uidrive_menu_create(void)
+{
+    int newend = 4;
+    int i, d0, d1;
+
+    if (machine_class == VICE_MACHINE_VIC20 || machine_class == VICE_MACHINE_C64DTV) {
+        newend = 1;
+    } else if (machine_class == VICE_MACHINE_PLUS4) {
+        newend = 2;
+    }
+    memset(&drive_8_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
+    memset(&drive_9_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
+    memset(&drive_10_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
+    memset(&drive_11_parallel_menu[newend], 0, sizeof(ui_menu_entry_t));
+
+    if (machine_class == VICE_MACHINE_CBM6x0 || machine_class == VICE_MACHINE_CBM5x0) {
+        memset(&drive_8_menu[12], 0, sizeof(ui_menu_entry_t));
+        memset(&drive_9_menu[12], 0, sizeof(ui_menu_entry_t));
+        memset(&drive_10_menu[12], 0, sizeof(ui_menu_entry_t));
+        memset(&drive_11_menu[12], 0, sizeof(ui_menu_entry_t));
+    }
+
+    /* depending on the active drive type, enable the attach and detach
+       menu items in the drive menu */
+    for (i = 0; i < 4; i++) {
+        d0 = d1 = MENU_STATUS_INACTIVE;
+        if (drive_get_type_by_devnr(8 + i) != 0) {
+            d0 = MENU_STATUS_ACTIVE;
+            if (drive_is_dualdrive_by_devnr(8 + i)) {
+                d1 = MENU_STATUS_ACTIVE;
+            }
+        }
+        drive_menu[0 + (i * 2)].status = d0;
+        drive_menu[1 + (i * 2)].status = d1;
+        drive_menu[9 + (i * 2)].status = d0;
+        drive_menu[10 + (i * 2)].status = d1;
+
+        d0 = MENU_STATUS_INACTIVE;
+        if (drive_get_type_by_devnr(8 + i) == DRIVE_TYPE_CMDHD) {
+            d0 = MENU_STATUS_ACTIVE;
+        }
+        reset_menu[7 + (i * 2) + 0].status = d0;
+        reset_menu[7 + (i * 2) + 1].status = d0;
+    }
+}

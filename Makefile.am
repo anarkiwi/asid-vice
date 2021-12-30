@@ -37,6 +37,7 @@ endif
 
 
 .PHONY: vsid x64 x64sc x128 x64dtv xvic xpet xplus4 xcbm2 xcbm5x0 xscpu64 c1541 petcat cartconv
+
 vsid:
 	(cd src; $(MAKE) vsid-all)
 
@@ -76,19 +77,10 @@ c1541:
 	(cd src; $(MAKE) c1541-all)
 
 petcat:
-	(cd src; $(MAKE) petcat-all)
+	(cd src/tools/petcat; $(MAKE))
 
 cartconv:
-	(cd src; $(MAKE) cartconv)
-
-ffmpeglibs:
-	(cd src/lib; $(MAKE) ffmpeglibs)
-
-ffmpeglibs-install:
-	(cd src/lib; $(MAKE) ffmpeglibs-install)
-
-ffmpeglibs-clean:
-	(cd src/lib; $(MAKE) clean)
+	(cd src/tools/cartconv; $(MAKE))
 
 install: installvice
 
@@ -155,6 +147,26 @@ bindistzip:
 bindist7zip:
 	$(SHELL) @ARCH_SRC_DIR@/make-bindist_win32.sh $(STRIP) $(VICE_VERSION) @ENABLE_ARCH@ 7zip $(X64_INCLUDED) $(top_srcdir) $(top_builddir) $(host_cpu) $(SDL_VERSION) "$(SDLCONFIG)" $(CROSS) $(objdump) $(CC) $(HTML_DOCS)
 
+
+# New way of creating bindists for Windows (testing):
+bindist-new:
+	$(SHELL) $(top_srcdir)/src/arch/shared/make_bindist_win32.sh \
+		--verbose \
+		--ui sdl2 \
+		--compiler $(CC) \
+		--cross $(CROSS) \
+		--cpu $(host_cpu) \
+		--enable-arch @ENABLE_ARCH@ \
+		--enable-x64 $(X64_INCLUDED) \
+		--html-docs $(HTML_DOCS) \
+		--objdump "$(objdump)" \
+		--sdl-config "$(SDLCONFIG)" \
+		--strip "$(STRIP)" \
+		--topbuilddir $(top_builddir) \
+		--topsrcdir $(top_srcdir) \
+		--vice-version $(VICE_VERSION) \
+		--zip-tool 7zip
+
 endif
 endif
 endif
@@ -164,18 +176,8 @@ bindist:
 	@echo this platform doesn\'t use \"make bindist\", use \"make install\" instead
 endif
 
-if HAVE_SHARED_FFMPEG
-EXTRA_INSTALLS = ffmpeglibs-install
-EXTRA_CLEANS = ffmpeglibs-clean
-else
-if HAVE_STATIC_FFMPEG
-EXTRA_INSTALLS =
-EXTRA_CLEANS = ffmpeglibs-clean
-else
 EXTRA_INSTALLS =
 EXTRA_CLEANS =
-endif
-endif
 
 if MAKE_INSTALL
 installvice: install-recursive $(EXTRA_INSTALLS)

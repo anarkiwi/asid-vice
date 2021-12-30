@@ -34,12 +34,12 @@
 
 #include "vice_gtk3.h"
 #include "debug_gtk3.h"
-#include "machine.h"
-#include "lib.h"
-#include "util.h"
-
-
 #include "hvsc.h"
+#include "lib.h"
+#include "log.h"
+#include "machine.h"
+#include "mainlock.h"
+#include "util.h"
 #include "vsidcontrolwidget.h"
 
 #include "vsidtuneinfowidget.h"
@@ -48,11 +48,11 @@
 /** \brief  Rows in the driver info grid
  */
 enum {
-    DRV_INFO_SID_IMAGE = 0,
-    DRV_INFO_DRIVER_ADDR,
-    DRV_INFO_LOAD_ADDR,
-    DRV_INFO_INIT_ADDR,
-    DRV_INFO_PLAY_ADDR,
+    DRV_INFO_SID_IMAGE = 0, /**< SID file */
+    DRV_INFO_DRIVER_ADDR,   /**< Address of the driver */
+    DRV_INFO_LOAD_ADDR,     /**< SID load address */
+    DRV_INFO_INIT_ADDR,     /**< SID init address */
+    DRV_INFO_PLAY_ADDR,     /**< SID play address */
 };
 
 
@@ -72,7 +72,11 @@ static const char *driver_info_labels[] = {
  *
  * These need to be kept track of, so the SID image calculation works
  */
+
+/** \brief  Load address of the SID */
 static uint16_t load_addr;
+
+/** \brief  Size of the SID */
 static uint16_t data_size;
 
 /*
@@ -81,20 +85,46 @@ static uint16_t data_size;
  * These need to be kept track of, so the "X of Y (default: Z)" tune info
  * widget gets rendered properly
  */
+
+/** \brief  Number of subtunes */
 static int tune_count;
+
+/** \brief  Currently selected subtune */
 static int tune_current;
+
+/** \brief  Default subtune */
 static int tune_default;
 
 /* widget references */
+
+/** \brief  Main grid */
 static GtkWidget *tune_info_grid;
+
+/** \brief  Name entry */
 static GtkWidget *name_widget;
+
+/** \brief  Author entry */
 static GtkWidget *author_widget;
+
+/** \brief  Copyright entry */
 static GtkWidget *copyright_widget;
+
+/** \brief  Tune number label */
 static GtkWidget *tune_num_widget;
+
+/** \brief  SID model label */
 static GtkWidget *model_widget;
+
+/** \brief  IRQ source label */
 static GtkWidget *irq_widget;
+
+/** \brief  Clock speed label */
 static GtkWidget *sync_widget;
+
+/** \brief  Runtime label */
 static GtkWidget *runtime_widget;
+
+/** \brief  Driver info grid */
 static GtkWidget *driver_info_widget;
 
 #if 0
@@ -213,17 +243,27 @@ static GtkWidget *create_tune_num_widget(void)
  */
 static void update_tune_num_widget(void)
 {
-    gchar buffer[256];
+    /* avoid trying to update the widget while the UI isn't up
+     * (happens when running vsid from the command line with an argument)
+     *
+     * FIXME:   temporary workaround, the proper solution is to make sure the
+     *          UI is up before loading a PSID/MUS file.
+     */
+    if (tune_num_widget != NULL) {
+        gchar buffer[256];
 
-    g_snprintf(buffer, 256,
-            "%d of %d (default: %d)",
-            tune_current, tune_count, tune_default);
+        g_snprintf(buffer, 256,
+                "%d of %d (default: %d)",
+                tune_current, tune_count, tune_default);
 
-    gtk_label_set_text(GTK_LABEL(tune_num_widget), buffer);
+        gtk_label_set_text(GTK_LABEL(tune_num_widget), buffer);
+    }
 }
 
 
 /** \brief  Create IRQ widget
+ *
+ * \return  GtkLabel
  */
 static GtkWidget *create_irq_widget(void)
 {
@@ -246,6 +286,8 @@ static void update_irq_widget(const char *irq)
 
 
 /** \brief  Create SID model widget
+ *
+ * \return  GtkLabel
  */
 static GtkWidget *create_model_widget(void)
 {
@@ -273,11 +315,16 @@ static void update_model_widget(int model)
 
 /** \brief  Create run time widget
  *
- * Creates a widget which displays hours, minutes and seconds
+ * Creates a widget which displays hours, minutes and seconds.
+ *
+ * \return  GtkLabel
  */
 static GtkWidget *create_runtime_widget(void)
 {
-    GtkWidget *label = gtk_label_new("0:00:00.000 / 0:00:00.000");
+    GtkWidget *label;
+
+    label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(label), "<tt>0:00:00.000 / 0:00:00.000</tt>");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     return label;
 }
@@ -314,16 +361,21 @@ static void update_runtime_widget(unsigned int dsec)
         unsigned int th = (unsigned int)(total / 1000 / 60 / 60);
 
 
-        g_snprintf(buffer, 256, "%u:%02u:%02u.%03u / %u:%02u:%02u.%03u",
+        g_snprintf(buffer, sizeof(buffer),
+                "<tt>%u:%02u:%02u.%03u / %u:%02u:%02u.%03u</tt>",
                 h, m, s, f, th, tm, ts, tf);
     } else {
-        g_snprintf(buffer, 256, "%u:%02u:%02u.%03u", h, m, s, f);
+        g_snprintf(buffer, sizeof(buffer),
+                "<tt>%u:%02u:%02u.%03u</tt>",
+                h, m, s, f);
     }
-    gtk_label_set_text(GTK_LABEL(runtime_widget), buffer);
+    gtk_label_set_markup(GTK_LABEL(runtime_widget), buffer);
 }
 
 
 /** \brief  Create sync widget
+ *
+ * \return  GtkLabel
  */
 static GtkWidget *create_sync_widget(void)
 {
@@ -350,6 +402,8 @@ static void update_sync_widget(int sync)
 
 
 /** \brief  Create driver information widget
+ *
+ * \return  GtkGrid
  */
 static GtkWidget *create_driver_info_widget(void)
 {
@@ -491,8 +545,8 @@ GtkWidget *vsid_tune_info_widget_create(void)
     gtk_grid_attach(GTK_GRID(grid), author_widget, 1, row, 1, 1);
     row++;
 
-    /* copyright */
-    label = create_left_aligned_label("(C):");
+    /* copyright (now called "released" according to HVSC people */
+    label = create_left_aligned_label("Released:");
     copyright_widget = create_readonly_entry();
     gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), copyright_widget, 1, row, 1, 1);
@@ -565,6 +619,8 @@ void vsid_tune_info_widget_set_name(const char *name)
 {
     char *utf8;
 
+    mainlock_assert_is_not_vice_thread();
+
     utf8 = convert_to_utf8(name);
     gtk_label_set_text(GTK_LABEL(name_widget), utf8);
     g_free(utf8);
@@ -578,6 +634,8 @@ void vsid_tune_info_widget_set_name(const char *name)
 void vsid_tune_info_widget_set_author(const char *name)
 {
     char *utf8;
+
+    mainlock_assert_is_not_vice_thread();
 
     utf8 = convert_to_utf8(name);
     gtk_label_set_text(GTK_LABEL(author_widget), utf8);
@@ -593,6 +651,8 @@ void vsid_tune_info_widget_set_copyright(const char *name)
 {
     char *utf8;
 
+    mainlock_assert_is_not_vice_thread();
+
     utf8 = convert_to_utf8(name);
     gtk_label_set_text(GTK_LABEL(copyright_widget), utf8);
     g_free(utf8);
@@ -605,6 +665,8 @@ void vsid_tune_info_widget_set_copyright(const char *name)
  */
 void vsid_tune_info_widget_set_tune_count(int num)
 {
+    mainlock_assert_is_not_vice_thread();
+
     tune_count = num;
     update_tune_num_widget();
 }
@@ -616,6 +678,8 @@ void vsid_tune_info_widget_set_tune_count(int num)
  */
 void vsid_tune_info_widget_set_tune_default(int num)
 {
+    mainlock_assert_is_not_vice_thread();
+
     tune_default = num;
     update_tune_num_widget();
 }
@@ -627,6 +691,8 @@ void vsid_tune_info_widget_set_tune_default(int num)
  */
 void vsid_tune_info_widget_set_tune_current(int num)
 {
+    mainlock_assert_is_not_vice_thread();
+
     tune_current = num;
     update_tune_num_widget();
 }
@@ -638,17 +704,8 @@ void vsid_tune_info_widget_set_tune_current(int num)
  */
 void vsid_tune_info_widget_set_model(int model)
 {
+    mainlock_assert_is_not_vice_thread();
     update_model_widget(model);
-}
-
-
-/** \brief  Set sync factor
- *
- * \param[in]   sync    sync factor (0 = 60Hz/NTSC, 1 = 50Hz/PAL)
- */
-void vsid_tune_info_widget_set_sync(int sync)
-{
-    update_sync_widget(sync);
 }
 
 
@@ -658,7 +715,19 @@ void vsid_tune_info_widget_set_sync(int sync)
  */
 void vsid_tune_info_widget_set_irq(const char *irq)
 {
+    mainlock_assert_is_not_vice_thread();
     update_irq_widget(irq);
+}
+
+
+/** \brief  Set sync factor
+ *
+ * \param[in]   sync    sync factor (0 = 60Hz/NTSC, 1 = 50Hz/PAL)
+ */
+void vsid_tune_info_widget_set_sync(int sync)
+{
+    mainlock_assert_is_not_vice_thread();
+    update_sync_widget(sync);
 }
 
 
@@ -683,6 +752,7 @@ void vsid_tune_info_widget_set_time(unsigned int dsec)
 void vsid_tune_info_widget_set_driver(const char *text)
 {
     /* NOP: replaced with separate driver parameter funcions */
+    debug_gtk3("Deprecated! use set_driver_addr(), set_load_addr() etc.");
 }
 
 
@@ -692,6 +762,7 @@ void vsid_tune_info_widget_set_driver(const char *text)
  */
 void vsid_tune_info_widget_set_driver_addr(uint16_t addr)
 {
+    mainlock_assert_is_not_vice_thread();
     driver_info_set_addr(DRV_INFO_DRIVER_ADDR, addr);
 }
 
@@ -702,6 +773,8 @@ void vsid_tune_info_widget_set_driver_addr(uint16_t addr)
  */
 void vsid_tune_info_widget_set_load_addr(uint16_t addr)
 {
+    mainlock_assert_is_not_vice_thread();
+
     load_addr = addr;   /* keep for calculating SID memory range */
     driver_info_set_addr(DRV_INFO_LOAD_ADDR, addr);
 
@@ -721,6 +794,7 @@ void vsid_tune_info_widget_set_load_addr(uint16_t addr)
  */
 void vsid_tune_info_widget_set_init_addr(uint16_t addr)
 {
+    mainlock_assert_is_not_vice_thread();
     driver_info_set_addr(DRV_INFO_INIT_ADDR, addr);
 }
 
@@ -731,6 +805,7 @@ void vsid_tune_info_widget_set_init_addr(uint16_t addr)
  */
 void vsid_tune_info_widget_set_play_addr(uint16_t addr)
 {
+    mainlock_assert_is_not_vice_thread();
     driver_info_set_addr(DRV_INFO_PLAY_ADDR, addr);
 }
 
@@ -741,6 +816,7 @@ void vsid_tune_info_widget_set_play_addr(uint16_t addr)
  */
 void vsid_tune_info_widget_set_data_size(uint16_t size)
 {
+    mainlock_assert_is_not_vice_thread();
     data_size = size;   /* keep for calculating SID memory range */
     driver_info_set_image();
 }
@@ -750,59 +826,32 @@ void vsid_tune_info_widget_set_data_size(uint16_t size)
  * For now this is more of a debugging/test function, the idea is to allow
  * tunes to automatically skip to the next song when their time is up.
  *
- * \param[in]   SID file
+ * \param[in]   psid    SID file
  *
- * \return  bool
+ * \return  non-0 if a songlenghts entry was found
  */
 int vsid_tune_info_widget_set_song_lengths(const char *psid)
 {
     int num;
-#if 0
-    int i;
-    char **lstr;
-    char *display;
-#endif
-    debug_gtk3("trying to get song lengths for '%s'.", psid);
 
     num = hvsc_sldb_get_lengths(psid, &song_lengths);
     if (num < 0) {
-        debug_gtk3("failed to get song lengths.");
-#if 0
-        gtk_label_set_text(GTK_LABEL(sldb_widget), "Failed to get SLDB info");
-#endif
+        log_warning(LOG_DEFAULT, "failed to get song lengths.");
         return 0;
     }
     song_lengths_count = num;
     return 1;
-#if 0
-    /* alloc memory for strings */
-    lstr = lib_malloc((size_t)(num + 1) * sizeof *lstr);
-    /* convert each timestamp to string */
-    for (i = 0; i < num; i++) {
-        lstr[i] = lib_msprintf("#%d: %ld:%02ld",
-                i + 1,
-                song_lengths[i] / 60, song_lengths[i] % 60);
-    }
-    lstr[i] = NULL; /* terminate list */
-
-    /* join strings */
-
-    /* Here be dragons: the cast should not be required: */
-    display = util_strjoin((const char **)lstr, ", ");
-    if (sldb_widget != NULL) {
-        gtk_label_set_text(GTK_LABEL(sldb_widget), display);
-    }
-
-    lib_free(display);
-    for (i = 0; i < num; i++) {
-        lib_free(lstr[i]);
-    }
-    lib_free(lstr);
-    return 1;
-#endif
 }
 
 
+/** \brief  Retrieve songlengths
+ *
+ * Get the list of subtunes lengths in seconds.
+ *
+ * \param[out]  dest    object to store pointer to list
+ *
+ * \return  number of items in the list
+ */
 int vsid_tune_info_widget_get_song_lengths(long **dest)
 {
     *dest = song_lengths;

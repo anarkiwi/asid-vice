@@ -137,9 +137,13 @@ bool archdep_get_runtime_info(archdep_runtime_info_t *info)
     }
 #elif defined(ARCHDEP_OS_WINDOWS)
 
-    GetVersionEx(&version);
+    version.dwOSVersionInfoSize = sizeof(version);
+    if (!GetVersionEx(&version)) {
+        return false;
+    }
 
-    name = "Who cares";
+    name = "Unknown";
+
     if (IsWindows10OrGreater()) {
         /* yes, not correct, fuck it */
         name = "10";
@@ -151,12 +155,8 @@ bool archdep_get_runtime_info(archdep_runtime_info_t *info)
         name = "7SP1";
     } else if (IsWindows7OrGreater()) {
         name = "7";
-    } else {
-        name = "Unknown";
     }
 
-
-    
     snprintf(info->os_name, ARCHDEP_RUNTIME_STRMAX - 1U, "Windows %s", name);
     snprintf(info->os_release, ARCHDEP_RUNTIME_STRMAX -1U, "%s",
             version.szCSDVersion);

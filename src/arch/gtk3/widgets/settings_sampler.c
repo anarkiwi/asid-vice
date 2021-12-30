@@ -72,7 +72,6 @@ static void on_device_changed(GtkComboBoxText *combo, gpointer user_data)
 {
     int index = gtk_combo_box_get_active(GTK_COMBO_BOX(combo));
 
-    debug_gtk3("setting SamplerDevice to %d.", index);
     resources_set_int("SamplerDevice", index);
 
     /* this assumes the "media file input" is always first in the list */
@@ -90,7 +89,6 @@ static void on_gain_changed(GtkScale *scale, gpointer user_data)
 {
     int value = (int)gtk_range_get_value(GTK_RANGE(scale));
 
-    debug_gtk3("setting SamplerGain to %d.", value);
     resources_set_int("SamplerGain", value);
 }
 
@@ -105,11 +103,18 @@ static void on_entry_changed(GtkEntry *entry, gpointer user_data)
     const char *text;
 
     text = gtk_entry_get_text(entry);
-    debug_gtk3("setting SampleName to '%s'.", text);
     resources_set_string("SampleName", text);
 }
 
 
+/** \brief  Callback for the file selection dialog
+ *
+ * \param[in]       dialog      file selection dialog (unused)
+ * \param[in,out]   filename    sampler input file
+ * \param[in]       data        extra event data (unused)
+ *
+ * \todo    Replace with resourcebrowser widget
+ */
 static void browse_filename_callback(GtkDialog *dialog,
                                      gchar *filename,
                                      gpointer data)
@@ -125,14 +130,19 @@ static void browse_filename_callback(GtkDialog *dialog,
  *
  * \param[in]   widget      browse button
  * \param[in]   user_data   extra data (unused)
+ *
+ * \todo    Replace with resourcebrowser widget
  */
 static void on_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
-    vice_gtk3_open_file_dialog(
+    GtkWidget *dialog;
+
+    dialog = vice_gtk3_open_file_dialog(
             "Select input file",
             NULL, NULL, NULL,
             browse_filename_callback,
             NULL);
+    gtk_widget_show(dialog);
 }
 
 
@@ -220,7 +230,6 @@ static GtkWidget *create_input_entry(void)
     if (text != NULL) {
         gtk_entry_set_text(GTK_ENTRY(entry), text);
     }
-
     g_signal_connect(entry, "changed", G_CALLBACK(on_entry_changed), NULL);
     return entry;
 }
@@ -244,7 +253,7 @@ static GtkWidget *create_input_button(void)
  *
  * \param[in]   func    pointer to function to retrieve devices list
  */
-void settings_sampler_set_devices_getter(sampler_device_t *(func)(void))
+void settings_sampler_set_devices_getter(sampler_device_t *(*func)(void))
 {
     devices_getter = func;
 }
@@ -255,6 +264,8 @@ void settings_sampler_set_devices_getter(sampler_device_t *(func)(void))
  * \param[in]   parent  parent widget
  *
  * \return  GtkGrid
+ *
+ * \todo    Use resourcebrowser to control the "SampleFile" resource
  */
 GtkWidget *settings_sampler_widget_create(GtkWidget *parent)
 {

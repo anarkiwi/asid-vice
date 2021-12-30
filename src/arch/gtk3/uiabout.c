@@ -51,14 +51,6 @@
  */
 #define VERSION_STRING_MAX 8192
 
-/** \brief  Custom response ID's for the dialog
- */
-enum {
-    RESPONSE_RUNTIME = 1,   /**< response ID for 'Runtime' button */
-    RESPONSE_COMPILE_TIME   /**< response ID for 'Compile time' button */
-};
-
-
 
 /** \brief  List of current team members
  *
@@ -142,14 +134,6 @@ static void about_response_callback(GtkWidget *widget, gint response_id,
         case GTK_RESPONSE_DELETE_EVENT:
             gtk_widget_destroy(widget);
             break;
-        case RESPONSE_RUNTIME:
-            debug_gtk3("Got RUNTIME! (TODO)");
-            break;
-#if 0
-        case RESPONSE_COMPILE_TIME:
-            debug_gtk3("Got COMPILE TIME! (TODO)");
-            break;
-#endif
         default:
             debug_gtk3("Warning: Unsupported response ID %d", response_id);
             break;
@@ -172,7 +156,6 @@ gboolean ui_about_dialog_callback(GtkWidget *widget, gpointer user_data)
 
     archdep_runtime_info_t runtime_info;
 
-
     /* set toplevel window, Gtk doesn't like dialogs without parents */
     gtk_window_set_transient_for(GTK_WINDOW(about), ui_get_active_window());
 
@@ -184,19 +167,23 @@ gboolean ui_about_dialog_callback(GtkWidget *widget, gpointer user_data)
 
     /* set version string */
 #ifdef USE_SVN_REVISION
-    g_snprintf(version, VERSION_STRING_MAX,
-            "%s r%s (GTK3 %d.%d.%d, GLib %d.%d.%d)",
+    g_snprintf(version, sizeof(version),
+            "%s r%s\n(GTK3 %d.%d.%d, GLib %d.%d.%d, Cairo %s, Pango %s)",
             VERSION, VICE_SVN_REV_STRING,
             GTK_MAJOR_VERSION, GTK_MINOR_VERSION, GTK_MICRO_VERSION,
-            GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION);
+            GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION,
+            cairo_version_string(),
+            pango_version_string());
 #else
-    g_snprintf(version, VERSION_STRING_MAX,
-            "%s (GTK3 %d.%d.%d, GLib %d.%d.%d)",
+    g_snprintf(version, sizeof(version),
+            "%s\n(GTK3 %d.%d.%d, GLib %d.%d.%d, Cairo %s, Pango %s)",
             VERSION,
             GTK_MAJOR_VERSION, GTK_MINOR_VERSION, GTK_MICRO_VERSION,
-            GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION);
+            GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION,
+            cairo_version_string(),
+            pango_version_string());
 #endif
-
+#undef VICE_VERSION_STRING
     if (archdep_get_runtime_info(&runtime_info)) {
         size_t v = strlen(version);
         g_snprintf(version + v, VERSION_STRING_MAX - v - 1UL,
@@ -238,16 +225,14 @@ gboolean ui_about_dialog_callback(GtkWidget *widget, gpointer user_data)
      *          so altering this file by hand won't be required anymore.
      */
     gtk_about_dialog_set_copyright(GTK_ABOUT_DIALOG(about),
-            "Copyright 1996-2020, VICE team");
+            "Copyright 1996-2021, VICE team");
 
     /* set logo */
     if (logo != NULL) {
         gtk_about_dialog_set_logo(GTK_ABOUT_DIALOG(about), logo);
         g_object_unref(logo);
     }
-#if 0
-    gtk_dialog_add_button(GTK_DIALOG(about), "Runtime info", RESPONSE_RUNTIME);
-#endif
+
     /*
      * hook up event handlers
      */

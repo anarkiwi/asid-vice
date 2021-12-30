@@ -42,6 +42,7 @@
 #include "archdep.h"
 #include "debug_gtk3.h"
 #include "findpath.h"
+#include "hotkeys.h"
 #include "ioutil.h"
 #include "lib.h"
 #include "log.h"
@@ -78,6 +79,7 @@ static char *argv0 = NULL;
 int archdep_init(int *argc, char **argv)
 {
 #ifdef HAVE_DEBUG_GTK3UI
+#if 0
     const char *prg_name;
     char *cfg_path;
     char *cache_path;
@@ -91,6 +93,7 @@ int archdep_init(int *argc, char **argv)
     char *xdg_data;
 # endif
 #endif
+#endif
     argv0 = lib_strdup(argv[0]);
 
     /* set argv0 for program_name()/boot_path() calls (yes, not ideal) */
@@ -99,6 +102,7 @@ int archdep_init(int *argc, char **argv)
     archdep_create_user_cache_dir();
     archdep_create_user_config_dir();
 
+#if 0
 #ifdef HAVE_DEBUG_GTK3UI
     /* sanity checks, to remove later: */
     prg_name = archdep_program_name();
@@ -141,11 +145,12 @@ int archdep_init(int *argc, char **argv)
     lib_free(datadir);
     lib_free(docsdir);
 #endif
-
+#endif
     /* needed for early log control (parses for -silent/-verbose) */
     log_verbose_init(*argc, argv);
-
+#if 0
     debug_gtk3("MSYSTEM = '%s'", getenv("MSYSTEM"));
+#endif
 
     return 0;
 }
@@ -180,4 +185,3 @@ void archdep_shutdown(void)
     archdep_network_shutdown();
 #endif
 }
-

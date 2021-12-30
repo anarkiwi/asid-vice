@@ -11,7 +11,7 @@
  * $VICERES RAMInitPatternInvert        all
  * $VICERES RAMInitValueOffset          all
  * $VICERES RAMInitPatternInvertValue   all
- * $VICERES RAMInitStartRandom          all 
+ * $VICERES RAMInitStartRandom          all
  * $VICERES RAMInitRepeatRandom         all
  * $VICERES RAMInitRandomChance         all
  */
@@ -51,6 +51,30 @@
 #include "settings_ramreset.h"
 
 
+/** \brief  Number of bytes to show for the preview
+ */
+#define PREVIEWPATTERNBYTES 0x10000
+
+/** \brief  Size of the text buffer for the preview
+ */
+#define PREVIEWTEXTBYTES    (PREVIEWPATTERNBYTES * 4)
+
+
+/** \brief  CSS for the preview of the pattern
+ *
+ * Since Gtk's CSS doesn't allow using colors from the current theme, we make
+ * the widget green text on black, like old terminals.
+ * That avoids making the widget look odd with themes other than Adwaita.
+ */
+#define PREVIEW_CSS \
+    "label {\n" \
+    "    font-family: \"Monospace\";\n" \
+    "    background-color: black;\n" \
+    "    color: limegreen;\n" \
+    "}\n"
+
+
+
 /** \brief  List of powers of two used for the widgets
  *
  * Yes, this looks silly, but allows me to use vice-gtk3 widgets.
@@ -64,21 +88,23 @@ static const vice_gtk3_combo_entry_int_t powers_of_two[] = {
     { "32768 bytes", 32768 }, { NULL, -1 }
 };
 
-#define PREVIEWPATTERNBYTES 0x10000
-#define PREVIEWTEXTBYTES    (PREVIEWPATTERNBYTES * 4)
 
 
-/** \brief  Handler for the 'value changed' event of the widgets in this dialog
+/** \brief  Handler for the 'value-changed' event of the widgets in this dialog
  *
- * Updates the preview text widget
+ * Updates the preview widget.
+ *
+ * \param[in]   widget  widget triggering the event (unused)
+ * \param[in]   data    label for the preview
  */
 static void on_value_changed(GtkWidget *widget, gpointer data)
 {
     char printbuffer[PREVIEWTEXTBYTES];
 
     ram_init_print_pattern(printbuffer, PREVIEWPATTERNBYTES, "\n");
-    gtk_text_buffer_set_text (GTK_TEXT_BUFFER(data), printbuffer, -1);
+    gtk_label_set_text(GTK_LABEL(data), printbuffer);
 }
+
 
 /** \brief  Create widget to control RAM init settings
  *
@@ -98,12 +124,10 @@ GtkWidget *settings_ramreset_widget_create(GtkWidget *parent)
     GtkWidget *start_random_widget;
     GtkWidget *repeat_random_widget;
     GtkWidget *chance_random_widget;
-    GtkWidget *textview_widget;
-    GtkTextBuffer *textview_buffer;
     GtkWidget *scrolled;
+    GtkWidget *view;
 
-    grid = uihelpers_create_grid_with_label("RAM reset pattern", 2);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced_with_label(-1, -1, "RAM reset pattern", 2);
 
     label = gtk_label_new("Value of first byte");
     g_object_set(label, "margin-left", 16, NULL);
@@ -174,32 +198,44 @@ GtkWidget *settings_ramreset_widget_create(GtkWidget *parent)
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 9, 2, 1);
 
-    textview_widget = gtk_text_view_new ();
-    textview_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW(textview_widget));
-    on_value_changed(NULL, textview_buffer);
-    gtk_text_view_set_monospace(GTK_TEXT_VIEW(textview_widget), TRUE);
+    /* Create the preview using a label
+     *
+     * Using a GtkTextView failed due to updating the buffer triggering the
+     * scrolled window to scroll back to the top. I spent a few hours trying
+     * to get it working, using all sort of trickery and the gtk devs on #gtk
+     * also couldn't help me out.
+     */
+    view = gtk_label_new(NULL);
+    vice_gtk3_css_add(view, PREVIEW_CSS);
+
+    /* trigger setting the preview text */
+    on_value_changed(NULL, view);
+
     scrolled = gtk_scrolled_window_new(NULL, NULL);
-    gtk_widget_set_size_request(scrolled, 400, 300);
-    gtk_container_add(GTK_CONTAINER(scrolled), textview_widget);
+    /* TODO:    Look into setting the size based on the contents/font size
+     *          --compyx
+     */
+    gtk_widget_set_size_request(scrolled, 550, 300);
+    gtk_container_add(GTK_CONTAINER(scrolled), view);
     g_object_set(scrolled, "margin-left", 16, NULL);
     gtk_grid_attach(GTK_GRID(grid), scrolled, 0, 10, 2, 1);
 
-    g_signal_connect(start_value_widget, "value-changed", 
-            G_CALLBACK(on_value_changed), textview_buffer);
+    g_signal_connect(start_value_widget, "value-changed",
+            G_CALLBACK(on_value_changed), view);
     g_signal_connect(value_offset_widget, "changed",
-            G_CALLBACK(on_value_changed), textview_buffer);
+            G_CALLBACK(on_value_changed), view);
     g_signal_connect(value_invert_widget, "changed",
-            G_CALLBACK(on_value_changed), textview_buffer);
+            G_CALLBACK(on_value_changed), view);
     g_signal_connect(pattern_invert_widget, "changed",
-            G_CALLBACK(on_value_changed), textview_buffer);
+            G_CALLBACK(on_value_changed), view);
     g_signal_connect(pattern_invert_value_widget, "value-changed",
-            G_CALLBACK(on_value_changed), textview_buffer);
+            G_CALLBACK(on_value_changed), view);
     g_signal_connect(start_random_widget, "changed",
-            G_CALLBACK(on_value_changed), textview_buffer);
+            G_CALLBACK(on_value_changed), view);
     g_signal_connect(repeat_random_widget, "changed",
-            G_CALLBACK(on_value_changed), textview_buffer);
+            G_CALLBACK(on_value_changed), view);
     g_signal_connect(chance_random_widget, "value-changed",
-            G_CALLBACK(on_value_changed), textview_buffer);
+            G_CALLBACK(on_value_changed), view);
 
     gtk_widget_show_all(grid);
     return grid;

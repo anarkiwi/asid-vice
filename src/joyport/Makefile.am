@@ -30,16 +30,26 @@ libjoyport_a_SOURCES = \
 	cx21.h \
 	cx85.c \
 	cx85.h \
+	inception.c \
+	inception.h \
 	joyport.c \
 	joyport.h \
+	joyport_io_sim.c \
+	joyport_io_sim.h \
 	joystick.c \
 	joystick.h \
 	lightpen.c \
 	lightpen.h \
 	mouse.c \
 	mouse.h \
+	multijoy.c \
+	multijoy.h \
+	ninja_snespad.c \
+	ninja_snespad.h \
 	paperclip64.c \
 	paperclip64.h \
+	protopad.c \
+	protopad.h \
 	rushware_keypad.c \
 	rushware_keypad.h \
 	sampler2bit.c \
@@ -48,8 +58,10 @@ libjoyport_a_SOURCES = \
 	sampler4bit.h \
 	script64_dongle.c \
 	script64_dongle.h \
-	snespad.c \
-	snespad.h \
+	spaceballs.c \
+	spaceballs.h \
+	trapthem_snespad.c \
+	trapthem_snespad.h \
 	vizawrite64_dongle.c \
 	vizawrite64_dongle.h \
 	waasoft_dongle.c \

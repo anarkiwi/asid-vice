@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "archdep_get_vice_datadir.h"
+#include "sysfile.h"
 #include "archdep_join_paths.h"
 #include "machine.h"
 #include "lib.h"
@@ -43,13 +43,14 @@
  *
  * \param[in]   size    size in pixels (square)
  *
- * \return  path to PNG icon, free with lib_free()
+ * \return  path to PNG icon
+ *
+ * \note    free with lib_free() after use.
  */
 char *archdep_app_icon_path_png(int size)
 {
     char buffer[1024];
-    char *datadir = archdep_get_vice_datadir();
-    char *path;
+    char *path = NULL;
     const char *icon;
 
     /*
@@ -74,7 +75,7 @@ char *archdep_app_icon_path_png(int size)
             icon = "PET";
             break;
         case VICE_MACHINE_VIC20:
-            icon = "VIC";
+            icon = "VIC20";
             break;
         case VICE_MACHINE_CBM5x0:   /* fall through */
         case VICE_MACHINE_CBM6x0:
@@ -91,7 +92,6 @@ char *archdep_app_icon_path_png(int size)
     }
 
     snprintf(buffer, sizeof(buffer), "%s_%d.png", icon, size);
-    path = archdep_join_paths(datadir, "common", buffer, NULL);
-    lib_free(datadir);
+    sysfile_locate(buffer, "common", &path);
     return path;
 }

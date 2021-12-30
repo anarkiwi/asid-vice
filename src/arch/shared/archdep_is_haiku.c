@@ -29,15 +29,22 @@
 
 #include "archdep_is_haiku.h"
 
-
-/* FIXME: includes for beos */
+/** \fn archdep_is_haiku
+ * \brief   Determine if we're running on Haiku
+ *
+ * This check is needed for Haiku, since it always returns 1 on
+ * SupportsWindowMode().
+ *
+ * \return  0 if running Haiku, -1 otherwise (BeOS)
+ *
+ * FIXME:   Would make more sense to return a boolean value, since the function
+ *          name contains *is*.
+ */
 
 #ifdef ARCHDEP_OS_BEOS
 #include <sys/utsname.h>
 #include <strings.h>
 
-/* This check is needed for haiku, since it always returns 1 on
-   SupportsWindowMode() */
 int archdep_is_haiku(void)
 {
     struct utsname name;

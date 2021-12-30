@@ -62,7 +62,8 @@
  *
  * \return  GtkCheckButton
  */
-static GtkWidget *create_dos_check_button(int unit, const char *dos,
+static GtkWidget *create_dos_check_button(int unit,
+                                          const char *dos,
                                           const char *label)
 {
     GtkWidget *check;
@@ -90,7 +91,7 @@ GtkWidget *drive_dos_widget_create(int unit)
     GtkWidget *supercard;
     int model = drive_get_disk_drive_type(unit - DRIVE_UNIT_MIN);
 
-    grid = uihelpers_create_grid_with_label("DOS expansions", 1);
+    grid = vice_gtk3_grid_new_spaced_with_label(-1, -1, "DOS expansions", 1);
     g_object_set_data(G_OBJECT(grid), "UnitNumber", GINT_TO_POINTER(unit));
 
     profdos = create_dos_check_button(unit, "ProfDos", "Professional DOS");
@@ -101,7 +102,6 @@ GtkWidget *drive_dos_widget_create(int unit)
     gtk_widget_set_sensitive(profdos, drive_check_profdos(model));
     gtk_widget_set_sensitive(stardos, drive_check_stardos(model));
     gtk_widget_set_sensitive(supercard, drive_check_supercard(model));
-
 
     gtk_grid_attach(GTK_GRID(grid), profdos, 0, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), stardos, 0, 2, 1, 1);

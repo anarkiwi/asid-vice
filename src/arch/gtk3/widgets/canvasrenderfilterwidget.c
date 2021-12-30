@@ -46,8 +46,9 @@
 /** \brief  List of Cairo/OpenGL render filters
  */
 static const vice_gtk3_radiogroup_entry_t filters[] = {
-    { "Nearest neighbor",   0 },
-    { "Bilinear",           1 },
+    { "Nearest neighbor",   0  },
+    { "Bilinear",           1  },
+    { "Bicubic",            2  },
     { NULL,                 -1 }
 };
 
@@ -58,7 +59,6 @@ static GtkWidget *resource_widget;
 
 
 /** \brief  Create widget to select the Gtk render filter method
- *
  *
  * \return  GtkGrid
  */
@@ -81,7 +81,6 @@ GtkWidget *canvas_render_filter_widget_create(void)
 
     gtk_grid_attach(GTK_GRID(grid), header, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), resource_widget, 0, 1, 1, 1);
-    
     return grid;
 }
 

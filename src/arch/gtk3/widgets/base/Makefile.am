@@ -4,6 +4,7 @@
 AM_CPPFLAGS = \
 	@VICE_CPPFLAGS@ \
 	@ARCH_INCLUDES@ \
+	-I$(top_srcdir)/src/arch/shared \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/drive \
@@ -47,6 +48,7 @@ libbasewidgets_a_SOURCES = \
 	resourcecombobox.c \
 	resourceentry.c \
 	resourcehelpers.c \
+	resourcenumericstring.c \
 	resourceradiogroup.c \
 	resourcescale.c \
 	resourcespinbutton.c \
@@ -71,6 +73,7 @@ EXTRA_DIST = \
 	resourcecombobox.h \
 	resourceentry.h \
 	resourcehelpers.h \
+	resourcenumericstring.h \
 	resourceradiogroup.h \
 	resourcescale.h \
 	resourcespinbutton.h \

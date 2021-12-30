@@ -30,6 +30,7 @@
 #define VICE_ARCHDEP_DEFS_H
 
 #include "vice.h"
+#include <inttypes.h>
 
 
 /** \brief  Various OS-identification macros
@@ -148,6 +149,28 @@
 #endif
 
 
+/** \brief  XDG Base Directory Specifiction user cache dir
+ *
+ * This defines only the final element of the `XDG_CACHE_HOME` variable.
+ */
+#define ARCHDEP_XDG_CACHE_HOME  ".cache"
+
+
+/** \brief  XDG Base Directory Specifiction user config dir
+ *
+ * This defines only the final element of `the XDG_CONFIG_HOME` variable.
+ */
+#define ARCHDEP_XDG_CONFIG_HOME ".config"
+
+
+/** \def    ARCHDEP_VICERC_NAME
+ * \brief   The name of the default VICE configuraton file
+ */
+
+/** \def    ARCHDEP_VICE_RTC_NAME
+ * \brief   The name of the default VICE RTC status file
+ */
+
 /*
  * Determine if we compile against SDL
  */
@@ -187,18 +210,58 @@
 /* Declare extra printf specifiers for Windows since Microsoft's support for
  * C99 fucking sucks.
  *
- * This declares PRI_SIZE_T for use on all platforms, aliasing to 'zu' on
- * anything not Windows, and using PRIu[32|64] on Windows.
+ * This declares PRI_SIZE_T and PRI_SSIZE_T for use on all platforms,
+ * aliasing to 'zu'/'z' on anything not Windows, and using PRI[d|u][32|64] on
+ * Windows.
  */
+
+/** \def    PRI_SIZE_T
+ * \brief   Printf type specifier alias for 'zu'
+ *
+ * Required to work around Microsoft's broken C99 support.
+ */
+
+/** \def    PRI_SSIZE_T
+ * \brief   Printf type specifier alias for 'zd'
+ *
+ * Required to work around Microsoft's broken C99 support.
+ */
+
 #ifdef _WIN32
-# include <inttypes.h>
-# ifdef _WIN64
-#  define PRI_SIZE_T    PRIu64
-# else
-#  define PRI_SIZE_T    PRIu32
-# endif
+# define PRI_SIZE_T     "Iu"
+# define PRI_SSIZE_T    "Id"
 #else
 # define PRI_SIZE_T     "zu"
+# define PRI_SSIZE_T    "zd"
+#endif
+
+/** \def    GULONG_TO_POINTER
+ * \brief   Cast gulong to pointer
+ *
+ * GLib appears to be "missing" this macro, so we define it here.
+ *
+ * \param[in]   ul  gulong value
+ *
+ * \return  gpointer
+ */
+
+#ifndef GULONG_TO_POINTER
+# define GULONG_TO_POINTER(ul) (gpointer)(uintptr_t)(ul)
+#endif
+
+
+/** \def    GPOINTER_TO_ULONG
+ * \brief   Cast pointer to gulong
+ *
+ * GLib appears to be "missing" this macro, so we define it here.
+ *
+ * \param[in]   p   gpointer
+ *
+ * \return  gulong
+ */
+
+#ifndef GPOINTER_TO_ULONG
+# define GPOINTER_TO_ULONG(p) (gulong)(uintptr_t)(p)
 #endif
 
 #endif

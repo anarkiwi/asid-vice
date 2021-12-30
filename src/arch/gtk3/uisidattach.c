@@ -44,7 +44,7 @@
 /** \brief  File type filters for the dialog
  */
 static ui_file_filter_t filters[] = {
-    { "SID/PSID files", file_chooser_pattern_sid },
+    { "SID/MUS files", file_chooser_pattern_sid },
     { "All files", file_chooser_pattern_all },
     { NULL, NULL }
 };
@@ -53,6 +53,9 @@ static ui_file_filter_t filters[] = {
 /** \brief  Last used directory in dialog
  */
 static gchar *last_dir = NULL;
+
+/** \brief  Last used filename in dialog
+ */
 static gchar *last_file = NULL;
 
 
@@ -117,10 +120,6 @@ static void on_response(GtkWidget *widget, gint response_id, gpointer user_data)
 {
     gchar *filename;
     char *text;
-#ifdef HAVE_DEBUG_GTK3UI
-    int index = GPOINTER_TO_INT(user_data);
-#endif
-    debug_gtk3("got response ID %d, index %d.", response_id, index);
 
     switch (response_id) {
 
@@ -256,7 +255,6 @@ gboolean uisidattach_show_dialog(GtkWidget *widget, gpointer data)
 {
     GtkWidget *dialog;
 
-    debug_gtk3("called.");
     dialog = create_sid_attach_dialog(widget);
     gtk_widget_show(dialog);
     return TRUE;

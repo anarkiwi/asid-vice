@@ -92,17 +92,27 @@ static void (*psid_play_func)(int) = NULL;
 void ui_handle_misc_sdl_event(SDL_Event e)
 {
 #ifdef USE_SDLUI2
+    int capslock;
+
     if (e.type == SDL_WINDOWEVENT) {
+        SDL_Window* window = SDL_GetWindowFromID(e.window.windowID);
+        video_canvas_t* canvas = (video_canvas_t*)(SDL_GetWindowData(window, VIDEO_SDL2_CANVAS_INDEX_KEY));
+
         switch (e.window.event) {
             case SDL_WINDOWEVENT_RESIZED:
                 DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_RESIZED (%d,%d)", 
                      e.window.data1, e.window.data2));
-                sdl_video_resize_event((unsigned int)e.window.data1, (unsigned int)e.window.data2);
+                sdl2_video_resize_event(canvas->index, (unsigned int)e.window.data1, (unsigned int)e.window.data2);
                 video_canvas_refresh_all(sdl_active_canvas);
                 break;
             case SDL_WINDOWEVENT_FOCUS_GAINED:
                 DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_FOCUS_GAINED"));
+                sdl_video_canvas_switch(canvas->index);
                 video_canvas_refresh_all(sdl_active_canvas);
+                capslock = (SDL_GetModState() & KMOD_CAPS) ? 1 : 0;
+                if (keyboard_get_shiftlock() != capslock) {
+                    keyboard_set_shiftlock(capslock);
+                }
                 break;
             case SDL_WINDOWEVENT_EXPOSED:
                 DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_EXPOSED"));
@@ -111,6 +121,10 @@ void ui_handle_misc_sdl_event(SDL_Event e)
             case SDL_WINDOWEVENT_FOCUS_LOST:
                 DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_FOCUS_LOST"));
                 keyboard_key_clear();
+                break;
+            case SDL_WINDOWEVENT_CLOSE:
+                DBG(("ui_handle_misc_sdl_event: SDL_WINDOWEVENT_CLOSE"));
+                ui_sdl_quit();
                 break;
         }
     }
@@ -196,6 +210,7 @@ ui_menu_action_t ui_dispatch_events(void)
 {
     SDL_Event e;
     ui_menu_action_t retval = MENU_ACTION_NONE;
+    int joynum;
 
 #ifdef ANDROID_COMPILE
     struct locnet_al_event event1;
@@ -453,17 +468,35 @@ ui_menu_action_t ui_dispatch_events(void)
                 break;
 #ifdef HAVE_SDL_NUMJOYSTICKS
             case SDL_JOYAXISMOTION:
-                retval = sdljoy_axis_event(e.jaxis.which, e.jaxis.axis, e.jaxis.value);
+                joynum = sdljoy_get_joynum_for_event(e.jaxis.which);
+                if (joynum != -1) {
+                    retval = sdljoy_axis_event(joynum, e.jaxis.axis, e.jaxis.value);
+                }
                 break;
             case SDL_JOYBUTTONDOWN:
-                retval = sdljoy_button_event(e.jbutton.which, e.jbutton.button, 1);
+                joynum = sdljoy_get_joynum_for_event(e.jbutton.which);
+                if (joynum != -1) {
+                    retval = sdljoy_button_event(joynum, e.jbutton.button, 1);
+                }
                 break;
             case SDL_JOYBUTTONUP:
-                retval = sdljoy_button_event(e.jbutton.which, e.jbutton.button, 0);
+                joynum = sdljoy_get_joynum_for_event(e.jbutton.which);
+                if (joynum != -1) {
+                    retval = sdljoy_button_event(joynum, e.jbutton.button, 0);
+                }
                 break;
             case SDL_JOYHATMOTION:
-                retval = sdljoy_hat_event(e.jhat.which, e.jhat.hat, e.jhat.value);
+                joynum = sdljoy_get_joynum_for_event(e.jhat.which);
+                if (joynum != -1) {
+                    retval = sdljoy_hat_event(joynum, e.jhat.hat, e.jhat.value);
+                }
                 break;
+#ifdef USE_SDLUI2
+            case SDL_JOYDEVICEADDED:
+            case SDL_JOYDEVICEREMOVED:
+                retval = sdljoy_rescan();
+                break;
+#endif
 #endif
             case SDL_MOUSEMOTION:
                 sdl_ui_consume_mouse_event(&e);
@@ -565,25 +598,21 @@ void ui_check_mouse_cursor(void)
     }
 }
 
-#ifdef MACOSX_SUPPORT
-#define VICE_MOD_MASK_TEXT "Option"
-#else
-#define VICE_MOD_MASK_TEXT "Alt"
-#endif
-
 void ui_set_mouse_grab_window_title(int enabled)
 {
     char title[256];
     char name[32];
+    char *mouse_key = kbd_get_path_keyname("Machine settings&Mouse emulation&Grab mouse events");
 
     if (machine_class != VICE_MACHINE_C64SC) {
         strcpy(name, machine_get_name());
     } else {
         strcpy(name, "C64 (x64sc)");
     }
-    if (enabled) {
-        snprintf(title, 256, "VICE: %s%s Use %s+M to disable mouse grab.",
-            name, archdep_extra_title_text(), VICE_MOD_MASK_TEXT);
+    if (enabled && mouse_key != NULL) {
+        snprintf(title, 256, "VICE: %s%s Use %s to disable mouse grab.",
+            name, archdep_extra_title_text(), mouse_key);
+        lib_free(mouse_key);
     } else {
         snprintf(title, 256, "VICE: %s%s", name, archdep_extra_title_text());
     }        
@@ -695,7 +724,8 @@ static int set_start_minimized(int val, void *param)
 # endif
 #endif
 
-static const resource_int_t resources_int[] = {
+static resource_int_t resources_int[] = {
+    /* caution: position of menukeys is hardcoded below */
     { "MenuKey", DEFAULT_MENU_KEY, RES_EVENT_NO, NULL,
       &sdl_ui_menukeys[0], set_ui_menukey, (void *)MENU_ACTION_NONE },
     { "MenuKeyUp", SDLK_UP, RES_EVENT_NO, NULL,
@@ -742,14 +772,22 @@ void ui_sdl_quit(void)
             return;
         }
     }
-    
     archdep_vice_exit(0);
 }
 
 /* Initialization  */
 int ui_resources_init(void)
 {
+#ifdef USE_SDLUI2
+    int i;
+#endif
     DBG(("%s", __func__));
+#ifdef USE_SDLUI2
+    /* this converts the default keycodes as needed */
+    for (i = 0; i < 13; i++) {
+        resources_int[i].factory_value = SDL2x_to_SDL1x_Keys(resources_int[i].factory_value);
+    }
+#endif
     if (resources_register_int(resources_int) < 0) {
         return -1;
     }
@@ -869,7 +907,12 @@ int ui_cmdline_options_init(void)
     return cmdline_register_options(cmdline_options);
 }
 
-int ui_init(int *argc, char **argv)
+void ui_init_with_args(int *argc, char **argv)
+{
+    DBG(("%s", __func__));
+}
+
+int ui_init(void)
 {
     DBG(("%s", __func__));
     return 0;
@@ -991,6 +1034,14 @@ int uicolor_set_palette(struct video_canvas_s *c, const struct palette_s *palett
 {
     DBG(("%s", __func__));
     return 0;
+}
+
+
+/* FIXME: temporary stub to support calling ui_hotkeys_init() from src/main.c
+ */
+void ui_hotkeys_init(void)
+{
+    /* NOP */
 }
 
 /* ---------------------------------------------------------------------*/

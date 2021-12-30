@@ -43,30 +43,11 @@
 #include "kbdlayoutwidget.h"
 
 
-/** \brief  Keyboard layout types
+/** \brief  Handler for the 'changed' event of the widget
  *
- * Dynamically allocated in the "constructor" and freed in the "destructor"
- */
-static vice_gtk3_radiogroup_entry_t *kbd_layouts = NULL;
-
-
-/** \brief  Handler for the 'destroy' event of the widget
+ * Updates the symbolic/positional radio buttons' sensitivity.
  *
- * Frees memory used by radio buttons list
- *
- * \param[in]   widget  widget (unused)
- * \param[in]   data    extra event data (unused)
- */
-static void on_destroy(GtkWidget *widget, gpointer data)
-{
-    lib_free(kbd_layouts);
-}
-
-/** \brief  Handler for the 'button-release-event' event of the widget
- *
- * Frees memory used by radio buttons list
- *
- * \param[in]   widget  widget (unused)
+ * \param[in]   widget      widget (unused)
  * \param[in]   event       extra event data (unused)
  * \param[in]   user_data   extra user data (unused)
  */
@@ -76,6 +57,7 @@ static void on_changed(GtkWidget *widget, GdkEvent  *event, gpointer user_data)
     kbdmapping_widget_update();
 }
 
+
 /** \brief  Create a keyboard layout selection widget
  *
  * \return  GtkGrid
@@ -83,8 +65,9 @@ static void on_changed(GtkWidget *widget, GdkEvent  *event, gpointer user_data)
 GtkWidget *kbdlayout_widget_create(void)
 {
     GtkWidget *grid;
-    GtkWidget *group;
+    GtkWidget *combo;
     mapping_info_t *kbdinfo;
+    vice_gtk3_combo_entry_int_t *kbd_layouts;
     int num;
     int idx;
 
@@ -111,16 +94,16 @@ GtkWidget *kbdlayout_widget_create(void)
 
     grid = vice_gtk3_grid_new_spaced_with_label(
             VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT, "Host keyboard layout", 1);
-    group = vice_gtk3_resource_radiogroup_new(
-            "KeyboardMapping", kbd_layouts, GTK_ORIENTATION_VERTICAL);
-    g_object_set(group, "margin-left", 16, NULL);
-    gtk_grid_attach(GTK_GRID(grid), group, 0, 1, 1, 1);
+    combo = vice_gtk3_resource_combo_box_int_new("KeyboardMapping",
+                                                 kbd_layouts);
+    /* the combobox's model makes copies of the data it received, so we can
+     * free this */
+    lib_free(kbd_layouts);
 
-    g_signal_connect(group, "button-release-event", G_CALLBACK(on_changed), NULL);
-
-    /* connect signal handler to free memory used by the radio buttons list
-     * when the widget is destroyed */
-    g_signal_connect_unlocked(grid, "destroy", G_CALLBACK(on_destroy), NULL);
+    g_object_set(combo, "margin-left", 16, NULL);
+    gtk_widget_set_hexpand(combo, TRUE);
+    gtk_grid_attach(GTK_GRID(grid), combo, 0, 1, 1, 1);
+    g_signal_connect(combo, "changed", G_CALLBACK(on_changed), NULL);
 
     gtk_widget_show_all(grid);
     return grid;

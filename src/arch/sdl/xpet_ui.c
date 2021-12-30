@@ -32,6 +32,7 @@
 
 #include "debug.h"
 #include "lib.h"
+#include "machine.h"
 #include "menu_common.h"
 #include "menu_debug.h"
 #include "menu_drive.h"
@@ -40,6 +41,7 @@
 #include "menu_help.h"
 #include "menu_jam.h"
 #include "menu_joyport.h"
+#include "menu_joystick.h"
 #include "menu_media.h"
 #include "menu_monitor.h"
 #include "menu_network.h"
@@ -55,8 +57,10 @@
 #include "menu_sound.h"
 #include "menu_speed.h"
 #include "menu_tape.h"
+#include "menu_userport.h"
 #include "menu_video.h"
 #include "petmem.h"
+#include "pets.h"
 #include "petui.h"
 #include "pet-resources.h"
 #include "resources.h"
@@ -79,7 +83,7 @@ static ui_menu_entry_t xpet_main_menu[] = {
     { "Tape",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
-      (ui_callback_data_t)tape_menu },
+      (ui_callback_data_t)tape_pet_menu },
     { "Cartridge",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -240,6 +244,15 @@ int petui_init_early(void)
     return 0;
 }
 
+/* KLUDGES: this needs to be updated when ROM files are being renamed */
+static const char *get_chargen_name(void)
+{
+    if (machine_class == VICE_MACHINE_PET) {
+        return PET_CHARGEN_NAME;
+    }
+    return "chargen";
+}
+
 /** \brief  Initialize the UI
  *
  * \return  0 on success, -1 on failure
@@ -252,7 +265,9 @@ int petui_init(void)
 #endif
 
     sdl_ui_set_menu_params = petui_set_menu_params;
-    uijoyport_menu_create(0, 0, 1, 1, 0);
+    uijoyport_menu_create(0, 0, 1, 0, 0);
+    uijoystick_menu_create(0, 0, 1, 0, 0);
+    uiuserport_menu_create(1);
     uisampler_menu_create();
     uidrive_menu_create();
     uikeyboard_menu_create();
@@ -261,7 +276,7 @@ int petui_init(void)
     uimedia_menu_create();
 
     sdl_ui_set_main_menu(xpet_main_menu);
-    sdl_ui_crtc_font_init();
+    sdl_ui_font_init(get_chargen_name(), 0, 0x400, 0);
 
 #ifdef HAVE_FFMPEG
     sdl_menu_ffmpeg_init();
@@ -276,6 +291,9 @@ void petui_shutdown(void)
     uisid_menu_shutdown();
     uipalette_menu_shutdown();
     uijoyport_menu_shutdown();
+    uijoystick_menu_shutdown();
+    uiuserport_menu_shutdown();
+    uitapeport_menu_shutdown();
     uimedia_menu_shutdown();
 #ifdef SDL_DEBUG
     fprintf(stderr, "%s\n", __func__);
@@ -285,5 +303,5 @@ void petui_shutdown(void)
     sdl_menu_ffmpeg_shutdown();
 #endif
 
-    sdl_ui_crtc_font_shutdown();
+    sdl_ui_font_shutdown();
 }

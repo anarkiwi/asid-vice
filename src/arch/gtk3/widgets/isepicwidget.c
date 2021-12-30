@@ -1,7 +1,7 @@
 /** \file   isepicwidget.c
  * \brief   Widget to control ISEPIC resources
  *
- * \autor   Bas Wassink <b.wassink@ziggo.nl>
+ * \author  Bas Wassink <b.wassink@ziggo.nl>
  */
 
 /*
@@ -51,16 +51,17 @@
 #include "isepicwidget.h"
 
 
-/** \brief  Handler for the "state-set" event of the "IsepicSwitch" resource
+/** \brief  Handler for the 'state-set' event of the "IsepicSwitch" resource
  *
  * \param[in]   widget      switch widget
  * \param[in]   state       new state of \a widget
- * \param[in]   user_data   unused
+ * \param[in]   user_data   extra event data (unused)
  *
  * \return  FALSE
  */
-static gboolean on_isepic_switch_state_set(GtkWidget *widget, gboolean state,
-        gpointer user_data)
+static gboolean on_isepic_switch_state_set(GtkWidget *widget,
+                                           gboolean state,
+                                           gpointer user_data)
 {
     resources_set_int("IsepicSwitch", state);
     return FALSE;
@@ -101,9 +102,10 @@ static GtkWidget *create_isepic_switch_widget(void)
  *
  * \return  GtkGrid
  */
-static GtkWidget *create_isepic_image_widget(GtkWidget *parent)
+static GtkWidget *create_isepic_image_widget(void)
 {
-    return cart_image_widget_create(parent, "ISEPIC image",
+    return cart_image_widget_create(
+            NULL, "ISEPIC image",
             "Isepicfilename", "IsepicImageWrite",
             carthelpers_save_func, carthelpers_flush_func,
             carthelpers_can_save_func, carthelpers_can_flush_func,
@@ -113,7 +115,7 @@ static GtkWidget *create_isepic_image_widget(GtkWidget *parent)
 
 /** \brief  Create widget to control ISEPIC resources
  *
- * \param[in]   parent  parent widget, used for dialogs
+ * \param[in]   parent  parent widget (unused)
  *
  * \return  GtkGrid
  */
@@ -125,9 +127,7 @@ GtkWidget *isepic_widget_create(GtkWidget *parent)
     GtkWidget *isepic_switch;
 
 
-    grid = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced(8, 8);
 
     isepic_enable_widget = carthelpers_create_enable_check_button(
             CARTRIDGE_NAME_ISEPIC, CARTRIDGE_ISEPIC);
@@ -136,7 +136,7 @@ GtkWidget *isepic_widget_create(GtkWidget *parent)
     isepic_switch = create_isepic_switch_widget();
     gtk_grid_attach(GTK_GRID(grid), isepic_switch, 0, 1, 1, 1);
 
-    isepic_image = create_isepic_image_widget(parent);
+    isepic_image = create_isepic_image_widget();
     gtk_grid_attach(GTK_GRID(grid), isepic_image, 0, 2, 1, 1);
 
     gtk_widget_show_all(grid);

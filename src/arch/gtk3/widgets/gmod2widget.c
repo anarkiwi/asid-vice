@@ -34,13 +34,10 @@
 #include "vice.h"
 #include <gtk/gtk.h>
 
-#include "carthelpers.h"
-#include "cartimagewidget.h"
+#include "vice_gtk3.h"
 #include "cartridge.h"
-#include "debug_gtk3.h"
 #include "machine.h"
 #include "resources.h"
-#include "vice_gtk3.h"
 #include "ui.h"
 
 #include "gmod2widget.h"
@@ -103,6 +100,12 @@ static void on_flush_clicked(GtkWidget *widget, gpointer user_data)
 }
 
 
+/** \brief  Callback for the EEPROM file selection dialog
+ *
+ * \param[in,out]   dialog      file chooser dialog
+ * \param[in,out]   filename    name of the EEPROM file
+ * \param[in]       data        extra data (unused)
+ */
 static void eeprom_filename_callback(GtkDialog *dialog,
                                      gchar *filename,
                                      gpointer data)
@@ -129,11 +132,14 @@ static void eeprom_filename_callback(GtkDialog *dialog,
  */
 static void on_eeprom_browse_clicked(GtkWidget *widget, gpointer user_data)
 {
-    vice_gtk3_open_file_dialog(
+    GtkWidget *dialog;
+
+    dialog = vice_gtk3_open_file_dialog(
             "Open EEMPROM image",
-             NULL, NULL, NULL,
-             eeprom_filename_callback,
-             NULL);
+            NULL, NULL, NULL,
+            eeprom_filename_callback,
+            NULL);
+    gtk_widget_show(dialog);
 }
 
 
@@ -148,9 +154,8 @@ static GtkWidget *create_cart_image_widget(void)
     GtkWidget *save_button;
     GtkWidget *flush_button;
 
-    grid = uihelpers_create_grid_with_label("GMod2 Cartridge image", 3);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced_with_label(
+            -1, -1, "GMod2 Cartridge image", 3);
 
     write_back = vice_gtk3_resource_check_button_new("GMod2FlashWrite",
                 "Save image when changed");
@@ -164,7 +169,7 @@ static GtkWidget *create_cart_image_widget(void)
     gtk_widget_set_sensitive(save_button,
             (gboolean)(carthelpers_can_save_func(CARTRIDGE_GMOD2)));
 
-    flush_button = gtk_button_new_with_label("Flush image now");
+    flush_button = gtk_button_new_with_label("Save image");
     g_signal_connect(flush_button, "clicked", G_CALLBACK(on_flush_clicked),
             NULL);
     gtk_widget_set_sensitive(flush_button,
@@ -187,9 +192,7 @@ static GtkWidget *create_eeprom_image_widget(void)
     GtkWidget *browse;
     GtkWidget *write_enable;
 
-    grid = uihelpers_create_grid_with_label("GMod2 EEPROM image", 1);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced_with_label(-1, -1, "GMod2 EEPROM image", 1);
 
     label = gtk_label_new("EEPROM image file");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
@@ -227,9 +230,7 @@ GtkWidget *gmod2_widget_create(GtkWidget *parent)
 {
     GtkWidget *grid;
 
-    grid = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced(8, 8);
 
     gtk_grid_attach(GTK_GRID(grid), create_cart_image_widget(), 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), create_eeprom_image_widget(), 0, 1, 1, 1);

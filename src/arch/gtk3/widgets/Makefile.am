@@ -28,6 +28,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/arch/gtk3/widgets \
 	-I$(top_srcdir)/src/arch/gtk3/widgets/base \
 	-I$(top_srcdir)/src/samplerdrv \
+	-I$(top_srcdir)/src/tapeport \
 	-I$(top_srcdir)/src/hvsc
 
 AM_CFLAGS = @VICE_CFLAGS@
@@ -47,7 +48,6 @@ libwidgets_a_SOURCES = \
 	c128machinetypewidget.c \
 	c64dtvflashsettingswidget.c \
 	c64memhackswidget.c \
-	canvasrenderbackendwidget.c \
 	canvasrenderfilterwidget.c \
 	cbm2hardwiredswitcheswidget.c \
 	cbm2memorysizewidget.c \
@@ -63,10 +63,10 @@ libwidgets_a_SOURCES = \
 	dqbbwidget.c \
 	drivedoswidget.c \
 	driveextendpolicywidget.c \
+	drivefixedsizewidget.c \
 	drivefsdevicewidget.c \
 	driveidlemethodwidget.c \
 	drivemodelwidget.c \
-	driveoptionswidget.c \
 	driveparallelcablewidget.c \
 	driveramwidget.c \
 	driverpmwidget.c \
@@ -77,6 +77,7 @@ libwidgets_a_SOURCES = \
 	easyflashwidget.c \
 	ethernetcartwidget.c \
 	expertwidget.c \
+	extendimagedialog.c \
 	ffmpegwidget.c \
 	finalexpansionwidget.c \
 	georamwidget.c \
@@ -86,12 +87,13 @@ libwidgets_a_SOURCES = \
 	hvscstilwidget.c \
 	ide64widget.c \
 	ieee488widget.c \
+	ieeeflash64widget.c \
 	isepicwidget.c \
 	jamactionwidget.c \
 	jamdialog.c \
+	joystickautofirewidget.c \
 	joystickdevicewidget.c \
 	joystickmenupopup.c \
-	joystickuserportadapterwidget.c \
 	kbddebugwidget.c \
 	kbdlayoutwidget.c \
 	kbdmappingwidget.c \
@@ -130,16 +132,20 @@ libwidgets_a_SOURCES = \
 	ramlinkwidget.c \
 	retroreplaywidget.c \
 	reuwidget.c \
+	rexramfloppywidget.c \
 	romsetmanagerwidget.c \
 	rrnetmk3widget.c \
 	scpu64settingswidget.c \
+	settings_autofire.c \
 	settings_autostart.c \
 	settings_controlport.c \
 	settings_crt.c \
+	settings_default_cart.c \
 	settings_drive.c \
 	settings_ethernet.c \
 	settings_fsdevice.c \
 	settings_host_display.c \
+	settings_hotkeys.c \
 	settings_io.c \
 	settings_joystick.c \
 	settings_keyboard.c \
@@ -147,7 +153,6 @@ libwidgets_a_SOURCES = \
 	settings_mixer.c \
 	settings_model.c \
 	settings_monitor.c \
-	settings_peripherals_generic.c \
 	settings_printer.c \
 	settings_ramreset.c \
 	settings_romset.c \
@@ -169,8 +174,8 @@ libwidgets_a_SOURCES = \
 	soundfragmentsizewidget.c \
 	soundoutputmodewidget.c \
 	soundsampleratewidget.c \
-	soundsuspendtimewidget.c \
 	speedwidget.c \
+	statusbarledwidget.c \
 	statusbarrecordingwidget.c \
 	statusbarspeedwidget.c \
 	superpetwidget.c \
@@ -178,6 +183,7 @@ libwidgets_a_SOURCES = \
 	tapeportdeviceswidget.c \
 	ultimemwidget.c \
 	userportdeviceswidget.c \
+	userportrsinterfacewidget.c \
 	userportprinterwidget.c \
 	v364speechwidget.c \
 	vdcmodelwidget.c \
@@ -208,7 +214,6 @@ EXTRA_DIST = \
 	cbm2memorysizewidget.h \
 	cbm2rammappingwidget.h \
 	c64memhackswidget.h \
-	canvasrenderbackendwidget.h \
 	canvasrenderfilterwidget.h \
 	ciamodelwidget.h \
 	contentpreviewwidget.h \
@@ -221,10 +226,10 @@ EXTRA_DIST = \
 	dqbbwidget.h \
 	drivedoswidget.h \
 	driveextendpolicywidget.h \
+	drivefixedsizewidget.h \
 	drivefsdevicewidget.h \
 	driveidlemethodwidget.h \
 	drivemodelwidget.h \
-	driveoptionswidget.h \
 	driveparallelcablewidget.h \
 	driveramwidget.h \
 	driverpmwidget.h \
@@ -235,6 +240,7 @@ EXTRA_DIST = \
 	easyflashwidget.h \
 	ethernetcartwidget.h \
 	expertwidget.h \
+	extendimagedialog.h \
 	ffmpegwidget.h \
 	finalexpansionwidget.h \
 	georamwidget.h \
@@ -244,12 +250,13 @@ EXTRA_DIST = \
 	hvscstilwidget.h \
 	ide64widget.h \
 	ieee488widget.h \
+	ieeeflash64widget.h \
 	isepicwidget.h \
 	jamactionwidget.h \
 	jamdialog.h \
+	joystickautofirewidget.h \
 	joystickdevicewidget.h \
 	joystickmenupopup.h \
-	joystickuserportadapterwidget.h \
 	kbddebugwidget.h \
 	kbdlayoutwidget.h \
 	kbdmappingwidget.h \
@@ -288,16 +295,20 @@ EXTRA_DIST = \
 	ramlinkwidget.h \
 	retroreplaywidget.h \
 	reuwidget.h \
+	rexramfloppywidget.h \
 	romsetmanagerwidget.h \
 	rrnetmk3widget.h \
 	scpu64settingswidget.h \
+	settings_autofire.h \
 	settings_autostart.h \
 	settings_controlport.h \
 	settings_crt.h \
+	settings_default_cart.h \
 	settings_drive.h \
 	settings_ethernet.h \
 	settings_fsdevice.h \
 	settings_host_display.h \
+	settings_hotkeys.h \
 	settings_io.h \
 	settings_joystick.h \
 	settings_keyboard.h \
@@ -305,7 +316,6 @@ EXTRA_DIST = \
 	settings_mixer.h \
 	settings_model.h \
 	settings_monitor.h \
-	settings_peripherals_generic.h \
 	settings_printer.h \
 	settings_ramreset.h \
 	settings_romset.h \
@@ -327,8 +337,8 @@ EXTRA_DIST = \
 	soundfragmentsizewidget.h \
 	soundoutputmodewidget.h \
 	soundsampleratewidget.h \
-	soundsuspendtimewidget.h \
 	speedwidget.h \
+	statusbarledwidget.h \
 	statusbarrecordingwidget.h \
 	statusbarspeedwidget.h \
 	superpetwidget.h \
@@ -336,6 +346,7 @@ EXTRA_DIST = \
 	tapeportdeviceswidget.h \
 	ultimemwidget.h \
 	userportdeviceswidget.h \
+	userportrsinterfacewidget.h \
 	userportprinterwidget.h \
 	v364speechwidget.h \
 	vdcmodelwidget.h \

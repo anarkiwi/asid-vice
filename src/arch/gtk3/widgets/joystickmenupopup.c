@@ -35,7 +35,9 @@
 #include "debug_gtk3.h"
 #include "machine.h"
 #include "resources.h"
+#include "uiactions.h"
 #include "uicommands.h"
+#include "uimachinemenu.h"
 #include "uisettings.h"
 #include "widgethelpers.h"
 
@@ -54,7 +56,7 @@ static gboolean joystick_swap_possible(void)
         case VICE_MACHINE_C64:      /* fall through */
         case VICE_MACHINE_C64SC:    /* fall through */
         case VICE_MACHINE_C128:     /* fall through */
-        /* x64dtv emulates the second joystick hack by degault */
+        /* x64dtv emulates the second joystick hack by default */
         case VICE_MACHINE_C64DTV:   /* fall through */
         case VICE_MACHINE_SCPU64:   /* fall through */
         case VICE_MACHINE_PLUS4:    /* fall through */
@@ -74,60 +76,13 @@ static gboolean joystick_swap_possible(void)
 }
 
 
-/** \brief  Determine if userport joystick swapping is possible
+/** \brief  Handler for the 'activate' event of the "configure ..." menu item
  *
- * This function only checks if userport joystick swapping is possible,
- * ignoring if an adapter is active to actually allow userport joysticks (and
- * thus swapping)
+ * Opens the joystick configuration settings page.
  *
- * \return  bool
+ * \param[in]   widget      menu item (unused)
+ * \param[in]   user_data   extra event data (unused)
  */
-static gboolean userport_joystick_swap_possible(void)
-{
-    switch (machine_class) {
-        /* these all support userport joystick adapters with two ports */
-        case VICE_MACHINE_C64:      /* fall through */
-        case VICE_MACHINE_C64SC:    /* fall through */
-        case VICE_MACHINE_C128:     /* fall through */
-        case VICE_MACHINE_SCPU64:   /* fall through */
-        case VICE_MACHINE_PLUS4:    /* fall through */
-        case VICE_MACHINE_VIC20:    /* fall through */
-        case VICE_MACHINE_PET:      /* fall through */
-        case VICE_MACHINE_CBM6x0:
-            return TRUE;
-
-        case VICE_MACHINE_C64DTV:
-            /* DTV only supports a hack for a single userport joystick */
-            return FALSE;
-
-        case VICE_MACHINE_CBM5x0:
-            /* CBM-II 5x0 models don't support userport joystick adapters */
-            return FALSE;
-
-        default:
-            /* shouldn't get here */
-            return FALSE;
-    }
-}
-
-
-/** \brief  Determine if a userport joystick adapter is enabled
- *
- * \return  bool
- */
-static gboolean userport_joystick_adapter_enabled(void)
-{
-    int enabled;
-
-    if (resources_get_int("UserportJoy", &enabled) < 0) {
-        debug_gtk3("failed to get value for resource 'UserportJoy',"
-                " assuming FALSE");
-        enabled = 0;
-    }
-    return (gboolean)enabled;
-}
-
-
 static void on_configure_activate(GtkWidget *widget, gpointer user_data)
 {
     ui_settings_dialog_create_and_activate_node("input/joystick");
@@ -136,12 +91,12 @@ static void on_configure_activate(GtkWidget *widget, gpointer user_data)
 
 /** \brief  Toggle the KeySetEnable resource
  *
- * \param[in]   widget  widget triggering the event
- * \param[in]   data    extra event data
+ * \param[in]   widget  widget triggering the event (unused)
+ * \param[in]   data    extra event data (unused)
  */
 static void on_keyset_toggled(GtkWidget *widget, gpointer data)
 {
-    (void)ui_toggle_keyset_joysticks(widget, data);
+    (void)ui_action_toggle_keyset_joystick();
 }
 
 
@@ -152,9 +107,19 @@ static void on_keyset_toggled(GtkWidget *widget, gpointer data)
  */
 static void on_mousegrab_toggled(GtkWidget *widget, gpointer data)
 {
-    ui_toggle_mouse_grab(widget, data);
+    ui_action_toggle_mouse_grab();
 }
 
+
+/** \brief  Handler for the 'activate' event of "Swap controlport joysticks"
+ *
+ * \param[in]   widget  widget triggering the event (unused)
+ * \param[in]   data    extra event data (unused)
+ */
+static void on_swap_controlport_toggled(GtkWidget *widget, gpointer data)
+{
+    ui_action_toggle_controlport_swap();
+}
 
 
 /** \brief  Create joystick menu popup for the statusbar
@@ -165,55 +130,38 @@ GtkWidget *joystick_menu_popup_create(void)
 {
     GtkWidget *menu;
     GtkWidget *item;
-    GtkWidget *child;
     int keyset = 0;
     int mouse = 0;
 
     menu = gtk_menu_new();
 
     if (joystick_swap_possible()) {
-        item = gtk_menu_item_new_with_label("");
-        child = gtk_bin_get_child(GTK_BIN(item));
-        gtk_label_set_markup(GTK_LABEL(child), "Swap joysticks (" VICE_MOD_MASK_HTML "+J)");
+        /* Swap joysticks */
+        item = gtk_check_menu_item_new_with_label("Swap joysticks");
+        ui_set_gtk_menu_item_accel_label(item, ACTION_SWAP_CONTROLPORT_TOGGLE);
         gtk_container_add(GTK_CONTAINER(menu), item);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item),
+                                       ui_get_controlport_swapped());
         g_signal_connect(item, "activate",
-                G_CALLBACK(ui_swap_joysticks_callback), NULL);
-    }
-
-    if (userport_joystick_swap_possible()) {
-        item = gtk_menu_item_new_with_label("");
-        child = gtk_bin_get_child(GTK_BIN(item));
-        gtk_label_set_markup(GTK_LABEL(child), "Swap userport joysticks (" VICE_MOD_MASK_HTML "+Shift+U)");
-        gtk_container_add(GTK_CONTAINER(menu), item);
-        g_signal_connect(item, "activate",
-                G_CALLBACK(ui_swap_userport_joysticks_callback), NULL);
-        gtk_widget_set_sensitive(GTK_WIDGET(item),
-                userport_joystick_adapter_enabled());
-
+                G_CALLBACK(on_swap_controlport_toggled), NULL);
     }
 
     /* Enable keyset joysticks */
-    item = gtk_check_menu_item_new_with_label("");
-    child = gtk_bin_get_child(GTK_BIN(item));
-    gtk_label_set_markup(GTK_LABEL(child),
-            "Enable keyboard joysticks (" VICE_MOD_MASK_HTML "+Shift+J)");
+    item = gtk_check_menu_item_new_with_label("Allow keyset joysticks");
+    ui_set_gtk_menu_item_accel_label(item, ACTION_KEYSET_JOYSTICK_TOGGLE);
     resources_get_int("KeySetEnable", &keyset);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), (gboolean)keyset);
     gtk_container_add(GTK_CONTAINER(menu), item);
     g_signal_connect(item, "toggled", G_CALLBACK(on_keyset_toggled), NULL);
 
     /* Enable mouse grab */
-    item = gtk_check_menu_item_new_with_label(
-            "fpp(Alt+M0");
-    child = gtk_bin_get_child(GTK_BIN(item));
-    gtk_label_set_markup(GTK_LABEL(child),
-            "Enable mouse grab (" VICE_MOD_MASK_HTML "+M)");
+    item = gtk_check_menu_item_new_with_label("Enable mouse grab");
+    ui_set_gtk_menu_item_accel_label(item, ACTION_MOUSE_GRAB_TOGGLE);
     resources_get_int("Mouse", &mouse);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), (gboolean)mouse);
     gtk_container_add(GTK_CONTAINER(menu), item);
     g_signal_connect(item, "toggled", G_CALLBACK(on_mousegrab_toggled), NULL);
 
- 
     item = gtk_separator_menu_item_new();
     gtk_container_add(GTK_CONTAINER(menu), item);
 

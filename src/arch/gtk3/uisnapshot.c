@@ -81,22 +81,18 @@ static gchar *create_datetime_string(void)
 
 /** \brief  Construct filename for quickload/quicksave snapshots
  *
- * \return  filename for the quickload/save file, heap-allocated by VICE, so
- *          free after use with lib_free()
+ * \return  filename for the quickload/save file
+ *
+ * \note    free after use with lib_free()
  */
 static char *quicksnap_filename(void)
 {
-    char *fname;
-    const char *mname;
-    char *cfg;
+    char filename[4096];
 
-    mname = machine_class == VICE_MACHINE_C64SC ? "c64sc" : machine_name;
-    cfg = archdep_user_config_path();
-    fname = util_concat(cfg, "/", mname, ".vsf", NULL);
-#if 0
-    lib_free(cfg);
-#endif
-    return fname;
+    /* construct the filename */
+    g_snprintf(filename, sizeof(filename), "%s.vsf", machine_get_name());
+
+    return archdep_join_paths(archdep_user_config_path(), filename, NULL);
 }
 
 
@@ -157,11 +153,7 @@ static void save_snapshot_dialog(void)
     response_id = gtk_dialog_run(GTK_DIALOG(dialog));
     save_roms = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(roms_widget));
     save_disks = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disks_widget));
-#if 0
-    debug_gtk3("response_id = %d.", response_id);
-    debug_gtk3("save disks = %s.", save_disks ? "YES" : "NO");
-    debug_gtk3("save ROMs = %s.", save_roms ? "YES" : "NO");
-#endif
+
     if (response_id == GTK_RESPONSE_ACCEPT) {
         gchar *filename;
 

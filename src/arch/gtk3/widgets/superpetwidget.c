@@ -42,26 +42,32 @@
 
 #include <gtk/gtk.h>
 
+#include "vice_gtk3.h"
 #include "aciawidget.h"
-#include "basedialogs.h"
-#include "basewidgets.h"
-#include "debug_gtk3.h"
-#include "openfiledialog.h"
 #include "resources.h"
 #include "ui.h"
-#include "widgethelpers.h"
 
 #include "superpetwidget.h"
 
 
+/** \brief  Number of SuperPET ROMs
+ */
 #define SUPERPET_ROM_COUNT ('F' - 'A' + 1)
 
 
+/** \brief  SuperPET enable toggle button */
 static GtkWidget *superpet_enable_widget = NULL;
+
+/** \brief  ACIA widget */
 static GtkWidget *acia1_widget = NULL;
+
+/** \brief  CPU widget */
 static GtkWidget *cpu_widget = NULL;
+
+/** \brief  ROM widget */
 static GtkWidget *rom_widget = NULL;
 
+/** \brief  References to the entries for ROMS 'A' to 'F' */
 static GtkWidget *rom_entry_list[SUPERPET_ROM_COUNT];
 
 
@@ -91,7 +97,6 @@ static void on_superpet_rom_changed(GtkWidget *widget, gpointer user_data)
     int rom = GPOINTER_TO_INT(user_data);
     const char *path = gtk_entry_get_text(GTK_ENTRY(widget));
 
-    debug_gtk3("setting H6809Rom%cName to '%s'.", rom, path);
     resources_set_string_sprintf("H6809Rom%cName", path, rom);
 }
 
@@ -107,9 +112,6 @@ static void browse_superpet_rom_filename_callback(GtkDialog *dialog,
                                                   gpointer data)
 {
     int rom_index = GPOINTER_TO_INT(data);
-
-    debug_gtk3("ROM index = %d ($%c000), filename = '%s'",
-            rom_index, rom_index + 'A', filename);
 
     if (filename != NULL) {
         GtkWidget *entry = rom_entry_list[rom_index];
@@ -192,8 +194,8 @@ static GtkWidget *create_superpet_rom_widget(void)
     GtkWidget *grid;
     int bank;
 
-    grid = uihelpers_create_grid_with_label("6809 ROMs", 3);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced_with_label(VICE_GTK3_DEFAULT,
+            VICE_GTK3_DEFAULT, "6809 ROMs", 3);
 
     for (bank = 0; bank < SUPERPET_ROM_COUNT; bank++) {
 

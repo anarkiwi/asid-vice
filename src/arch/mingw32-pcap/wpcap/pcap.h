@@ -1,4 +1,3 @@
-/* vim: set et ts=4 sw=4 sts=4 smartindent cindent syntax=c.doxygen fdm=marker: */
 /*
  * Copyright (c) 1993, 1994, 1995, 1996, 1997
  *	The Regents of the University of California.  All rights reserved.
@@ -49,9 +48,9 @@
 #include <stdio.h>
 
 #ifdef REMOTE
-	// We have to define the SOCKET here, although it has been defined in sockutils.h
-	// This is to avoid the distribution of the 'sockutils.h' file around
-	// (for example in the WinPcap developer's pack)
+/* We have to define the SOCKET here, although it has been defined in sockutils.h
+   This is to avoid the distribution of the 'sockutils.h' file around
+   (for example in the WinPcap developer's pack) */
 #  ifndef SOCKET
 #    ifdef WIN32
 #      define SOCKET unsigned int

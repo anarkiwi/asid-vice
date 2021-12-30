@@ -45,6 +45,8 @@ gboolean ui_cart_trigger_freeze(void);
 gboolean ui_cart_detach(void);
 
 gboolean ui_cart_show_dialog(GtkWidget *widget, gpointer data);
+void ui_cart_default_attach(GtkWidget *widget, void (*callback)(void));
+
 
 void ui_cart_shutdown(void);
 

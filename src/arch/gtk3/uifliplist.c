@@ -1,5 +1,3 @@
-/* vim: set et ts=4 sw=4 sts=4 fdm=marker syntax=c.doxygen: */
-
 /** \file   uifliplist.c
  * \brief   Fliplist menu management
  *
@@ -101,6 +99,26 @@ gboolean ui_fliplist_remove_current_cb(GtkWidget *widget, gpointer data)
     }
 
     fliplist_remove(unit, NULL);
+    ui_display_statustext(buffer, 10);
+    return TRUE;
+}
+
+/** \brief  Remove all images from fliplist
+ *
+ * \param[in]   widget  unused
+ * \param[in]   data    unit number
+ *
+ * \return  TRUE (make sure GLib 'consumes' the key event so it doesn't end up
+ *          in the emulated machine
+ */
+gboolean ui_fliplist_clear_cb(GtkWidget *widget, gpointer data)
+{
+    int unit = GPOINTER_TO_INT(data);
+    char buffer[MSGBUF_SIZE];
+
+    g_snprintf(buffer, MSGBUF_SIZE, "Fliplist (#%d) cleared.", unit);
+
+    fliplist_clear_list(unit);
     ui_display_statustext(buffer, 10);
     return TRUE;
 }

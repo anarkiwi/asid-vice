@@ -4,7 +4,7 @@
  * \author  Bas Wassink <b.wassink@ziggo.nl>
  */
 
-/* Note: These only make sense with a SidCart attached for certain machines
+/* Note: These only make sense with a Sid Cartridge attached for certain machines
  *
  * $VICERES SidEngine                   all
  * $VICERES SidStereo                   all
@@ -201,25 +201,45 @@ static GtkWidget *address_widgets[SOUND_SIDS_MAX];
  */
 GtkWidget *filters;
 
+/* only used with the ReSID engine */
 #ifdef HAVE_RESID
+
+/** \brief  6581 Passband reset button */
 static GtkWidget *resid_6581_passband_button;
+
+/** \brief  6581 Gain reset button */
 static GtkWidget *resid_6581_gain_button;
+
+/** \brief  6581 Bias reset button */
 static GtkWidget *resid_6581_bias_button;
+
+/** \brief  8580 Passband reset button */
 static GtkWidget *resid_8580_passband_button;
+
+/** \brief  8580 Gain reset button */
 static GtkWidget *resid_8580_gain_button;
+
+/** \brief  8580 Bias reset button */
 static GtkWidget *resid_8580_bias_button;
 
+/** \brief  6581 widgets grid */
 static GtkWidget *resid_6581_grid;
+
+/** \brief  8580 widgets grid */
 static GtkWidget *resid_8580_grid;
 
-
+/** \brief  6581 Passband spin button */
 static GtkWidget *resid_6581_passband_spin;
+
+/** \brief  6581 Gain spin button */
 static GtkWidget *resid_6581_gain_spin;
+
+/** \brief  6581 Bias spin button */
 static GtkWidget *resid_6581_bias_spin;
 
 #endif
 
-
+/** \brief  Number of extra SIDs widget */
 static GtkWidget *num_sids_widget;
 
 
@@ -227,11 +247,12 @@ static GtkWidget *num_sids_widget;
  *
  * XXX: This function is also used in the constructor of the main widget to
  *      set the initial sensitivity of the address widgets, with NULL passed
- *      as the widget. I should probably refactor that code to have a separate
+ *      as the widget.
+ *      I should probably refactor that code to have a separate
  *      function to set sensitivity to avoid this hack.
  *
  * \param[in]   widget  widget triggering the event
- * \param[in]   count   number of extra SIDs (0 - SOUND_SID_MAX-1)
+ * \param[in]   data   number of extra SIDs (0 - SOUND_SID_MAX-1)
  */
 static void on_sid_count_changed(GtkWidget *widget, gpointer data)
 {
@@ -244,7 +265,6 @@ static void on_sid_count_changed(GtkWidget *widget, gpointer data)
         /* called from an event, use the spin button's value */
         count = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
     }
-    debug_gtk3("extra SIDs count changed to %d.", count);
 
     if (sid_machine_can_have_multiple_sids()) {
         gtk_widget_set_sensitive(address_widgets[0], count > 0);
@@ -349,7 +369,6 @@ static void on_resid_8580_bias_default_clicked(GtkWidget *widget,
 #ifdef HAVE_RESID
 static void on_spin_value_changed(GtkWidget *spin, gpointer data)
 {
-    debug_gtk3("Callled.");
     vice_gtk3_resource_scale_int_sync(data);
 }
 #endif
@@ -393,8 +412,6 @@ static void engine_model_changed_callback(int engine, int model)
 #ifdef HAVE_RESID
     gboolean is_resid = engine == SID_ENGINE_RESID;
 #endif
-    debug_gtk3("engine: %d, model = %d.", engine, model);
-
     /* Show proper ReSID slider widgets
      *
      * We can't check old model vs new model here, since the resource
@@ -544,27 +561,21 @@ static void on_resid_6581_bias_change(GtkWidget *widget, gpointer data)
 
 static void on_resid_6581_passband_spin_change(GtkWidget *widget, gpointer data)
 {
-    debug_gtk3("Callled!");
     double value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-    debug_gtk3("Setting to %lf", value);
     gtk_range_set_value(GTK_RANGE(resid_6581_passband), value);
 }
 
 
 static void on_resid_6581_gain_spin_change(GtkWidget *widget, gpointer data)
 {
-    debug_gtk3("Callled!");
     double value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-    debug_gtk3("Setting to %lf", value);
     gtk_range_set_value(GTK_RANGE(resid_6581_gain), value);
 }
 
 
 static void on_resid_6581_bias_spin_change(GtkWidget *widget, gpointer data)
 {
-    debug_gtk3("Callled!");
     double value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
-    debug_gtk3("Setting to %lf", value);
     gtk_range_set_value(GTK_RANGE(resid_6581_bias), value);
 }
 #endif
@@ -737,7 +748,7 @@ static GtkWidget *create_resource_reset_button(
 
 /** \brief  Create widget to control SID settings
  *
- * \param[in]   parent  parent widget
+ * \param[in]   parent  parent widget (unused)
  *
  * \return  GtkGrid
  */
@@ -756,28 +767,23 @@ GtkWidget *sid_sound_widget_create(GtkWidget *parent)
     int is_resid;
 #endif
 
-    layout = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(layout), 8);
-    gtk_grid_set_row_spacing(GTK_GRID(layout), 8);
+    layout = vice_gtk3_grid_new_spaced(8, VICE_GTK3_DEFAULT);
 
     label = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(label), "<b>SID settings</b>");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_grid_attach(GTK_GRID(layout), label, 0, 0, 3, 1);
 
-    if (resources_get_int("SidModel", &model) < 0) {
-        debug_gtk3("failed to get SidModel resource");
-    }
+    resources_get_int("SidModel", &model);
 
     engine = sid_engine_model_widget_create();
-    sid_engine_model_widget_set_callback(engine, engine_model_changed_callback);
+    sid_engine_model_widget_set_callback(engine_model_changed_callback);
     gtk_grid_attach(GTK_GRID(layout), engine, 0, 1, 1,1);
 #ifdef HAVE_RESID
     resid_sampling = create_resid_sampling_widget();
     gtk_grid_attach(GTK_GRID(layout), resid_sampling, 1, 1, 1, 1);
 #endif
     resources_get_int("SidEngine", &current_engine);
-    debug_gtk3("SidEngine = %d.", current_engine);
 #ifdef HAVE_RESID
     is_resid = current_engine == SID_ENGINE_RESID;
 #endif
@@ -809,7 +815,6 @@ GtkWidget *sid_sound_widget_create(GtkWidget *parent)
         i = 0;
         while (i < max - 1) {
             while ((c < 4) && (i < max -1)) {
-                debug_gtk3("Adding address widget #%d", i);
                 gtk_grid_attach(GTK_GRID(sid_addresses),
                                 address_widgets[i],
                                 c, ((i + 1) / 4) + 1, 1, 1);
@@ -968,7 +973,6 @@ GtkWidget *sid_sound_widget_create(GtkWidget *parent)
     gtk_widget_set_hexpand(resid_6581_gain, TRUE);
     gtk_widget_set_hexpand(resid_8580_gain, TRUE);
 
-    debug_gtk3("Adding 6581/8580 ReSID widgets.");
     gtk_widget_set_hexpand(resid_6581_grid, TRUE);
     gtk_grid_attach(GTK_GRID(layout), resid_6581_grid, 0, row + 1, 3 ,1);
     gtk_grid_attach(GTK_GRID(layout), resid_8580_grid, 0, row + 2, 3, 1);

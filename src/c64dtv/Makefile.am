@@ -28,6 +28,7 @@ AM_LDFLAGS = @VICE_LDFLAGS@
 noinst_LIBRARIES = libc64dtv.a libc64dtvstubs.a
 
 libc64dtvstubs_a_SOURCES = \
+	c64dtvstubs.c \
 	c64dtvcart.c
 
 libc64dtv_a_SOURCES = \
@@ -54,7 +55,6 @@ libc64dtv_a_SOURCES = \
 	c64dtv.h \
 	c64dtvcia1.c \
 	c64dtvcia2.c \
-	c64dtvembedded.c \
 	c64dtviec.c \
 	c64dtvmeminit.c \
 	c64dtvmeminit.h \

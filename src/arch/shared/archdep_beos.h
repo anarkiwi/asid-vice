@@ -1,10 +1,14 @@
+/** \file   archdep_beos.h
+ * \brief   Miscellaneous BeOS system-specific stuff
+ *
+ * \author  Marco van den Heuvel <blackystardust68@yahoo.com>
+ * \author  Marcus Sutton <loggedoubt@gmail.com>
+ *
+ * TODO:    Either of these authors should properly document the defines using
+ *          Doxygen.
+ */
+
 /*
- * archdep_beos.h - Miscellaneous system-specific stuff.
- *
- * Written by
- *  Marco van den Heuvel <blackystardust68@yahoo.com>
- *  Marcus Sutton <loggedoubt@gmail.com>
- *
  * This file is part of VICE, the Versatile Commodore Emulator.
  * See README for copyright notice.
  *
@@ -35,19 +39,14 @@
 /* Video chip scaling.  */
 #define ARCHDEP_VICII_DSIZE   1
 #define ARCHDEP_VICII_DSCAN   1
-#define ARCHDEP_VICII_HWSCALE 0
 #define ARCHDEP_VDC_DSIZE     1
 #define ARCHDEP_VDC_DSCAN     1
-#define ARCHDEP_VDC_HWSCALE   0
 #define ARCHDEP_VIC_DSIZE     1
 #define ARCHDEP_VIC_DSCAN     1
-#define ARCHDEP_VIC_HWSCALE   0
 #define ARCHDEP_CRTC_DSIZE    1
 #define ARCHDEP_CRTC_DSCAN    1
-#define ARCHDEP_CRTC_HWSCALE  0
 #define ARCHDEP_TED_DSIZE     1
 #define ARCHDEP_TED_DSCAN     1
-#define ARCHDEP_TED_HWSCALE   0
 
 /* Filesystem dependant operators.  */
 #define FSDEVICE_DEFAULT_DIR "."

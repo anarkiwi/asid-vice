@@ -44,16 +44,30 @@
  */
 static void (*dialog_cb)(GSList *) = NULL;
 
-
+/** \brief  Last used directory of the dialog
+ *
+ * Used by the functions in lastdir.c
+ */
 static gchar *last_used_dir = NULL;
+
+/** \brief  Last used file of the dialog
+ *
+ * Used by the functions in lastdir.c
+ */
 static gchar *last_used_file = NULL;
 
 
-
+/** \brief  Handler for the 'destroy' event of the dialog
+ *
+ * \param[in]   widget  dialog (unused)
+ * \param[in]   data    extra event data (unused)
+ *
+ * XXX: Currently does nothing. Not sure what I meant to do with this --compyx
+ */
 static void on_destroy(GtkWidget *widget, gpointer data)
 {
+    /* NOP */
 }
-
 
 
 /** \brief  Handler for the 'response' event of the dialog
@@ -66,18 +80,13 @@ static void on_destroy(GtkWidget *widget, gpointer data)
  */
 static void on_response(GtkDialog *dialog, gint response_id, gpointer data)
 {
-    debug_gtk3("called with response_id %d.", response_id);
-
     if (response_id == GTK_RESPONSE_ACCEPT) {
         GSList *files = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog));
         char *first = files->data;
         gchar *dir = g_path_get_dirname(first);
 
-        debug_gtk3("Setting lastdir to '%s'.", dir);
-        lastdir_update_raw(dir, &last_used_dir);
-
-        /* do not free dir, that gets freed in lastdir.c */
-
+        lastdir_update_raw(dir, &last_used_dir, first, &last_used_file);
+        g_free(dir);    /* lastdir_update makes a copy */
         dialog_cb(files);
     }
 
@@ -126,7 +135,6 @@ static GtkWidget *vsid_playlist_add_dialog_create(void)
         }
     }
 
-    debug_gtk3("Setting last user dir to '%s'.", last_used_dir);
     lastdir_set(dialog, &last_used_dir, &last_used_file);
 
     g_signal_connect(dialog, "response", G_CALLBACK(on_response), NULL);
@@ -148,6 +156,12 @@ void vsid_playlist_add_dialog_exec(void (*callback)(GSList *files))
 }
 
 
+/** \brief  Free memory used by the lastdir.c functions
+ *
+ * Frees the `last_used_dir` and `last_used_file` strings.
+ *
+ * Called on emulator shutdown.
+ */
 void vsid_playlist_add_dialog_free(void)
 {
     lastdir_shutdown(&last_used_dir, &last_used_file);

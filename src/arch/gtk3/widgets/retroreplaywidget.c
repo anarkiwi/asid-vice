@@ -2,6 +2,9 @@
  * \brief   Widget to control Retro Replay resources
  *
  * \author  Bas Wassink <b.wassink@ziggo.nl>
+ *
+ * \todo    Check if the cartimagehelper can be used here to simplify the code
+ *          for image selection and save/flush.
  */
 
 /*
@@ -72,7 +75,6 @@ static void save_filename_callback(GtkDialog *dialog,
                                    gpointer data)
 {
     if (filename != NULL) {
-        debug_gtk3("writing RR image file as '%s'.", filename);
         if (carthelpers_save_func(CARTRIDGE_RETRO_REPLAY, filename) < 0) {
             vice_gtk3_message_error("VICE core",
                     "Failed to save Retro Replay image '%s'.", filename);
@@ -84,7 +86,7 @@ static void save_filename_callback(GtkDialog *dialog,
 
 
 
-/** \brief  Handler for the "clicked" event of the "Save As" button
+/** \brief  Handler for the 'clicked' event of the "Save As" button
  *
  * \param[in]   widget      button
  * \param[in]   user_data   extra event data (unused)
@@ -98,14 +100,13 @@ static void on_save_clicked(GtkWidget *widget, gpointer user_data)
 }
 
 
-/** \brief  Handler for the "clicked" event of the "Flush now" button
+/** \brief  Handler for the 'clicked' event of the "Flush now" button
  *
  * \param[in]   widget      button
  * \param[in]   user_data   extra event data (unused)
  */
 static void on_flush_clicked(GtkWidget *widget, gpointer user_data)
 {
-    debug_gtk3("flushing RR image.");
     if (carthelpers_flush_func(CARTRIDGE_RETRO_REPLAY) < 0) {
         vice_gtk3_message_error("VICE core",
                 "Failed to flush current Retro Replay image.");
@@ -131,9 +132,7 @@ GtkWidget *retroreplay_widget_create(GtkWidget *parent)
     GtkWidget *flush_button;
     GtkWidget *bios_write;
 
-    grid = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT);
 
     /* RRFlashJumper */
     flash = vice_gtk3_resource_check_button_new("RRFlashJumper",
@@ -174,7 +173,7 @@ GtkWidget *retroreplay_widget_create(GtkWidget *parent)
             NULL);
 
     /* Flush image now */
-    flush_button = gtk_button_new_with_label("Flush image now");
+    flush_button = gtk_button_new_with_label("Save image now");
     gtk_grid_attach(GTK_GRID(grid), flush_button, 2, 3, 1, 1);
     g_signal_connect(flush_button, "clicked", G_CALLBACK(on_flush_clicked),
             NULL);

@@ -30,6 +30,8 @@ palettes = \
 	ptoing.vpl \
 	deekay.vpl \
 	cjam.vpl \
+	palette.vpl \
+	pixcen.vpl \
 	rgb.vpl
 
 gtk3_keymaps = \
@@ -37,6 +39,8 @@ gtk3_keymaps = \
 	gtk3_pos.vkm \
 	gtk3_pos_de.vkm \
 	gtk3_pos_se.vkm \
+	gtk3_pos_it.vkm \
+	gtk3_pos_es.vkm \
 	gtk3_sym_de.vkm \
 	gtk3_sym_nl.vkm \
 	gtk3_sym_da.vkm \
@@ -44,15 +48,18 @@ gtk3_keymaps = \
 	gtk3_keyrah_de.vkm \
 	gtk3_the64_de.vkm \
 	gtk3_sym_it.vkm \
-	gtk3_sym_se.vkm
+	gtk3_sym_se.vkm \
+	gtk3_sym_fr.vkm \
+	gtk3_pos_bmc64.vkm
+
+gtk3_hotkeys = \
+	gtk3-hotkeys.vhk \
+	gtk3-winvice-legacy.vhk
 
 sdl_keymaps = \
 	sdl_joymap_ps3.vjm \
 	sdl_joymap_thec64.vjm \
-	sdl_hotkeys.vkm \
-	sdl_hotkeys_vsid.vkm \
 	sdl_pos.vkm \
-	sdl_pos_bmc64.vkm \
 	sdl_pos_ch.vkm \
 	sdl_pos_da.vkm \
 	sdl_pos_de.vkm \
@@ -67,17 +74,22 @@ sdl_keymaps = \
 	sdl_sym_de.vkm \
 	sdl_sym_nl.vkm \
 	sdl_sym_it.vkm \
+	sdl_sym_fr.vkm \
 	sdl_sym_da.vkm
+
+sdl_hotkeys = \
+	sdl-hotkeys.vhk \
+	sdl-hotkeys-vsid.vhk
 
 sym_file = \
 	c64mem.sym
 
 if SDL_COMPILE
-c64_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sym_file)
+c64_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sym_file) $(sdl_hotkeys)
 
-EXTRA_DIST = $(c64_DATA) $(gtk3_keymaps)
+EXTRA_DIST = $(c64_DATA) $(gtk3_keymaps) $(gtk3_hotkeys)
 else
-c64_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(sym_file)
+c64_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(gtk3_hotkeys) $(sym_file)
 
-EXTRA_DIST = $(c64_DATA) $(sdl_keymaps)
+EXTRA_DIST = $(c64_DATA) $(sdl_keymaps) $(sdl_hotkeys)
 endif

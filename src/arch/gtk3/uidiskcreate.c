@@ -108,9 +108,9 @@ static GtkWidget *set_drive_type;
  *
  * This handler is called when the user clicks a button in the dialog.
  *
- * \param[in]   widget      the dialog
- * \param[in]   response_id response ID
- * \param[in]   data        extra data (unused)
+ * \param[in,out]   widget      the dialog
+ * \param[in]       response_id response ID
+ * \param[in]       data        extra data (unused)
  */
 static void on_response(GtkWidget *widget, gint response_id, gpointer data)
 {
@@ -224,11 +224,11 @@ static gboolean create_disk_image(const char *filename)
     /* convert name & ID to PETSCII */
     if (name_gtk3 != NULL && *name_gtk3 != '\0') {
         strncpy(name_vice, name_gtk3, IMAGE_CONTENTS_NAME_LEN);
-        charset_petconvstring((unsigned char *)name_vice, 0);
+        charset_petconvstring((unsigned char *)name_vice, CONVERT_TO_PETSCII);
     }
     if (id_gtk3 != NULL && *id_gtk3 != '\0') {
         strncpy(id_vice, id_gtk3, IMAGE_CONTENTS_ID_LEN);
-        charset_petconvstring((unsigned char *)id_vice, 0);
+        charset_petconvstring((unsigned char *)id_vice, CONVERT_TO_PETSCII);
     } else {
         strcpy(id_vice, "00");
     }
@@ -423,8 +423,6 @@ gboolean ui_disk_create_dialog_show(GtkWidget *parent, gpointer data)
     gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 
     g_signal_connect(dialog, "response", G_CALLBACK(on_response), NULL);
-
     gtk_widget_show(dialog);
-
     return TRUE;
 }

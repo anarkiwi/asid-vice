@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "archdep.h"
+#include "charset.h"
 #include "diskcontents.h"
 #include "tapecontents.h"
 #include "imagecontents.h"
@@ -56,7 +57,7 @@ static void sdl_ui_image_file_selector_redraw(image_contents_t *contents, const 
     uint8_t oldbg;
     image_contents_file_list_t *entry;
 
-    title_string = image_contents_to_string(contents, 0);
+    title_string = image_contents_to_string(contents, IMAGE_CONTENTS_STRING_PETSCII);
 
     sdl_ui_clear();
     sdl_ui_display_title(title_string);
@@ -132,10 +133,9 @@ int sdl_ui_image_file_selection_dialog(const char* filename, ui_menu_filereq_mod
 
     menu_draw = sdl_ui_get_menu_param();
 
-    /* FIXME: it might be a good idea to wrap this into a common imagecontents_read */
     contents = tapecontents_read(filename);
     if (contents == NULL) {
-        contents = diskcontents_read(filename, 0 /* FIXME: unit */, 0 /* FIXME: drive */);
+        contents = diskcontents_filesystem_read(filename);
         if (contents == NULL) {
             return 0;
         }

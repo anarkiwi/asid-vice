@@ -2,6 +2,8 @@
  * \brief   Widget to control RRNet MK3 resourcs
  *
  * \author  Bas Wassink <b.wassink@ziggo.nl>
+ *
+ * \todo    Reimplement using cartimagehelper.c
  */
 
 /*
@@ -55,7 +57,6 @@ static void save_filename_callback(GtkDialog *dialog,
                                   gpointer data)
 {
     if (filename != NULL) {
-        debug_gtk3("saving RRNetMk3 cart image as '%s'.", filename);
         if (carthelpers_save_func(CARTRIDGE_RRNETMK3, filename) < 0) {
             vice_gtk3_message_error("Saving failed",
                     "Failed to save cartridge image '%s'",
@@ -88,7 +89,6 @@ static void on_save_clicked(GtkWidget *widget, gpointer user_data)
  */
 static void on_flush_clicked(GtkWidget *widget, gpointer user_data)
 {
-    debug_gtk3("flushing RRNetMk3 image.");
     if (carthelpers_flush_func(CARTRIDGE_RRNETMK3) < 0) {
         vice_gtk3_message_error("VICE core",
                 "Failed to flush RR-Net Mk3 image.");
@@ -98,7 +98,7 @@ static void on_flush_clicked(GtkWidget *widget, gpointer user_data)
 
 /** \brief  Create widget to control RRNet Mk3 resources
  *
- * \param[in]   parent  parent widget
+ * \param[in]   parent  parent widget (unused)
  *
  * \return  GtkGrid
  */
@@ -110,9 +110,7 @@ GtkWidget *rrnetmk3_widget_create(GtkWidget *parent)
     GtkWidget *save_button;
     GtkWidget *flush_button;
 
-    grid = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    grid = vice_gtk3_grid_new_spaced(8, 8);
 
     flash_jumper = vice_gtk3_resource_check_button_new(
             "RRNETMK3_flashjumper", "Enable flash jumper");
@@ -131,7 +129,7 @@ GtkWidget *rrnetmk3_widget_create(GtkWidget *parent)
             NULL);
 
     /* Flush image now */
-    flush_button = gtk_button_new_with_label("Flush image now");
+    flush_button = gtk_button_new_with_label("Save image now");
     gtk_grid_attach(GTK_GRID(grid), flush_button, 1, 2, 1, 1);
     g_signal_connect(flush_button, "clicked", G_CALLBACK(on_flush_clicked),
             NULL);

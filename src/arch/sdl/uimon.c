@@ -78,8 +78,10 @@ void uimon_window_close(void)
     }
 }
 
-console_t *uimon_window_open(void)
+console_t *uimon_window_open(bool display_now)
 {
+    /* TODO: something with display_now for SDL. It's set to false at startup when -moncommands is used. */
+
 #ifdef ALLOW_NATIVE_MONITOR
     using_ui_monitor = !native_monitor || sdl_active_canvas->fullscreenconfig->enable;
 #endif
@@ -109,7 +111,7 @@ void uimon_window_suspend(void)
 console_t *uimon_window_resume(void)
 {
     if (using_ui_monitor && menu_draw) {
-        return uimon_window_open();
+        return uimon_window_open(true);
     } else {
         return console_log_local;
     }
@@ -177,10 +179,6 @@ char *uimon_get_in(char **ppchCommandLine, const char *prompt)
         x_off = sdl_ui_print(prompt, 0, y);
         input = sdl_ui_readline(NULL, x_off, y);
         sdl_ui_scroll_screen_up();
-
-        if (input == NULL) {
-            input = lib_strdup("x");
-        }
 
         return input;
     } else {

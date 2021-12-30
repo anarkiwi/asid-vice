@@ -11,6 +11,7 @@
  * $VICERES JoyDevice2      -vsid
  * $VICERES JoyDevice3      -vsid
  * $VICERES JoyDevice4      -vsid
+ * $VICERES Mouse           -vsid
  */
 
 /*
@@ -48,19 +49,21 @@
 #include "log.h"
 #include "machine.h"
 #include "mainlock.h"
+#include "uimenu.h"
 #include "util.h"
+#include "uiactions.h"
 #include "vsync.h"
-
-#if 0
-#ifdef WIN32_COMPILE
-# include <windows.h>
-#endif
-#endif
-
+#include "uiapi.h"
 #include "ui.h"
-#include "uicommands.h"
+#include "uimachinemenu.h"
 #include "uimachinewindow.h"
+#include "uisettings.h"
 #include "widgethelpers.h"
+
+#include "uicommands.h"
+
+
+static gboolean controlport_swapped = FALSE;
 
 
 /** \brief  Callback for the confirm-on-exit dialog
@@ -72,7 +75,6 @@
  */
 static void confirm_exit_callback(GtkDialog *dialog, gboolean result)
 {
-    debug_gtk3("called: %s", result ? "TRUE" : "FALSE");
     if (result) {
         mainlock_release();
         archdep_vice_exit(0);
@@ -81,47 +83,63 @@ static void confirm_exit_callback(GtkDialog *dialog, gboolean result)
 }
 
 
-/** \brief  Swap joysticks
+/** \brief  Determine if control ports 1 & 2 are currently swapped.
  *
- * \param[in]   widget      widget triggering the event (invalid)
- * \param[in]   user_data   extra data for event (unused)
+ * \return  bool
+ */
+gboolean ui_get_controlport_swapped(void)
+{
+    return controlport_swapped;
+}
+
+
+
+/** \brief  Swap controlport devices 1 & 2
  *
  * \return  TRUE
  */
-gboolean ui_swap_joysticks_callback(GtkWidget *widget, gpointer user_data)
+gboolean ui_action_toggle_controlport_swap(void)
 {
     int joy1 = -1;
     int joy2 = -1;
+    int type1 = -1;
+    int type2 = -1;
+
+    resources_get_int("JoyPort1Device", &type1);
+    resources_get_int("JoyPort2Device", &type2);
+
+    /* unset both resources first to avoid assigning for example the mouse to
+     * two ports. here might be dragons!
+     */
+    resources_set_int("JoyPort1Device", 0);
+    resources_set_int("JoyPort2Device", 0);
+
+    /* try setting port #2 first, some devices only work in port #1 */
+    if (resources_set_int("JoyPort2Device", type1) < 0) {
+        /* restore config */
+        resources_set_int("JoyPort1Device", type1);
+        resources_set_int("JoyPort2Device", type2);
+        return TRUE;
+    }
+    if (resources_set_int("JoyPort1Device", type2) < 0) {
+        /* restore config */
+        resources_set_int("JoyPort1Device", type1);
+        resources_set_int("JoyPort2Device", type2);
+        return TRUE;
+    }
 
     resources_get_int("JoyDevice1", &joy1);
     resources_get_int("JoyDevice2", &joy2);
     resources_set_int("JoyDevice1", joy2);
     resources_set_int("JoyDevice2", joy1);
 
+    controlport_swapped = !controlport_swapped;
+
+    ui_set_gtk_check_menu_item_blocked_by_name(ACTION_SWAP_CONTROLPORT_TOGGLE,
+                                               controlport_swapped);
     return TRUE;
 }
 
-
-/** \brief  Swap userport joysticks
- *
- * \param[in]   widget      widget triggering the event (invalid)
- * \param[in]   user_data   extra data for event (unused)
- *
- * \return  TRUE
- */
-gboolean ui_swap_userport_joysticks_callback(GtkWidget *widget,
-                                             gpointer user_data)
-{
-    int joy3 = -1;
-    int joy4 = -1;
-
-    resources_get_int("JoyDevice3", &joy3);
-    resources_get_int("JoyDevice4", &joy4);
-    resources_set_int("JoyDevice3", joy4);
-    resources_set_int("JoyDevice4", joy3);
-
-    return TRUE;
-}
 
 
 /** \brief  Toggle resource 'KeySetEnable'
@@ -130,13 +148,17 @@ gboolean ui_swap_userport_joysticks_callback(GtkWidget *widget,
  * \param[in]   data    (unused?)
  *
  * \return  TRUE (so the UI eats the event)
+ *
  */
-gboolean ui_toggle_keyset_joysticks(GtkWidget *widget, gpointer data)
+gboolean ui_action_toggle_keyset_joystick(void)
 {
     int enable;
 
     resources_get_int("KeySetEnable", &enable);
     resources_set_int("KeySetEnable", !enable);
+
+    ui_set_gtk_check_menu_item_blocked_by_name(ACTION_KEYSET_JOYSTICK_TOGGLE,
+                                               !enable);
 
     return TRUE;    /* don't let any shortcut key end up in the emulated machine */
 }
@@ -144,12 +166,12 @@ gboolean ui_toggle_keyset_joysticks(GtkWidget *widget, gpointer data)
 
 /** \brief  Toggle resource 'Mouse' (mouse-grab)
  *
- * \param[in]   widget
- * \param[in]   data    (unused?)
+ * \param[in]   widget  menu item triggering the event (unused)
+ * \param[in]   data    extra event data (unused)
  *
  * \return  TRUE (so the UI eats the event)
  */
-gboolean ui_toggle_mouse_grab(GtkWidget *widget, gpointer data)
+gboolean ui_action_toggle_mouse_grab(void)
 {
     GtkWindow *window;
     int mouse;
@@ -160,16 +182,22 @@ gboolean ui_toggle_mouse_grab(GtkWidget *widget, gpointer data)
     mouse = !mouse;
 
     if (mouse) {
-       g_snprintf(title, 256, "VICE (%s) (Use %s+M to disable mouse grab)",
-               machine_get_name(), VICE_MOD_MASK_TEXT);
+        ui_menu_item_t *item = ui_get_vice_menu_item_by_name(ACTION_MOUSE_GRAB_TOGGLE);
+        gchar *name = gtk_accelerator_name(item->keysym, item->modifier);
+        g_snprintf(title, sizeof(title),
+                "VICE (%s) (Use %s to disable mouse grab)",
+                machine_get_name(), name);
+        g_free(name);
     } else {
-       g_snprintf(title, 256, "VICE (%s)",
-               machine_get_name());
+       g_snprintf(title, sizeof(title),
+                "VICE (%s)",
+                machine_get_name());
     }
 
     window = ui_get_active_window();
     gtk_window_set_title(window, title);
 
+    ui_set_gtk_check_menu_item_blocked_by_name(ACTION_MOUSE_GRAB_TOGGLE, mouse);
 
     return TRUE;    /* don't let any shortcut key end up in the emulated machine */
 }
@@ -243,15 +271,16 @@ gboolean ui_close_callback(GtkWidget *widget, gpointer user_data)
 }
 
 
-/** \brief  Handler for the "delete-event" of a main window
+/** \brief  Handler for the 'delete-event' of a main window
  *
- * \param[in]   widget      window triggering the event
+ * \param[in]   widget      window triggering the event (unused)
  * \param[in]   event       event details (unused)
  * \param[in]   user_data   extra data for the event (unused)
  *
  * \return  TRUE, if the function returns at all
  */
-gboolean ui_main_window_delete_event(GtkWidget *widget, GdkEvent *event,
+gboolean ui_main_window_delete_event(GtkWidget *widget,
+                                     GdkEvent *event,
                                      gpointer user_data)
 {
     if (confirm_exit()) {
@@ -262,7 +291,7 @@ gboolean ui_main_window_delete_event(GtkWidget *widget, GdkEvent *event,
 }
 
 
-/** \brief  Callback for the "destroy" event of a main window
+/** \brief  Callback for the 'destroy' event of a main window
  *
  * \param[in]   widget      widget triggering the event
  * \param[in]   user_data   extra data for the callback (unused)
@@ -270,8 +299,6 @@ gboolean ui_main_window_delete_event(GtkWidget *widget, GdkEvent *event,
 void ui_main_window_destroy_callback(GtkWidget *widget, gpointer user_data)
 {
     GtkWidget *grid;
-
-    debug_gtk3("WINDOW DESTROY called on %p.", (void *)widget);
 
     /*
      * This should not be needed, destroying a GtkWindow should trigger
@@ -307,11 +334,8 @@ gboolean ui_toggle_resource(GtkWidget *widget, gpointer resource)
 
         /* attempt to toggle resource */
         if (resources_toggle(res, &new_state) < 0) {
-            debug_gtk3("toggling resource %s failed.", res);
             return FALSE;
         }
-        debug_gtk3("resource %s toggled to %s.",
-                   res, new_state ? "True" : "False");
         return TRUE;
     }
     return FALSE;
@@ -329,6 +353,9 @@ gboolean ui_toggle_resource(GtkWidget *widget, gpointer resource)
  *          (unreliable: gtk_show_uri_on_window() will return TRUE if the
  *           associated application could be openened but not the actual
  *           manual file)
+ *
+ * \note    Keep the debug_gtk3() calls for now, this code hardly works on
+ *          Windows at all and needs work.
  */
 gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
 {
@@ -346,9 +373,7 @@ gboolean ui_open_manual_callback(GtkWidget *widget, gpointer user_data)
 
     /* first try opening the pdf */
     uri = archdep_join_paths(path, "vice.pdf", NULL);
-
     debug_gtk3("URI before GTK3: %s", uri);
-
     final_uri = g_filename_to_uri(uri, NULL, &error);
     debug_gtk3("final URI (pdf): %s", final_uri);
     if (final_uri == NULL) {
@@ -427,12 +452,10 @@ gboolean ui_restore_display(GtkWidget *widget, gpointer data)
 {
     GtkWindow *window = ui_get_active_window();
 
-    debug_gtk3("called\n");
-
     if (window != NULL) {
         /* disable fullscreen if active */
         if (ui_is_fullscreen()) {
-            ui_fullscreen_callback(widget, data);
+            ui_action_toggle_fullscreen();
         }
         /* unmaximize */
         gtk_window_unmaximize(window);
@@ -441,8 +464,6 @@ gboolean ui_restore_display(GtkWidget *widget, gpointer data)
          * decorations and contents without wasting space
          */
         gtk_window_resize(window, 1, 1);
-    } else {
-        debug_gtk3("ui_get_active_window() returned NULL");
     }
     return TRUE;
 }
@@ -457,7 +478,6 @@ gboolean ui_restore_display(GtkWidget *widget, gpointer data)
  */
 static void restore_default_callback(GtkDialog *dialog, gboolean result)
 {
-    debug_gtk3("Resetting resources to default.");
     if (result) {
         mainlock_obtain();
         resources_set_defaults();
@@ -486,5 +506,19 @@ gboolean ui_restore_default_settings(GtkWidget *widget, gpointer data)
             "The new settings will not be saved until using the 'Save"
             " settings' menu item, or having 'Save on exit' enabled and"
             " exiting VICE.");
+    return TRUE;
+}
+
+
+/** \brief  Show settings dialog with hotkeys node activated
+ *
+ * \param[in]   widget  parent widget (unused)
+ * \param[in]   data    extra event data (unused)
+ *
+ * \return  TRUE to signal the accelerator event has been consumed.
+ */
+gboolean ui_popup_hotkeys_settings(GtkWidget *widget, gpointer data)
+{
+    ui_settings_dialog_create_and_activate_node("host/hotkeys");
     return TRUE;
 }

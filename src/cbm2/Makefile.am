@@ -1,9 +1,12 @@
+SUBDIRS = cart
+
 AM_CPPFLAGS = \
 	@VICE_CPPFLAGS@ \
 	@ARCH_INCLUDES@ \
 	-I$(top_srcdir)/src/arch/shared \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/src/cbm2/cart \
 	-I$(top_srcdir)/src/sid \
 	-I$(top_srcdir)/src/crtc \
 	-I$(top_srcdir)/src/vicii \
@@ -41,14 +44,11 @@ libcbm2_a_SOURCES = \
 	cbm2acia.h \
 	cbm2acia1.c \
 	cbm2bus.c \
-	cbm2cart.c \
-	cbm2cart.h \
 	cbm2cia.h \
 	cbm2cia1.c \
 	cbm2cpu.c \
 	cbm2datasette.c \
 	cbm2drive.c \
-	cbm2embedded.c \
 	cbm2iec.c \
 	cbm2iec.h \
 	cbm2io.c \
@@ -66,9 +66,7 @@ libcbm2_a_SOURCES = \
 	cbm2tpi.h \
 	cbm2tpi1.c \
 	cbm2tpi2.c \
-	cbm2video.c \
-	debugcart.h \
-	debugcart.c
+	cbm2video.c
 
 libcbm5x0_a_SOURCES = \
 	cbm2-cmdline-options.c \
@@ -77,14 +75,12 @@ libcbm5x0_a_SOURCES = \
 	cbm2-resources.h \
 	cbm5x0-snapshot.c \
 	cbm2-snapshot.h \
+	cbm5x0-stubs.c \
 	cbm5x0.c \
-	cbm5x0embedded.c \
 	cbm2.h \
 	cbm2acia.h \
 	cbm2acia1.c \
 	cbm2bus.c \
-	cbm2cart.c \
-	cbm2cart.h \
 	cbm2cia.h \
 	cbm5x0cia1.c \
 	cbm2cpu.c \
@@ -107,9 +103,12 @@ libcbm5x0_a_SOURCES = \
 	cbm2tpi.h \
 	cbm2tpi1.c \
 	cbm2tpi2.c \
-	cbm5x0video.c \
-	debugcart.h \
-	debugcart.c
+	cbm5x0video.c
 
 EXTRA_DIST = \
 	cbm2-common-resources.c
+
+.PHONY: libcbm2cart
+
+libcbm2cart:
+	(cd cart; $(MAKE))
