@@ -158,6 +158,9 @@
 #define DRIVE_LED2_RED     0
 #define DRIVE_LED2_GREEN   2
 
+/* maximum number of LEDs per drive (not unit!) */
+#define DRIVE_LEDS_MAX  2
+
 /* Number of cycles before an attached disk becomes visible to the R/W head.
    This is mostly to make routines that auto-detect disk changes happy.  */
 #define DRIVE_ATTACH_DELAY           (3 * 600000)
@@ -174,8 +177,9 @@
 #define DRIVE_PC_STANDARD 1  /* speed-dos userport cable */
 #define DRIVE_PC_DD3      2  /* dolphin-dos 3 userport cable */
 #define DRIVE_PC_FORMEL64 3  /* formel 64 cartridge */
+#define DRIVE_PC_21SEC_BACKUP 4  /* 21 second backup userport cable */
 
-#define DRIVE_PC_NUM 4
+#define DRIVE_PC_NUM 5
 
 /* ------------------------------------------------------------------------- */
 

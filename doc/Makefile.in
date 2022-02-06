@@ -275,6 +275,8 @@ GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
 GLEW_CFLAGS = @GLEW_CFLAGS@
 GLEW_LIBS = @GLEW_LIBS@
 GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_COMPILE_RESOURCES = @GLIB_COMPILE_RESOURCES@
+GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GREP = @GREP@
 GTK_CFLAGS = @GTK_CFLAGS@
@@ -377,6 +379,7 @@ VICE_OBJCFLAGS = @VICE_OBJCFLAGS@
 VICE_PDF_FILE_NAME = @VICE_PDF_FILE_NAME@
 VICE_VERSION = @VICE_VERSION@
 VICE_VERSION_BUILD = @VICE_VERSION_BUILD@
+VICE_VERSION_LABEL = @VICE_VERSION_LABEL@
 VICE_VERSION_MAJOR = @VICE_VERSION_MAJOR@
 VICE_VERSION_MINOR = @VICE_VERSION_MINOR@
 VTE_CXXFLAGS = @VTE_CXXFLAGS@
@@ -463,7 +466,7 @@ MISC_DOX = \
 	vice.texi
 
 TEXI_TOOLS = \
-	fixdox.sh
+	fixdates.sh
 
 DOC_TOOLS = \
 	checkdoc.c \
@@ -846,6 +849,7 @@ $(builddir)/vice.txt:	.vice-texi-charset-ok
 
 @ENABLE_PDF_DOCS_TRUE@$(builddir)/vice.pdf:	.vice-texi-charset-ok
 @ENABLE_PDF_DOCS_TRUE@	@LC_ALL=C sed 's/@heading NO WARRANTY/@center NO WARRANTY/g' <$(srcdir)/vice.texi >vicepdf.texi
+@ENABLE_PDF_DOCS_TRUE@	@$(srcdir)/fixdates.sh vicepdf.texi `grep "VICEDATE_YEAR " $(top_srcdir)/src/vicedate.h | cut -d " " -f 3`
 @ENABLE_PDF_DOCS_TRUE@	@LC_ALL=C $(TEXI2DVI) -I $(srcdir) -q --clean --pdf "--texinfo=@set $(PLATFORM_DOX_FLAGS) " -o $(builddir)/vice.pdf vicepdf.texi
 @ENABLE_PDF_DOCS_TRUE@	@rm -f vicepdf.texi
 

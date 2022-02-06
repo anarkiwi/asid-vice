@@ -41,6 +41,7 @@
 #endif
 
 #include "archdep.h"
+#include "archdep_exit.h"
 #include "cmdline.h"
 #include "debug.h"
 #include "fixpoint.h"
@@ -740,7 +741,7 @@ static int sound_error(const char *msg)
     return 1;
 }
 
-
+#if 0
 /* close sid device and show error dialog */
 static int sound_error_log_only(const char *msg)
 {
@@ -750,6 +751,7 @@ static int sound_error_log_only(const char *msg)
 
     return 1;
 }
+#endif
 
 static int16_t *temp_buffer = NULL;
 static int temp_buffer_size = 0;
@@ -1131,7 +1133,7 @@ void sound_close(void)
 /* run sid */
 static int sound_run_sound(void)
 {
-#if 0
+#if 1
     static int overflow_warning_count = 0;
 #endif
 
@@ -1161,10 +1163,11 @@ static int sound_run_sound(void)
                                              snddata.sound_output_channels,
                                              snddata.sound_chip_channels,
                                              &delta_t);
-        if (delta_t) {
+        if (delta_t && !archdep_is_exiting()) {
+#if 0
             sound_error_log_only("Sound buffer overflow (cycle based)");
             return -1;
-#if 0
+#else
             if (overflow_warning_count < 25) {
                 log_warning(sound_log, "%s", "Sound buffer overflow (cycle based)");
                 overflow_warning_count++;

@@ -123,24 +123,24 @@ notice identical to this one.
 @vskip 0pt plus 1filll
 @c section used in file generation, keep to the format used.
 @c ---vice-core-team---
-Copyright @copyright{} 1999-2021 Martin Pottendorfer
-Copyright @copyright{} 2005-2021 Marco van den Heuvel
-Copyright @copyright{} 2007-2021 Fabrizio Gennari
-Copyright @copyright{} 2009-2021 Groepaz
-Copyright @copyright{} 2009-2021 Errol Smith
-Copyright @copyright{} 2009-2021 Ingo Korb
-Copyright @copyright{} 2010-2021 Olaf Seibert
-Copyright @copyright{} 2011-2021 Marcus Sutton
-Copyright @copyright{} 2011-2021 Kajtar Zsolt
-Copyright @copyright{} 2016-2021 AreaScout
-Copyright @copyright{} 2016-2021 Bas Wassink
-Copyright @copyright{} 2017-2021 Michael C. Martin
-Copyright @copyright{} 2018-2021 Christopher Phillips
-Copyright @copyright{} 2019-2021 David Hogan
-Copyright @copyright{} 2020-2021 Empathic Qubit
-Copyright @copyright{} 2020-2021 Roberto Muscedere
-Copyright @copyright{} 2021 June Tate-Gans
-Copyright @copyright{} 2021 Pablo Roldan
+Copyright @copyright{} 1999-__VICE_CURRENT_YEAR__ Martin Pottendorfer
+Copyright @copyright{} 2005-__VICE_CURRENT_YEAR__ Marco van den Heuvel
+Copyright @copyright{} 2007-__VICE_CURRENT_YEAR__ Fabrizio Gennari
+Copyright @copyright{} 2009-__VICE_CURRENT_YEAR__ Groepaz
+Copyright @copyright{} 2009-__VICE_CURRENT_YEAR__ Errol Smith
+Copyright @copyright{} 2009-__VICE_CURRENT_YEAR__ Ingo Korb
+Copyright @copyright{} 2010-__VICE_CURRENT_YEAR__ Olaf Seibert
+Copyright @copyright{} 2011-__VICE_CURRENT_YEAR__ Marcus Sutton
+Copyright @copyright{} 2011-__VICE_CURRENT_YEAR__ Kajtar Zsolt
+Copyright @copyright{} 2016-__VICE_CURRENT_YEAR__ AreaScout
+Copyright @copyright{} 2016-__VICE_CURRENT_YEAR__ Bas Wassink
+Copyright @copyright{} 2017-__VICE_CURRENT_YEAR__ Michael C. Martin
+Copyright @copyright{} 2018-__VICE_CURRENT_YEAR__ Christopher Phillips
+Copyright @copyright{} 2019-__VICE_CURRENT_YEAR__ David Hogan
+Copyright @copyright{} 2020-__VICE_CURRENT_YEAR__ Empathic Qubit
+Copyright @copyright{} 2020-__VICE_CURRENT_YEAR__ Roberto Muscedere
+Copyright @copyright{} 2021-__VICE_CURRENT_YEAR__ June Tate-Gans
+Copyright @copyright{} 2021-__VICE_CURRENT_YEAR__ Pablo Roldan
 @c ---vice-core-team-end---
 
 @c ---ex-team---
@@ -1067,13 +1067,9 @@ true 2031 emulation at unit #8, and still have filesystem access at
 units #10 or #11, because monitoring the IEEE488 lines does not
 interfere with the true drive emulation.
 
-The IEEE488 disk drives 2040, 3040, 4040, 8050 and 8250 are Dual Drive
-Floppy Disks.  This means that these drives handle two disks. To
-accomplish the emulation, only two disks can be emulated, namely units
-#8 and #10. The attached image, track display and LED display of unit
-#9 and #11 are used for the second drive of the dual disk drives. On
-unix the unit number display (8 or 9, 10 or 11) in the emulation
-window changes to the drive number display (0 or 1).
+The IEEE488 disk units 2040, 3040, 4040, 8050 and 8250 are Dual Drive
+Floppy Disks.  This means that these devices handle two disks.
+The drives are numbered 0 and 1.
 
 The Commodore 2040, 3040, 4040, 1001, 8050, 8250, and D9090/60 drives are
 so-called "old-style" disk drives. Their architecture includes not
@@ -7886,6 +7882,22 @@ Should be in form accepted by Pango: either a CSS color name (for example 'limeg
 three/six digit hex string ("#rgb"/"#rrggbb") or three decimal values in the range 0-255 
 ("rbg(red,green,blue"), for example "rgb(27,180,33)").
 
+@vindex MonitorXPos
+@item MonitorXPos
+Integer specifying the Gtk3 VTE-monitor window's X position.
+
+@vindex MonitorYPos
+@item MonitorYPos
+Integer specifying the Gtk3 VTE-monitor window's Y position.
+
+@vindex MonitorWidth
+@item MonitorWidth
+Integer specifying the Gtk3 VTE-monitor window's width.
+
+@vindex MonitorHeight
+@item MonitorHeight
+Integer specifying the Gtk3 VTE-monitor window's height.
+
 @end table
 
 @subsection Monitor command-line options
@@ -7982,6 +7994,27 @@ Set the monitor foreground colour for the Gtk3 UI's VTE-monitor.
 @item -monitorbg <colour-description>
 Set the monitor background colour for the Gtk3 UI's VTE-monitor.
 (@code{MonitorFG}).
+
+@findex -monitorxpos
+@item -monitorxpos <X-position>
+Set window X position for the Gtk3 UI's VTE-monitor.
+(@code{MonitorXPos}).
+
+@findex -monitorypos
+@item -monitorxpos <Y-position>
+Set window Y position for the Gtk3 UI's VTE-monitor.
+(@code{MonitorYPos}).
+
+@findex -monitorwidth
+@item -monitorwidth <width>
+Set window width for the Gtk3 UI's VTE-monitor.
+(@code{MonitorWidth}).
+
+@findex -monitorheight
+@item -monitorheight <height>
+Set window height for the Gtk3 UI's VTE-monitor.
+(@code{MonitorHeight}).
+
 
 @end table
 
@@ -9412,6 +9445,10 @@ Integer specifying the size of the RAMCart in KiB.
 Boolean specifying whether the RAMLink module should be emulated or not.
 This option emulates the behavior of the enable/disable switch on the unit.
 
+@vindex RAMLINKBIOSfilename
+@item RAMLINKBIOSfilename
+String specifying the filename of the RAMLINK ROM image.
+
 @vindex RAMLINKfilename
 @item RAMLINKfilename
 String specifying the filename of the RAMCard image.
@@ -10200,6 +10237,16 @@ behavior of the enable/disable switch on the unit
 @findex -cartramlink
 @item -cartramlink <name>
 Attach the raw 64 KiB ROM image.
+
+@findex -ramlinkbios
+@item -ramlinkbios <name>
+Specify name of RAMLink BIOS image
+(@code{RAMLINKBIOSfilename}).
+
+@findex -ramlinkbios
+@item -ramlinkbios <name>
+Specify name of RAMLink BIOS image
+(@code{RAMLINKBIOSfilename}).
 
 @findex -ramlinkimage
 @item -ramlinkimage <name>
@@ -21592,7 +21639,7 @@ emulator probably counts in units of clock cycles anyway :) As for writing to
 a TAP file, you need to watch the CAS_WRITE register (processor port, bit 0x02)
 and start counting whenever a 0->1 transition happens.
 
-@node T64, G64, File formats, File formats
+@node T64, G64, TAP, File formats
 @section The T64 tape image format
 
 (This section was taken from the C64S distribution.)
@@ -29404,7 +29451,10 @@ C080: 7B C8 7E C8 C3 C2 CD 38 30 43 4F 4D 41 4C 80 93  @{.~....80COMAL..
 
     There are two control registers, one at $DE00 and one at $DE02.
 
-    The register at $DE00 does the following:
+    The register at $DE00 controls which bank  is  mapped  into  ROMH  and
+    ROML.
+
+    The register at $DE02 does the following:
 
 @example
     bit  meaning
@@ -29415,9 +29465,6 @@ C080: 7B C8 7E C8 C3 C2 CD 38 30 43 4F 4D 41 4C 80 93  @{.~....80COMAL..
     1    Exrom line control
     0    Game line control
 @end example
-
-    The register at $DE02 controls which bank  is  mapped  into  ROMH  and
-    ROML.
 
 @c @node FIXME
 @subsubsection 33 - EasyFlash Xbank
@@ -33852,41 +33899,41 @@ for writing cool emulators to compete with.  @t{:-)}
 
 @itemize @bullet
 @item
-Copyright @copyright{} 1999-2021 Martin Pottendorfer
+Copyright @copyright{} 1999-__VICE_CURRENT_YEAR__ Martin Pottendorfer
 @item
-Copyright @copyright{} 2005-2021 Marco van den Heuvel
+Copyright @copyright{} 2005-__VICE_CURRENT_YEAR__ Marco van den Heuvel
 @item
-Copyright @copyright{} 2007-2021 Fabrizio Gennari
+Copyright @copyright{} 2007-__VICE_CURRENT_YEAR__ Fabrizio Gennari
 @item
-Copyright @copyright{} 2009-2021 Groepaz
+Copyright @copyright{} 2009-__VICE_CURRENT_YEAR__ Groepaz
 @item
-Copyright @copyright{} 2009-2021 Errol Smith
+Copyright @copyright{} 2009-__VICE_CURRENT_YEAR__ Errol Smith
 @item
-Copyright @copyright{} 2009-2021 Ingo Korb
+Copyright @copyright{} 2009-__VICE_CURRENT_YEAR__ Ingo Korb
 @item
-Copyright @copyright{} 2010-2021 Olaf Seibert
+Copyright @copyright{} 2010-__VICE_CURRENT_YEAR__ Olaf Seibert
 @item
-Copyright @copyright{} 2011-2021 Marcus Sutton
+Copyright @copyright{} 2011-__VICE_CURRENT_YEAR__ Marcus Sutton
 @item
-Copyright @copyright{} 2011-2021 Kajtar Zsolt
+Copyright @copyright{} 2011-__VICE_CURRENT_YEAR__ Kajtar Zsolt
 @item
-Copyright @copyright{} 2016-2021 AreaScout
+Copyright @copyright{} 2016-__VICE_CURRENT_YEAR__ AreaScout
 @item
-Copyright @copyright{} 2016-2021 Bas Wassink
+Copyright @copyright{} 2016-__VICE_CURRENT_YEAR__ Bas Wassink
 @item
-Copyright @copyright{} 2017-2021 Michael C. Martin
+Copyright @copyright{} 2017-__VICE_CURRENT_YEAR__ Michael C. Martin
 @item
-Copyright @copyright{} 2018-2021 Christopher Phillips
+Copyright @copyright{} 2018-__VICE_CURRENT_YEAR__ Christopher Phillips
 @item
-Copyright @copyright{} 2019-2021 David Hogan
+Copyright @copyright{} 2019-__VICE_CURRENT_YEAR__ David Hogan
 @item
-Copyright @copyright{} 2020-2021 Empathic Qubit
+Copyright @copyright{} 2020-__VICE_CURRENT_YEAR__ Empathic Qubit
 @item
-Copyright @copyright{} 2020-2021 Roberto Muscedere
+Copyright @copyright{} 2020-__VICE_CURRENT_YEAR__ Roberto Muscedere
 @item
-Copyright @copyright{} 2021 June Tate-Gans
+Copyright @copyright{} 2021-__VICE_CURRENT_YEAR__ June Tate-Gans
 @item
-Copyright @copyright{} 2021 Pablo Roldan
+Copyright @copyright{} 2021-__VICE_CURRENT_YEAR__ Pablo Roldan
 
 @item
 Copyright @copyright{} 2011-2016 Stefan Haubenthal

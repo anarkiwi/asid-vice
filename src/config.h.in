@@ -134,7 +134,7 @@
 /* Have FFMPEG av* libs available */
 #undef HAVE_FFMPEG
 
-/* Have FFMPEG avresample lib available */
+/* Have libav avresample lib available */
 #undef HAVE_FFMPEG_AVRESAMPLE
 
 /* FFMPEG uses subdirs for headers */

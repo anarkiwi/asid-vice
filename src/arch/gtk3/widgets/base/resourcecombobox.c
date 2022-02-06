@@ -32,7 +32,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* for GULONG_TO_POINTER() and GPOINTER_TO_ULONG() */
+#include "archdep_defs.h"
 #include "basewidget_types.h"
+#include "debug_gtk3.h"
 #include "lib.h"
 #include "log.h"
 #include "resourcehelpers.h"
@@ -156,8 +159,23 @@ static void on_combo_int_changed(GtkComboBox *combo, gpointer user_data)
     resource = resource_widget_get_resource_name(GTK_WIDGET(combo));
     if (get_combo_int_id(combo, &id)) {
         if (resources_set_int(resource, id) < 0) {
+            gulong handler_id;
+            int prev;
+
             log_error(LOG_ERR, "failed to set resource '%s' to %d\n",
                     resource, id);
+
+            /* set combo back to its previous (valid) id */
+            prev = resource_widget_get_int(GTK_WIDGET(combo), "PreviousID");
+            handler_id = GPOINTER_TO_ULONG(g_object_get_data(G_OBJECT(combo),
+                                                             "ChangedHandlerID"));
+            g_signal_handler_block(G_OBJECT(combo), handler_id);
+            set_combo_int_id(combo, prev);
+            g_signal_handler_unblock(G_OBJECT(combo), handler_id);
+
+        } else {
+            /* valid, so update the previous ID */
+            resource_widget_set_int(GTK_WIDGET(combo), "PreviousID", id);
         }
     } else {
         log_error(LOG_ERR, "failed to get ID for resource '%s'\n", resource);
@@ -180,6 +198,7 @@ static GtkWidget *resource_combo_box_int_new_helper(
     GtkCellRenderer *renderer;
     const char *resource;
     int current;
+    gulong handler_id;
 
     /* setup combo box with model and renderers */
     model = create_combo_int_model(entries);
@@ -212,7 +231,9 @@ static GtkWidget *resource_combo_box_int_new_helper(
 
     /* remember original value for reset() */
     resource_widget_set_int(combo, "ResourceOrig", current);
-
+    /* used to reset combo box to its previous state if setting the resource
+     * fails */
+    resource_widget_set_int(combo, "PreviousID", current);
 
     /* register methods to be used by the resource widget manager */
     resource_widget_register_methods(
@@ -221,9 +242,10 @@ static GtkWidget *resource_combo_box_int_new_helper(
             vice_gtk3_resource_combo_box_int_factory,
             vice_gtk3_resource_combo_box_int_sync);
 
-
     /* connect signal handlers */
-    g_signal_connect(combo, "changed", G_CALLBACK(on_combo_int_changed), NULL);
+    handler_id = g_signal_connect(combo, "changed", G_CALLBACK(on_combo_int_changed), NULL);
+    /* used to temporarily block the signal handler to avoid extra resource_set_int() calls */
+    g_object_set_data(G_OBJECT(combo), "ChangedHandlerID", GULONG_TO_POINTER(handler_id));
     g_signal_connect_unlocked(combo, "destroy", G_CALLBACK(on_combo_int_destroy), NULL);
 
     gtk_widget_show(combo);
@@ -406,13 +428,21 @@ gboolean vice_gtk3_resource_combo_box_int_sync(GtkWidget *widget)
 {
     const char *resource_name;
     int resource_value;
+    gulong handler_id;
+    gboolean result;
 
     resource_name = resource_widget_get_resource_name(widget);
     if (resources_get_int(resource_name, &resource_value) < 0) {
         return FALSE;
     }
 
-    return set_combo_int_id(GTK_COMBO_BOX(widget), resource_value);
+    handler_id = GPOINTER_TO_ULONG(g_object_get_data(G_OBJECT(widget),
+                                                     "ChangedHandlerID"));
+    debug_gtk3("changed handler id = %lu.", handler_id);
+    g_signal_handler_block(G_OBJECT(widget), handler_id);
+    result = set_combo_int_id(GTK_COMBO_BOX(widget), resource_value);
+    g_signal_handler_unblock(G_OBJECT(widget), handler_id);
+    return result;
 }
 
 

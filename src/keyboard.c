@@ -276,6 +276,7 @@ static key_ctrl_column4080_func_t key_ctrl_column4080_func = NULL;
 /* CAPS (ASCII/DIN) key.  */
 static signed long key_ctrl_caps = -1;
 static key_ctrl_caps_func_t key_ctrl_caps_func = NULL;
+static key_ctrl_get_caps_func_t key_ctrl_get_caps_func = NULL;
 
 /* joyport attached keypad. */
 static signed long key_joy_keypad[KBD_JOY_KEYPAD_ROWS][KBD_JOY_KEYPAD_COLS];
@@ -289,6 +290,26 @@ void keyboard_register_column4080_key(key_ctrl_column4080_func_t func)
 void keyboard_register_caps_key(key_ctrl_caps_func_t func)
 {
     key_ctrl_caps_func = func;
+}
+
+void keyboard_toggle_caps_key(void)
+{
+    if (key_ctrl_caps_func != NULL) {
+        key_ctrl_caps_func();
+    }
+}
+
+void keyboard_register_get_caps_key(key_ctrl_get_caps_func_t func)
+{
+    key_ctrl_get_caps_func = func;
+}
+
+int keyboard_get_caps_key(void)
+{
+    if (key_ctrl_get_caps_func != NULL) {
+        return key_ctrl_get_caps_func();
+    }
+    return 0;
 }
 
 void keyboard_register_joy_keypad(key_joy_keypad_func_t func)
@@ -2113,6 +2134,7 @@ int keyboard_get_num_mappings(void)
             arch/shared/archdep_kbd_get_host_mapping.c */
 static mapping_info_t kbdinfo[KBD_MAPPING_NUM + 1] = {
     { "American (us)", KBD_MAPPING_US, "" },    /* this must be first (=0) always */
+    { "Belgian (dutch) (be)", KBD_MAPPING_BE, "be" },
     { "British (uk)", KBD_MAPPING_UK, "uk" },
     { "Danish (da)", KBD_MAPPING_DA, "da" },
     { "Dutch (nl)", KBD_MAPPING_NL, "nl" },
@@ -2134,7 +2156,13 @@ mapping_info_t *keyboard_get_info_list(void)
 
 static char *keyboard_get_mapping_name(int mapping)
 {
-    return kbdinfo[mapping].mapping_name;
+    int n;
+    for (n = 0; n < KBD_MAPPING_NUM; n++) {
+        if (kbdinfo[n].mapping == mapping) {
+            return kbdinfo[n].mapping_name;
+        }
+    }
+    return kbdinfo[0].mapping_name;
 }
 
 static char *keyboard_get_keymap_name(int idx, int mapping, int type)

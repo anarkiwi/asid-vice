@@ -1726,7 +1726,7 @@ char *yytext;
 
 #include "vice.h"
 
-#if defined(__OS2__) && defined(IDE_COMPILE)
+#ifdef __OS2__
 #define _STDINT_H_INCLUDED
 #define _INTTYPES_H_INCLUDED
 #endif

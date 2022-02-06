@@ -214,6 +214,8 @@ GFXOUTPUT_LIBS = @GFXOUTPUT_LIBS@
 GLEW_CFLAGS = @GLEW_CFLAGS@
 GLEW_LIBS = @GLEW_LIBS@
 GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_COMPILE_RESOURCES = @GLIB_COMPILE_RESOURCES@
+GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GREP = @GREP@
 GTK_CFLAGS = @GTK_CFLAGS@
@@ -316,6 +318,7 @@ VICE_OBJCFLAGS = @VICE_OBJCFLAGS@
 VICE_PDF_FILE_NAME = @VICE_PDF_FILE_NAME@
 VICE_VERSION = @VICE_VERSION@
 VICE_VERSION_BUILD = @VICE_VERSION_BUILD@
+VICE_VERSION_LABEL = @VICE_VERSION_LABEL@
 VICE_VERSION_MAJOR = @VICE_VERSION_MAJOR@
 VICE_VERSION_MINOR = @VICE_VERSION_MINOR@
 VTE_CXXFLAGS = @VTE_CXXFLAGS@
@@ -409,11 +412,16 @@ common_DATA = CBM_Logo.svg C64_Pro_Mono-STYLE.ttf icon1024x1024.png \
 	SID_32.png SID_48.png SID_64.png SID_256.png SID_1024.svg \
 	VIC20_16.png VIC20_24.png VIC20_32.png VIC20_48.png \
 	VIC20_64.png VIC20_256.png VIC20_1024.svg \
-	gtk3-hotkeys-cartridge.vhk gtk3-hotkeys-debug.vhk \
-	gtk3-hotkeys-drive.vhk gtk3-hotkeys-datasette1.vhk \
-	gtk3-hotkeys-datasette2.vhk gtk3-hotkeys-fliplist.vhk \
-	gtk3-hotkeys-help.vhk gtk3-hotkeys-settings.vhk \
-	gtk3-hotkeys-snapshot.vhk $(am__append_1)
+	gtk3-hotkeys-cartridge.vhk gtk3-hotkeys-cartridge-mac.vhk \
+	gtk3-hotkeys-debug.vhk gtk3-hotkeys-debug-mac.vhk \
+	gtk3-hotkeys-drive.vhk gtk3-hotkeys-drive-mac.vhk \
+	gtk3-hotkeys-datasette1.vhk gtk3-hotkeys-datasette1-mac.vhk \
+	gtk3-hotkeys-datasette2.vhk gtk3-hotkeys-datasette2-mac.vhk \
+	gtk3-hotkeys-fliplist.vhk gtk3-hotkeys-fliplist-mac.vhk \
+	gtk3-hotkeys-help.vhk gtk3-hotkeys-help-mac.vhk \
+	gtk3-hotkeys-settings.vhk gtk3-hotkeys-settings-mac.vhk \
+	gtk3-hotkeys-snapshot.vhk gtk3-hotkeys-snapshot-mac.vhk \
+	$(am__append_1)
 EXTRA_DIST = $(common_DATA) \
 	      x64.rc \
 	      x64sc.rc \

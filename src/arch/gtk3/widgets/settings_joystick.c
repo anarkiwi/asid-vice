@@ -90,12 +90,12 @@
 
 /** \brief  Number of joystick adapter ports for Plus4
  *
- * The xplus4 code currently supports two userport joysticks and one joystick
+ * The xplus4 code currently supports three userport joysticks and one joystick
  * via the SIDCard expansion.
  *
  * Should this change in the future, just change the value (to 8).
  */
-#define ADAPTER_PORT_COUNT_PLUS4    2
+#define ADAPTER_PORT_COUNT_PLUS4    3
 
 /** \brief  Number of joystick adapter ports for CBM-II 5x0/P
  */
@@ -107,7 +107,7 @@
 
 /** \brief  Number of joystick adapter ports for PET
  */
-#define ADAPTER_PORT_COUNT_PET   2
+#define ADAPTER_PORT_COUNT_PET   3
 
 
 
@@ -246,7 +246,6 @@ static int layout_add_control_ports(GtkGrid *layout, int row, int count)
         return row;
     }
 
-    /* control port #1 */
     device_widgets[JOYPORT_1] = joystick_device_widget_create(
             JOYPORT_1, "Joystick #1");
     gtk_grid_attach(GTK_GRID(layout),
@@ -289,10 +288,11 @@ static int layout_add_adapter_ports(GtkGrid *layout, int row, int count)
 
         char label[256];
 
-        g_snprintf(label, sizeof(label), "Joystick Adapter Port #%d", i + 1);
-        device_widgets[i + 2] = joystick_device_widget_create(d, label);
-        gtk_grid_attach(layout, device_widgets[i + 2], c, r, 1, 1);
-
+        if (joyport_has_mapping(d)) {
+            g_snprintf(label, sizeof(label), "Joystick Adapter Port #%d", i + 1);
+            device_widgets[i + 2] = joystick_device_widget_create(d, label);
+            gtk_grid_attach(layout, device_widgets[i + 2], c, r, 1, 1);
+        }
         d++;
         c ^= 1; /* switch column position */
         if (c == 0) {
@@ -320,9 +320,11 @@ static int layout_add_adapter_ports(GtkGrid *layout, int row, int count)
  */
 static int layout_add_sidcard_port(GtkGrid *layout, int row)
 {
-    device_widgets[JOYPORT_5] = joystick_device_widget_create(
-            JOYPORT_5, "SIDCard Joystick");
-    gtk_grid_attach(layout, device_widgets[JOYPORT_5], 0, row, 1, 1);
+    if (joyport_has_mapping(5)) {
+        device_widgets[JOYPORT_5] = joystick_device_widget_create(
+                JOYPORT_5, "SIDCard Joystick");
+        gtk_grid_attach(layout, device_widgets[JOYPORT_5], 0, row, 1, 1);
+    }
     return row + 1;
 }
 

@@ -36,19 +36,19 @@
 #endif
 
 #ifndef VICE_VERSION_BUILD
-#define VICE_VERSION_BUILD 0
+#define VICE_VERSION_BUILD 1
 #endif
 
 #ifndef VERSION
-#define VERSION "3.6.0"
+#define VERSION "3.6.1"
 #endif
 
 #ifndef VERSION_WITH_BUILD
-#define VERSION_WITH_BUILD "3.6.0.0"
+#define VERSION_WITH_BUILD "3.6.1.1"
 #endif
 
 #ifndef VERSION_RC_NUMBER
-#define VERSION_RC_NUMBER 3,6,0,0
+#define VERSION_RC_NUMBER 3,6,1,0
 #endif
 
 #ifndef PACKAGE

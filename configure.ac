@@ -5,13 +5,23 @@ dnl Process this file with GNU autoconf to produce a configure script.
 dnl
 
 dnl Set VICE version number
-m4_define([vice_version_major], [3])
-m4_define([vice_version_minor], [6])
-m4_define([vice_version_build], [0])
-m4_define([vice_version_number], [vice_version_major.vice_version_minor.vice_version_build])
+m4_define(vice_version_major, 3)
+m4_define(vice_version_minor, 6)
+m4_define(vice_version_build, 1)
+m4_define(vice_version_label, )
+
+dnl Some people lose their shit if a version ends in .0
+m4_define(vice_version,
+          ifelse(vice_version_build, 0,
+                 ifelse(vice_version_label, ,
+                        [vice_version_major.vice_version_minor],
+                        [vice_version_major.vice_version_minor-vice_version_label]),
+                 ifelse(vice_version_label, ,
+                        [vice_version_major.vice_version_minor.vice_version_build],
+                        [vice_version_major.vice_version_minor.vice_version_build-vice_version_label])))
 
 dnl The major/minor stuff gets replaced in autogen.sh
-AC_INIT([vice], [vice_version_number])
+AC_INIT([vice], [vice_version])
 AC_CONFIG_SRCDIR([src/maincpu.c])
 AM_INIT_AUTOMAKE([-Wno-portability foreign])
 
@@ -39,9 +49,21 @@ AC_SUBST(AR_FLAGS)
 
 AC_CONFIG_MACRO_DIR([m4])
 
+dnl Make version number visible to generated files and source
 VICE_VERSION_MAJOR=vice_version_major
 VICE_VERSION_MINOR=vice_version_minor
 VICE_VERSION_BUILD=vice_version_build
+VICE_VERSION_LABEL=vice_version_label
+VICE_VERSION=vice_version
+VERSION_RC="$VICE_VERSION_MAJOR,$VICE_VERSION_MINOR,$VICE_VERSION_BUILD,0"
+VERSION_COMBINED=`expr $VICE_VERSION_MAJOR \* 65536 + $VICE_VERSION_MINOR \* 256 + $VICE_VERSION_BUILD`
+AC_SUBST(VICE_VERSION_MAJOR)
+AC_SUBST(VICE_VERSION_MINOR)
+AC_SUBST(VICE_VERSION_BUILD)
+AC_SUBST(VICE_VERSION_LABEL)
+AC_SUBST(VICE_VERSION)
+AC_SUBST(VERSION_RC)
+AC_SUBST(VERSION_COMBINED)
 
 
 dnl Command-line options
@@ -399,18 +421,6 @@ AC_SYS_LARGEFILE
 
 AC_CONFIG_HEADERS([src/config.h])
 
-AC_SUBST(VICE_VERSION_MAJOR)
-AC_SUBST(VICE_VERSION_MINOR)
-AC_SUBST(VICE_VERSION_BUILD)
-
-VICE_VERSION=$VICE_VERSION_MAJOR"."$VICE_VERSION_MINOR"."$VICE_VERSION_BUILD
-VERSION_RC=$VICE_VERSION_MAJOR","$VICE_VERSION_MINOR","$VICE_VERSION_BUILD",0"
-AC_SUBST(VICE_VERSION)
-AC_SUBST(VERSION_RC)
-
-
-VERSION_COMBINED=`expr $VICE_VERSION_MAJOR \* 65536 + $VICE_VERSION_MINOR \* 256 + $VICE_VERSION_BUILD`
-AC_SUBST(VERSION_COMBINED)
 
 is_unix=no
 is_unix_x11=no
@@ -580,9 +590,9 @@ case "$host_os" in
   freebsd*)
     AM_CONDITIONAL([HAVE_BSD], true)
     AM_CONDITIONAL([HAVE_BSD_FREE], true)
-    dnl VICE_CPPFLAGS="$VICE_CPPFLAGS -I/usr/local/include"
-    dnl fbsdrtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/local/lib"`
-    dnl VICE_LDFLAGS="$VICE_LDFLAGS $fbsdrtp -L/usr/local/lib"
+    CPPFLAGS="$CPPFLAGS -I/usr/local/include"
+    fbsdrtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/local/lib"`
+    VICE_LDFLAGS="$VICE_LDFLAGS $fbsdrtp -L/usr/local/lib"
     ;;
   netbsd*)
     AM_CONDITIONAL([HAVE_BSD], true)
@@ -603,9 +613,11 @@ case "$host_os" in
     fi
     ;;
   openbsd*)
-    dnl Either OpenBSD doesn't need the rpath stuff, or we never implemented it
     AM_CONDITIONAL([HAVE_BSD], true)
     AM_CONDITIONAL([HAVE_BSD_OPEN], true)
+    CPPFLAGS="$CPPFLAGS -I/usr/local/include"
+    obsdrtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/local/lib"`
+    VICE_LDFLAGS="$VICE_LDFLAGS $obsdrtp -L/usr/local/lib"
     ;;
   dragonfly*)
     CPPFLAGS="$CPPFLAGS -I/usr/local/include"
@@ -916,6 +928,14 @@ darwin*)
   VICE_CXXFLAGS="$VICE_CXXFLAGS -mmacosx-version-min=$enable_macos_target_sdk_version"
   VICE_LDFLAGS="$VICE_LDFLAGS -mmacosx-version-min=$enable_macos_target_sdk_version"
 
+  dnl
+  dnl Yeah, OpenGL and other stuff is deprecated, we don't need to be warned about it.
+  dnl Please don't remove this again whoever did last time :)
+  dnl
+
+  VICE_CFLAGS="$VICE_CFLAGS -Wno-deprecated-declarations"
+  VICE_CXXFLAGS="$VICE_CXXFLAGS -Wno-deprecated-declarations"
+
   if test x"$enable_rs232" != "xno"; then
     AC_DEFINE(HAVE_RS232DEV,,[Enable RS232 device emulation.])
     HAVE_RS232DEV_SUPPORT="yes"
@@ -1101,12 +1121,24 @@ if test x"$check_gtk3" = "xyes"; then
   PKG_CHECK_MODULES(GTK, [gtk+-3.0 >= 3.22], [have_gtk3_module=yes], [have_gtk3_module=no; AC_MSG_RESULT([no])])
   PKG_CHECK_MODULES(GLIB, [glib-2.0], [have_glib2_module=yes], [have_glib2_module=no; AC_MSG_RESULT([no])])
 
+  dnl Extra tools required for Gtk builds
+  dnl These programs live in libglib2.0-dev-bin on Debian
+
   dnl error out if gtk3 support is missing and gtk3 ui was requested
   if test x"$have_gtk3_module" = "xno" -o x"$have_glib2_module" = "xno"; then
     if test x"$enable_native_gtk3ui" = "xyes"; then
       AC_MSG_ERROR([GTK3 UI requested, but GTK3 support packages are missing])
     fi
   fi
+
+  dnl Used to compile the vice.gresource.xml file
+  AC_CHECK_PROG(GLIB_COMPILE_RESOURCES, [glib-compile-resources], [glib-compile-resources], [no])
+  AS_IF([test x"$GLIB_COMPILE_RESOURCES" = "xno"],
+        [AC_MSG_ERROR([glib-compile-resources is missing, please install glib development binaries])])
+  dnl Used by VTE for signal marshalling
+  AC_CHECK_PROG(GLIB_GENMARSHAL, [glib-genmarshal], [glib-genmarshal], [no])
+  AS_IF([test x"$GLIB_GENMARSHAL" = "xno"],
+        [AC_MSG_ERROR([glib-genmarshal is missing, please install glib development binaries])])
 
   dnl only continue to test if gtk3 support was present
   if test x"$have_gtk3_module" = "xyes" -a x"$have_glib2_module" = "xyes"; then
@@ -1322,7 +1354,9 @@ if test x"$check_sdl2" = "xyes"; then
                         [have_sdl2_image=yes],
                         [have_sdl2_image=no; AC_MSG_RESULT([no])])
       if test x"$have_sdl2_image" = "xyes"; then
-        LIBS="$LIBS -lSDL2_image"
+        VICE_CFLAGS="$VICE_CFLAGS $SDL2_IMAGE_CFLAGS"
+        VICE_CXXFLAGS="$VICE_CXXFLAGS $SDL2_IMAGE_CFLAGS"
+        LIBS="$LIBS $SDL2_IMAGE_LIBS"
       else
         AC_MSG_ERROR([SDL2_image-dev is required.])
       fi
@@ -2346,9 +2380,10 @@ if test x"$enable_external_ffmpeg" = "xyes"; then
       AC_DEFINE([HAVE_FFMPEG_SWRESAMPLE],,[Have FFMPEG swresample lib available])
       HAVE_FFMPEG_SWRESAMPLE_SUPPORT="yes"
     else
+      # dnl libav is abandoned and support should be removed, but check for it if swresample is missing.
       PKG_CHECK_MODULES(FFMPEG_AVRESAMPLE, [libavresample], [have_avresample=yes], [have_avresample=no])
       if test x"$have_avresample" = "xyes"; then
-        AC_DEFINE([HAVE_FFMPEG_AVRESAMPLE],,[Have FFMPEG avresample lib available])
+        AC_DEFINE([HAVE_FFMPEG_AVRESAMPLE],,[Have libav avresample lib available])
         HAVE_FFMPEG_AVRESAMPLE_SUPPORT="yes"
       else
         AC_MSG_ERROR([No swresample or avresample library available!])
@@ -3816,8 +3851,11 @@ echo "---------------"
 
 echo "FFMPEG support                : $HAVE_FFMPEG_SUPPORT (--enable-external-ffmpeg)"
 echo "FFMPEG swscale support        : $HAVE_FFMPEG_SWSCALE_SUPPORT"
-echo "FFMPEG swresample support     : $HAVE_FFMPEG_SWRESAMPLE_SUPPORT"
-echo "FFMPEG avresample support     : $HAVE_FFMPEG_AVRESAMPLE_SUPPORT"
+if test x"$have_swresample" = "xyes"; then
+  echo "Audio resampling library      : swresample"
+elif test x"$have_avresample" = "xyes"; then
+  echo "Audio resampling library      : avresample"
+fi
 
 echo ""
 echo "INPUT"

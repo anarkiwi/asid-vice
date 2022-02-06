@@ -51,6 +51,7 @@ gboolean ui_statusbar_mixer_controls_enabled(GtkWidget *window);
 
 void ui_statusbar_set_kbd_debug_for_window(GtkWidget *window, gboolean state);
 void ui_statusbar_set_kbd_debug(gboolean state);
+void ui_statusbar_update_kbd_debug(GdkEvent *report);
 
 GtkWidget *ui_statusbar_get_recording_widget(void);
 
@@ -61,5 +62,8 @@ void ui_update_statusbars(void);
 
 void warp_led_set_active(int bar, gboolean active);
 void pause_led_set_active(int bar, gboolean active);
+void shiftlock_led_set_active(int bar, gboolean active);
+void mode4080_led_set_active(int bar, gboolean active);
+void capslock_led_set_active(int bar, gboolean active);
 
 #endif

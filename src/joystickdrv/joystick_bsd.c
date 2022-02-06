@@ -86,7 +86,36 @@ static log_t bsd_joystick_log;
 #include <libusbhid.h>
 #endif
 
-#define MAX_DEV 4   /* number of uhid devices to try */
+#define MAX_DEV 10   /* number of uhid devices to try */
+
+/*
+ * This hat map was created from values observed on NetBSD 9.2
+ * with an analog joystick "ADDISON TECHNOLOGY" that also has a hat switch.
+ * uhidev1 at uhub1 port 6 configuration 1 interface 0
+ * uhidev1: vendor 0907 (0x907) product 0523 (0x523), rev 1.00/1.00, addr 40, iclass 3/0
+ * uhid0 at uhidev1: input=3, output=0, feature=0
+ *
+ * Only 0 and the odd values (horizontal and vertical) were observed
+ * but let's leave the diagonals in too, just in case.
+ *
+ * There are apparently hats with 0 for neutral and 1 for up, and some
+ * with 8 for neutral and 0 for up. The other values are off by 1.
+ * We try to autodetect, by seeing which of 0 or 8 occurs first.
+ * We report no direction until one of those is seen.
+ */
+#define MAX_HAT_MAP_INDEX 8
+static const uint8_t hat_map[MAX_HAT_MAP_INDEX + 2] = {
+    0,                                                  /* 0 */
+    JOYSTICK_DIRECTION_UP,                              /* 1 */
+    JOYSTICK_DIRECTION_UP | JOYSTICK_DIRECTION_RIGHT,   /* 2 */
+    JOYSTICK_DIRECTION_RIGHT,                           /* 3 */
+    JOYSTICK_DIRECTION_RIGHT | JOYSTICK_DIRECTION_DOWN, /* 4 */
+    JOYSTICK_DIRECTION_DOWN,                            /* 5 */
+    JOYSTICK_DIRECTION_DOWN | JOYSTICK_DIRECTION_LEFT,  /* 6 */
+    JOYSTICK_DIRECTION_LEFT,                            /* 7 */
+    JOYSTICK_DIRECTION_LEFT | JOYSTICK_DIRECTION_UP,    /* 8 */
+    0,                                                  /* 9 */
+};
 
 struct usb_joy_item {
     struct hid_item item;
@@ -120,18 +149,21 @@ static int usb_joy_add_item(struct usb_joy_item **item, struct hid_item *hi, int
 
     memcpy(&it->item, hi, sizeof(*hi));
     it->type = type;
+    it->ordinal_number = orval;
+
     switch (type) {
         case ITEM_AXIS:
             w = (hi->logical_maximum - hi->logical_minimum) / 3;
-            it->ordinal_number = orval;
             it->min_val = hi->logical_minimum + w;
             it->max_val = hi->logical_maximum - w;
             break;
         case ITEM_BUTTON:
             it->min_val = hi->logical_minimum;
-            it->ordinal_number = orval;
             it->max_val = hi->logical_maximum - 1;
             break;
+        case ITEM_HAT:
+            it->min_val = -1;	/* mapping not autodetected yet */
+	    break;
     }
 
     return 0;
@@ -181,8 +213,22 @@ static void usb_joystick(int jp, void* priv)
     for (it = joypriv->usb_joy_item; it; it = it->next) {
         val = hid_get_data(joypriv->usb_joy_buf, &it->item);
         if (it->type == ITEM_HAT) {
-            if (val >= 0 && val <= 8) {
-                joy_hat_event(jp, it->ordinal_number, hat_map[val]);
+            if (val >= 0 && val <= MAX_HAT_MAP_INDEX) {
+		/* Autodect if 0 is neutral, or 8 */
+		if (it->min_val < 0) {
+		    if (val == 0) {
+			it->min_val = 0;
+		    } else if (val == 8) {
+			it->min_val = 1;
+		    } else {
+			/* Not yet autodetected */
+		    }
+		    /* Report neutral position for now */
+		    joy_hat_event(jp, it->ordinal_number, 0);
+		} else {
+		    val += it->min_val;
+		    joy_hat_event(jp, it->ordinal_number, hat_map[val]);
+		}
             }
         } else {
             if (it->type == ITEM_BUTTON) {
@@ -320,6 +366,7 @@ void usb_joystick_init(void)
         }
 
         hid_end_parse(d);
+        hid_dispose_report_desc(report);
         if (!priv) {
             continue;
         }

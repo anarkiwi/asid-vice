@@ -293,6 +293,7 @@ noinst_HEADERS = \
 	vic20ui.h \
 	vice.h \
 	vice_sdl.h \
+	vicedate.h \
 	vice-event.h \
 	vicemaxpath.h \
 	vicesocket.h \
@@ -518,7 +519,7 @@ infocontrib.h: $(srcdir)/buildtools/geninfocontrib_h.sh $(top_srcdir)/doc/vice.t
 		echo "ERROR: geninfocontrib_h.sh contains content that is not valid iso-8859-x" >&2; \
 		false; \
 	fi
-	@$(SHELL) $(srcdir)/buildtools/geninfocontrib_h.sh infocontrib.h <$(top_srcdir)/doc/vice.texi | LC_ALL=C sed -f $(srcdir)/buildtools/infocontrib.sed >infocontrib.h
+	@$(SHELL) $(srcdir)/buildtools/geninfocontrib_h.sh infocontrib.h <$(top_srcdir)/doc/vice.texi `grep "VICEDATE_YEAR " $(top_srcdir)/src/vicedate.h | cut -d " " -f 3` | LC_ALL=C sed -f $(srcdir)/buildtools/infocontrib.sed >infocontrib.h
 	@if [ "`file --mime-encoding infocontrib.h`" != "infocontrib.h: iso-8859-1" ]; then \
 		echo "ERROR: generated infocontrib.h contains content that is not valid iso-8859-x" >&2; \
 		false; \
@@ -526,11 +527,11 @@ infocontrib.h: $(srcdir)/buildtools/geninfocontrib_h.sh $(top_srcdir)/doc/vice.t
 
 # we need to replace \ and space by "regular" characters, else things break on some shells
 	@LC_ALL=C sed -e 's/\\/{/g' -e 's/ /}/g' <$(top_srcdir)/README >./README.tmp
-	@$(SHELL) $(srcdir)/buildtools/geninfocontrib_h.sh README <README.tmp >README2.tmp
+	@$(SHELL) $(srcdir)/buildtools/geninfocontrib_h.sh README `grep "VICEDATE_YEAR " $(top_srcdir)/src/vicedate.h | cut -d " " -f 3` <README.tmp >README2.tmp
 	@LC_ALL=C sed -e 's/{/\\/g' -e 's/}/ /g' <README2.tmp >../README
 	@rm -f README*.tmp
 	@cp $(top_srcdir)/doc/html/index.html ./index.tmp
-	@$(SHELL) $(srcdir)/buildtools/geninfocontrib_h.sh indexhtml <index.tmp >../doc/html/index.html
+	@$(SHELL) $(srcdir)/buildtools/geninfocontrib_h.sh indexhtml `grep "VICEDATE_YEAR " $(top_srcdir)/src/vicedate.h | cut -d " " -f 3` <index.tmp >../doc/html/index.html
 	@rm -f index.tmp
 	@rm -f team.tmp
 	@iconv -f ISO-8859-15 -t UTF-8 infocontrib.h > infocontrib.h.utf8 && mv infocontrib.h.utf8 infocontrib.h

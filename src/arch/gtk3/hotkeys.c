@@ -122,19 +122,6 @@ typedef enum hotkeys_keyword_id_e {
 } hotkeys_keyword_id_t;
 
 
-/** \brief  Modifier IDs
- */
-typedef enum hotkeys_modifier_id_e {
-    HOTKEYS_MOD_ID_ILLEGAL = -1,    /**< illegal modifier */
-    HOTKEYS_MOD_ID_NONE,            /**< no modifer */
-    HOTKEYS_MOD_ID_ALT,             /**< Alt */
-    HOTKEYS_MOD_ID_COMMAND,         /**< Command (MacOS) */
-    HOTKEYS_MOD_ID_CONTROL,         /**< Control */
-    HOTKEYS_MOD_ID_HYPER,           /**< Hyper (MacOS?) */
-    HOTKEYS_MOD_ID_OPTION,          /**< Option (MacOS) */
-    HOTKEYS_MOD_ID_SHIFT,           /**< Shift */
-    HOTKEYS_MOD_ID_SUPER            /**< Super ("Windows" key) */
-} hotkeys_modifier_id_t;
 
 
 
@@ -171,20 +158,6 @@ typedef struct hotkeys_keyword_s {
     const char *            syntax;     /**< syntax */
     const char *            desc;       /**< description */
 } hotkeys_keyword_t;
-
-
-/** \brief  Parser modifier data object
- *
- * The modifier IDs are there to allow dumping a hotkeys file with PC-specific
- * modifier names on Linux, BSD, Windows and MacOS-specific modifier names on
- * MacOS. So "<Control><Alt>X" would be dumped as "<Command><Option>X" on MacOS,
- * but the parser wouldn't care when reading back the file.
- */
-typedef struct hotkeys_modifier_s {
-    const char *            name;   /**< modifier name */
-    hotkeys_modifier_id_t   id;     /**< modifier ID */
-    GdkModifierType         mask;   /**< GDK modifier mask */
-} hotkeys_modifier_t;
 
 
 /** \brief  Object for apping of !DEBUG arguments to boolean
@@ -250,13 +223,14 @@ static const hotkeys_keyword_t hotkeys_keyword_list[] = {
  * \note    The array needs to stay in alphabetical order.
  */
 static const hotkeys_modifier_t hotkeys_modifier_list[] = {
-    { "Alt",        HOTKEYS_MOD_ID_ALT,     GDK_MOD1_MASK },
-    { "Command",    HOTKEYS_MOD_ID_COMMAND, GDK_CONTROL_MASK },
-    { "Control",    HOTKEYS_MOD_ID_CONTROL, GDK_CONTROL_MASK },
-    { "Hyper",      HOTKEYS_MOD_ID_HYPER,   GDK_HYPER_MASK },
-    { "Option",     HOTKEYS_MOD_ID_OPTION,  GDK_MOD1_MASK },
-    { "Shift",      HOTKEYS_MOD_ID_SHIFT,   GDK_SHIFT_MASK },
-    { "Super",      HOTKEYS_MOD_ID_SUPER,   GDK_SUPER_MASK }
+    { "Alt",        HOTKEYS_MOD_ID_ALT,     GDK_MOD1_MASK,      "MOD1",     "Alt" },
+    { "Command",    HOTKEYS_MOD_ID_COMMAND, GDK_META_MASK,      "META",     "Command \u2318" },
+    { "Control",    HOTKEYS_MOD_ID_CONTROL, GDK_CONTROL_MASK,   "CONTROL",  "Control \u2303" },
+    { "Hyper",      HOTKEYS_MOD_ID_HYPER,   GDK_HYPER_MASK,     "HYPER",    "Hyper" },
+    { "Option",     HOTKEYS_MOD_ID_OPTION,  GDK_MOD1_MASK,      "MOD1",     "Option \u2325" },
+    { "Shift",      HOTKEYS_MOD_ID_SHIFT,   GDK_SHIFT_MASK,     "SHIFT",    "Shift \u21e7" },
+    { "Super",      HOTKEYS_MOD_ID_SUPER,   GDK_SUPER_MASK,     "SUPER",    "Super" },
+    { NULL,         -1,                     0,                  NULL,       NULL }
 };
 
 
@@ -332,14 +306,13 @@ static int hotkeys_file_set(const char *val, void *param)
     }
 
     /* process hotkeys */
+    if (help_requested) {
+        debug_gtk3("--help on command line, skip parsing.");
+        return 0;
+    }
+
     log_message(hotkeys_log, "Hotkeys: parsing '%s':", val);
     ui_hotkeys_parse(val);
-
-#if 0
-    debug_gtk3("Faking hotkeys loading: swapping Alt+H/Alt+M.");
-    ui_set_vice_menu_item_hotkey_by_name("monitor", "m", GDK_MOD1_MASK);
-    ui_set_vice_menu_item_hotkey_by_name("toggle-mouse-grab", "h", GDK_MOD1_MASK);
-#endif
     return 0;
 }
 /* }}} */
@@ -384,7 +357,7 @@ void ui_hotkeys_init(void)
     log_message(hotkeys_log, "Hotkeys: Initializing.");
 
     log_message(hotkeys_log, "Hotkeys: Parsing %s hotkeys file:", machine_name);
-    if (!ui_hotkeys_parse("gtk3-hotkeys.vhk")) {
+    if (!ui_hotkeys_parse(VHK_DEFAULT_NAME)) {
         log_message(hotkeys_log, "Hotkeys: Failed, continuing anyway.");
     } else {
         log_message(hotkeys_log, "Hotkeys: OK.");
@@ -914,9 +887,9 @@ static char *parser_strsubst(const char *original,
 static int parser_strncasecmp(const char *s1, const char *s2, size_t n)
 {
     size_t i;
-
+#if 0
     debug_gtk3("compare (%s, %s).", s1, s2);
-
+#endif
     for (i = 0; *s1 != '\0' && *s2 != '\0' && i < n; s1++, s2++, i++) {
         int c1 = tolower((int)*s1);
         int c2 = tolower((int)*s2);
@@ -1014,9 +987,9 @@ static hotkeys_keyword_id_t parser_get_keyword_id(const char *name)
 static hotkeys_modifier_id_t parser_get_modifier_id(const char *name,
                                                     const char **endptr)
 {
-    size_t i;
+    int i = 0;
 
-    for (i = 0; i < ARRAY_LEN(hotkeys_modifier_list); i++) {
+    while (hotkeys_modifier_list[i].name != NULL) {
         int k = 0;
         const hotkeys_modifier_t *mod = &(hotkeys_modifier_list[i]);
         const char *modname = mod->name;
@@ -1044,9 +1017,10 @@ static hotkeys_modifier_id_t parser_get_modifier_id(const char *name,
             /* missing closing '>' */
             return HOTKEYS_MOD_ID_ILLEGAL;
         }
+        i++;
     }
 
-    return 0;
+    return HOTKEYS_MOD_ID_ILLEGAL;
 }
 
 
@@ -1058,12 +1032,13 @@ static hotkeys_modifier_id_t parser_get_modifier_id(const char *name,
  */
 static GdkModifierType parser_get_modifier_mask(hotkeys_modifier_id_t id)
 {
-    size_t i;
+    int i = 0;
 
-    for (i = 0; i < ARRAY_LEN(hotkeys_modifier_list); i++) {
+    while (hotkeys_modifier_list[i].name != NULL) {
         if (hotkeys_modifier_list[i].id == id) {
             return hotkeys_modifier_list[i].mask;
         }
+        i++;
     }
     return 0;
 }
@@ -1071,16 +1046,17 @@ static GdkModifierType parser_get_modifier_mask(hotkeys_modifier_id_t id)
 #if 0
 static hotkeys_modifier_id_t parser_get_modifier_id_for_mask(GdkModifierType mask)
 {
-    size_t i;
+    int i = 0;
 
     if (mask == 0) {
         return -1;
     }
 
-    for (i = 0; i < ARRAY_LEN(hotkeys_modifier_list); i++) {
+    while (hotkeys_modifier_list[i].name != NULL) {
         if (hotkeys_modifier_list[i].mask == mask) {
             return hotkeys_modifier_list[i].id;
         }
+        i++;
     }
     return -1;
 }
@@ -1095,12 +1071,13 @@ static hotkeys_modifier_id_t parser_get_modifier_id_for_mask(GdkModifierType mas
  */
 static const char *parser_get_modifier_name(hotkeys_modifier_id_t id)
 {
-    size_t i;
+    int i = 0;
 
-    for (i = 0; i < ARRAY_LEN(hotkeys_modifier_list); i++) {
+    while (hotkeys_modifier_list[i].name != NULL) {
         if (hotkeys_modifier_list[i].id == id) {
             return hotkeys_modifier_list[i].name;
         }
+        i++;
     }
     return NULL;
 }
@@ -1143,6 +1120,7 @@ static bool parser_get_gdk_mask_and_keyval(const char *line,
     while (*s != '\0') {
         const char *end = NULL;
         hotkeys_modifier_id_t id;
+
 #if 0
         debug_gtk3("Scanning '%s'", s);
 #endif
@@ -1248,17 +1226,19 @@ static bool parser_do_debug(const char *line, textfile_reader_t *reader)
 {
     const char *arg;
     size_t i;
-
+#if 0
     debug_gtk3("Found !DEBUG, check arg.");
-
+#endif
     arg = skip_whitespace(line);
     for (i = 0; i < ARRAY_LEN(debug_arglist); i++) {
         if (parser_strncasecmp(debug_arglist[i].symbol,
                                arg,
                                strlen(debug_arglist[i].symbol)) == 0) {
+#if 0
             debug_gtk3("Found '%s' -> '%s'.",
                        debug_arglist[i].symbol,
                        debug_arglist[i].value ? "True" : "False");
+#endif
             /* TODO: report debug on/off as part of debugging, but only
              *       mention 'off' if it was previously 'on': this way using
              *       '!debug off' at the start of a vhk file won't trigger a
@@ -1270,10 +1250,11 @@ static bool parser_do_debug(const char *line, textfile_reader_t *reader)
     }
     /* no match */
     log_message(hotkeys_log,
-                "Hotkeys: %s:%ld: syntax error: unknown argument to !DEBUG.",
+                "Hotkeys: %s:%ld: syntax error: unknown argument to !DEBUG, assuming False",
                 textfile_reader_filename(reader),
                 textfile_reader_linenum(reader));
-    return false;
+    hotkeys_debug = false;
+    return true;
 }
 
 
@@ -1711,12 +1692,10 @@ char *ui_hotkeys_get_hotkey_string_for_action(const char *action)
 
     item = ui_get_vice_menu_item_by_name(action);
     if (item != NULL) {
-        str = gtk_accelerator_name(item->keysym, item->modifier);
+        str = gtk_accelerator_get_label(item->keysym, item->modifier);
         if (str != NULL) {
-            char *tmp;
-
-            /* replace 'Primary' with 'Command' or 'Control' */
-            tmp = parser_strsubst(str, "Primary", PRIMARY_REPLACEMENT);
+            /* make VICE take ownership */
+            char *tmp = lib_strdup(str);
             g_free(str);
             str = tmp;
         }
@@ -1861,3 +1840,10 @@ bool ui_hotkeys_export(const char *path)
     fclose(fp);
     return true;
 }
+
+
+const hotkeys_modifier_t *ui_hotkeys_get_modifier_list(void)
+{
+    return hotkeys_modifier_list;
+}
+

@@ -48,16 +48,25 @@
 
 #ifdef USE_NATIVE_GTK3
 #include <gtk/gtk.h>
+#endif /* #ifdef USE_NATIVE_GTK3 */
+
+#ifdef USE_VICE_THREAD
 #include <pthread.h>
 
-#include "mainlock.h"
-
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static int vice_exit_code;
 static pthread_t main_thread;
-#endif /* #ifdef USE_NATIVE_GTK3 */
+
+#define LOCK()   pthread_mutex_lock(&lock)
+#define UNLOCK() pthread_mutex_unlock(&lock)
+#else
+#define LOCK()
+#define UNLOCK()
+#endif /* #ifdef USE_VICE_THREAD */
 
 #include "archdep.h"
 #include "main.h"
+#include "mainlock.h"
 
 #ifdef MACOSX_SUPPORT
 #include "macOS-util.h"
@@ -66,20 +75,30 @@ static pthread_t main_thread;
 #include "archdep_exit.h"
 #include "log.h"
 
-
-static volatile bool is_exiting;
+static bool is_exiting;
 
 bool archdep_is_exiting(void) {
-    return is_exiting;
+    bool result;
+    
+    LOCK();
+    result = is_exiting;
+    UNLOCK();
+    
+    return result;
 }
 
 static void actually_exit(int exit_code)
 {
+    LOCK();
+    
     if (is_exiting) {
         log_message(LOG_DEFAULT, "Ignoring recursive call to archdep_vice_exit()");
+        UNLOCK();
         return;
     }
     is_exiting = true;
+    
+    UNLOCK();
 
     /* Some exit stuff not safe to run afer exit() is called so we do it here */
     main_exit();

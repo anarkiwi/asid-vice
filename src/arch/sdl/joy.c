@@ -1105,6 +1105,51 @@ static sdljoystick_mapping_t *sdljoy_get_mapping(SDL_Event e)
     return retval;
 }
 
+static int sdljoy_pins[JOYPORT_MAX_PORTS][JOYPORT_MAX_PINS] = { 0 };
+
+void sdljoy_clear_presses(void)
+{
+    int i, j;
+
+    for (i = 0; i < JOYPORT_MAX_PORTS; i++) {
+        for (j = 0; j < JOYPORT_MAX_PINS; j++) {
+            sdljoy_pins[i][j] = 0;
+        }
+        joystick_set_value_and(i, 0);
+    }
+}
+
+/* When a host joystick event happens that cause a 'press' of a pin, increment the 'press amount' of that pin */
+static void sdljoy_set_value_press(unsigned int joyport, uint16_t value)
+{
+    int i;
+
+    for (i = 0; i < JOYPORT_MAX_PINS; i++) {
+        if (value & (1 << i)) {
+            sdljoy_pins[joyport][i]++;
+        }
+    }
+    joystick_set_value_or(joyport, value);
+}
+
+/* When a host joystick event happens that cause a 'release' of a pin, decrement the 'press amount' of that pin,
+   and only release the pin for real if the 'press amount' is 0 */
+static void sdljoy_set_value_release(unsigned int joyport, uint16_t value)
+{
+    int i;
+
+    for (i = 0; i < JOYPORT_MAX_PINS; i++) {
+        if (value & (1 << i)) {
+            if (sdljoy_pins[joyport][i]) {
+                sdljoy_pins[joyport][i]--;
+            }
+            if (sdljoy_pins[joyport][i] == 0) {
+                joystick_set_value_and(joyport, ~(value));
+            }
+        }
+    }
+}
+
 static ui_menu_action_t sdljoy_perform_event(sdljoystick_mapping_t *event, int value)
 {
     uint8_t t;
@@ -1153,9 +1198,9 @@ static ui_menu_action_t sdljoy_perform_event(sdljoystick_mapping_t *event, int v
             t = event->value.joy[0];
             if (joystick_port_map[t] == JOYDEV_JOYSTICK) {
                 if (value) {
-                    joystick_set_value_or(t, (uint16_t)event->value.joy[1]);
+                    sdljoy_set_value_press(t, (uint16_t)event->value.joy[1]);
                 } else {
-                    joystick_set_value_and(t, (uint16_t) ~(event->value.joy[1]));
+                    sdljoy_set_value_release(t, (uint16_t) event->value.joy[1]);
                 }
             }
             break;
