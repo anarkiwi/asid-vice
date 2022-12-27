@@ -27,7 +27,9 @@
 #ifndef VICE_DIRECTX_RENDERER_IMPL_H
 #define VICE_DIRECTX_RENDERER_IMPL_H
 
-#ifdef WIN32_COMPILE
+#include "vice.h"
+
+#ifdef WINDOWS_COMPILE
 
 #include <windows.h>
 
@@ -47,7 +49,7 @@ extern "C" {
  *  \sa video_canvas_s::renderer_context */
 typedef struct vice_directx_renderer_context_s {
     /** \brief needed to coordinate access to the context between vice and main threads */
-    pthread_mutex_t canvas_lock;
+    pthread_mutex_t *canvas_lock_ptr;
 
     /** \brief used to coordinate access to native rendering resources */
     pthread_mutex_t render_lock;
@@ -154,6 +156,6 @@ void vice_directx_impl_async_render(void *pool_data, void *job_data);
 } /* extern "C" { */
 #endif
 
-#endif /* #ifdef WIN32_COMPILE */
+#endif /* #ifdef WINDOWS_COMPILE */
 
 #endif /* #ifndef VICE_DIRECTX_RENDERER_IMPL_H */

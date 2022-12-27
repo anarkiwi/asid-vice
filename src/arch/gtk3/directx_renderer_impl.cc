@@ -29,7 +29,7 @@
 
 #include "directx_renderer_impl.h"
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 
 #include <assert.h>
 #include <math.h>
@@ -46,8 +46,8 @@ extern "C"
 #include "videoarch.h"
 }
 
-#define CANVAS_LOCK() pthread_mutex_lock(&context->canvas_lock)
-#define CANVAS_UNLOCK() pthread_mutex_unlock(&context->canvas_lock)
+#define CANVAS_LOCK() pthread_mutex_lock(context->canvas_lock_ptr)
+#define CANVAS_UNLOCK() pthread_mutex_unlock(context->canvas_lock_ptr)
 #define RENDER_LOCK() pthread_mutex_lock(&context->render_lock)
 #define RENDER_UNLOCK() pthread_mutex_unlock(&context->render_lock)
 
@@ -651,4 +651,4 @@ void vice_directx_impl_log_windows_error(const char *prefix)
     LocalFree(error_message);
 }
 
-#endif /* #ifdef WIN32_COMPILE */
+#endif /* #ifdef WINDOWS_COMPILE */

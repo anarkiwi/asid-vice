@@ -66,6 +66,7 @@
 
 /* resource handling */
 
+/* baudrate of physical RS232 device (unused with pipes and sockets) */
 static int devbaud[RS232_NUM_DEVICES];
 
 static int is_baud_valid(int baud)
@@ -352,7 +353,7 @@ int rs232dev_open(int device)
             break;
         }
 
-        if(!strncasecmp(rs232_devfile[device], "com", 3)) {
+        if(!util_strncasecmp(rs232_devfile[device], "com", 3)) {
             fds[i].type = T_TTY;
         } else {
             fds[i].type = T_FILE;

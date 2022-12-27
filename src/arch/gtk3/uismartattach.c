@@ -25,7 +25,7 @@
  */
 
 /*
- * $VICERES AttachDevice8Readonly   -vsid
+ * $VICERES AttachDevice8d0Readonly   -vsid
  */
 
 
@@ -49,11 +49,14 @@
 #include "mainlock.h"
 #include "resources.h"
 #include "ui.h"
+#include "uiactions.h"
 #include "uiapi.h"
 #include "uimachinewindow.h"
 #include "lastdir.h"
 #include "initcmdline.h"
 #include "log.h"
+#include "tapecart.h"
+#include "tapeport.h"
 
 #include "uismartattach.h"
 
@@ -177,6 +180,50 @@ static int try_attach_disk(int unit_number, int drive_number, char *filename_loc
     return 0;
 }
 
+/** \brief  try attach a Tapecart image, change tape port device if needed
+ *
+ * \param[in]   filename
+ */
+static int try_attach_tapecart(char *filename)
+{
+    int tapedevice_temp = TAPEPORT_DEVICE_NONE;
+
+    /* check if file is a valid Tapecart */
+    if (!tapecart_is_valid(filename)) {
+        return -1;
+    }
+
+    /* get current tapeport device */
+    if (resources_get_int("TapePort1Device", &tapedevice_temp) < 0) {
+        log_error(LOG_ERR, "Failed to get tape port device.");
+        return -1;
+    }
+
+    /* first disable all devices, so we dont get any conflicts */
+    if (resources_set_int("TapePort1Device", TAPEPORT_DEVICE_NONE) < 0) {
+        log_error(LOG_ERR, "Failed to disable the tape port device.");
+        goto exiterror;
+    }
+
+    /* enable the tape cart */
+    if (resources_set_int("TapePort1Device", TAPEPORT_DEVICE_TAPECART) < 0) {
+        log_error(LOG_ERR, "Failed to enable the Tapecart.");
+        goto exiterror;
+    }
+
+    /* attach image and return on success */
+    if (tapecart_attach_tcrt(filename, NULL) == 0) {
+        return 0;
+    }
+
+exiterror:
+    /* restore tape port device */
+    if (resources_set_int("TapePort1Device", tapedevice_temp) < 0) {
+        log_error(LOG_ERR, "Failed to restore tape port device.");
+    }
+    return -1;
+}
+
 /** \brief  Do smart attach
  *
  * \param[in]   widget  dialog
@@ -204,6 +251,7 @@ static void do_smart_attach(GtkWidget *widget, gpointer data)
         if (try_attach_disk(DRIVE_UNIT_DEFAULT, 0, filename_locale) < 0
                 && tape_image_attach(1, filename_locale) < 0
                 && autostart_snapshot(filename_locale, NULL) < 0
+                && try_attach_tapecart(filename_locale) < 0
                 && cartridge_attach_image(CARTRIDGE_CRT, filename_locale) < 0
                 && autostart_prg(filename_locale, AUTOSTART_MODE_LOAD) < 0) {
             /* failed */
@@ -305,7 +353,7 @@ static void on_readonly_toggled(GtkWidget *widget, gpointer user_data)
     int state;
 
     state = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-    resources_set_int_sprintf("AttachDevice%dReadonly", state, DRIVE_UNIT_DEFAULT);
+    resources_set_int_sprintf("AttachDevice%dd0Readonly", state, DRIVE_UNIT_DEFAULT);
 }
 
 
@@ -439,7 +487,7 @@ static GtkWidget *create_extra_widget(GtkWidget *parent)
     g_signal_connect(readonly_check, "toggled", G_CALLBACK(on_readonly_toggled),
             (gpointer)(parent));
     gtk_grid_attach(GTK_GRID(grid), readonly_check, 1, 0, 1, 1);
-    resources_get_int_sprintf("AttachDevice%dReadonly", &readonly_state, DRIVE_UNIT_DEFAULT);
+    resources_get_int_sprintf("AttachDevice%dd0Readonly", &readonly_state, DRIVE_UNIT_DEFAULT);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(readonly_check), readonly_state);
 
     gtk_widget_show_all(grid);
@@ -470,9 +518,14 @@ static image_contents_t *read_contents_wrapper(const char *path)
 }
 
 
+
+static void on_destroy(GtkWidget *self, gpointer data)
+{
+    ui_action_finish(ACTION_SMART_ATTACH);
+}
+
+
 /** \brief  Create the smart-attach dialog
- *
- * \param[in]   parent  parent widget, used to get the top level window
  *
  * \return  GtkFileChooserDialog
  *
@@ -480,7 +533,7 @@ static image_contents_t *read_contents_wrapper(const char *path)
  *          file/image has been selected. And when I do, make sure it's somehow
  *          reusable for other 'open file' dialogs'.
  */
-static GtkWidget *create_smart_attach_dialog(GtkWidget *parent)
+static GtkWidget *create_smart_attach_dialog(void)
 {
     GtkWidget *dialog;
     size_t i;
@@ -548,6 +601,7 @@ static GtkWidget *create_smart_attach_dialog(GtkWidget *parent)
             G_CALLBACK(on_update_preview), NULL);
     g_signal_connect_unlocked(dialog, "selection-changed",
             G_CALLBACK(on_selection_changed), NULL);
+    g_signal_connect(dialog, "destroy", G_CALLBACK(on_destroy), NULL);
 
     return dialog;
 
@@ -563,14 +617,10 @@ static GtkWidget *create_smart_attach_dialog(GtkWidget *parent)
  *
  * \return  TRUE
  */
-gboolean ui_smart_attach_dialog_show(GtkWidget *widget, gpointer user_data)
+void ui_smart_attach_dialog_show(void)
 {
-    GtkWidget *dialog;
-
-    dialog = create_smart_attach_dialog(widget);
+    GtkWidget *dialog = create_smart_attach_dialog();
     gtk_widget_show(dialog);
-    return TRUE;
-
 }
 
 

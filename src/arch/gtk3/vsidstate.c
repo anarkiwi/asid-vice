@@ -12,8 +12,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <pthread.h>
 #include "lib.h"
+#include "log.h"
 
 #include "vsidstate.h"
 
@@ -68,10 +70,12 @@ void vsid_state_init(void)
     state->irq = NULL;
     state->tune_count = 0;
     state->tune_count_pending = false;
-    state->tune_current = 0;
+    state->tune_current = -1;
     state->tune_current_pending = false;
+    state->tune_previous = -1;
     state->tune_default = 0;
     state->tune_default_pending = false;
+    memset(state->tunes_played, 0, sizeof(state->tunes_played));
     state->model = 0;
     state->model_pending = false;
     state->sync = 0;
@@ -119,5 +123,187 @@ void vsid_state_shutdown(void)
         state->irq = NULL;
     }
 
+    vsid_state_unlock();
+}
+
+
+
+/** \brief  Set subtune play flag without using the lock
+ *
+ * Here be dragons: only call this when having manually obtained the lock!
+ *
+ * \param[in]   tune    subtune number
+ */
+void vsid_state_set_tune_played_unlocked(int tune)
+{
+    vsid_state_t *state = &vsid_state_hands_off;
+
+    if (tune < 1 || tune > 255) {
+        return;
+    }
+    state->tunes_played[(tune - 1) >> 3] |= (1 << ((tune - 1) & 7));
+}
+
+
+/** \brief  Set subtune played flag
+ *
+ * \param[in]   tune    tune number (1-255)
+ */
+void vsid_state_set_tune_played(int tune)
+{
+    if (tune < 1 || tune > 255) {
+        return;
+    }
+    vsid_state_lock();
+    vsid_state_set_tune_played_unlocked(tune);
+    vsid_state_unlock();
+}
+
+
+/** \brief  Mark current tune as played without obtaining the lock
+ *
+ * Make sure to have obtained the lock manually before using!
+ */
+void vsid_state_set_current_tune_played_unlocked(void)
+{
+    vsid_state_t *state = &vsid_state_hands_off;
+    int tune;
+
+    tune = state->tune_current;
+    if (tune > 0 && tune < 256) {
+        state->tunes_played[(tune - 1) >> 3] |= (1 << ((tune - 1) & 7));
+    }
+}
+
+
+/** \brief  Mark current tune as played
+ */
+void vsid_state_set_current_tune_played(void)
+{
+    vsid_state_lock();
+    vsid_state_set_current_tune_played_unlocked();
+    vsid_state_unlock();
+}
+
+
+/** \brief  Determine if a subtune has been played
+ *
+ * \param[in]   tune    subtune number (1-255)
+ *
+ * \return  `true` if subtune has been played
+ * \note    returns `false` when tune is out of range
+ */
+bool vsid_state_get_tune_played(int tune)
+{
+    vsid_state_t *state;
+    bool played;
+
+    if (tune < 1 || tune > 255) {
+        return false;
+    }
+    state = vsid_state_lock();
+    played = (bool)(state->tunes_played[(tune - 1) >> 3] & (1 << ((tune - 1) & 7)));
+    vsid_state_unlock();
+    return played;
+}
+
+
+/** \brief  Clear subtune played flag
+ *
+ * \param[in]   tune    tune number (1-255)
+ */
+void vsid_state_unset_tune_played(int tune)
+{
+    vsid_state_t *state;
+
+    if (tune < 1 || tune > 255) {
+        return;
+    }
+    state = vsid_state_lock();
+    state->tunes_played[(tune - 1) >> 3] &= ~(1 << ((tune - 1) & 7));
+    vsid_state_unlock();
+}
+
+
+/** \brief  Clear all subtunes' played flags
+ */
+void vsid_state_clear_tunes_played(void)
+{
+    vsid_state_t *state = vsid_state_lock();
+
+    memset(state->tunes_played, 0, sizeof(state->tunes_played));
+    vsid_state_unlock();
+}
+
+
+/** \brief  Determine if all subtunes have been played
+ *
+ * \return  `true` if all subtunes have been played
+ */
+bool vsid_state_get_all_tunes_played(void)
+{
+    vsid_state_t *state = vsid_state_lock();
+    int t = 0;
+    bool all = true;
+
+    while (t < state->tune_count && t < (int)sizeof(state->tunes_played) * 8) {
+        if ((state->tunes_played[t >> 3] & (1 << (t & 7))) == 0) {
+            all = false;
+            break;
+        }
+        t++;
+    }
+    vsid_state_unlock();
+    return all;
+}
+
+
+/** \brief  Get bitmap of tunes played
+ *
+ * \param[out]  bitmap  buffer to store bitmap, must be (at least) 8 bytes
+ */
+void vsid_state_get_tunes_played_bitmap(uint8_t *bitmap)
+{
+    vsid_state_t *state = vsid_state_lock();
+    memcpy(bitmap, state->tunes_played, sizeof state->tunes_played);
+    vsid_state_unlock();
+}
+
+
+/** \brief  Debug helper: print tunes_played bitmap on stdout
+ *
+ * Careful! Direct access to state which assumes the caller locks and unlocks!
+ */
+void vsid_state_print_tunes_played_unlocked(void)
+{
+    vsid_state_t *state = &vsid_state_hands_off;
+    uint8_t played[8];
+    int count;
+    int t;
+    int p = 0;
+    char buffer[257];
+
+    count = state->tune_count;
+    memcpy(played, state->tunes_played, sizeof played);
+
+    for (t = 0; t < count; t++) {
+        if (played[t >> 3] & (1 << (t & 7))) {
+            buffer[t] = 'X';
+            p++;
+        } else {
+            buffer[t] = '-';
+        }
+    }
+    buffer[t] = '\0';
+    log_debug("VSID STATE: Tunes played: %s (%d/%d)", buffer, p, count);
+}
+
+
+/** \brief  Debug helper: print tunes played bitmap on stdout
+ */
+void vsid_state_print_tunes_played(void)
+{
+    vsid_state_lock();
+    vsid_state_print_tunes_played_unlocked();
     vsid_state_unlock();
 }

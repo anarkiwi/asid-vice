@@ -32,15 +32,16 @@
 
 #include "archdep.h"
 
-#ifdef ARCHDEP_OS_WINDOWS
+#ifdef WINDOWS_COMPILE
 # include <windows.h>
 #endif
-#if defined(ARCHDEP_OS_UNIX)
+#if defined(UNIX_COMPILE)
 # include <locale.h>
 # include <string.h>
 #endif
 
 #include "keyboard.h"
+#include "keymap.h"
 
 #include "archdep_kbd_get_host_mapping.h"
 
@@ -53,7 +54,7 @@
  * \see     keyboard.h
  */
 
-#ifdef ARCHDEP_OS_WINDOWS
+#ifdef WINDOWS_COMPILE
 
 /* returns host keyboard mapping. used to initialize the keyboard map when
    starting with a blank (default) config, so an educated guess works good
@@ -75,7 +76,7 @@ int archdep_kbd_get_host_mapping(void)
     static const int maps[KBD_MAPPING_NUM] = {
         KBD_MAPPING_US, KBD_MAPPING_UK, KBD_MAPPING_DE, KBD_MAPPING_DA,
         KBD_MAPPING_NO, KBD_MAPPING_FI, KBD_MAPPING_IT, KBD_MAPPING_NL,
-        KBD_MAPPING_SE, KBD_MAPPING_CH, KBD_MAPPING_BE
+        KBD_MAPPING_SE, KBD_MAPPING_CH, KBD_MAPPING_BE, KBD_MAPPING_TR,
     };
     static const int langids[KBD_MAPPING_NUM] = {
         MAKELANGID(LANG_ENGLISH,    SUBLANG_ENGLISH_US),        /* must be always first */
@@ -89,6 +90,7 @@ int archdep_kbd_get_host_mapping(void)
         MAKELANGID(LANG_SWEDISH,    SUBLANG_SWEDISH),
         MAKELANGID(LANG_GERMAN,     SUBLANG_GERMAN_SWISS),
         MAKELANGID(LANG_DUTCH,      SUBLANG_DUTCH_BELGIAN),    /* must come after regular dutch */
+        MAKELANGID(LANG_TURKISH,    SUBLANG_TURKISH_TURKEY),
     };
 
     /* GetKeyboardLayout returns a pointer, but the first 16 bits of it return
@@ -111,23 +113,8 @@ int archdep_kbd_get_host_mapping(void)
     }
     return KBD_MAPPING_US;
 }
-#else
 
-/* Amiga, Beos */
-#if defined(ARCHDEP_OS_BEOS)
-
-/* returns host keyboard mapping. used to initialize the keyboard map when
-   starting with a blank (default) config, so an educated guess works good
-   enough most of the time :)
-
-   FIXME: add more languages/actual detection (right :))
-*/
-int archdep_kbd_get_host_mapping(void)
-{
-    return KBD_MAPPING_US;
-}
-
-#else
+#elif defined(UNIX_COMPILE)
 
 /* returns host keyboard mapping. used to initialize the keyboard map when
    starting with a blank (default) config, so an educated guess works good
@@ -148,10 +135,10 @@ int archdep_kbd_get_host_mapping(void)
     static const int maps[KBD_MAPPING_NUM] = {
         KBD_MAPPING_US, KBD_MAPPING_BE, KBD_MAPPING_UK, KBD_MAPPING_DE, KBD_MAPPING_DA,
         KBD_MAPPING_NO, KBD_MAPPING_FI, KBD_MAPPING_FR, KBD_MAPPING_IT,
-        KBD_MAPPING_NL, KBD_MAPPING_ES, KBD_MAPPING_SE, KBD_MAPPING_CH,
+        KBD_MAPPING_NL, KBD_MAPPING_ES, KBD_MAPPING_SE, KBD_MAPPING_CH, KBD_MAPPING_TR
     };
     static const char * const langids[KBD_MAPPING_NUM] = {
-        "en_US", "nl_BE", "en_UK", "de", "da", "no", "fi", "fr", "it", "nl", "es", "se", "ch" };
+        "en_US", "nl_BE", "en_UK", "de", "da", "no", "fi", "fr", "it", "nl", "es", "se", "ch", "tr" };
     /* setup the locale */
     setlocale(LC_ALL, "");
     l = setlocale(LC_ALL, NULL);
@@ -166,5 +153,20 @@ int archdep_kbd_get_host_mapping(void)
     }
     return KBD_MAPPING_US;
 }
-#endif
+
+#else
+
+/* Amiga, Beos, etc... */
+
+/* returns host keyboard mapping. used to initialize the keyboard map when
+   starting with a blank (default) config, so an educated guess works good
+   enough most of the time :)
+
+   FIXME: add more languages/actual detection (right :))
+*/
+int archdep_kbd_get_host_mapping(void)
+{
+    return KBD_MAPPING_US;
+}
+
 #endif

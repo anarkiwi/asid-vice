@@ -58,6 +58,7 @@
 #include <sys/ioctl.h>
 #endif
 
+#include "archdep.h"
 #include "console.h"
 #include "debug_gtk3.h"
 #include "machine.h"
@@ -68,9 +69,7 @@
 #include "log.h"
 #include "ui.h"
 #include "linenoise.h"
-#include "tick.h"
 #include "uimon.h"
-#include "uimonarch.h"
 #include "uimon-fallback.h"
 #include "mon_command.h"
 #include "vsync.h"
@@ -401,7 +400,7 @@ static gboolean ctrl_plus_key_pressed(char **input_buffer, guint keyval, GtkWidg
             /* ctrl+e, go to the end of the line */
             *input_buffer = append_char_to_input_buffer(*input_buffer, 5);
             return TRUE;
-#ifndef MACOSX_SUPPORT
+#ifndef MACOS_COMPILE
         case GDK_KEY_c:
         case GDK_KEY_C:
             vte_terminal_copy_clipboard(VTE_TERMINAL(terminal));
@@ -416,7 +415,7 @@ static gboolean ctrl_plus_key_pressed(char **input_buffer, guint keyval, GtkWidg
     }
 }
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
 static gboolean cmd_plus_key_pressed(char **input_buffer, guint keyval, GtkWidget *terminal)
 {
     switch (keyval) {
@@ -448,11 +447,19 @@ static gboolean key_press_event (GtkWidget   *widget,
     pthread_mutex_lock(&fixed.lock);
 
     if (event->type == GDK_KEY_PRESS) {
+        /*printf("keyval: %04x state:%04x\n", event->keyval, state);fflush(stdout);*/
+#ifdef WINDOWS_COMPILE
+        /* extra check for ALT-GR */
+        if ((state & (GDK_CONTROL_MASK | GDK_MOD1_MASK)) == (GDK_CONTROL_MASK | GDK_MOD1_MASK)) {
+            retval = plain_key_pressed(&fixed.input_buffer, event->keyval);
+            goto done;
+        }
+#endif
         if (state & GDK_CONTROL_MASK) {
             retval = ctrl_plus_key_pressed(&fixed.input_buffer, event->keyval, widget);
             goto done;
         }
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
         if (state & GDK_MOD2_MASK) {
             retval = cmd_plus_key_pressed(&fixed.input_buffer, event->keyval, widget);
             goto done;
@@ -517,7 +524,7 @@ int uimon_get_string(struct console_private_s *t, char* string, int string_len)
         if (strlen(t->input_buffer) == 0) {
             /* There's no input yet, so have a little sleep and look again. */
             pthread_mutex_unlock(&t->lock);
-            tick_sleep(tick_per_second() / 60);
+            mainlock_yield_and_sleep(tick_per_second() / 60);
             continue;
         }
 
@@ -1156,41 +1163,3 @@ int console_close_all(void)
 
     return 0;
 }
-
-/** \brief  Callback to activate the ML-monitor
- *
- * \param[in,out]   widget      widget triggering the event
- * \param[in]       user_data   data for the event (unused)
- *
- * \return  TRUE
- */
-gboolean ui_monitor_activate_callback(GtkWidget *widget, gpointer user_data)
-{
-    int v;
-    int native = 0;
-
-    /*
-     * Determine if we use the spawing terminal or the (yet to write) Gtk3
-     * base monitor
-     */
-    resources_get_int("NativeMonitor", &native);
-    resources_get_int("MonitorServer", &v);
-
-    if (v == 0) {
-        vsync_suspend_speed_eval();
-        /* ui_autorepeat_on(); */
-
-#ifdef HAVE_MOUSE
-        /* FIXME: restore mouse in case it was grabbed */
-        /* ui_restore_mouse(); */
-#endif
-
-        if (ui_pause_active()) {
-            ui_pause_enter_monitor();
-        } else {
-            monitor_startup_trap();
-        }
-    }
-    return TRUE;
-}
-

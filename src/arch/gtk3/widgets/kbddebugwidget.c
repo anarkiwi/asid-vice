@@ -41,7 +41,7 @@
 #define LINES   3
 
 /** \brief  Buffer size for g_snprintf() calls */
-#define BUFSIZE 64
+#define BUFSIZE 128
 
 /** \brief  Column indexes of the various widgets
  */
@@ -102,7 +102,7 @@ GtkWidget *kbd_debug_widget_create(void)
     }
 
     grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT);
-    g_object_set(grid, "margin-left", 8, NULL);
+    gtk_widget_set_margin_start(grid, 8);
     gtk_grid_set_row_spacing(GTK_GRID(grid), 1);
 
     label = gtk_label_new("KBD debug:");
@@ -173,6 +173,7 @@ void kbd_debug_widget_update(GtkWidget *widget, GdkEvent *event)
     if (primary) {
         guint keyval = event->key.keyval;
         guint mods = event->key.state;
+        int scancode = gdk_event_get_scancode(event);
         GdkDisplay *display = gdk_display_get_default();
         GdkKeymap *keymap = gdk_keymap_get_for_display(display);
         int capslock = gdk_keymap_get_caps_lock_state(keymap);
@@ -199,7 +200,8 @@ void kbd_debug_widget_update(GtkWidget *widget, GdkEvent *event)
                 break;
         }
 
-        g_snprintf(keyval_buffer[LINES - 1], BUFSIZE, "%5u, 0x%04x", keyval, keyval);
+        g_snprintf(keyval_buffer[LINES - 1], BUFSIZE, "%5u/0x%04x  0x%08x",
+                   keyval, keyval, (unsigned int)scancode);
         g_snprintf(keysym_buffer[LINES - 1], BUFSIZE, "%s", gdk_keyval_name(keyval));
         g_snprintf(keymod_buffer[LINES - 1], BUFSIZE, "%c%c%c %c%c%c%c%c %c%c",
                 mods & GDK_SHIFT_MASK ? 'S' : '-',    /* shift (left or right) */

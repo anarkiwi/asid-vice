@@ -19,6 +19,7 @@ roms = \
 	edit-4-80-b-60Hz.901474-03.bin \
 	edit-4-b-noCRTC.901474-02.bin \
 	chargen.de \
+	characters-1.901447-08.bin \
 	characters-2.901447-10.bin \
 	characters.901640-01.bin \
 	waterloo-a000.901898-01.bin \
@@ -80,12 +81,22 @@ sdl_keymaps = \
 sdl_hotkeys = \
 	sdl-hotkeys.vhk
 
-if SDL_COMPILE
+if USE_SDLUI
 pet_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sdl_hotkeys)
-
 EXTRA_DIST = $(pet_DATA) $(gtk3_keymaps) $(gtk3_hotkeys)
-else
-pet_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(gtk3_hotkeys)
+endif
 
+if USE_SDL2UI
+pet_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sdl_hotkeys)
+EXTRA_DIST = $(pet_DATA) $(gtk3_keymaps) $(gtk3_hotkeys)
+endif
+
+if USE_GTK3UI
+pet_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(gtk3_hotkeys)
 EXTRA_DIST = $(pet_DATA) $(sdl_keymaps) $(sdl_hotkeys)
+endif
+
+if USE_HEADLESSUI
+pet_DATA = $(roms) $(romsets) $(palettes)
+EXTRA_DIST = $(pet_DATA) $(sdl_keymaps) $(sdl_hotkeys) $(gtk3_keymaps) $(gtk3_hotkeys)
 endif

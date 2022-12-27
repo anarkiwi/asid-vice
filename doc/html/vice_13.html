@@ -1,0 +1,2062 @@
+<HTML>
+<HEAD>
+<!-- This HTML file has been created by texi2html 1.52
+     from vice.texi on 11 November 2022 -->
+
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-15">
+<TITLE>VICE Manual - 13  Binary monitor</TITLE>
+<style type="text/css">
+    @import 'vice.css';
+</style>
+</HEAD>
+<BODY>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_12.html">previous</A>, <A HREF="vice_14.html">next</A>, <A HREF="vice_23.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+<P><HR><P>
+
+
+<H1><A NAME="SEC298" HREF="vice_toc.html#TOC298">13  Binary monitor</A></H1>
+<P>
+The binary remote monitor commands are sent over a dedicated connection, specified
+with the command line options <CODE>-binarymonitor</CODE> &#38; <CODE>-binarymonitoraddress</CODE>. See section <A HREF="vice_6.html#SEC103">6.15  Monitor settings</A>.
+The remote monitor detects a binary command because it starts with ASCII STX
+(0x02). Note that there is no termination character. The command length acts as
+synchronisation point.
+
+</P>
+<P>
+All multibyte values are in little endian order unless otherwise specified.
+
+</P>
+
+
+
+<H2><A NAME="SEC299" HREF="vice_toc.html#TOC299">13.1  Command Structure</A></H2>
+
+<DL COMPACT>
+
+<DT><STRONG>byte 0: 0x02 (STX)</STRONG>
+<DD>
+<DT><STRONG>byte 1: API version ID (currently 0x02)</STRONG>
+<DD>
+The API version identifies incompatible changes, such as modifying the header
+structure, or rearranging or changing the meaning of existing response fields.
+The API version does not need to be incremented for additional fields. If all
+the variable length fields are prefixed with their lengths then you should be
+able to add new ones to any response. The server can assume default values for
+older clients, and for newer clients with longer commands
+it should be able to ignore the extra fields safely.
+
+<DT><STRONG>byte 2-5: length</STRONG>
+<DD>
+Note that the command length does *not* count the STX, the command length, 
+the command byte, or the request ID. Basically nothing in the header, 
+just the body.
+
+<DT><STRONG>byte 6-9: request id</STRONG>
+<DD>
+In little endian order. All multibyte values are in little endian order,
+unless otherwise specified. There is no requirement for this to be unique,
+but it makes it easier to match up the responses if you do.
+
+<DT><STRONG>byte 10: The numeric command type</STRONG>
+<DD>
+See section <A HREF="vice_13.html#SEC302">13.4  Commands</A>.
+
+<DT><STRONG>byte 11+: The command body.</STRONG>
+<DD>
+See section <A HREF="vice_13.html#SEC302">13.4  Commands</A>.
+
+</DL>
+
+
+
+<H2><A NAME="SEC300" HREF="vice_toc.html#TOC300">13.2  Response Structure</A></H2>
+
+<DL COMPACT>
+
+<DT><STRONG>byte 0: 0x02 (STX)</STRONG>
+<DD>
+<DT><STRONG>byte 1: API version ID (currently 0x02)</STRONG>
+<DD>
+The API version identifies incompatible changes, such as modifying the header
+structure, or rearranging or changing the meaning of existing response fields.
+The API version does not need to be incremented for additional fields. If all
+the variable length fields are prefixed with their lengths then you should be
+able to add new ones to any response. The client can assume default values for
+older versions of VICE, and for newer versions of VICE with longer responses 
+it should be able to ignore the extra fields safely.
+
+<DT><STRONG>byte 2-5: response body length. Does not include any header fields</STRONG>
+<DD>
+<DT><STRONG>byte 6: response type</STRONG>
+<DD>
+This is usually the same as the command ID
+
+<DT><STRONG>byte 7: error code</STRONG>
+<DD>
+<DL COMPACT>
+
+<DT><CODE>0x00</CODE>
+<DD>
+OK, everything worked
+
+<DT><CODE>0x01</CODE>
+<DD>
+The object you are trying to get or set doesn't exist.
+
+<DT><CODE>0x02</CODE>
+<DD>
+The memspace is invalid
+
+<DT><CODE>0x80</CODE>
+<DD>
+Command length is not correct for this command
+
+<DT><CODE>0x81</CODE>
+<DD>
+An invalid parameter value was present
+
+<DT><CODE>0x82</CODE>
+<DD>
+The API version is not understood by the server
+
+<DT><CODE>0x83</CODE>
+<DD>
+The command type is not understood by the server
+
+<DT><CODE>0x8f</CODE>
+<DD>
+The command had parameter values that passed basic checks, but a general failure occurred
+<BR>
+<BR>
+See section <A HREF="vice_13.html#SEC302">13.4  Commands</A> for other error codes
+
+</DL>
+
+<DT><STRONG>byte 8-11: request ID</STRONG>
+<DD>
+This is the request ID given to initiate this response.
+If the value is 0xffffffff, Then the response was initiated by an event,
+such as hitting a checkpoint.
+
+<DT><STRONG>byte 12+: response body.</STRONG>
+<DD>
+See section <A HREF="vice_13.html#SEC302">13.4  Commands</A>.
+
+</DL>
+
+
+
+<H2><A NAME="SEC301" HREF="vice_toc.html#TOC301">13.3  Example Exchange</A></H2>
+
+
+<OL>
+
+<LI>Client connects to ip4://127.0.0.1:6502
+
+<LI>Client sends a command to set a temporary checkpoint:
+
+<BR>
+<BR> <CODE>02 | 02 | 08 00 00 00 | ad de 34 12 | 12 | e2 fc | e3 fc | 01 | 01 | 04 | 01 </CODE>
+<BR>
+<BR>
+
+<DL COMPACT>
+
+<DT><CODE>0x02</CODE>
+<DD>
+Begin command
+
+<DT><CODE>0x02</CODE>
+<DD>
+API version 2
+
+<DT><CODE>0x00000008</CODE>
+<DD>
+The command excluding the header is 8 bytes long.
+
+<DT><CODE>0x1234dead</CODE>
+<DD>
+The request ID is 0x1234dead. The response will contain this ID.
+
+<DT><CODE>0x12</CODE>
+<DD>
+See section <A HREF="vice_13.html#SEC306">13.4.4  Checkpoint set (0x12)</A>.
+
+<DT><CODE>0xfce2</CODE>
+<DD>
+The address range of the checkpoint starts at 0xfce2.
+
+<DT><CODE>0xfce3</CODE>
+<DD>
+The address range of the checkpoint ends at 0xfce3.
+
+<DT><CODE>0x01</CODE>
+<DD>
+The checkpoint will cause the emulator to stop.
+
+<DT><CODE>0x01</CODE>
+<DD>
+The checkpoint is enabled.
+
+<DT><CODE>0x04</CODE>
+<DD>
+The checkpoint will trigger on exec from 0xfce2 - 0xfce3.
+
+<DT><CODE>0x01</CODE>
+<DD>
+The checkpoint is temporary.
+
+</DL>
+
+<LI>The transmission of any command causes the emulator to stop, similar to
+
+the regular monitor. This causes the server to respond with a list of register
+values. <BR>
+<BR>
+<CODE>02 | 01 | 26 00 00 00 | 31 | 00 | ff ff ff ff | 09 00 [ 03 { 03 | cf e5 } 03 { 00 | 00 00 } ... ] </CODE> <BR>
+<BR>
+
+<DL COMPACT>
+
+<DT><CODE>0x02</CODE>
+<DD>
+Begin response
+
+<DT><CODE>0x01</CODE>
+<DD>
+API Version 1
+
+<DT><CODE>0x00000026</CODE>
+<DD>
+Response length is 38
+
+<DT><CODE>0x31</CODE>
+<DD>
+See section <A HREF="vice_13.html#SEC334">13.5.2  Register Response (0x31)</A>.
+
+<DT><CODE>0x00</CODE>
+<DD>
+No error occurred
+
+<DT><CODE>0xffffffff</CODE>
+<DD>
+This response was not directly triggered by a command from the client.
+
+<DT><CODE>0x0009</CODE>
+<DD>
+The register array is 9 items long
+
+<DT><CODE><STRONG>PC:</STRONG></CODE>
+<DD>
+<DL COMPACT>
+
+<DT><CODE>0x03</CODE>
+<DD>
+The register array item is 3 bytes long
+
+<DT><CODE>0x03</CODE>
+<DD>
+The register is the PC (ID 3) Note: you should find the names to these IDs using
+the MON_CMD_REGISTERS_AVAILABLE command. See section <A HREF="vice_13.html#SEC322">13.4.20  Registers available (0x83)</A>.
+Do not rely on them being consistent.
+
+<DT><CODE>0xe5cf</CODE>
+<DD>
+The register value is 0xe5cf
+
+</DL>
+
+<DT><CODE><STRONG>A:</STRONG></CODE>
+<DD>
+<DL COMPACT>
+
+<DT><CODE>0x03</CODE>
+<DD>
+The register array item is 3 bytes long
+
+<DT><CODE>0x00</CODE>
+<DD>
+The register is A (ID 0) Note: you should find the names to these IDs using
+the MON_CMD_REGISTERS_AVAILABLE command. See section <A HREF="vice_13.html#SEC322">13.4.20  Registers available (0x83)</A>.
+Do not rely on them being consistent.
+
+<DT><CODE>0x0000</CODE>
+<DD>
+The register value is 0x0000
+
+</DL>
+
+</DL>
+
+<LI>After the register information, the server sends a stopped event to indicate that the emulator is stopped. <BR>
+
+<BR>
+<CODE>02 | 01 | 02 00 00 00 | 62 | 00 | ff ff ff ff | cf e5 </CODE> <BR>
+<BR>
+
+<DL COMPACT>
+
+<DT><CODE>0x02</CODE>
+<DD>
+Begin response
+
+<DT><CODE>0x01</CODE>
+<DD>
+API Version 1
+
+<DT><CODE>0x00000002</CODE>
+<DD>
+Response is two bytes long.
+
+<DT><CODE>0x62</CODE>
+<DD>
+Response type is 0x62, MON_RESPONSE_STOPPED.
+
+<DT><CODE>0xffffffff</CODE>
+<DD>
+This response was not directly triggered by a command from the client.
+
+<DT><CODE>0xe5cf</CODE>
+<DD>
+The current program counter
+
+</DL>
+
+<LI>The server processes the checkpoint set command, and sends a response to the client. <BR>
+
+<BR>
+<CODE> ... | 11 | ... | 02 00 00 00 | 00 | e2 fc | e3 fc | 01 | 01 | 04 | 01 | 00 00 00 00 | 00 00 00 00 | 00</CODE><BR>
+(Some response header fields are omitted (...) for brevity.)<BR>
+<BR>
+
+<DL COMPACT>
+
+<DT><CODE>0x11</CODE>
+<DD>
+See section <A HREF="vice_13.html#SEC333">13.5.1  Checkpoint Response (0x11)</A>.
+
+<DT><CODE>0x00000002</CODE>
+<DD>
+Checkpoint number is 2
+
+<DT><CODE>0x00</CODE>
+<DD>
+Checkpoint was not hit (as it was just created)
+
+<DT><CODE>0xfce2</CODE>
+<DD>
+Checkpoint start address
+
+<DT><CODE>0xfce3</CODE>
+<DD>
+Checkpoint end address
+
+<DT><CODE>0x01</CODE>
+<DD>
+The checkpoint will cause the emulator to stop.
+
+<DT><CODE>0x01</CODE>
+<DD>
+The checkpoint is enabled.
+
+<DT><CODE>0x04</CODE>
+<DD>
+The checkpoint will trigger on exec from 0xfce2 - 0xfce3.
+
+<DT><CODE>0x01</CODE>
+<DD>
+The checkpoint is temporary.
+
+<DT><CODE>0x00000000</CODE>
+<DD>
+The checkpoint has been hit zero times.
+
+<DT><CODE>0x00000000</CODE>
+<DD>
+The checkpoint has been ignored zero times.
+
+</DL>
+
+<LI>Client sends a command to continue:<BR>
+
+<BR>
+<CODE> ... | aa </CODE><BR>
+(Some command header fields are omitted (...) for brevity.)<BR>
+<BR>
+
+<DL COMPACT>
+
+<DT><CODE>0xaa</CODE>
+<DD>
+See section <A HREF="vice_13.html#SEC328">13.4.26  Exit (0xaa)</A>.
+
+</DL>
+
+<LI>Server acknowledges the command:<BR>
+
+<BR>
+<CODE> ... | aa | ... </CODE> <BR>
+(Some response header fields are omitted (...) for brevity.)<BR>
+<BR>
+
+<DL COMPACT>
+
+<DT><CODE>0xaa</CODE>
+<DD>
+See section <A HREF="vice_13.html#SEC328">13.4.26  Exit (0xaa)</A>.
+
+</DL>
+
+<LI>Server resumes execution and sends a resume event:<BR>
+
+<BR>
+<CODE> ... | 63 | ... | cf e5 </CODE> <BR>
+(Some response header fields are omitted (...) for brevity.)<BR>
+<BR>
+
+<DL COMPACT>
+
+<DT><CODE>0x63</CODE>
+<DD>
+See section <A HREF="vice_13.html#SEC337">13.5.5  Resumed Response (0x63)</A>.
+
+<DT><CODE>0xe5cf</CODE>
+<DD>
+Program counter is currently at 0xe5cf
+
+</DL>
+
+<LI>Some time later, the server hits the breakpoint. This causes it to emit
+
+a checkpoint response. This is identical to the previous checkpoint response,
+except that it is marked as "hit" and the hit and ignore counts are updated.
+
+<LI>The server emits the register information and the stopped event when
+
+reentering the monitor, as seen previously.
+
+</OL>
+
+
+
+<H2><A NAME="SEC302" HREF="vice_toc.html#TOC302">13.4  Commands</A></H2>
+
+<P>
+These are the possible command types and responses, without the header portions
+mentioned above.
+
+</P>
+
+
+
+<H3><A NAME="SEC303" HREF="vice_toc.html#TOC303">13.4.1  Memory get (0x01)</A></H3>
+
+<P>
+Reads a chunk of memory from a start address to an end address (inclusive).
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: side effects?</STRONG>
+<DD>
+Should the read cause side effects?
+
+<DT><STRONG>byte 1-2: start address</STRONG>
+<DD>
+<DT><STRONG>byte 3-4: end address</STRONG>
+<DD>
+<DT><STRONG>byte 5: memspace</STRONG>
+<DD>
+Describes which part of the computer you want to read:
+
+
+<UL>
+<LI>0x00: main memory
+
+<LI>0x01: drive 8
+
+<LI>0x02: drive 9
+
+<LI>0x03: drive 10
+
+<LI>0x04: drive 11
+
+</UL>
+
+<DT><STRONG>byte 6-7: bank ID</STRONG>
+<DD>
+Describes which bank you want. This is dependent on your
+machine. See section <A HREF="vice_13.html#SEC321">13.4.19  Banks available (0x82)</A>.  If the memspace selected
+doesn't support banks, this value is ignored.
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x01: MON_RESPONSE_MEM_GET
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The length of the memory segment.</STRONG>
+<DD>
+<DT><STRONG>byte 2+: The memory at the address.</STRONG>
+<DD>
+</DL>
+
+
+
+<H3><A NAME="SEC304" HREF="vice_toc.html#TOC304">13.4.2  Memory set (0x02)</A></H3>
+
+<P>
+Writes a chunk of memory from a start address to an end address (inclusive).
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: side effects?</STRONG>
+<DD>
+Should the write cause side effects?
+
+<DT><STRONG>byte 1-2: start address</STRONG>
+<DD>
+<DT><STRONG>byte 3-4: end address</STRONG>
+<DD>
+<DT><STRONG>byte 5: memspace</STRONG>
+<DD>
+Describes which part of the computer you want to write:
+
+
+<UL>
+<LI>0x00: main memory
+
+<LI>0x01: drive 8
+
+<LI>0x02: drive 9
+
+<LI>0x03: drive 10
+
+<LI>0x04: drive 11
+
+</UL>
+
+<DT><STRONG>byte 6-7: bank ID</STRONG>
+<DD>
+Describes which bank you want. This is dependent on your machine. 
+See section <A HREF="vice_13.html#SEC321">13.4.19  Banks available (0x82)</A>.  
+If the memspace selected doesn't support banks, this byte is ignored.
+
+<DT><STRONG>byte 8+: Memory contents to write</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x02: MON_RESPONSE_MEM_SET
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC305" HREF="vice_toc.html#TOC305">13.4.3  Checkpoint get (0x11)</A></H3>
+
+<P>
+Gets any type of checkpoint. (break, watch, trace)
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-3: checkpoint number</STRONG>
+<DD>
+</DL>
+
+<P>
+See section <A HREF="vice_13.html#SEC333">13.5.1  Checkpoint Response (0x11)</A>.
+
+</P>
+
+
+<H3><A NAME="SEC306" HREF="vice_toc.html#TOC306">13.4.4  Checkpoint set (0x12)</A></H3>
+
+<P>
+Sets any type of checkpoint. This combines the functionality of several
+textual commands (break, watch, trace) into one, as they are all the same
+with only minor variations. To set conditions, see section <A HREF="vice_13.html#SEC310">13.4.8  Condition set (0x22)</A> after
+executing this one.
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: start address</STRONG>
+<DD>
+<DT><STRONG>byte 2-3: end address</STRONG>
+<DD>
+<DT><STRONG>byte 4: stop when hit</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 5: enabled</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 6: CPU operation</STRONG>
+<DD>
+0x01: load, 0x02: store, 0x04: exec
+
+<DT><STRONG>byte 7: temporary</STRONG>
+<DD>
+    Deletes the checkpoint after it has been hit once. This is similar to
+    "until" command, but it will not resume the emulator.
+
+<DT><STRONG>byte 8 (optional): memspace</STRONG>
+<DD>
+Describes which part of the computer to checkpoint:
+
+
+<UL>
+<LI>0x00: main memory
+
+<LI>0x01: drive 8
+
+<LI>0x02: drive 9
+
+<LI>0x03: drive 10
+
+<LI>0x04: drive 11
+
+</UL>
+
+</DL>
+
+<P>
+See section <A HREF="vice_13.html#SEC333">13.5.1  Checkpoint Response (0x11)</A>.
+
+</P>
+
+
+<H3><A NAME="SEC307" HREF="vice_toc.html#TOC307">13.4.5  Checkpoint delete (0x13)</A></H3>
+
+<P>
+Deletes any type of checkpoint. (break, watch, trace)
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-3: checkpoint number</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x13: MON_RESPONSE_CHECKPOINT_DELETE
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC308" HREF="vice_toc.html#TOC308">13.4.6  Checkpoint list (0x14)</A></H3>
+
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+Emits a series of MON_RESPONSE_CHECKPOINT_INFO responses
+(see section <A HREF="vice_13.html#SEC333">13.5.1  Checkpoint Response (0x11)</A>) followed by
+
+</P>
+<P>
+0x14: MON_RESPONSE_CHECKPOINT_LIST
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-3: The total number of checkpoints</STRONG>
+<DD>
+</DL>
+
+
+
+<H3><A NAME="SEC309" HREF="vice_toc.html#TOC309">13.4.7  Checkpoint toggle (0x15)</A></H3>
+
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-3: Checkpoint number</STRONG>
+<DD>
+<DT><STRONG>byte 4: Enabled?</STRONG>
+<DD>
+0x00: disabled, 0x01: enabled
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x15: MON_RESPONSE_CHECKPOINT_TOGGLE
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC310" HREF="vice_toc.html#TOC310">13.4.8  Condition set (0x22)</A></H3>
+
+<P>
+Sets a condition on an existing checkpoint. It is not currently possible to
+retrieve conditions after setting them.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-3: checkpoint number</STRONG>
+<DD>
+<DT><STRONG>byte 4: condition expression length</STRONG>
+<DD>
+<DT><STRONG>byte 5+: condition expression string</STRONG>
+<DD>
+This is the same format used on the command line. Not null terminated.
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x22: MON_RESPONSE_CONDITION_SET
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC311" HREF="vice_toc.html#TOC311">13.4.9  Registers get (0x31)</A></H3>
+
+<P>
+Get details about the registers
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: memspace</STRONG>
+<DD>
+Describes which part of the computer you want to read:
+
+
+<UL>
+<LI>0x00: main memory
+
+<LI>0x01: drive 8
+
+<LI>0x02: drive 9
+
+<LI>0x03: drive 10
+
+<LI>0x04: drive 11
+
+</UL>
+
+</DL>
+
+<P>
+See section <A HREF="vice_13.html#SEC334">13.5.2  Register Response (0x31)</A>.
+
+</P>
+
+
+<H3><A NAME="SEC312" HREF="vice_toc.html#TOC312">13.4.10  Registers set (0x32)</A></H3>
+
+<P>
+Set the register values
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: memspace</STRONG>
+<DD>
+Describes which part of the computer you want to write:
+
+
+<UL>
+<LI>0x00: main memory
+
+<LI>0x01: drive 8
+
+<LI>0x02: drive 9
+
+<LI>0x03: drive 10
+
+<LI>0x04: drive 11
+
+</UL>
+
+<DT><STRONG>byte 1-2: The count of the array items</STRONG>
+<DD>
+<DT><STRONG>byte 3+: An array with items of structure:</STRONG>
+<DD>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Size of the item, excluding this byte</STRONG>
+<DD>
+<DT><STRONG>byte 1: ID of the register</STRONG>
+<DD>
+<DT><STRONG>byte 2-3: register value</STRONG>
+<DD>
+</DL>
+
+</DL>
+
+<P>
+See section <A HREF="vice_13.html#SEC334">13.5.2  Register Response (0x31)</A>.
+
+</P>
+
+
+<H3><A NAME="SEC313" HREF="vice_toc.html#TOC313">13.4.11  Dump (0x41)</A></H3>
+
+<P>
+Saves the machine state to a file.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Save ROMs to snapshot file?</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 1: Save disks to snapshot file?</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 2: Length of filename</STRONG>
+<DD>
+<DT><STRONG>byte 3+: Filename</STRONG>
+<DD>
+The filename to save the snapshot to.
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x41: MON_RESPONSE_DUMP
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC314" HREF="vice_toc.html#TOC314">13.4.12  Undump (0x42)</A></H3>
+
+<P>
+Loads the machine state from a file.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Length of filename</STRONG>
+<DD>
+<DT><STRONG>byte 1+: Filename</STRONG>
+<DD>
+The filename to load the snapshot from.
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x42: MON_RESPONSE_UNDUMP
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The current program counter position</STRONG>
+<DD>
+</DL>
+
+
+
+<H3><A NAME="SEC315" HREF="vice_toc.html#TOC315">13.4.13  Resource Get (0x51)</A></H3>
+
+<P>
+Get a resource value from the emulator. See section <A HREF="vice_6.html#SEC55">6.1  Format of resource files</A>.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Length of resource name</STRONG>
+<DD>
+<DT><STRONG>byte 1+: Resource name</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x51: MON_RESPONSE_RESOURCE_GET
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Type of the resource</STRONG>
+<DD>
+0x00: String, 0x01: Integer
+
+<DT><STRONG>byte 1: Length of the value</STRONG>
+<DD>
+<DT><STRONG>byte 2+: The value</STRONG>
+<DD>
+</DL>
+
+
+
+<H3><A NAME="SEC316" HREF="vice_toc.html#TOC316">13.4.14  Resource Set (0x52)</A></H3>
+
+<P>
+Set a resource value in the emulator. See section <A HREF="vice_6.html#SEC55">6.1  Format of resource files</A>.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>1 byte: Type of the resource value</STRONG>
+<DD>
+0x00: String, 0x01: Integer<BR>
+Strings will be interpreted if the destination is an Integer.
+
+<DT><STRONG>1 byte: Resource name length = (&#38;name)</STRONG>
+<DD>
+<DT><STRONG>(*name) bytes: The resource name</STRONG>
+<DD>
+<DT><STRONG>1 byte: Resource value length = (&#38;value)</STRONG>
+<DD>
+<DT><STRONG>(*value) bytes: The resource value</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x52: MON_RESPONSE_RESOURCE_SET
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC317" HREF="vice_toc.html#TOC317">13.4.15  Advance Instructions (0x71)</A></H3>
+
+<P>
+Step over a certain number of instructions.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Step over subroutines?</STRONG>
+<DD>
+Should subroutines count as a single instruction?
+
+<DT><STRONG>byte 1-2: How many instructions to step over.</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x71: MON_RESPONSE_ADVANCE_INSTRUCTIONS
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC318" HREF="vice_toc.html#TOC318">13.4.16  Keyboard feed (0x72)</A></H3>
+
+<P>
+Add text to the keyboard buffer.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Minimum API version: 2
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Length of text</STRONG>
+<DD>
+<DT><STRONG>byte 1+: The text, in PETSCII</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x72: MON_RESPONSE_KEYBOARD_FEED
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC319" HREF="vice_toc.html#TOC319">13.4.17  Execute until return (0x73)</A></H3>
+
+<P>
+Continues execution and returns to the monitor just after the next RTS or RTI is executed.
+
+</P>
+<P>
+This command is the same as "return" in the text monitor.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x73: MON_RESPONSE_EXECUTE_UNTIL_RETURN
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC320" HREF="vice_toc.html#TOC320">13.4.18  Ping (0x81)</A></H3>
+
+<P>
+Get an empty response
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<P>
+Always empty
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x81: MON_RESPONSE_PING
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Always empty
+
+</P>
+
+
+<H3><A NAME="SEC321" HREF="vice_toc.html#TOC321">13.4.19  Banks available (0x82)</A></H3>
+
+<P>
+Gives a listing of all the bank IDs for the running machine with their names.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x82: MON_RESPONSE_BANKS_AVAILABLE
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The count of the array items</STRONG>
+<DD>
+<DT><STRONG>byte 2+: An array with items of structure:</STRONG>
+<DD>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Size of the item, excluding this byte</STRONG>
+<DD>
+<DT><STRONG>byte 1-2: bank ID</STRONG>
+<DD>
+<DT><STRONG>byte 3: Name length</STRONG>
+<DD>
+<DT><STRONG>byte 4+: Name</STRONG>
+<DD>
+</DL>
+
+</DL>
+
+
+
+<H3><A NAME="SEC322" HREF="vice_toc.html#TOC322">13.4.20  Registers available (0x83)</A></H3>
+
+<P>
+Gives a listing of all the registers for the running machine with their names.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: memspace</STRONG>
+<DD>
+Describes which part of the computer you want to read:
+
+
+<UL>
+<LI>0x00: main memory
+
+<LI>0x01: drive 8
+
+<LI>0x02: drive 9
+
+<LI>0x03: drive 10
+
+<LI>0x04: drive 11
+
+</UL>
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x82: MON_RESPONSE_REGISTERS_AVAILABLE
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The count of the array items</STRONG>
+<DD>
+<DT><STRONG>byte 2+: An array with items of structure:</STRONG>
+<DD>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Size of the item, excluding this byte</STRONG>
+<DD>
+<DT><STRONG>byte 1: ID of the register</STRONG>
+<DD>
+<DT><STRONG>byte 2: Size of the register in bits</STRONG>
+<DD>
+<DT><STRONG>byte 3: Length of name</STRONG>
+<DD>
+<DT><STRONG>byte 4+: Name</STRONG>
+<DD>
+</DL>
+
+</DL>
+
+
+
+<H3><A NAME="SEC323" HREF="vice_toc.html#TOC323">13.4.21  Display Get (0x84)</A></H3>
+
+<P>
+Gets the current screen in a requested bit format.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Minimum API version: 2
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: USE VIC-II?</STRONG>
+<DD>
+Must be included, but ignored for all but the C128. If true, (0x01) the screen
+returned will be from the VIC-II. If false (0x00), it will be from the VDC.
+
+<DT><STRONG>byte 1: Format</STRONG>
+<DD>
+0x00: Indexed, 8 bit<BR>
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x84: MON_RESPONSE_DISPLAY_GET
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>4 bytes: Length of the fields before the display buffer</STRONG>
+<DD>
+<DT><STRONG>2 bytes: Debug width of display buffer (uncropped)</STRONG>
+<DD>
+The largest width the screen gets.
+
+<DT><STRONG>2 bytes: Debug height of display buffer (uncropped)</STRONG>
+<DD>
+The largest height the screen gets.
+
+<DT><STRONG>2 bytes: X offset</STRONG>
+<DD>
+X offset to the inner part of the screen.
+
+<DT><STRONG>2 bytes: Y offset</STRONG>
+<DD>
+Y offset to the inner part of the screen.
+
+<DT><STRONG>2 bytes: Width of the inner part of the screen.</STRONG>
+<DD>
+<DT><STRONG>2 bytes: Height of the inner part of the screen.</STRONG>
+<DD>
+<DT><STRONG>1 byte: Bits per pixel of display buffer, 8</STRONG>
+<DD>
+<DT><STRONG>4 bytes: Length of display buffer = (&#38;buffer)</STRONG>
+<DD>
+<DT><STRONG>(*buffer) bytes: Display buffer data</STRONG>
+<DD>
+</DL>
+
+
+
+<H3><A NAME="SEC324" HREF="vice_toc.html#TOC324">13.4.22  VICE info (0x85)</A></H3>
+
+<P>
+Get general information about VICE. Currently returns the versions.
+
+</P>
+<P>
+Minimum VICE version: 3.6
+
+</P>
+<P>
+Command body:
+
+</P>
+<P>
+Always empty
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x85: MON_RESPONSE_VICE_INFO
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>1 byte: Length of main version = (&#38;main)</STRONG>
+<DD>
+<DT><STRONG>(*main) bytes: Main version</STRONG>
+<DD>
+In linear format. For example 0x03, 0x05, 0x00, 0x00 for 3.5.0.0
+
+<DT><STRONG>1 byte: Length of SVN revision = (&#38;rev)</STRONG>
+<DD>
+<DT><STRONG>(*rev) bytes: SVN revision</STRONG>
+<DD>
+In little endian format. Returns zero if it's not an SVN build.
+
+</DL>
+
+
+
+<H3><A NAME="SEC325" HREF="vice_toc.html#TOC325">13.4.23  Palette get (0x91)</A></H3>
+
+<P>
+Get the colors in the current palette
+
+</P>
+<P>
+Minimum VICE version: 3.6
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: USE VIC-II?</STRONG>
+<DD>
+Must be included, but ignored for all but the C128. If true, (0x01) the screen
+returned will be from the VIC-II. If false (0x00), it will be from the VDC.
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x91: MON_RESPONSE_PALETTE_GET
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The number of palette items.</STRONG>
+<DD>
+<DT><STRONG>byte 2+: An array with items of structure:</STRONG>
+<DD>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Size of the item, excluding this byte</STRONG>
+<DD>
+<DT><STRONG>byte 1: Red</STRONG>
+<DD>
+<DT><STRONG>byte 2: Green</STRONG>
+<DD>
+<DT><STRONG>byte 3: Blue</STRONG>
+<DD>
+</DL>
+
+</DL>
+
+
+
+<H3><A NAME="SEC326" HREF="vice_toc.html#TOC326">13.4.24  Joyport set (0xa2)</A></H3>
+
+<P>
+Set the simulated joyport value.
+
+</P>
+<P>
+Minimum VICE version: 3.6
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The port to set the value on</STRONG>
+<DD>
+<DT><STRONG>byte 2-3: The value to set</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0xa2: MON_RESPONSE_JOYPORT_SET
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+
+<H3><A NAME="SEC327" HREF="vice_toc.html#TOC327">13.4.25  Userport set (0xb2)</A></H3>
+
+<P>
+Set the simulated userport value.
+
+</P>
+<P>
+Minimum VICE version: 3.6
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The value to set</STRONG>
+<DD>
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0xb2: MON_RESPONSE_USERPORT_SET
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC328" HREF="vice_toc.html#TOC328">13.4.26  Exit (0xaa)</A></H3>
+
+<P>
+Exit the monitor until the next breakpoint.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0xaa: MON_RESPONSE_EXIT
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC329" HREF="vice_toc.html#TOC329">13.4.27  Quit (0xbb)</A></H3>
+
+<P>
+Quits VICE.
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0xbb: MON_RESPONSE_QUIT
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC330" HREF="vice_toc.html#TOC330">13.4.28  Reset (0xcc)</A></H3>
+
+<P>
+Reset the system or a drive
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: What to reset</STRONG>
+<DD>
+
+<UL>
+<LI>0x00: Soft reset system
+
+<LI>0x01: Hard reset system
+
+<LI>0x08 - 0x0b: Reset drives 8 - 11
+
+</UL>
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0xcc: MON_RESPONSE_RESET
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H3><A NAME="SEC331" HREF="vice_toc.html#TOC331">13.4.29  Autostart / autoload (0xdd)</A></H3>
+
+<P>
+Load a program then return to the monitor
+
+</P>
+<P>
+Minimum VICE version: 3.5
+
+</P>
+<P>
+Command body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Run after loading?</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 1-2: File index</STRONG>
+<DD>
+The index of the file to execute, if a disk image. 0x00 is the default value.
+
+<DT><STRONG>byte 3: Length of filename</STRONG>
+<DD>
+<DT><STRONG>byte 4+: Filename</STRONG>
+<DD>
+The filename to autoload.
+
+</DL>
+
+<P>
+Response type:
+
+</P>
+<P>
+0xdd: MON_RESPONSE_AUTOSTART
+
+</P>
+<P>
+Response body:
+
+</P>
+<P>
+Currently empty.
+
+</P>
+
+
+<H2><A NAME="SEC332" HREF="vice_toc.html#TOC332">13.5  Responses</A></H2>
+
+<P>
+These responses are generated by many different commands, or by certain events.
+Events are generated with a request ID of 0xffffffff, so that they can be easily
+distinguished from regular requests.
+
+</P>
+
+
+
+<H3><A NAME="SEC333" HREF="vice_toc.html#TOC333">13.5.1  Checkpoint Response (0x11)</A></H3>
+
+<P>
+This response is generated by hitting a checkpoint, or by many of the checkpoint
+commands.
+
+</P>
+<P>
+See section <A HREF="vice_13.html#SEC305">13.4.3  Checkpoint get (0x11)</A>.
+
+</P>
+<P>
+See section <A HREF="vice_13.html#SEC306">13.4.4  Checkpoint set (0x12)</A>.
+
+</P>
+<P>
+See section <A HREF="vice_13.html#SEC308">13.4.6  Checkpoint list (0x14)</A>.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x11: MON_RESPONSE_CHECKPOINT_INFO
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-3: Checkpoint number</STRONG>
+<DD>
+<DT><STRONG>byte 4: Currently hit?</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 5-6: start address</STRONG>
+<DD>
+<DT><STRONG>byte 7-8: end address</STRONG>
+<DD>
+<DT><STRONG>byte 9: stop when hit</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 10: enabled</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 11: CPU operation</STRONG>
+<DD>
+0x01: load, 0x02: store, 0x04: exec
+
+<DT><STRONG>byte 12: temporary</STRONG>
+<DD>
+Deletes the checkpoint after it has been hit once. This is similar to
+"until" command, but it will not resume the emulator.
+
+<DT><STRONG>byte 13-16: hit count</STRONG>
+<DD>
+<DT><STRONG>byte 17-20: ignore count</STRONG>
+<DD>
+<DT><STRONG>byte 21: Has condition?</STRONG>
+<DD>
+0x01: true, 0x00: false
+
+<DT><STRONG>byte 22: memspace</STRONG>
+<DD>
+
+<UL>
+<LI>0x00: main memory
+
+<LI>0x01: drive 8
+
+<LI>0x02: drive 9
+
+<LI>0x03: drive 10
+
+<LI>0x04: drive 11
+
+</UL>
+
+</DL>
+
+
+
+<H3><A NAME="SEC334" HREF="vice_toc.html#TOC334">13.5.2  Register Response (0x31)</A></H3>
+
+<P>
+Response type:
+
+</P>
+<P>
+0x31: MON_RESPONSE_REGISTER_INFO
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The count of the array items</STRONG>
+<DD>
+<DT><STRONG>byte 2+: An array with items of structure:</STRONG>
+<DD>
+<DL COMPACT>
+
+<DT><STRONG>byte 0: Size of the item, excluding this byte</STRONG>
+<DD>
+<DT><STRONG>byte 1: ID of the register</STRONG>
+<DD>
+<DT><STRONG>byte 2-3: register value</STRONG>
+<DD>
+</DL>
+
+</DL>
+
+
+
+<H3><A NAME="SEC335" HREF="vice_toc.html#TOC335">13.5.3  JAM Response (0x61)</A></H3>
+
+<P>
+When the CPU jams
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x61: MON_RESPONSE_JAM
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The current program counter position</STRONG>
+<DD>
+</DL>
+
+
+
+<H3><A NAME="SEC336" HREF="vice_toc.html#TOC336">13.5.4  Stopped Response (0x62)</A></H3>
+
+<P>
+When the machine stops for the monitor, 
+either due to hitting a checkpoint or stepping.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x62: MON_RESPONSE_STOPPED
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The current program counter position</STRONG>
+<DD>
+</DL>
+
+
+
+<H3><A NAME="SEC337" HREF="vice_toc.html#TOC337">13.5.5  Resumed Response (0x63)</A></H3>
+
+<P>
+When the machine resumes execution for any reason.
+
+</P>
+<P>
+Response type:
+
+</P>
+<P>
+0x63: MON_RESPONSE_RESUMED
+
+</P>
+<P>
+Response body:
+
+</P>
+<DL COMPACT>
+
+<DT><STRONG>byte 0-1: The current program counter position</STRONG>
+<DD>
+</DL>
+
+<P><HR><P>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_12.html">previous</A>, <A HREF="vice_14.html">next</A>, <A HREF="vice_23.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+</BODY>
+</HTML>

@@ -80,19 +80,21 @@ static const char *autostart_diskimage;
     "label {\n" \
     "  font-family: \"C64 Pro Mono\";\n" \
     "  font-size: 16px;\n" \
+    "  min-height: 16px;\n" \
     "  letter-spacing: 0;\n" \
     "  margin: -2px;\n" \
-    "  border: 0;\n" \
-    "  padding: 0;\n" \
+    "  border: 0px;\n" \
+    "  padding: 0px;\n" \
     "}"
 
 /** \brief  CSS style string to remove padding from menu items
  */
 #define MENUITEM_CSS \
     "menuitem {\n" \
-    "  margin: 0;\n" \
-    "  border: 0;\n" \
-    "  padding: 0;\n" \
+    "  min-height: 16px;\n" \
+    "  margin: 0px;\n" \
+    "  border: 0px;\n" \
+    "  padding: 0px;\n" \
     "}"
 
 
@@ -144,7 +146,8 @@ static void dir_item_apply_style(GtkWidget *item)
 {
     GtkWidget *label;
 
-    g_object_set(item, "margin-top", 0, "margin-bottom", 0, NULL);
+    gtk_widget_set_margin_top(item, 0);
+    gtk_widget_set_margin_bottom(item, 0);
     label = gtk_bin_get_child(GTK_BIN(item));
     vice_gtk3_css_provider_add(label, menulabel_css_provider);
     vice_gtk3_css_provider_add(item, menuitem_css_provider);
@@ -175,6 +178,7 @@ GtkWidget *dir_menu_popup_create(
     image_contents_file_list_t *entry;
     char *utf8;
     char *tmp;
+    char *sep;
     int index;
     int blocks;
     unsigned int drv = (unsigned int)drive;
@@ -273,7 +277,25 @@ GtkWidget *dir_menu_popup_create(
             /* DISK name & ID */
 
             tmp = image_contents_to_string(contents, IMAGE_CONTENTS_STRING_PETSCII);
-            utf8 = (char *)vice_gtk3_petscii_to_utf8((unsigned char *)tmp, 1, false);
+
+            /* only the disk name and id itself should be reverse, not the line number and space before that */
+            sep = strstr(tmp, "\""); /* find start of disk name */
+            if (sep) {
+                /* if we found the disk name, produce seperate strings for line number and name/id,
+                   reverse only name/od and then concat them */
+                char *utf8a, *utf8b;
+                *sep = 0;
+                utf8a = (char *)vice_gtk3_petscii_to_utf8((unsigned char *)tmp, 0, false);
+                *sep = '"';
+                utf8b = (char *)vice_gtk3_petscii_to_utf8((unsigned char *)sep, 1, false);
+                utf8 = util_concat(utf8a, utf8b, NULL);
+                lib_free(utf8a);
+                lib_free(utf8b);
+            } else {
+                /* if start of disk name was not found use the entire string */
+                utf8 = (char *)vice_gtk3_petscii_to_utf8((unsigned char *)tmp, 1, false);
+            }
+
             item = gtk_menu_item_new_with_label(utf8);
 
             dir_item_apply_style(item);
@@ -281,11 +303,11 @@ GtkWidget *dir_menu_popup_create(
             gtk_container_add(GTK_CONTAINER(menu), item);
             lib_free(tmp);
             lib_free(utf8);
-
+#if 0
             /* add separator */
             item = gtk_separator_menu_item_new();
             gtk_container_add(GTK_CONTAINER(menu), item);
-
+#endif
             /* add files */
             index = 0;
             for (entry = contents->file_list; entry != NULL;

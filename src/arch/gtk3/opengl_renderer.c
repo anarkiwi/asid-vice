@@ -34,7 +34,7 @@
 #include <gtk/gtk.h>
 #include <math.h>
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
 #include <CoreGraphics/CGDirectDisplay.h>
 #endif
 
@@ -47,14 +47,13 @@
 #include "render_queue.h"
 #include "resources.h"
 #include "sysfile.h"
-#include "tick.h"
 #include "ui.h"
 #include "uistatusbar.h"
 #include "util.h"
 #include "vsync.h"
 #include "vsyncapi.h"
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
 #include "macOS-util.h"
 #endif
 
@@ -97,11 +96,13 @@ static void vice_opengl_initialise_canvas(video_canvas_t *canvas)
 {
     context_t *context;
 
+    CANVAS_LOCK();
+
     /* First initialise the context_t that we'll need everywhere */
     context = lib_calloc(1, sizeof(context_t));
     context->cached_vsync_resource = -1;
 
-    context->canvas_lock = canvas->lock;
+    context->canvas_lock_ptr = &canvas->lock;
     pthread_mutex_init(&context->render_lock, NULL);
     context->render_queue = render_queue_create();
 
@@ -110,6 +111,8 @@ static void vice_opengl_initialise_canvas(video_canvas_t *canvas)
     g_signal_connect(canvas->event_box, "realize", G_CALLBACK (on_widget_realized), canvas);
     g_signal_connect(canvas->event_box, "unrealize", G_CALLBACK (on_widget_unrealized), canvas);
     g_signal_connect_unlocked(canvas->event_box, "size-allocate", G_CALLBACK(on_widget_resized), canvas);
+
+    CANVAS_UNLOCK();
 }
 
 static void vice_opengl_destroy_context(video_canvas_t *canvas)
@@ -142,7 +145,7 @@ static void on_widget_realized(GtkWidget *widget, gpointer data)
 
     CANVAS_LOCK();
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
     /* The content area coordinates include the menu on macOS */
     gtk_widget_translate_coordinates(widget, gtk_widget_get_toplevel(widget), 0, 0, &context->native_view_x, &context->native_view_y);
 #endif
@@ -218,7 +221,7 @@ static void on_widget_resized(GtkWidget *widget, GtkAllocation *allocation, gpoi
         return;
     }
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
     /* The content area coordinates include the menu on macOS */
     gtk_widget_translate_coordinates(widget, gtk_widget_get_toplevel(widget), 0, 0, &context->native_view_x, &context->native_view_y);
 #endif
@@ -231,7 +234,7 @@ static void on_widget_resized(GtkWidget *widget, GtkAllocation *allocation, gpoi
     context->gl_backing_layer_height    = context->native_view_height   * gtk_scale;
 
     /* Set the background colour */
-    if (ui_is_fullscreen()) {
+    if (ui_is_fullscreen_from_canvas(canvas)) {
         context->native_view_bg_r = 0.0f;
         context->native_view_bg_g = 0.0f;
         context->native_view_bg_b = 0.0f;
@@ -241,10 +244,10 @@ static void on_widget_resized(GtkWidget *widget, GtkAllocation *allocation, gpoi
         context->native_view_bg_b = 0.5f;
     }
 
+    CANVAS_UNLOCK();
+
     /* Update the size of the native child window to match the gtk drawing area */
     vice_opengl_renderer_resize_child_view(context);
-
-    CANVAS_UNLOCK();
 }
 
 static void on_widget_monitors_changed(GdkScreen *screen, gpointer data)
@@ -338,7 +341,7 @@ static void vice_opengl_refresh_rect(video_canvas_t *canvas,
 }
 
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
 static void macos_set_host_mouse_visibility(GtkWindow *gtk_window)
 {
     /*
@@ -438,7 +441,7 @@ static void vice_opengl_on_ui_frame_clock(GdkFrameClock *clock, video_canvas_t *
         render_thread_push_job(context->render_thread, render_thread_render);
     }
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
     GtkWindow *window = GTK_WINDOW(gtk_widget_get_toplevel(canvas->event_box));
 
     CANVAS_UNLOCK();
@@ -656,9 +659,9 @@ static void render(void *job_data, void *pool_data)
     if (job == render_thread_init) {
         archdep_thread_init();
 
-#if defined(MACOSX_SUPPORT)
+#if defined(MACOS_COMPILE)
         vice_macos_set_render_thread_priority();
-#elif defined(__linux__)
+#elif defined(LINUX_COMPILE)
         /* TODO: Linux thread prio stuff, need root or some 'capability' though */
 #else
         /* TODO: BSD thread prio stuff */
@@ -675,11 +678,20 @@ static void render(void *job_data, void *pool_data)
     }
 
     CANVAS_LOCK();
+    backbuffer = render_queue_dequeue_for_display(context->render_queue);
+
+    if (context->render_skip) {
+        if (backbuffer) {
+            render_queue_return_to_pool(context->render_queue, backbuffer);
+        }
+        CANVAS_UNLOCK();
+        return;
+    }
+
     RENDER_LOCK();
 
     vice_opengl_renderer_make_current(context);
 
-    backbuffer = render_queue_dequeue_for_display(context->render_queue);
     if (backbuffer) {
         /* Upload the frame(s) to the GPU and then return it */
         update_frame_textures(context, backbuffer);
@@ -776,10 +788,17 @@ static void vice_opengl_set_palette(video_canvas_t *canvas)
         video_render_setphysicalcolor(canvas->videoconfig, i, color_code, 32);
     }
 
+#ifdef WORDS_BIGENDIAN
+    for (i = 0; i < 256; i++) {
+        video_render_setrawrgb(color_tables, i, i << 24, i << 16, i << 8);
+    }
+    video_render_setrawalpha(color_tables, 0xffU);
+#else
     for (i = 0; i < 256; i++) {
         video_render_setrawrgb(color_tables, i, i, i << 8, i << 16);
     }
     video_render_setrawalpha(color_tables, 0xffU << 24);
+#endif
     video_render_initraw(canvas->videoconfig);
 }
 

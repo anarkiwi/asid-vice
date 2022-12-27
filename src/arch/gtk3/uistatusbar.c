@@ -23,7 +23,14 @@
  * (Do not add resources controlled by widgets #include'd by this widget, only
  *  add resources actually controlled from this widget)
  *
- * $VICERES SoundVolume all
+ * $VICERES SoundVolume         all
+ * $VICERES C128ColumnKey       x128
+ * $VICERES CrtcHideStatusbar   xcbm2 xpet
+ * $VICERES TEDHideStatusbar    xplus4
+ * $VICERES VDCHideStatusbar    x128
+ * $VICERES VICHideStatusbar    xvic
+ * $VICERES VICIIHideStatusbar  x64 x64sc x64dtv xscpu64 x128 xcbm5x0
+ *
  */
 
 /*
@@ -66,6 +73,7 @@
 #include "drive.h"
 #include "drivetypes.h"
 #include "fliplist.h"
+#include "hotkeymap.h"
 #include "joyport.h"
 #include "joystickmenupopup.h"
 #include "kbddebugwidget.h"
@@ -87,7 +95,7 @@
 #include "uidatasette.h"
 #include "uidiskattach.h"
 #include "uifliplist.h"
-#include "uimachinemenu.h"
+#include "uimenu.h"
 #include "uisettings.h"
 #include "userport/userport_joystick.h"
 #include "vice_gtk3.h"
@@ -181,14 +189,6 @@ enum {
 };
 
 
-/** \brief  Fold unit \a U and drive \a D into int and cast to pointer
- *
- * \param[in]   U   unit number
- * \param[in]   D   drive number
- */
-#define UNIT_DRIVE_TO_PTR(U, D) GINT_TO_POINTER(((U) << 8) | ((D) & 0xff))
-
-
 /** \brief  CSS for the drive widgets
  *
  * The negative margins look weird, but otherwise we have a lot of padding, and
@@ -199,7 +199,7 @@ enum {
     "label {\n" \
     "    font-family: monospace;\n" \
     "    font-size:100%;\n" \
-    "    margin-top: -2px;\n" \
+    "    margin-top: 0px;\n" \
     "    margin-bottom: -4px;\n" \
     "}\n"
 
@@ -211,17 +211,6 @@ enum {
 /** \brief  Joysticks widget: column of first joystick indicator widget
  */
 #define JOYSTICK_COL_STATUS 1
-
-
-/** \brief  CSS for the checkbuttons
- */
-#define CHECKBUTTON_CSS \
-    "checkbutton {\n" \
-    "    font-size:100%;\n" \
-    "    margin-top: -2px;\n" \
-    "    margin-bottom: -2px;\n" \
-    "}\n"
-
 
 /* Status bar column indexes */
 #define SB_COL_LEDS             0
@@ -702,20 +691,7 @@ static gboolean draw_tape_icon_cb(GtkWidget *widget, cairo_t *cr, gpointer data)
  */
 static void on_drive_configure_activate(GtkWidget *widget, gpointer data)
 {
-    ui_settings_dialog_create_and_activate_node("peripheral/drive");
-}
-
-
-/** \brief  Handler for the 'activate' event of the 'Reset drive \#X' item
- *
- * Triggers a reset for drive ((int)data + 8)
- *
- * \param[in]   widget  menu item triggering the event (unused)
- * \param[in]   data    drive number (0-3)
- */
-static void on_drive_reset_clicked(GtkWidget *widget, gpointer data)
-{
-    drive_cpu_trigger_reset(GPOINTER_TO_INT(data));
+    ui_settings_dialog_show("peripheral/drive");
 }
 
 
@@ -728,57 +704,9 @@ static void on_drive_reset_clicked(GtkWidget *widget, gpointer data)
  */
 static void on_drive_reset_config_clicked(GtkWidget *widget, gpointer data)
 {
-#if 0
-    debug_gtk3("Resetting drive %d (button=%d)", ((GPOINTER_TO_INT(data)>>4)&15) + 8,
-       GPOINTER_TO_INT(data) & 15 );
-#endif
     drive_cpu_trigger_reset_button(((GPOINTER_TO_INT(data)>>4)&15),
        GPOINTER_TO_INT(data) & 15 );
 }
-
-
-
-/** \brief  Handler for the 'activate' event of 'Add image to fliplist'
- *
- * Adds the currently attached image of a drive to the fliplist.
- *
- * \param[in]   widget  menu item (unused)
- * \param[in]   data    unit number (int: 8-11)
- *
- * \todo    Support dual-drive units.
- */
-static void on_drive_fliplist_add_activate(GtkWidget *widget, gpointer data)
-{
-    const struct disk_image_s *image;
-    int unit = GPOINTER_TO_INT(data);
-
-    image = file_system_get_image(unit, 0);
-    if (image != NULL) {
-        debug_gtk3("Adding '%s' to fliplist for unit #%d",
-                   image->media.fsimage->name, unit);
-        fliplist_add_image((unsigned int)unit);
-    }
-}
-
-
-/** \brief  Handler for the 'activate' event of 'Clear fliplist'
- *
- * Clear the fliplist of a drive.
- *
- * \param[in]   widget  menu item (unused)
- * \param[in]   data    unit number (int: 8-11)
- *
- * \todo    Support dual-drive units.
- */
-static void on_drive_fliplist_clear_activate(GtkWidget *widget, gpointer data)
-{
-    int unit = GPOINTER_TO_INT(data);
-
-    debug_gtk3("Clearing fliplist of unit #%d", unit);
-    fliplist_clear_list((unsigned int)unit);
-}
-
-
 
 /** \brief Draw the LED associated with some drive's LED state.
  *
@@ -801,9 +729,6 @@ static gboolean draw_drive_led_cb(GtkWidget *widget, cairo_t *cr, gpointer data)
     height = gtk_widget_get_allocated_height(widget);
     unit = GPOINTER_TO_INT(data) & 0xff;
     drive = GPOINTER_TO_INT(data) >> 8;
-#if 0
-    debug_gtk3("unit = %d, drive = %d", unit, drive);
-#endif
     sb_state = lock_sb_state();
 
     /* FIXME: this should display two LEDs some day, right now we combine the
@@ -952,7 +877,7 @@ static gboolean ui_do_datasette_popup(GtkWidget *widget,
         if (tape_status != NULL && tape_menu != NULL) {
             GList *children;
             GList *child;
-            const char *action;
+            gint action_id;
 
             /* Set accelerators for attach/detach items
              *
@@ -961,12 +886,12 @@ static gboolean ui_do_datasette_popup(GtkWidget *widget,
              */
             child = children = gtk_container_get_children(GTK_CONTAINER(tape_menu));
 
-            action = port == 1 ? ACTION_TAPE_ATTACH_1 : ACTION_TAPE_ATTACH_2;
-            ui_set_gtk_menu_item_accel_label(GTK_WIDGET(child->data), action);
+            action_id = port == 1 ? ACTION_TAPE_ATTACH_1 : ACTION_TAPE_ATTACH_2;
+            ui_set_menu_item_accel_label(GTK_WIDGET(child->data), action_id);
 
             child = child->next;
-            action = port == 1 ? ACTION_TAPE_DETACH_1 : ACTION_TAPE_DETACH_2;
-            ui_set_gtk_menu_item_accel_label(GTK_WIDGET(child->data), action);
+            action_id = port == 1 ? ACTION_TAPE_DETACH_1 : ACTION_TAPE_DETACH_2;
+            ui_set_menu_item_accel_label(GTK_WIDGET(child->data), action_id);
 
             g_list_free(children);
 
@@ -1014,8 +939,16 @@ static gboolean ui_do_drive_popup(GtkWidget *widget, GdkEvent *event, gpointer d
     gchar buffer[256];
     GList *children;
     GList *child;
+    int action;
     int i = GPOINTER_TO_INT(data) & 0xff;
     int drive = GPOINTER_TO_INT(data) >> 8;
+
+    gint reset_ids[] = {
+        ACTION_RESET_DRIVE_8,
+        ACTION_RESET_DRIVE_9,
+        ACTION_RESET_DRIVE_10,
+        ACTION_RESET_DRIVE_11
+    };
 
 
     mainlock_assert_is_not_vice_thread();
@@ -1041,8 +974,11 @@ static gboolean ui_do_drive_popup(GtkWidget *widget, GdkEvent *event, gpointer d
                        "Attach disk to drive #%d...",
                        i + DRIVE_UNIT_MIN);
         }
-        debug_gtk3("Setting top item text to '%s'.", buffer);
         gtk_label_set_text(GTK_LABEL(label), buffer);
+
+        /* set hotkey, if any */
+        action = ui_action_id_drive_attach(i + DRIVE_UNIT_MIN, drive);
+        ui_set_menu_item_accel_label(drive_menu_item, action);
     }
 
     /* set "Detach" item label based on dual-drive status */
@@ -1061,8 +997,11 @@ static gboolean ui_do_drive_popup(GtkWidget *widget, GdkEvent *event, gpointer d
                        "Detach disk from drive #%d...",
                        i + DRIVE_UNIT_MIN);
         }
-        debug_gtk3("Setting next item text to '%s'.", buffer);
         gtk_label_set_text(GTK_LABEL(label), buffer);
+
+        /* set hotkey, if any */
+        action = ui_action_id_drive_detach(i + DRIVE_UNIT_MIN, drive);
+        ui_set_menu_item_accel_label(drive_menu_item, action);
     }
 
     g_list_free(children);
@@ -1071,63 +1010,58 @@ static gboolean ui_do_drive_popup(GtkWidget *widget, GdkEvent *event, gpointer d
     /* XXX: this code is a duplicate of the drive_menu creation code, so we
      *      should probably refactor this a bit
      */
-    gtk_container_add(GTK_CONTAINER(drive_menu),
-            gtk_separator_menu_item_new());
+    popup_menu_add_separator(drive_menu);
+
     drive_menu_item = gtk_menu_item_new_with_label("Configure drives ...");
     g_signal_connect(drive_menu_item, "activate",
-            G_CALLBACK(on_drive_configure_activate), NULL);
+                     G_CALLBACK(on_drive_configure_activate), NULL);
     gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
 
     /*
      * Add drive reset item
      */
     g_snprintf(buffer, sizeof(buffer), "Reset drive #%d", i + DRIVE_UNIT_MIN);
-    drive_menu_item = gtk_menu_item_new_with_label(buffer);
-    g_signal_connect(drive_menu_item, "activate",
-            G_CALLBACK(on_drive_reset_clicked), GINT_TO_POINTER(i));
+    drive_menu_item = popup_menu_item_action_new(buffer, reset_ids[i]);
     gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
 
     /* Add reset to configuration mode for CMD HDs */
     if ((drive_has_buttons(i) & 1) == 1) {
         g_snprintf(buffer, sizeof(buffer),
-                "Reset drive #%d to Configuration Mode", i + DRIVE_UNIT_MIN);
+                   "Reset drive #%d to Configuration Mode",
+                   i + DRIVE_UNIT_MIN);
         drive_menu_item = gtk_menu_item_new_with_label(buffer);
         g_signal_connect(drive_menu_item, "activate",
-               G_CALLBACK(on_drive_reset_config_clicked),
-               GINT_TO_POINTER((i << 4) + 1));
+                         G_CALLBACK(on_drive_reset_config_clicked),
+                         GINT_TO_POINTER((i << 4) + 1));
         gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
     }
+
     /* Add reset to installation mode for CMD HDs */
     if ((drive_has_buttons(i) & 6) == 6) {
         g_snprintf(buffer, sizeof(buffer),
-                "Reset drive #%d to Installation Mode", i + DRIVE_UNIT_MIN);
+                   "Reset drive #%d to Installation Mode",
+                   i + DRIVE_UNIT_MIN);
         drive_menu_item = gtk_menu_item_new_with_label(buffer);
         g_signal_connect(drive_menu_item, "activate",
-               G_CALLBACK(on_drive_reset_config_clicked),
-               GINT_TO_POINTER((i << 4) + 6));
+                         G_CALLBACK(on_drive_reset_config_clicked),
+                         GINT_TO_POINTER((i << 4) + 6));
         gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
     }
 
     /* Add 'add image to fliplist' */
     gtk_container_add(GTK_CONTAINER(drive_menu), gtk_separator_menu_item_new());
-    drive_menu_item = gtk_menu_item_new_with_label("Add current image to fliplist");
-    g_signal_connect(drive_menu_item, "activate",
-            G_CALLBACK(on_drive_fliplist_add_activate),
-            GINT_TO_POINTER(i + DRIVE_UNIT_MIN));
+
+    drive_menu_item = popup_menu_item_action_new(
+            "Add current image to fliplist",
+            ui_action_id_fliplist_add(i + DRIVE_UNIT_MIN, 0));
     gtk_widget_set_sensitive(drive_menu_item,
-                            file_system_get_image(i + DRIVE_UNIT_MIN, 0) != NULL);
+                             file_system_get_image(i + DRIVE_UNIT_MIN, 0) != NULL);
     gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
 
     /* Add 'clear fliplist' */
-    g_snprintf(buffer,
-               sizeof(buffer),
-               "Clear drive #%d fliplist",
-               i + DRIVE_UNIT_MIN);
-    drive_menu_item = gtk_menu_item_new_with_label(buffer);
-    g_signal_connect(drive_menu_item,
-                     "activate",
-                     G_CALLBACK(on_drive_fliplist_clear_activate),
-                     GINT_TO_POINTER(i + DRIVE_UNIT_MIN));
+    drive_menu_item = popup_menu_item_action_new(
+            "Clear fliplist",
+            ui_action_id_fliplist_clear(i + DRIVE_UNIT_MIN, 0));
     gtk_widget_set_sensitive(drive_menu_item,
                              fliplist_init_iterate(i + DRIVE_UNIT_MIN) != NULL);
     gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
@@ -1296,7 +1230,6 @@ static void destroy_statusbar_cb(GtkWidget *sb, gpointer index)
     int w;
     int idx = GPOINTER_TO_INT(index);
 
-    debug_gtk3("Got index %d.", idx);
     bar = &(allocated_bars[idx]);
 
     /* Invalidate all widget references. We need to do this so we can guard
@@ -1695,7 +1628,7 @@ static GtkWidget *ui_tape_widget_create(int port, int bar)
     }
     gtk_widget_set_hexpand(header, FALSE);
     gtk_widget_set_halign(header, GTK_ALIGN_START);
-    g_object_set(header, "margin-right", 8, NULL);
+    gtk_widget_set_margin_end(header, 8);
 
     counter = gtk_label_new("?");
 
@@ -1812,7 +1745,7 @@ static GtkWidget *ui_joystick_widget_create(void)
     label = gtk_label_new("Joysticks:");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_widget_set_hexpand(label, FALSE);
-    g_object_set(label, "margin-right", 8, NULL);
+    gtk_widget_set_margin_end(label, 8);
     gtk_container_add(GTK_CONTAINER(grid), label);
     /* Create all possible joystick displays */
     for (i = 0; i < JOYPORT_MAX_PORTS; ++i) {
@@ -1918,13 +1851,57 @@ static void layout_statusbar_drives(ui_sb_state_t *state_snapshot, int bar_index
 }
 
 
+/** \brief  Callback for the 'attach' disk popup menu item
+ *
+ * Trigger the proper 'attach' UI action for the given unit and drive.
+ *
+ * \param[in]   item    menu item (unused)
+ * \param[in]   data    unit and drive number
+ *
+ * \return  `TRUE`
+ */
+static gboolean on_disk_attach(GtkWidget *item, gpointer data)
+{
+    gint unit;
+    gint drive;
+
+    unit = GPOINTER_TO_INT(data) >> 8;
+    drive = GPOINTER_TO_INT(data) & 0xff;
+    ui_action_trigger(ui_action_id_drive_attach(unit, drive));
+    return TRUE;
+}
+
+
+/** \brief  Callback for the 'attach' disk popup menu item
+ *
+ * Trigger the proper 'detach' UI action for the given unit and drive.
+ *
+ * \param[in]   item    menu item (unused)
+ * \param[in]   data    unit and drive number
+ *
+ * \return  `TRUE`
+ */
+
+static gboolean on_disk_detach(GtkWidget *item, gpointer data)
+{
+    gint unit;
+    gint drive;
+
+    unit = GPOINTER_TO_INT(data) >> 8;
+    drive = GPOINTER_TO_INT(data) & 0xff;
+    ui_action_trigger(ui_action_id_drive_detach(unit, drive));
+    return TRUE;
+}
+
+
 /** \brief Create a popup menu to attach to a disk drive widget.
  *
- *  \param unit The index of the drive, 0-3 for drives 8-11.
+ *  \param[in]  unit    unit number (8-11)
+ *  \param[in]  drive   drive number (0 or 1)
  *
  *  \return The GtkMenu for use as a popup, as a floating reference.
  */
-static GtkWidget *ui_drive_menu_create(int unit, int drive)
+static GtkWidget *ui_drive_menu_create(gint unit, gint drive)
 {
     GtkWidget *drive_menu;
     GtkWidget *drive_menu_item;
@@ -1934,20 +1911,20 @@ static GtkWidget *ui_drive_menu_create(int unit, int drive)
     drive_menu = gtk_menu_new();
     drive_menu_item = gtk_menu_item_new_with_label("Attach <fill-in-details>");
     g_signal_connect(drive_menu_item, "activate",
-            G_CALLBACK(ui_disk_attach_dialog_show),
-            GINT_TO_POINTER(unit + DRIVE_UNIT_MIN));
+            G_CALLBACK(on_disk_attach),
+            UNIT_DRIVE_TO_PTR(unit, drive));
     gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
 
     drive_menu_item = gtk_menu_item_new_with_label("Detach <fill-in-details>");
     g_signal_connect(drive_menu_item, "activate",
-                     G_CALLBACK(ui_disk_detach_callback),
-                     UNIT_DRIVE_TO_PTR(unit + DRIVE_UNIT_MIN, drive));
+                     G_CALLBACK(on_disk_detach),
+                     UNIT_DRIVE_TO_PTR(unit, drive));
     gtk_container_add(GTK_CONTAINER(drive_menu), drive_menu_item);
 
     /* GTK2/GNOME UI put TDE and Read-only checkboxes here, but that
      * seems excessive or possibly too fine-grained, so skip that for
      * now. Also: make fliplist usable for drive 1. */
-    ui_populate_fliplist_menu(drive_menu, unit + DRIVE_UNIT_MIN, drive);
+    ui_populate_fliplist_menu(drive_menu, unit, drive);
     gtk_container_add(GTK_CONTAINER(drive_menu),
             gtk_separator_menu_item_new());
 
@@ -1977,11 +1954,7 @@ static GtkWidget *ui_volume_button_create(void)
     gtk_scale_button_set_value(GTK_SCALE_BUTTON(volume),
             (gdouble)sound_vol / 100.0);
 
-    /* FIXME: there's too much padding to the right of the widget in VSID */
-    g_object_set(
-            volume,
-            "use-symbolic", TRUE,
-            NULL);
+    g_object_set(volume, "use-symbolic", TRUE, NULL);
 
     g_signal_connect(volume, "value-changed",
             G_CALLBACK(on_volume_value_changed), NULL);
@@ -1998,9 +1971,8 @@ static GtkWidget *ui_volume_button_create(void)
 static void warp_led_callback(GtkWidget *widget, gboolean active)
 {
     /* this updates warp state throughout the UI */
-    ui_action_toggle_warp();
+    ui_action_trigger(ACTION_WARP_MODE_TOGGLE);
 }
-
 
 /** \brief  Create status bar LED for Warp mode
  *
@@ -2008,16 +1980,13 @@ static void warp_led_callback(GtkWidget *widget, gboolean active)
  */
 static GtkWidget *warp_led_create(void)
 {
-    GtkWidget *led;
+    GtkWidget *led = statusbar_led_widget_create("warp:", "#00ff00", "#000");
 
-    led = statusbar_led_widget_create("warp:", "#00ff00", "#000");
     statusbar_led_widget_set_toggleable(led, TRUE);
     statusbar_led_widget_set_toggle_callback(led, warp_led_callback);
-    gtk_widget_show(led);
-
+    gtk_widget_show_all(led);
     return led;
 }
-
 
 /** \brief  Set Warp mode LED state
  *
@@ -2026,14 +1995,12 @@ static GtkWidget *warp_led_create(void)
  */
 void warp_led_set_active(int bar, gboolean active)
 {
-    GtkWidget *led;
+    GtkWidget *led = allocated_bars[bar].warp_led;
 
-    led = allocated_bars[bar].warp_led;
     if (led != NULL) {
         statusbar_led_widget_set_active(led, active);
     }
 }
-
 
 /** \brief  Callback function for the Pause LED
  *
@@ -2043,7 +2010,7 @@ void warp_led_set_active(int bar, gboolean active)
 static void pause_led_callback(GtkWidget *widget, gboolean active)
 {
     /* this updates pause state throughout the UI */
-    ui_action_toggle_pause();
+    ui_action_trigger(ACTION_PAUSE_TOGGLE);
 }
 
 
@@ -2053,13 +2020,11 @@ static void pause_led_callback(GtkWidget *widget, gboolean active)
  */
 static GtkWidget *pause_led_create(void)
 {
-    GtkWidget *led;
+    GtkWidget *led = statusbar_led_widget_create("pause:", "#ff0000", "#000");
 
-    led = statusbar_led_widget_create("pause:", "#ff0000", "#000");
     statusbar_led_widget_set_toggleable(led, TRUE);
     statusbar_led_widget_set_toggle_callback(led, pause_led_callback);
-    gtk_widget_show(led);
-
+    gtk_widget_show_all(led);
     return led;
 }
 
@@ -2071,11 +2036,8 @@ static GtkWidget *pause_led_create(void)
  */
 void pause_led_set_active(int bar, gboolean active)
 {
-    GtkWidget *led;
+    GtkWidget *led = allocated_bars[bar].pause_led;
 
-    debug_gtk3("bar = %d, active = %s.", bar, active ? "true" : "false");
-
-    led = allocated_bars[bar].pause_led;
     if (led != NULL) {
         statusbar_led_widget_set_active(led, active);
     }
@@ -2087,13 +2049,10 @@ void pause_led_set_active(int bar, gboolean active)
  */
 static GtkWidget *shiftlock_led_create(void)
 {
-    GtkWidget *led;
-
-    led = statusbar_led_widget_create("shift-lock:", "#ff0000", "#000");
+    GtkWidget *led = statusbar_led_widget_create("shift-lock:", "#ff0000", "#000");
     /*statusbar_led_widget_set_toggleable(led, TRUE);
       statusbar_led_widget_set_toggle_callback(led, shiftlock_led_callback);*/
-    gtk_widget_show(led);
-
+    gtk_widget_show_all(led);
     return led;
 }
 
@@ -2105,11 +2064,8 @@ static GtkWidget *shiftlock_led_create(void)
  */
 void shiftlock_led_set_active(int bar, gboolean active)
 {
-    GtkWidget *led;
+    GtkWidget *led = allocated_bars[bar].shiftlock_led;
 
-    debug_gtk3("bar = %d, active = %s.", bar, active ? "true" : "false");
-
-    led = allocated_bars[bar].shiftlock_led;
     if (led != NULL) {
         statusbar_led_widget_set_active(led, active);
     }
@@ -2122,7 +2078,7 @@ void shiftlock_led_set_active(int bar, gboolean active)
  */
 static void mode4080_led_callback(GtkWidget *widget, gboolean active)
 {
-    resources_set_int("C128ColumnKey", (active ^ 1) & 1);
+    keyboard_custom_key_toggle(KBD_CUSTOM_4080);
 }
 
 /** \brief  Create status bar LED for 40/80 key
@@ -2131,13 +2087,11 @@ static void mode4080_led_callback(GtkWidget *widget, gboolean active)
  */
 static GtkWidget *mode4080_led_create(void)
 {
-    GtkWidget *led;
+    GtkWidget *led = statusbar_led_widget_create("80col:", "#00ff00", "#000");
 
-    led = statusbar_led_widget_create("80col:", "#00ff00", "#000");
     statusbar_led_widget_set_toggleable(led, TRUE);
     statusbar_led_widget_set_toggle_callback(led, mode4080_led_callback);
-    gtk_widget_show(led);
-
+    gtk_widget_show_all(led);
     return led;
 }
 
@@ -2148,11 +2102,8 @@ static GtkWidget *mode4080_led_create(void)
  */
 void mode4080_led_set_active(int bar, gboolean active)
 {
-    GtkWidget *led;
+    GtkWidget *led = allocated_bars[bar].mode4080_led;
 
-    debug_gtk3("bar = %d, active = %s.", bar, active ? "true" : "false");
-
-    led = allocated_bars[bar].mode4080_led;
     if (led != NULL) {
         statusbar_led_widget_set_active(led, active);
     }
@@ -2165,7 +2116,7 @@ void mode4080_led_set_active(int bar, gboolean active)
  */
 static void capslock_led_callback(GtkWidget *widget, gboolean active)
 {
-    keyboard_toggle_caps_key();
+    keyboard_custom_key_toggle(KBD_CUSTOM_CAPS);
 }
 
 /** \brief  Create status bar LED for capslock key
@@ -2174,13 +2125,11 @@ static void capslock_led_callback(GtkWidget *widget, gboolean active)
  */
 static GtkWidget *capslock_led_create(void)
 {
-    GtkWidget *led;
+    GtkWidget *led = statusbar_led_widget_create("caps:", "#00ff00", "#000");
 
-    led = statusbar_led_widget_create("caps:", "#00ff00", "#000");
     statusbar_led_widget_set_toggleable(led, TRUE);
     statusbar_led_widget_set_toggle_callback(led, capslock_led_callback);
-    gtk_widget_show(led);
-
+    gtk_widget_show_all(led);
     return led;
 }
 
@@ -2191,13 +2140,10 @@ static GtkWidget *capslock_led_create(void)
  */
 void capslock_led_set_active(int bar, gboolean active)
 {
-    GtkWidget *led;
+    GtkWidget *led = allocated_bars[bar].capslock_led;
 
-    debug_gtk3("bar = %d, active = %s.", bar, active ? "true" : "false");
-
-    led = allocated_bars[bar].capslock_led;
     if (led != NULL) {
-        statusbar_led_widget_set_active(led, active ^ 1);
+        statusbar_led_widget_set_active(led, active);
     }
 }
 
@@ -2477,10 +2423,8 @@ GtkWidget *ui_statusbar_create(int window_identity)
     gtk_widget_set_hexpand(message, TRUE);
     gtk_widget_set_halign(message, GTK_ALIGN_START);
     gtk_label_set_ellipsize(GTK_LABEL(message), PANGO_ELLIPSIZE_END);
-    g_object_set(G_OBJECT(message),
-                 "margin-left", 8,
-                 "margin-right", 8,
-                 NULL);
+    gtk_widget_set_margin_start(message, 8);
+    gtk_widget_set_margin_end(message, 8);
     allocated_bars[i].msg = message;
     gtk_grid_attach(GTK_GRID(sb),
                     message,
@@ -2505,7 +2449,7 @@ GtkWidget *ui_statusbar_create(int window_identity)
     /* Warp mode */
     warp_led = warp_led_create();
     /* add a little margin */
-    g_object_set(G_OBJECT(warp_led), "margin-left", 8, NULL);
+    gtk_widget_set_margin_start(warp_led, 8);
     allocated_bars[i].warp_led = warp_led;
     statusbar_append_led(i, warp_led, FALSE);
 
@@ -2543,20 +2487,12 @@ GtkWidget *ui_statusbar_create(int window_identity)
 
     /* CPU/FPS - No FPS on VDC Window for now */
     speed = statusbar_speed_widget_create(&allocated_bars[i].speed_state);
-    g_object_set(speed, "margin-left", 8, NULL);
-    gtk_widget_set_valign(speed, GTK_ALIGN_CENTER);
+    gtk_widget_set_margin_start(speed, 8);
     allocated_bars[i].speed = speed;
 
     /* CRT and Mixer controls */
     if (machine_class != VICE_MACHINE_VSID) {
-#if 0
-        GtkCssProvider *css;
-        css = vice_gtk3_css_provider_new(CHECKBUTTON_CSS);
-#endif
         crt = gtk_check_button_new_with_label("CRT");
-#if 0
-        vice_gtk3_css_provider_add(crt, css);
-#endif
         gtk_widget_set_can_focus(crt, FALSE);
         gtk_widget_set_halign(crt, GTK_ALIGN_START);
         gtk_widget_set_valign(crt, GTK_ALIGN_START);
@@ -2566,9 +2502,6 @@ GtkWidget *ui_statusbar_create(int window_identity)
         g_signal_connect(crt, "toggled", G_CALLBACK(on_crt_toggled), NULL);
 
         mixer = gtk_check_button_new_with_label("Mixer");
-#if 0
-        vice_gtk3_css_provider_add(mixer, css);
-#endif
         gtk_widget_set_can_focus(mixer, FALSE);
         gtk_widget_set_halign(mixer, GTK_ALIGN_START);
         gtk_widget_set_valign(mixer, GTK_ALIGN_START);
@@ -2675,7 +2608,7 @@ GtkWidget *ui_statusbar_create(int window_identity)
             gtk_widget_set_hexpand(drive_unit, FALSE);
             allocated_bars[i].drive_unit[j] = drive_unit;
             for (drive_num = 0; drive_num < DRIVE_UNIT_DRIVE_MAX; drive_num++) {
-                drive_menu = ui_drive_menu_create(j, drive_num);
+                drive_menu = ui_drive_menu_create(j + DRIVE_UNIT_MIN, drive_num);
                 allocated_bars[i].drive_menu[j][drive_num] = drive_menu;
             }
             gtk_grid_attach(GTK_GRID(drive_units), drive_unit, unit_cols[j], unit_rows[j], 1, 1);
@@ -2689,7 +2622,7 @@ GtkWidget *ui_statusbar_create(int window_identity)
      *        canvas somehow having z-index priority over the widget. This
      *        works fine on Linux (as far as we know).
      */
-#if (!defined(ARCHDEP_OS_WINDOWS)) && (!defined(ARCHDEP_OS_MACOS))
+#if (!defined(WINDOWS_COMPILE)) && (!defined(MACOS_COMPILE))
     volume = ui_volume_button_create();
     gtk_widget_set_hexpand(volume, TRUE);
 #else
@@ -2751,9 +2684,7 @@ void ui_display_event_time(unsigned int current, unsigned int total)
     GtkWidget *widget;
 
     /* Ok to call from VICE thread */
-
     widget = allocated_bars[0].record;
-
     statusbar_recording_widget_set_time(widget, current, total);
 }
 
@@ -2776,7 +2707,6 @@ void ui_display_playback(int playback_status, char *version)
     GtkWidget *widget = allocated_bars[0].record;
 
     /* Ok to call from VICE thread */
-
     statusbar_recording_widget_set_event_playback(widget, version);
 }
 
@@ -2796,9 +2726,7 @@ void ui_display_recording(int recording_status)
     GtkWidget *widget;
 
     /* Ok to call from VICE thread */
-
     widget = allocated_bars[0].record;
-
     statusbar_recording_widget_set_recording_status(widget, recording_status);
 }
 
@@ -2991,8 +2919,6 @@ void ui_display_tape_motor_status(int port, int motor)
  */
 void ui_set_tape_status(int port, int tape_status)
 {
-    /* printf("TAPE DRIVE STATUS: %d\n", tape_status); */
-
     /* Ok to call from VICE thread */
 }
 
@@ -3005,20 +2931,6 @@ void ui_set_tape_status(int port, int tape_status)
  */
 void ui_display_tape_current_image(int port, const char *image)
 {
-#if 0
-    char buf[256];
-
-    mainlock_assert_is_not_vice_thread();
-
-    if (image && *image) {
-        snprintf(buf, 256, "Attached %s to tape unit", image);
-    } else {
-        snprintf(buf, 256, "Tape unit is empty");
-    }
-
-    buf[255] = 0;
-    ui_display_statustext(buf, 1);
-#endif
 }
 
 
@@ -3190,16 +3102,8 @@ void ui_enable_drive_status(ui_drive_enable_t state, int *drive_led_color)
         if (resources_get_int_sprintf("Drive%dType", &curtype, unit + DRIVE_UNIT_MIN) < 0) {
             curtype = 0;
         }
-#if 0
-        debug_gtk3("Old drive %d type = %d", unit + 8, sb_state->drives_type[unit]);
-        debug_gtk3("New drive %d type = %d", unit + 8, curtype);
-#endif
         old_dual = (bool)drive_check_dual(sb_state->drives_type[unit]);
         new_dual = (bool)drive_check_dual(curtype);
-#if 0
-        debug_gtk3("Old drive %d dual = %s", unit + 8, old_dual ? "true" : "false");
-        debug_gtk3("New drive %d dual = %s", unit + 8, new_dual ? "true" : "false");
-#endif
         if (old_dual != new_dual) {
             sb_state->drives_dual |= 1 << unit;
         }
@@ -3207,9 +3111,6 @@ void ui_enable_drive_status(ui_drive_enable_t state, int *drive_led_color)
         /* update drive type */
         sb_state->drives_type[unit] = curtype;
     }
-#if 0
-    debug_gtk3("drives_dual = %02x", sb_state->drives_dual);
-#endif
 
     /* Now give enabled its "real" value based on the drive
      * definitions. */
@@ -3240,19 +3141,6 @@ void ui_enable_drive_status(ui_drive_enable_t state, int *drive_led_color)
  */
 void ui_display_drive_current_image(unsigned int unit_number, unsigned int drive_number, const char *image)
 {
-#if 0
-    char buf[256];
-
-    mainlock_assert_is_not_vice_thread();
-
-    if (image && *image) {
-        snprintf(buf, 256, "Attached %s to unit %d", image, unit_number + 8);
-    } else {
-        snprintf(buf, 256, "Unit %d is empty", unit_number + 8);
-    }
-    buf[255] = 0;
-    ui_display_statustext(buf, 1);
-#endif
 }
 
 
@@ -3592,33 +3480,6 @@ GtkWidget *ui_statusbar_get_recording_widget(void)
  */
 void ui_display_reset(int device, int mode)
 {
-#if 0
-    gchar buffer[256];
-
-    debug_gtk3("Got RESET for device #%d, type: %d.", device, mode);
-
-    buffer[0] = '\0';
-
-    if (device == 0) {
-        /* machine reset */
-        g_snprintf(buffer,
-                   sizeof(buffer),
-                   "Machine: %s reset",
-                   mode == MACHINE_RESET_MODE_SOFT ? "Soft" : "Hard");
-    } else if (device == TAPEPORT_UNIT_1 || device == TAPEPORT_UNIT_2) {
-        /* datasette reset */
-        if (machine_class == VICE_MACHINE_PET) {
-            g_snprintf(buffer, sizeof(buffer), "Datasette #%d: Reset", device);
-        } else {
-            strcpy(buffer, "Datasette: Reset");
-        }
-    } else if (device >= DRIVE_UNIT_MIN && device <= DRIVE_UNIT_MAX) {
-        /* drive reset */
-        g_snprintf(buffer, sizeof(buffer), "Unit #%d: Reset", device);
-    }
-
-    ui_display_statustext(buffer, 1 /* fadeout */);
-#endif
 }
 
 
@@ -3650,4 +3511,65 @@ void ui_statusbar_update_kbd_debug(GdkEvent *report)
             kbd_debug_widget_update(widget, report);
         }
     }
+}
+
+
+/** \brief  Set visibility of the status bar for a main window
+ *
+ * \param[in]   window  main window
+ * \param[in]   visible visibility of status bar for \a window
+ *
+ * \return  TRUE on success
+ */
+gboolean ui_statusbar_set_visible_for_window(GtkWidget *window, gboolean visible)
+{
+    GtkWidget *main_grid;
+    GtkWidget *statusbar;
+
+    main_grid = gtk_bin_get_child(GTK_BIN(window));
+    if (main_grid == NULL) {
+        return FALSE;
+    }
+    statusbar = gtk_grid_get_child_at(GTK_GRID(main_grid), 0, 2);
+    if (statusbar == NULL) {
+        return FALSE;
+    }
+
+    if (visible) {
+        if (!ui_is_fullscreen() || ui_fullscreen_has_decorations()) {
+            gtk_widget_show(statusbar);
+        }
+    } else {
+        gtk_widget_hide(statusbar);
+    }
+    return TRUE;
+}
+
+
+/** \brief  Show/Hide statusbar of the **active** window
+ *
+ * Toggle visibility of statusbar based on "${chip}HideStatusbar" resource.
+ *
+ * \return  TRUE (don't pass event along further)
+ */
+gboolean ui_action_toggle_show_statusbar(void)
+{
+    video_canvas_t *canvas = ui_get_active_canvas();
+    if (canvas != NULL) {
+        GtkWindow *window;
+        int show = 0;
+        const char *chip_name = canvas->videoconfig->chip_name;
+
+        resources_get_int_sprintf("%sShowStatusbar", &show, chip_name);
+        show = !show;
+        resources_set_int_sprintf("%sShowStatusbar", show, chip_name);
+        debug_gtk3("%sShowStatusbar => %s.", chip_name, show ? "True" : "False");
+
+        window = ui_get_active_window();
+        ui_statusbar_set_visible_for_window(GTK_WIDGET(window), show);
+        /* update menu item's toggled state! */
+        ui_set_check_menu_item_blocked_by_action(ACTION_SHOW_STATUSBAR_TOGGLE,
+                                                 show);
+    }
+    return TRUE;
 }

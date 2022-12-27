@@ -17,7 +17,7 @@ extern int loadfile_offset;
 extern int omit_empty_banks;
 extern char *output_filename[MAX_OUTPUT_FILES];
 extern char *input_filename[MAX_INPUT_FILES];
-extern unsigned char input_filenames;
+extern int input_filenames;
 extern char loadfile_is_crt;
 extern int load_address;
 extern char loadfile_is_ultimax;
@@ -254,9 +254,10 @@ void save_zaxxon_crt(unsigned int p1, unsigned int p2, unsigned int p3, unsigned
     exit(0);
 }
 
-void save_stardos_crt(unsigned int p1, unsigned int p2, unsigned int p3, unsigned int p4, unsigned char p5, unsigned char p6)
+/* 8k ROML at $8000, 8k ROMH at $e000 */
+void save_stardos_crt(unsigned int p1, unsigned int p2, unsigned int p3, unsigned int p4, unsigned char game, unsigned char exrom)
 {
-    if (write_crt_header(1, 0) < 0) {
+    if (write_crt_header(game, exrom) < 0) {
         cleanup();
         exit(1);
     }
@@ -764,4 +765,4 @@ void save_generic_crt(unsigned int p1, unsigned int p2, unsigned int p3, unsigne
         }
     }
 }
- 
+

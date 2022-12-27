@@ -4,24 +4,31 @@ dnl
 dnl Process this file with GNU autoconf to produce a configure script.
 dnl
 
-dnl Set VICE version number
+dnl Set VICE version number.
+dnl ONLY bump this on release, any revision in the version string indicates
+dnl a development version. Don't add any strings to the version number (such
+dnl as '-dev' or 'beta'), the '-r$SVNREV' revision string is the only thing we
+dnl alllow after the version number.
 m4_define(vice_version_major, 3)
-m4_define(vice_version_minor, 6)
-m4_define(vice_version_build, 1)
-m4_define(vice_version_label, )
+m4_define(vice_version_minor, 7)
+m4_define(vice_version_build, 0)
 
 dnl Some people lose their shit if a version ends in .0
+dnl also turns out some people lose it if it doesn't :)
 m4_define(vice_version,
           ifelse(vice_version_build, 0,
                  ifelse(vice_version_label, ,
                         [vice_version_major.vice_version_minor],
-                        [vice_version_major.vice_version_minor-vice_version_label]),
+                        [vice_version_major.vice_version_minor]),
                  ifelse(vice_version_label, ,
                         [vice_version_major.vice_version_minor.vice_version_build],
-                        [vice_version_major.vice_version_minor.vice_version_build-vice_version_label])))
+                        [vice_version_major.vice_version_minor.vice_version_build])))
 
 dnl The major/minor stuff gets replaced in autogen.sh
 AC_INIT([vice], [vice_version])
+dnl We save the command line options here since AM_INIT_AUTOMAKE and other
+dnl macros clobber $@:
+cmdline_options="$@"
 AC_CONFIG_SRCDIR([src/maincpu.c])
 AM_INIT_AUTOMAKE([-Wno-portability foreign])
 
@@ -33,7 +40,7 @@ dnl This has to happen before any other AC_* calls, so leave it here please.
 : ${OBJCFLAGS=""}
 
 dnl Set VICE's compiler flags (can be overridden by the user)
-VICE_CPPFLAGS="-I\$(top_srcdir)/src/systemheaderoverride"
+VICE_CPPFLAGS="-I\$(top_srcdir)/src/arch/systemheaderoverride"
 VICE_CFLAGS="-g -O3"
 VICE_CXXFLAGS="-g -O3"
 VICE_OBJCFLAGS="-g -O3"
@@ -53,14 +60,12 @@ dnl Make version number visible to generated files and source
 VICE_VERSION_MAJOR=vice_version_major
 VICE_VERSION_MINOR=vice_version_minor
 VICE_VERSION_BUILD=vice_version_build
-VICE_VERSION_LABEL=vice_version_label
 VICE_VERSION=vice_version
 VERSION_RC="$VICE_VERSION_MAJOR,$VICE_VERSION_MINOR,$VICE_VERSION_BUILD,0"
 VERSION_COMBINED=`expr $VICE_VERSION_MAJOR \* 65536 + $VICE_VERSION_MINOR \* 256 + $VICE_VERSION_BUILD`
 AC_SUBST(VICE_VERSION_MAJOR)
 AC_SUBST(VICE_VERSION_MINOR)
 AC_SUBST(VICE_VERSION_BUILD)
-AC_SUBST(VICE_VERSION_LABEL)
 AC_SUBST(VICE_VERSION)
 AC_SUBST(VERSION_RC)
 AC_SUBST(VERSION_COMBINED)
@@ -82,21 +87,18 @@ VICE_ARG_WITH_LIST(flac,                [  --with-flac             use FLAC supp
 VICE_ARG_WITH_LIST(mpg123,              [  --with-mpg123           use MPG123 support])
 VICE_ARG_WITH_LIST(oss,                 [  --with-oss              use the OSS sound system])
 VICE_ARG_WITH_LIST(pulse,               [  --without-pulse         do not use PulseAudio sound system])
-VICE_ARG_WITH_LIST(readline,            [  --without-readline      do not try to use the system readline library])
 VICE_ARG_WITH_LIST(resid,               [  --without-resid         do not use the reSID engine])
 VICE_ARG_WITH_LIST(sdlsound,            [  --with-sdlsound         use SDL sound system])
 VICE_ARG_WITH_LIST(sun,                 [  --without-sun           do not use the sun/netbsd sound system])
 VICE_ARG_WITH_LIST(vorbis,              [  --with-vorbis           use Ogg/Vorbis support])
-
-VICE_ARG_ENABLE_LIST(ahi,               [  --disable-ahi           disables AHI support])
-VICE_ARG_ENABLE_LIST(catweasel,         [  --disable-catweasel     disables CatWeasel (PCI/Zorro/Clockport SID card) support])
+VICE_ARG_ENABLE_LIST(catweasel,         [  --enable-catweasel      enables CatWeasel (PCI/Zorro/Clockport SID card) support])
 VICE_ARG_ENABLE_LIST(hardsid,           [  --disable-hardsid       disables HardSID support])
 VICE_ARG_ENABLE_LIST(lame,              [  --enable-lame           Enable MP3 export with LAME])
 VICE_ARG_ENABLE_LIST(midi,              [  --enable-midi           enable MIDI support])
-VICE_ARG_ENABLE_LIST(new8580filter,     [  --disable-new8580filter  disable new 8580 filters])
-VICE_ARG_ENABLE_LIST(parsid,            [  --disable-parsid        disables ParSID support])
+VICE_ARG_ENABLE_LIST(new8580filter,     [  --disable-new8580filter disable new 8580 filters])
+VICE_ARG_ENABLE_LIST(parsid,            [  --enable-parsid         enables ParSID support])
 VICE_ARG_ENABLE_LIST(portaudio,         [  --disable-portaudio     disables PortAudio support])
-VICE_ARG_ENABLE_LIST(ssi2001,           [  --disable-ssi2001       disables SSI2001 (ISA SID card) support])
+VICE_ARG_ENABLE_LIST(ssi2001,           [  --enable-ssi2001        enables SSI2001 (ISA SID card) support])
 VICE_ARG_ENABLE_LIST(static-lame,       [  --enable-static-lame    enable static LAME linking])
 
 
@@ -104,10 +106,8 @@ dnl
 dnl Graphics options
 dnl
 VICE_ARG_WITH_LIST(gif,                 [  --with-gif              use GIF screenshot system])
-VICE_ARG_WITH_LIST(jpeg,                [  --with-jpeg             use JPEG screenshot system])
 VICE_ARG_WITH_LIST(png,                 [  --without-png           do not use the PNG screenshot system])
-VICE_ARG_ENABLE_LIST(external-ffmpeg,   [  --enable-external-ffmpeg  enable external FFmpeg support])
-VICE_ARG_ENABLE_LIST(quicktime,         [  --enable-quicktime      enables Apple QuickTime support])
+VICE_ARG_ENABLE_LIST(ffmpeg,            [  --enable-ffmpeg         enable FFmpeg support])
 dnl Only supported for SDL1
 VICE_ARG_ENABLE_LIST(hwscale,           [  --disable-hwscale       disables GPU scaling of emulated screen (SDL1 UI only)])
 
@@ -116,9 +116,10 @@ dnl
 dnl Misc build options
 dnl
 
+VICE_ARG_WITH_LIST(readline,            [  --without-readline      do not try to use the system readline library])
 VICE_ARG_WITH_LIST(zlib,                [  --without-zlib          do not use the zlib support])
-VICE_ARG_ENABLE_LIST(arch,              [  --enable-arch[[=arch]]  enable architecture specific compilation [[default=yes]]], [], [enable_arch=yes])
-VICE_ARG_ENABLE_LIST(cpuhistory,        [  --enable-cpuhistory     enable the 65xx cpu history feature])
+VICE_ARG_ENABLE_LIST(arch,              [  --enable-arch[[=arch]]    enable architecture specific compilation [[default=yes]]], [], [enable_arch=yes])
+VICE_ARG_ENABLE_LIST(cpuhistory,        [  --disable-cpuhistory    disable the 65xx cpu history feature])
 VICE_ARG_ENABLE_LIST(ethernet,          [  --enable-ethernet       enables The Final Ethernet emulation])
 VICE_ARG_ENABLE_LIST(ipv6,              [  --disable-ipv6          disables the checking for IPv6 compatibility])
 VICE_ARG_ENABLE_LIST(libieee1284,       [  --enable-libieee1284    enables libieee1284 support])
@@ -147,9 +148,9 @@ dnl
 dnl UI options
 dnl
 VICE_ARG_ENABLE_LIST(headlessui,        [  --enable-headlessui     enables building without a UI])
-VICE_ARG_ENABLE_LIST(sdlui,             [  --enable-sdlui          enables SDL UI support])
-VICE_ARG_ENABLE_LIST(sdlui2,            [  --enable-sdlui2         enables SDL2 UI support])
-VICE_ARG_ENABLE_LIST(native-gtk3ui,     [  --enable-native-gtk3ui  enables native GTK3 UI support])
+VICE_ARG_ENABLE_LIST(sdl1ui,            [  --enable-sdl1ui         enables SDL 1.2 UI support])
+VICE_ARG_ENABLE_LIST(sdl2ui,            [  --enable-sdl2ui         enables SDL 2.x UI support])
+VICE_ARG_ENABLE_LIST(gtk3ui,            [  --enable-gtk3ui         enables GTK3 UI support])
 
 dnl If enabled, tries to install XDG .desktop files for running the binaries
 dnl from a desktop menu. Only supported for Unix with the exception of MacOS.
@@ -179,28 +180,10 @@ fi
 AC_ARG_VAR(FW_DIR, [Location of support frameworks (macOS only)])
 
 
-dnl this hack is needed because the default for the auto-tools
-dnl is 'no', and we want the default to be 'yes' unless
-dnl '--disable-option-checking' is used.
-enable_option_checking=yes
-for command_option in $@
-do
-  AS_IF([test x"$command_option" = "x--disable-option-checking"], [enable_option_checking=no])
-done
-
-dnl check for invalid options
-echo "option checking is $enable_option_checking"
-AS_IF([test x"$enable_option_checking" = "xyes"], [VICE_ARG_LIST_CHECK()])
-
 dnl check for conflicting options
-VICE_ARG_LIST_AT_MOST_ONE([--enable-sdlui --enable-sdlui2 --enable-native-gtk3ui --enable-headlessui], [UI])
-AS_IF([test x"$enable_native_gtk3ui" = "xno" -a x"$enable_sdlui" = "xno" -a x"$enable_sdlui2" = "xno" -a x"$enable_headlessui" = "xno"],
+VICE_ARG_LIST_AT_MOST_ONE([--enable-sdlui --enable-sdlui2 --enable-gtk3ui --enable-headlessui], [UI])
+AS_IF([test x"$enable_gtk3ui" = "xno" -a x"$enable_sdl1ui" = "xno" -a x"$enable_sdl2ui" = "xno" -a x"$enable_headlessui" = "xno"],
       [AC_MSG_ERROR([You cannot disable all GUIs])])
-
-dnl cmake only works for in-tree configured source
-if test x"$enable_cmake" = x"yes" ; then
-  AC_CHECK_FILE(cmake-bootstrap.sh, [], [AC_MSG_ERROR([Out of source tree configure not supported with cmake])])
-fi
 
 dnl Try to find out which system we are on...
 AC_CANONICAL_HOST
@@ -214,6 +197,11 @@ dnl Make sure the compiler supports C99 at a minimum
 AC_PROG_CC_C99
 AS_IF([test x"$ac_cv_prog_cc_c99" = "xno"],
       [AC_MSG_ERROR([A C99-compliant compiler is required.])])
+dnl Force C99-compliance
+dnl     Currently breaks some code depending on POSIX/BSD functions, for that
+dnl     we'll have to pass -D_BSD_SOURCE or a similar define to the compiler,
+dnl     before #including any header. So for now this is disabled.
+dnl VICE_CFLAGS="$VICE_CFLAGS -std=c99"
 AC_PROG_CPP
 dnl C++ check, at least C++11
 AC_PROG_CXX([c++ g++ clang++])
@@ -251,6 +239,10 @@ dnl C++ warnings implied by other settings but explicitly disabled:
 dnl     -Waddress-of-packed-member  (novte warnings)
 dnl     -Wchar-subscripts           (novte warnings)
 dnl
+dnl -Wunused-but-set-variable is enabled by -Wall in GCC >= 4.6 but doesn't
+dnl exist in clang < 13.0. clang-tidy implements this check though, so our
+dnl Github code analysis runner should find these issues pre-clang 13.
+dnl
 m4_foreach([flag],
            [[-W],
             [-Wall],
@@ -258,6 +250,7 @@ m4_foreach([flag],
             [-Wformat],
             [-Wformat-signedness],
             [-Wformat-pedantic],
+            [-Wformat-security],
             [-Wshadow],
             [-Wpointer-arith],
             [-Wmissing-prototypes],
@@ -269,7 +262,9 @@ m4_foreach([flag],
             [-Wfatal-errors],
             [-fdiagnostics-absolute-paths],
             [-Wshorten-64-to-32],
-            [-Wdiscarded-qualifiers]],
+            [-Wdiscarded-qualifiers],
+            [-Wno-unknown-pragmas],
+            [-Wunused-but-set-variable]],
            [TEST_FLAG=flag
             VICE_CFLAG_REQUEST([$TEST_FLAG])
            ])
@@ -395,9 +390,6 @@ AC_SUBST(VICE_PDF_FILE_NAME)
 AM_CONDITIONAL([ENABLE_HTML_DOCS], [test x"${enable_html_docs:-yes}" != xno])
 AM_CONDITIONAL([HAVE_PERL], [test x"$PERL" != x])
 
-dnl Seems to be used for AmigaOS, not available on Debian:
-AC_CHECK_PROGS(MAKEGUIDE, makeguide, no)
-
 AC_CHECK_PROGS(ICONV, iconv, no)
 AS_IF([test x"$ICONV" = x"no"], [AC_MSG_ERROR([iconv is missing])])
 AC_CHECK_TOOL(RANLIB, ranlib, :)
@@ -438,7 +430,6 @@ HAS_HIDMGR_SUPPORT="no "
 HAS_USB_JOYSTICK_SUPPORT="no "
 HAVE_AUDIO_UNIT_SUPPORT="no "
 HAVE_CATWEASELMKIII_SUPPORT="no "
-HAVE_DEVICES_AHI_H_SUPPORT="no "
 HAVE_DINPUT_SUPPORT="no "
 HAVE_DYNLIB_SUPPORT_TOO="no "
 HAVE_FASTSID_SUPPORT="no "
@@ -452,7 +443,6 @@ HAVE_HARDSID_SUPPORT="no "
 HAVE_HWSCALE_SUPPORT="no "
 HAVE_IOSID_SUPPORT="no "
 HAVE_IPV6_SUPPORT="no "
-HAVE_JPEG_SUPPORT="no "
 HAVE_LIBIEEE1284_SUPPORT="no "
 HAVE_LIGHTPEN_SUPPORT="no "
 HAVE_MIDI_SUPPORT="no "
@@ -462,7 +452,6 @@ HAVE_PARSID_SUPPORT="no "
 HAVE_PCIUTILS_SUPPORT="no "
 HAVE_PNG_SUPPORT="no "
 HAVE_PORTSID_SUPPORT="no "
-HAVE_PROTO_OPENPCI_H_SUPPORT="no "
 HAVE_RAWNET_SUPPORT="no "
 HAVE_REALDEVICE_SUPPORT="no "
 HAVE_RESID_SUPPORT="no "
@@ -499,7 +488,22 @@ HAVE_LIBCURL_SUPPORT="no "
 dnl Why do we have this?
 AM_CONDITIONAL(DUMMY_COMPILE, false)
 
-AS_IF([test x"$enable_cpuhistory" = "xyes"],
+dnl Set all FOO_COMPILE conditionals to false to simplify the code below
+
+dnl BEOS_COMPILE means both 'classic' BeOS and Haiku
+AM_CONDITIONAL(BEOS_COMPILE, false)
+dnl HAIKU_COMPILE means specifically Haiku
+AM_CONDITIONAL(HAIKU_COMPILE, false)
+AM_CONDITIONAL(LINUX_COMPILE, false)
+dnl BSD_COMPILE means Free, Net, Open and DragonFly BSD
+AM_CONDITIONAL(BSD_COMPILE, false)
+AM_CONDITIONAL(FREEBSD_COMPILE, false)
+AM_CONDITIONAL(NETBSD_COMPILE, false)
+AM_CONDITIONAL(OPENBSD_COMPILE, false)
+AM_CONDITIONAL(DRAGONFLYBSD_COMPILE, false)
+
+
+AS_IF([test x"$enable_cpuhistory" != "xno"],
   [
     AC_DEFINE(FEATURE_CPUMEMHISTORY,,[Use the 65xx cpu history feature.])
     FEATURE_CPUMEMHISTORY_SUPPORT="yes"
@@ -522,16 +526,16 @@ PKG_PROG_PKG_CONFIG
 SOUND_DRIVERS=""
 
 dnl Check if a GUI order check needs to be done
-AS_IF([test x"$enable_native_gtk3ui" != "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes" -a x"$enable_headlessui" != "xyes"],
+AS_IF([test x"$enable_gtk3ui" != "xyes" -a x"$enable_sdl1ui" != "xyes" -a x"$enable_sdl2ui" != "xyes" -a x"$enable_headlessui" != "xyes"],
       [check_guis=yes])
 
 dnl Check if gtk3 ui should be checked
 if test x"$check_guis" = "xyes"; then
-  if test x"$enable_native_gtk3ui" != "xno"; then
+  if test x"$enable_gtk3ui" != "xno"; then
     check_gtk3=yes
   fi
 else
-  if test x"$enable_native_gtk3ui" = "xyes"; then
+  if test x"$enable_gtk3ui" = "xyes"; then
     check_gtk3=yes
   fi
 fi
@@ -574,38 +578,36 @@ else
   AC_MSG_ERROR([can not figure type of time_t])
 fi
 
-dnl We probably shouldn't need these:
-AM_CONDITIONAL([HAVE_BSD], false)
-AM_CONDITIONAL([HAVE_BSD_FREE], false)
-AM_CONDITIONAL([HAVE_BSD_NET], false)
-AM_CONDITIONAL([HAVE_BSD_OPEN], false)
-AM_CONDITIONAL([HAVE_BSD_DRAGON], false)
 
-CFLAGS="$old_CFLAGS"
 dnl Add runtime/linker paths for *BSD
-dnl
-dnl This needs to be altered to use VICE_**FLAGS, but I'm kinda busy making that
-dnl work on Linux and Windows. So once that works, alter this:
+CFLAGS="$old_CFLAGS"
+
 case "$host_os" in
   freebsd*)
-    AM_CONDITIONAL([HAVE_BSD], true)
-    AM_CONDITIONAL([HAVE_BSD_FREE], true)
+    AC_DEFINE(BSD_COMPILE,,[Are we compiling for *BSD?])
+    AC_DEFINE(FREEBSD_COMPILE,,[Are we compiling for FreeBSD?])
+    AM_CONDITIONAL(BSD_COMPILE, true)
+    AM_CONDITIONAL(FREEBSD_COMPILE, true)
     CPPFLAGS="$CPPFLAGS -I/usr/local/include"
     fbsdrtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/local/lib"`
     VICE_LDFLAGS="$VICE_LDFLAGS $fbsdrtp -L/usr/local/lib"
     ;;
   netbsd*)
-    AM_CONDITIONAL([HAVE_BSD], true)
-    AM_CONDITIONAL([HAVE_BSD_NET], true)
+    AC_DEFINE(BSD_COMPILE,,[Are we compiling for *BSD?])
+    AC_DEFINE(NETBSD_COMPILE,,[Are we compiling for NetBSD?])
+    AM_CONDITIONAL(BSD_COMPILE, true)
+    AM_CONDITIONAL(NETBSD_COMPILE, true)
     CPPFLAGS="$CPPFLAGS -I/usr/pkg/include -I/usr/include"
     nbsdrtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/pkg/lib"`
     VICE_LDFLAGS="$VICE_LDFLAGS $nbsdrtp -L/usr/pkg/lib"
     if test -d "/usr/X11R7/lib"; then
+      CPPFLAGS="$CPPFLAGS -I/usr/X11R7/include"
       rtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/X11R7/lib"`
       VICE_LDFLAGS="$VICE_LDFLAGS $rtp"
       LDFLAGS="$LDFLAGS -L/usr/X11R7/lib"
     else
       if test -d "/usr/X11R6/lib"; then
+        CPPFLAGS="$CPPFLAGS -I/usr/X11R6/include"
         rtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/X11R6/lib"`
         VICE_LDFLAGS="$VICE_LDFLAGS $rtp -L/usr/X11R6/lib"
         LDFLAGS="$LDFLAGS -L/usr/X11R6/lib"
@@ -613,20 +615,28 @@ case "$host_os" in
     fi
     ;;
   openbsd*)
-    AM_CONDITIONAL([HAVE_BSD], true)
-    AM_CONDITIONAL([HAVE_BSD_OPEN], true)
+    AC_DEFINE(BSD_COMPILE,,[Are we compiling for *BSD?])
+    AC_DEFINE(OPENBSD_COMPILE,,[Are we compiling for OpenBSD?])
+    AM_CONDITIONAL(BSD_COMPILE, true)
+    AM_CONDITIONAL(OPENBSD_COMPILE, true)
     CPPFLAGS="$CPPFLAGS -I/usr/local/include"
     obsdrtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/local/lib"`
     VICE_LDFLAGS="$VICE_LDFLAGS $obsdrtp -L/usr/local/lib"
     ;;
   dragonfly*)
+    AC_DEFINE(BSD_COMPILE,,[Are we compiling for *BSD?])
+    AC_DEFINE(DRAGONFLYBSD_COMPILE,,[Are we compiling for DragonFly BSD?])
+    AM_CONDITIONAL(BSD_COMPILE, true)
+    AM_CONDITIONAL(DRAGONFLYBSD_COMPILE, true)
     CPPFLAGS="$CPPFLAGS -I/usr/local/include"
     dfbsdrtp=`${CONFIG_SHELL-/bin/sh} "$srcdir/config.rpath" "$CC" "$GCC" "$VICE_LDFLAGS" "$LD" "$with_gnu_ld" "$host" "/usr/local/lib"`
     VICE_LDFLAGS="$VICE_LDFLAGS $dfbsdrtp -L/usr/local/lib"
     ;;
+  dnl Why is this in BSD section?
   cygwin*)
     VICE_CPPFLAGS="$VICE_CPPFLAGS -D_GNU_SOURCE=1"
     ;;
+  dnl Again: why?
   mingw32*)
     is_win32=yes
     ;;
@@ -732,7 +742,10 @@ fi
 
 JOYSTICK_DRIVERS=""
 
-dnl Setup crosscompiling.
+dnl Hardware SID drivers (obsolete so disabled by default)
+AM_CONDITIONAL(HAVE_CATWEASELMKIII, false)
+AM_CONDITIONAL(HAVE_PARSID, false)
+AM_CONDITIONAL(HAVE_SSI2001, false)
 
 if test x"$is_win32" = "xyes" -o x"$is_win32_gtk3" = "xyes"; then
 
@@ -749,20 +762,22 @@ if test x"$is_win32" = "xyes" -o x"$is_win32_gtk3" = "xyes"; then
   AC_DEFINE(HAVE_RS232NET,,[Enable RS232 network support])
   HAVE_RS232NET_SUPPORT="yes"
   if test x"$host_cpu" = "xx86_64" -o x"$host_cpu" = "xamd64"; then
-    LIBS="$LIBS -lwinmm -lws2_32 -lntdll -ld2d1 -ld3d11"
+    LIBS="$LIBS -lwinmm -lntdll -ld2d1 -ld3d11 -lavrt -lws2_32"
   else
-    LIBS="$LIBS -lwinmm -lwsock32 -lmingwex -lmsvcrt -lntdll -ld2d1 -ld3d11"
+    LIBS="$LIBS -lwinmm -lntdll -ld2d1 -ld3d11 -lavrt -lwsock32 -lmingwex -lmsvcrt"
   fi
-  if test x"$enable_catweasel" != "xno"; then
+  if test x"$enable_catweasel" = "xyes"; then
     AC_DEFINE(HAVE_CATWEASELMKIII,,[Support for Catweasel MKIII.])
+    AM_CONDITIONAL(HAVE_CATWEASELMKIII, true)
     HAVE_CATWEASELMKIII_SUPPORT="yes"
   fi
   if test x"$enable_hardsid" != "xno"; then
     AC_DEFINE(HAVE_HARDSID,,[Support for HardSID.])
     HAVE_HARDSID_SUPPORT="yes"
   fi
-  if test x"$enable_parsid" != "xno"; then
+  if test x"$enable_parsid" = "xyes"; then
     AC_DEFINE(HAVE_PARSID,,[Support for ParSID.])
+    AM_CONDITIONAL(HAVE_PARSID, true)
     HAVE_PARSID_SUPPORT="yes"
 
     if test x"$enable_libieee1284" = "xyes"; then
@@ -783,18 +798,14 @@ if test x"$is_win32" = "xyes" -o x"$is_win32_gtk3" = "xyes"; then
       fi
     fi
   fi
-  if test x"$enable_ssi2001" != "xno"; then
+  if test x"$enable_ssi2001" = "xyes"; then
     AC_DEFINE(HAVE_SSI2001,,[Support for SSI2001 (ISA SID card).])
+    AM_CONDITIONAL(HAVE_SSI2001, true)
     HAVE_SSI2001_SUPPORT="yes"
   fi
   if test x"$enable_midi" = "xyes"; then
     AC_DEFINE(HAVE_MIDI,,[Enable support for MIDI.])
     HAVE_MIDI_SUPPORT="yes"
-  fi
-  if test x"$enable_ethernet" = "xyes"; then
-    AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
-    AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
-    HAVE_RAWNET_SUPPORT="yes"
   fi
   if test x"$enable_rs232" != "xno"; then
     AC_DEFINE(HAVE_RS232DEV,,[Enable RS232 device emulation.])
@@ -819,9 +830,16 @@ elif test x"$host_os" = "xbeos" -o x"$host_os" = "xhaiku"; then
 
   is_beos=yes
   AC_DEFINE(BEOS_COMPILE,,[Are we compiling for either BeOS or Haiku?])
+  AM_CONDITIONAL(BEOS_COMPILE, true)
 
-  if test x"$enable_catweasel" != "xno"; then
+  if test x"$host_os" = "xhaiku"; then
+    AC_DEFINE(HAIKU_COMPILE,,[Are we compiling for Haiku?])
+    AM_CONDITIONAL(HAIKU_COMPILE, true)
+  fi
+
+  if test x"$enable_catweasel" = "xyes"; then
     AC_DEFINE(HAVE_CATWEASELMKIII,,[Support for Catweasel MKIII.])
+    AM_CONDITIONAL(HAVE_CATWEASELMKIII, true)
     HAVE_CATWEASELMKIII_SUPPORT="yes"
   fi
 
@@ -830,8 +848,9 @@ elif test x"$host_os" = "xbeos" -o x"$host_os" = "xhaiku"; then
     HAVE_HARDSID_SUPPORT="yes"
   fi
 
-  if test x"$enable_parsid" != "xno"; then
+  if test x"$enable_parsid" = "xyes"; then
     AC_DEFINE(HAVE_PARSID,,[Support for ParSID.])
+    AM_CONDITIONAL(HAVE_PARSID, true)
     HAVE_PARSID_SUPPORT="yes"
 
     if test x"$enable_libieee1284" = "xyes"; then
@@ -853,8 +872,9 @@ elif test x"$host_os" = "xbeos" -o x"$host_os" = "xhaiku"; then
     fi
   fi
 
-  if test x"$enable_ssi2001" != "xno"; then
+  if test x"$enable_ssi2001" = "xyes"; then
     AC_DEFINE(HAVE_SSI2001,,[Support for SSI2001 (ISA SID card).])
+    AM_CONDITIONAL(HAVE_SSI2001, true)
     HAVE_SSI2001_SUPPORT="yes"
   fi
 
@@ -917,16 +937,41 @@ darwin*)
   RANLIB="\$(top_srcdir)/src/arch/shared/macOS-wrap-ranlib.sh"
   AR="\$(top_srcdir)/src/arch/shared/macOS-wrap-ar.sh"
 
+  dnl
   dnl Support targeting a specific macOS version
-  AC_ARG_ENABLE([macos-target-sdk-version],
-    [AC_HELP_STRING([--enable-macos-target-sdk-version[[=version]]],
-      [compile for a specific sdk version such as 10.10 or 11.0 [default=no]])],
-    [],
-    [enable_macos_target_sdk_version=`otool -l /bin/ls | grep sdk | awk '{ print $2 }'`])
-  
-  VICE_CFLAGS="$VICE_CFLAGS -mmacosx-version-min=$enable_macos_target_sdk_version"
-  VICE_CXXFLAGS="$VICE_CXXFLAGS -mmacosx-version-min=$enable_macos_target_sdk_version"
-  VICE_LDFLAGS="$VICE_LDFLAGS -mmacosx-version-min=$enable_macos_target_sdk_version"
+  dnl
+
+  VICE_ARG_ENABLE_LIST(
+    macos-minimum-version,
+    AS_HELP_STRING(
+      [--enable-macos-minimum-version=version],
+      [compile for a specific macOS version such as 10.10 or 11.0])
+    )
+  if test x"$enable_macos_minimum_version" = "x"; then
+    AC_MSG_CHECKING([default macOS minimum version (use --enable-macos-minimum-version to override)])
+    enable_macos_minimum_version=`echo "int main(int argc, char** argv) { return 0; }" | cc -x c - ;
+                                  otool -l a.out | awk '/LC_VERSION_MIN_MACOSX/ { f_old=1 }
+                                                        /LC_BUILD_VERSION/ { f_new=1 }
+                                                        f_old && /version/ { print $2; exit; }
+                                                        f_new && /minos/ { print $2; exit; }' ;
+                                  rm a.out`
+    AC_MSG_RESULT($enable_macos_minimum_version)
+  else
+    AC_MSG_CHECKING([if the compiler supports -mmacosx-version-min=$enable_macos_minimum_version])
+    ORIG_CFLAGS="$CFLAGS"
+    CFLAGS="$VICE_CFLAGS -mmacosx-version-min=$enable_macos_minimum_version"
+    AC_TRY_COMPILE([],
+                  [int test;],
+                  [ AC_MSG_RESULT(yes)
+                    CFLAGS="$ORIG_CFLAGS"],
+                  [ AC_MSG_RESULT(no)
+                    AC_MSG_ERROR([Requested macOS minimum version $enable_macos_minimum_version not supported])
+                    ])
+  fi
+
+  VICE_CFLAGS="$VICE_CFLAGS -mmacosx-version-min=$enable_macos_minimum_version"
+  VICE_CXXFLAGS="$VICE_CXXFLAGS -mmacosx-version-min=$enable_macos_minimum_version"
+  VICE_LDFLAGS="$VICE_LDFLAGS -mmacosx-version-min=$enable_macos_minimum_version"
 
   dnl
   dnl Yeah, OpenGL and other stuff is deprecated, we don't need to be warned about it.
@@ -946,7 +991,7 @@ darwin*)
   AC_DEFINE(HAVE_LIGHTPEN,,[Enable lightpen support])
   HAVE_LIGHTPEN_SUPPORT="yes"
 
-  AC_DEFINE(MACOSX_SUPPORT,,[Enable Mac OS X specific code.])
+  AC_DEFINE(MACOS_COMPILE,,[Enable MacOS-specific code.])
 
   dnl Set CPPFLAGS as well as VICE_CPPFLAGS for the macports / homebrew dep search paths.
   dnl If we don't, then various header / compile checks won't succeed.
@@ -987,6 +1032,13 @@ dnl All other UN*X systems
 *)
   is_unix=yes
   is_unix_x11=yes
+
+  case "$host_os" in
+  linux*)
+    AC_DEFINE(LINUX_COMPILE,,[Are we compiling for Linux?])
+    AM_CONDITIONAL(LINUX_COMPILE, true)
+    ;;
+  esac
 
   AC_DEFINE(HAVE_MOUSE,,[Enable 1351 mouse support])
   HAVE_MOUSE_SUPPORT="yes"
@@ -1037,12 +1089,11 @@ else
   VICE_CPPFLAGS="$VICE_CPPFLAGS -DNDEBUG"
   DEBUGBUILD=0
   dnl Remove super annoying horrible terminal window on Windows
-  dnl I have a feeling this should be in LDFLAGS, but I haven't got around to
-  dnl proper supporting VICE_LDFLAGS
-  if test x"$is_win32" = "xyes"; then
-     VICE_CPPFLAGS="$VICE_CPPFLAGS -mwindows"
-     VICE_CFLAGS="$VICE_CFLAGS -mwindows"
-     VICE_CXXFLAGS="$VICE_CXXFLAGS -mwindows"
+  dnl (but not when using the headless 'UI')
+  if test x"$is_win32" = "xyes" -a x"$enable_headlessui" != "xyes"; then
+    VICE_CPPFLAGS="$VICE_CPPFLAGS -mwindows"
+    VICE_CFLAGS="$VICE_CFLAGS -mwindows"
+    VICE_CXXFLAGS="$VICE_CXXFLAGS -mwindows"
   fi
 fi
 
@@ -1115,7 +1166,7 @@ if test x"$enable_debug_threads" = x"yes"; then
 fi
 
 
-dnl Check and setup native GTK3 compilation, only fail if the gtk3 ui was requested
+dnl Check and setup GTK3 compilation, only fail if the gtk3 ui was requested
 if test x"$check_gtk3" = "xyes"; then
 
   PKG_CHECK_MODULES(GTK, [gtk+-3.0 >= 3.22], [have_gtk3_module=yes], [have_gtk3_module=no; AC_MSG_RESULT([no])])
@@ -1126,7 +1177,7 @@ if test x"$check_gtk3" = "xyes"; then
 
   dnl error out if gtk3 support is missing and gtk3 ui was requested
   if test x"$have_gtk3_module" = "xno" -o x"$have_glib2_module" = "xno"; then
-    if test x"$enable_native_gtk3ui" = "xyes"; then
+    if test x"$enable_gtk3ui" = "xyes"; then
       AC_MSG_ERROR([GTK3 UI requested, but GTK3 support packages are missing])
     fi
   fi
@@ -1208,9 +1259,9 @@ if test x"$check_gtk3" = "xyes"; then
       fi
     fi
 
-    AC_DEFINE(USE_NATIVE_GTK3,,[Use native GTK3 UI.])
+    AC_DEFINE(USE_GTK3UI,,[Use GTK3 UI.])
     if test x"$enable_debug_gtk3ui" = "xyes"; then
-      AC_DEFINE(HAVE_DEBUG_GTK3UI,,[Add native GTK3 UI debugging code.])
+      AC_DEFINE(HAVE_DEBUG_GTK3UI,,[Add GTK3 UI debugging code.])
     fi
 
     dnl Platform canonical names for Win32-GTK3 have names like "i686-w64-mingw32"
@@ -1235,10 +1286,10 @@ if test x"$check_gtk3" = "xyes"; then
       AC_DEFINE(HAVE_FONTCONFIG,,[Use fontconfig for custom fonts.])
     fi
 
-    dnl now that the GTK3 UI support has been detected, define enable_native_gtk3ui and undefine the others to prevent checks
-    enable_native_gtk3ui=yes
-    enable_sdlui=no
-    enable_sdlui2=no
+    dnl now that the GTK3 UI support has been detected, define enable_gtk3ui and undefine the others to prevent checks
+    enable_gtk3ui=yes
+    enable_sdl1ui=no
+    enable_sdl2ui=no
     enable_headlessui=no
     found_gui=gtk3
 
@@ -1251,20 +1302,20 @@ fi
 
 dnl Check if sdl2 ui should be checked
 if test x"$check_guis" = "xyes"; then
-  if test x"$enable_sdlui2" != "xno"; then
+  if test x"$enable_sdl2ui" != "xno"; then
     check_sdl2=yes
   fi
 else
-  if test x"$enable_sdlui2" = "xyes"; then
+  if test x"$enable_sdl2ui" = "xyes"; then
     check_sdl2=yes
   fi
 fi
-if test x"$with_sdlsound" = "xyes"; then
+if test x"$with_sdlsound" = "xyes" -a x"$enable_sdl1ui" != "xyes"; then
   check_sdl2=yes
-  if test x"$enable_headlessui" = "xyes" -o x"$enable_native_gtk3ui" = "xyes"; then
+  if test x"$enable_headlessui" = "xyes" -o x"$enable_gtk3ui" = "xyes"; then
     check_sdlaudio_only=yes
-    enable_sdlui=no
-    enable_sdlui2=no
+    enable_sdl1ui=no
+    enable_sdl2ui=no
   fi
 fi
 
@@ -1286,8 +1337,8 @@ if test x"$check_sdl2" = "xyes"; then
     LIBS="$LIBS $SDL2_LIBS"
   ],[
     dnl fail if SDL2 ui was requested, otherwise restore flags and continue
-    if test x"$enable_sdlui2" = "xyes"; then
-      AC_MSG_ERROR([SDL2 UI requested, but SDL2 is missing])
+    if test x"$enable_sdl2ui" = "xyes"; then
+      AC_MSG_ERROR([SDL 2.x UI requested, but SDL 2.x library is missing.])
     fi
   ])
 
@@ -1296,7 +1347,7 @@ if test x"$check_sdl2" = "xyes"; then
 
     dnl check for the 2 cases where audio needs to be checked
     check_sdl2audio=no
-    if test x"$enable_sdlui2" = "xyes" -o x"$with_sdlsound" = "xyes"; then
+    if test x"$enable_sdl2ui" = "xyes" -o x"$with_sdlsound" = "xyes"; then
       check_sdl2audio=yes
     fi
 
@@ -1328,8 +1379,8 @@ if test x"$check_sdl2" = "xyes"; then
     dnl SDL2 now definitely works, so set the last few settings.
     dnl SDL2 is much more consistent than SDL1 so none of these
     dnl actually require tests.
-    if test x"$enable_sdlui2" != "xno"; then
-      AC_DEFINE(USE_SDLUI2,,[Enable SDL2 UI support.])
+    if test x"$enable_sdl2ui" != "xno"; then
+      AC_DEFINE(USE_SDL2UI,,[Enable SDL 2.x UI support.])
       AC_DEFINE(HAVE_FULLSCREEN,,[Enable Fullscreen support.])
       HAVE_FULLSCREEN_SUPPORT="yes"
       AC_DEFINE(HAVE_HWSCALE,,[Enable arbitrary window scaling])
@@ -1337,13 +1388,13 @@ if test x"$check_sdl2" = "xyes"; then
 
       AC_CHECK_FUNCS(SDL_NumJoysticks)
 
-      dnl now that the SDL2 UI support has been detected, define
-      dnl enable_sdlui2 and undefine the others to prevent checks
+      dnl now that the SDL 2.0 UI support has been detected, define
+      dnl enable_sdl2ui and undefine the others to prevent checks
 
       if test x"$check_sdlaudio_only" != "xyes"; then
-        enable_native_gtk3ui=no
-        enable_sdlui=no
-        enable_sdlui2=yes
+        enable_gtk3ui=no
+        enable_sdl1ui=no
+        enable_sdl2ui=yes
         enable_headlessui=no
         found_gui=sdl2
       fi
@@ -1370,11 +1421,11 @@ fi
 
 dnl Check if sdl ui should be checked
 if test x"$check_guis" = "xyes"; then
-  if test x"$enable_sdlui" != "xno"; then
+  if test x"$enable_sdl1ui" != "xno"; then
     check_sdl1=yes
   fi
 else
-  if test x"$enable_sdlui" = "xyes"; then
+  if test x"$enable_sdl1ui" = "xyes"; then
     check_sdl1=yes
   fi
 fi
@@ -1382,13 +1433,14 @@ if test x"$with_sdlsound" = "xyes"; then
   check_sdl1=yes
 fi
 
-dnl Check and setup SDL compilation.
+
+dnl Check and setup SDL 1.2 compilation.
 if test x"$check_sdl1" = "xyes"; then
 
   dnl check for the 2 cases where audio needs to be checked
   check_sdlaudio=no
   if test x"$ac_cv_lib_SDL2_SDL_OpenAudio" != "xyes"; then
-    if test x"$enable_sdlui" = "xno"; then
+    if test x"$enable_sdl1ui" = "xno"; then
       if test x"$with_sdlsound" = "xyes"; then
         check_sdlaudio=yes
       fi
@@ -1398,7 +1450,7 @@ if test x"$check_sdl1" = "xyes"; then
   fi
 
   dnl fail if SDL ui was requested
-  if test x"$sdl_config" = "xno" -a x"$enable_sdlui" = "xyes"; then
+  if test x"$sdl_config" = "xno" -a x"$enable_sdl1ui" = "xyes"; then
     AC_MSG_ERROR([SDL UI requested, but sdl-config is missing])
   fi
 
@@ -1442,12 +1494,12 @@ if test x"$check_sdl1" = "xyes"; then
       fi
     fi
 
-    dnl only check if sdl ui is needed
-    if test x"$enable_sdlui" != "xno"; then
+    dnl only check if SDL 1.2 ui is needed
+    if test x"$enable_sdl1ui" != "xno"; then
       AC_CHECK_HEADERS(SDL/SDL.h,[AC_CHECK_LIB(SDL, SDL_SetVideoMode,
                          [use_sdl_prefix=yes;
                           AC_DEFINE(USE_SDL_PREFIX,,[Enable SDL prefix for header inclusion.])
-                          AC_DEFINE(USE_SDLUI,,[Enable SDL UI support.])],
+                          AC_DEFINE(USE_SDLUI,,[Enable SDL 1.2 UI support.])],
                          [CFLAGS="$user_cflags"; CXXFLAGS="$user_cxxflags"; LIBS=$old_libs; break],$EXTRA_SDL_LIBS)],
                          [CFLAGS="$user_cflags"; CXXFLAGS="$user_cxxflags"; LIBS=$old_libs; break])
 
@@ -1455,14 +1507,14 @@ if test x"$check_sdl1" = "xyes"; then
           unset ac_cv_lib_SDL_SDL_SetVideoMode
           AC_CHECK_HEADERS(SDL.h,[AC_CHECK_LIB(SDL, SDL_SetVideoMode,
                            [use_sdl_prefix=no;
-                            AC_DEFINE(USE_SDLUI,,[Enable SDL UI support.])],
+                            AC_DEFINE(USE_SDLUI,,[Enable SDL 1.2 UI support.])],
                            [CFLAGS=$old_cflags; CXXFLAGS=$old_cxxflags; LIBS=$old_libs; break],$EXTRA_SDL_LIBS)],
                            [CFLAGS=$old_cflags; CXXFLAGS=$old_cxxflags; LIBS=$old_libs; break])
         fi
 
-        dnl fail if SDL ui was requested
-        if test x"$ac_cv_lib_SDL_SDL_SetVideoMode" != "xyes" -a x"$enable_sdlui" = "xyes"; then
-          AC_MSG_ERROR([SDL headers and/or libraries missing])
+        dnl fail if SDL 1.2 ui was requested
+        if test x"$ac_cv_lib_SDL_SDL_SetVideoMode" != "xyes" -a x"$enable_sdl1ui" = "xyes"; then
+          AC_MSG_ERROR([SDL 1.2 headers and/or libraries missing])
         fi
 
       dnl only continue if SDL headers/libs are present
@@ -1501,7 +1553,7 @@ if test x"$check_sdl1" = "xyes"; then
           fi
 
           if test x"$have_opengl_lib" != "xyes"; then
-            AC_MSG_ERROR(The SDL1 UI requires OpenGL for hardware scaling. Install OpenGL development headers or set --disable-hwscale to disable scaling.)
+            AC_MSG_ERROR(The SDL 1.2 UI requires OpenGL for hardware scaling. Install OpenGL development headers or set --disable-hwscale to disable scaling.)
           fi
         fi
 
@@ -1591,11 +1643,11 @@ if test x"$check_sdl1" = "xyes"; then
           AC_MSG_ERROR([SDL_image1.2-dev is required.])
         fi
 
-        dnl now that the SDL1 UI support has been detected, define enable_sdlui and undefine the others to prevent checks
+        dnl now that the SDL1 UI support has been detected, define enable_sdl1ui and undefine the others to prevent checks
         if test x"$check_sdlaudio_only" != "xyes"; then
-          enable_native_gtk3ui=no
-          enable_sdlui=yes
-          enable_sdlui2=no
+          enable_gtk3ui=no
+          enable_sdl1ui=yes
+          enable_sdl2ui=no
           enable_headlessui=no
           found_gui=sdl1
         fi
@@ -1606,9 +1658,9 @@ fi
 
 if test x"$enable_headlessui" = "xyes"; then
   AC_DEFINE(USE_HEADLESSUI,,[Enable Headless UI support.])
-  enable_native_gtk3ui=no
-  enable_sdlui=no
-  enable_sdlui2=no
+  enable_gtk3ui=no
+  enable_sdl1ui=no
+  enable_sdl2ui=no
   found_gui=headless
 fi
 
@@ -1619,19 +1671,19 @@ fi
 
 
 dnl Check if --enable-debug-gtk3ui was requested but the UI isn't gtk3
-if test x"$enable_debug_gtk3ui" = "xyes" -a x"$enable_native_gtk3ui" != "xyes"; then
+if test x"$enable_debug_gtk3ui" = "xyes" -a x"$enable_gtk3ui" != "xyes"; then
     AC_MSG_ERROR([Requested Gtk3 UI debugging, but the requested UI isn't Gtk3.])
 fi
 
 
 dnl Check if --disable-hwscale was requested for the Gtk3 UI
-if test x"$enable_native_gtk3ui" = "xyes" -a x"$enable_hwscale" = "xno"; then
+if test x"$enable_gtk3ui" = "xyes" -a x"$enable_hwscale" = "xno"; then
   AC_MSG_ERROR([The option `--disable-hwscale` is illegal for the Gtk3 UI. Please remove the option and make sure the OpenGL development headers are installed.])
 fi
 
 
 dnl Check if --disable-hwscale was requested for the Gtk3 UI
-if test x"$enable_sdlui2" = "xyes" -a x"$enable_hwscale" = "xno"; then
+if test x"$enable_sdl2ui" = "xyes" -a x"$enable_hwscale" = "xno"; then
   AC_MSG_ERROR([The option `--disable-hwscale` is illegal for the SDL2 UI.])
 fi
 
@@ -1645,7 +1697,7 @@ if test x"$with_sdlsound" = "xyes"; then
 fi
 
 dnl are we putting emu into a background thread (requires UI code support)
-if test x"$enable_native_gtk3ui" = "xyes"; then
+if test x"$enable_gtk3ui" = "xyes"; then
   AC_DEFINE(USE_VICE_THREAD,,[UI and emu each on different threads])
   VICE_CFLAGS="$VICE_CFLAGS -pthread"
   VICE_CXXFLAGS="$VICE_CXXFLAGS -pthread"
@@ -1661,7 +1713,7 @@ else
   show_multithreaded="no"
 fi
 
-if test x"$is_win32" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+if test x"$is_win32" = "xyes" -a x"$enable_sdl1ui" != "xyes" -a x"$enable_sdl2ui" != "xyes" -a x"$enable_headlessui" != "xyes"; then
   dinput_header_no_lib="no"
 
   AC_CHECK_HEADER(dinput.h,
@@ -1672,9 +1724,9 @@ if test x"$is_win32" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2"
               [SAVELIBS="$LIBS"] [ LIBS="-ldinput8 $LIBS" ]
               [ AC_LINK_IFELSE([
                                AC_LANG_PROGRAM([
-							   #define DIRECTINPUT_VERSION 0x800
-							   #include <dinput.h>
-							   ],[return DirectInput8Create(0,0,0,0,0);])
+                               #define DIRECTINPUT_VERSION 0x800
+                               #include <dinput.h>
+                               ],[return DirectInput8Create(0,0,0,0,0);])
                                ],
                             [ AC_DEFINE(HAVE_DINPUT_LIB, [], [dinput8.lib or libdinput8.a are present]) ]
                             [ AC_MSG_RESULT(yes) ],
@@ -1693,7 +1745,7 @@ dnl
 AM_CONDITIONAL(INSTALL_DESKTOP_FILES, false)
 if test x"$enable_desktop_files" = "xyes"; then
     dnl Check Gtk3 UI
-    if test x"$enable_native_gtk3ui" != "xyes"; then
+    if test x"$enable_gtk3ui" != "xyes"; then
         AC_MSG_ERROR([XDG desktop files requested but UI is not Gtk3.])
     fi
     dnl Check OS (Unix)
@@ -1992,7 +2044,7 @@ AC_SUBST(DYNLIB_LIBS)
 
 dnl ----- Joystick support -----
 JOY_LIBS=
-if test x"$is_unix_x11" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+if test x"$is_unix_x11" = "xyes" -a x"$enable_sdl1ui" != "xyes" -a x"$enable_sdl2ui" != "xyes" -a x"$enable_headlessui" != "xyes"; then
   AC_CHECK_HEADER(linux/joystick.h,
                   [
                    AC_CHECK_DECL(JS_VERSION,[
@@ -2061,7 +2113,7 @@ if test x"$is_unix_x11" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlu
   fi
 fi
 
-if test x"$is_unix_macosx" = "xyes" -a x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+if test x"$is_unix_macosx" = "xyes" -a x"$enable_sdl1ui" != "xyes" -a x"$enable_sdl2ui" != "xyes" -a x"$enable_headlessui" != "xyes"; then
   dnl --- Mac joystick support ---
 
   dnl check for HID Manager
@@ -2315,12 +2367,13 @@ AC_SUBST(NETPLAY_LIBS)
 dnl ----- FFMPEG -----
 FFMPEG_INCLUDES=
 
-HAVE_EXTERNAL_FFMPEG=no
+HAVE_FFMPEG=no
+ffmpeg_use_header_subdirs=no
 
 AC_MSG_CHECKING([for FFMPEG support])
 
 dnl external ffmpeg
-if test x"$enable_external_ffmpeg" = "xyes"; then
+if test x"$enable_ffmpeg" = "xyes"; then
   PKG_PROG_PKG_CONFIG
 
   valid_ffmpeg_platform="no"
@@ -2343,7 +2396,8 @@ if test x"$enable_external_ffmpeg" = "xyes"; then
        CPPFLAGS="$CPPFLAGS $FFMPEG_AV_CFLAGS"
 
        AC_CHECK_HEADER(libavformat/avformat.h,
-        [AC_DEFINE([HAVE_FFMPEG_HEADER_SUBDIRS],,[FFMPEG uses subdirs for headers])],
+        [AC_DEFINE([HAVE_FFMPEG_HEADER_SUBDIRS],,[FFMPEG uses subdirs for headers])
+         ffmpeg_use_header_subdirs="yes"],
         [AC_CHECK_HEADER(avformat.h,,
           [AC_MSG_ERROR([No suitable FFMPEG header found!])])])
 
@@ -2374,7 +2428,7 @@ if test x"$enable_external_ffmpeg" = "xyes"; then
       [echo "no. disabled."]
     )
     AC_DEFINE([EXTERNAL_FFMPEG],,[External FFMPEG libraries are used])
-    HAVE_EXTERNAL_FFMPEG=yes
+    HAVE_FFMPEG=yes
     PKG_CHECK_MODULES(FFMPEG_SWRESAMPLE, [libswresample], [have_swresample=yes], [have_swresample=no])
     if test x"$have_swresample" = "xyes"; then
       AC_DEFINE([HAVE_FFMPEG_SWRESAMPLE],,[Have FFMPEG swresample lib available])
@@ -2394,12 +2448,36 @@ if test x"$enable_external_ffmpeg" = "xyes"; then
   fi
 fi
 
-AC_SUBST(FFMPEG_INCLUDES)
+if test x"$HAVE_FFMPEG" = "xyes"; then
 
-if test x"$HAVE_EXTERNAL_FFMPEG" != "xyes"; then
+  dnl
+  dnl After all that, is the version of ffmpeg compatible with our code.
+  dnl ffmpeg 4.x is, ffmpeg 5 is not.
+  dnl
+
+  ORIG_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $FFMPEG_INCLUDES"
+
+  TEST_FFMPEG_C=" AVCodecContext *context_dropped_in_ffmpeg_5;
+                  "
+
+  if test x"$ffmpeg_use_header_subdirs" = "xyes"; then
+    AC_TRY_COMPILE([ #include "libavformat/avformat.h" ],
+                   [ $TEST_FFMPEG_C ],
+                   ,
+                   [ AC_MSG_ERROR([ffmpeg version is not compatible. Use 4.x]) ])
+  else
+    AC_TRY_COMPILE([ #include "avformat.h" ],
+                   [ $TEST_FFMPEG_C ],
+                   ,
+                   [ AC_MSG_ERROR([ffmpeg version is not compatible. Use 4.x])])
+  fi
+
+  CFLAGS=$ORIG_CFLAGS
+  AC_SUBST(FFMPEG_INCLUDES)
+else
   AC_MSG_RESULT([disabled])
 fi
-
 
 dnl check for glibc 2.20+
 linux_glibc_220_and_up=yes
@@ -2422,66 +2500,79 @@ dnl ----- Ethernet -----
 TFE_LIBS=""
 if test x"$enable_ethernet" = "xyes"; then
   have_tuntap="no"
-  if test x"$is_win32_gtk3" = "xyes"; then
-    AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
-    AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
-    HAVE_RAWNET_SUPPORT="yes"
+  if test x"$is_win32" = "xyes"; then
+    dnl We don't set TFE_LIBS here since we dynload the DLLs required on Windows
+    dnl TODO: Maybe use AC_SEARCH_LIBS to support the npcap SDK headers?
+    AC_CHECK_LIB(pcap, pcap_inject,[
+      AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
+      AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
+      HAVE_RAWNET_SUPPORT="yes";
+      AC_DEFINE(HAVE_PCAP_INJECT,,[A libpcap version with pcap_inject is available])
+    ],,$LIBS)
+    AC_CHECK_LIB(pcap, pcap_sendpacket,[
+      AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
+      AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
+      HAVE_RAWNET_SUPPORT="yes";
+      AC_DEFINE(HAVE_PCAP_SENDPACKET,,[A libpcap version with pcap_sendpacket is available])
+    ],,$LIBS)
+    if test x"$HAVE_RAWNET_SUPPORT" != "xyes"; then
+      AC_MSG_ERROR([Ethernet support requested via --enable-ethernet, but the pcap headers were not found.])
+    fi
   else
-    if test x"$is_win32" = "xno"; then
+    dnl libpcap.a on Unix
+    AC_CHECK_LIB(nsl, gethostbyname,[ LIBS="-lnsl $LIBS" ],,)
+    AC_CHECK_LIB(socket, gethostbyname,[ LIBS="-lsocket $LIBS" ],,)
+    AC_CHECK_LIB(pcap, pcap_inject,[
+      AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
+      AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
+      HAVE_RAWNET_SUPPORT="yes";
+      AC_DEFINE(HAVE_PCAP_INJECT,,[A libpcap version with pcap_inject is available])
+      TFE_LIBS="-lpcap"
+    ],,$LIBS)
+    AC_CHECK_LIB(pcap, pcap_sendpacket,[
+      AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
+      AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
+      HAVE_RAWNET_SUPPORT="yes";
+      AC_DEFINE(HAVE_PCAP_SENDPACKET,,[A libpcap version with pcap_sendpacket is available])
+      TFE_LIBS="-lpcap"
+    ],,$LIBS)
     dnl libpcap.a
-      AC_CHECK_LIB(nsl, gethostbyname,[ LIBS="-lnsl $LIBS" ],,)
-      AC_CHECK_LIB(socket, gethostbyname,[ LIBS="-lsocket $LIBS" ],,)
-      AC_CHECK_LIB(pcap, pcap_inject,[
+    dnl libnet.a
+    AC_CHECK_LIB(pcap, pcap_open_live,[
+      AC_CHECK_LIB(net, libnet_init,[
         AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
         AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
         HAVE_RAWNET_SUPPORT="yes";
-        AC_DEFINE(HAVE_PCAP_INJECT,,[A libpcap version with pcap_inject is available])
-        TFE_LIBS="-lpcap"
-      ],,$LIBS)
-      AC_CHECK_LIB(pcap, pcap_sendpacket,[
+        AC_DEFINE(VICE_USE_LIBNET_1_1,,[Support for The Final Ethernet])
+        TFE_LIBS="-lpcap `libnet-config --libs`"
+        libnet_cflags="`libnet-config --defines`"
+    ],,$LIBS)],,$LIBS)
+    dnl libpcap.a
+    dnl libnet.a
+    AC_CHECK_LIB(pcap, pcap_open_live,[
+      AC_CHECK_LIB(net, libnet_write_link_layer,[
         AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
         AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
         HAVE_RAWNET_SUPPORT="yes";
-        AC_DEFINE(HAVE_PCAP_SENDPACKET,,[A libpcap version with pcap_sendpacket is available])
-        TFE_LIBS="-lpcap"
-      ],,$LIBS)
-    dnl libpcap.a
-    dnl libnet.a
-      AC_CHECK_LIB(pcap, pcap_open_live,[
-        AC_CHECK_LIB(net, libnet_init,[
-          AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
-          AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
-          HAVE_RAWNET_SUPPORT="yes";
-          AC_DEFINE(VICE_USE_LIBNET_1_1,,[Support for The Final Ethernet])
-          TFE_LIBS="-lpcap `libnet-config --libs`"
-          libnet_cflags="`libnet-config --defines`"
-      ],,$LIBS)],,$LIBS)
-    dnl libpcap.a
-    dnl libnet.a
-      AC_CHECK_LIB(pcap, pcap_open_live,[
-        AC_CHECK_LIB(net, libnet_write_link_layer,[
-          AC_DEFINE(HAVE_PCAP,,[Support for PCAP library.])
-          AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
-          HAVE_RAWNET_SUPPORT="yes";
-          TFE_LIBS="-lpcap `libnet-config --libs`"
-          libnet_cflags="`libnet-config --defines`"
-      ],,$LIBS)],,$LIBS)
-      if test x"$libnet_cflags" != "x"; then
-        if test x"$linux_glibc_220_and_up" = "xyes"; then
-          new_libnet_cflags=""
-          for i in $libnet_cflags
-          do
-            if test x"$i" = "x-D_BSD_SOURCE"; then
-              new_libnet_cflags="$new_libnet_cflags -D_DEFAULT_SOURCE"
-            else
-              new_libnet_cflags="$new_libnet_cflags $i"
-            fi
-          done
-          CFLAGS="$CFLAGS $new_libnet_cflags"
-        else
-          CFLAGS="$CFLAGS $libnet_cflags"
-        fi
+        TFE_LIBS="-lpcap `libnet-config --libs`"
+        libnet_cflags="`libnet-config --defines`"
+    ],,$LIBS)],,$LIBS)
+    if test x"$libnet_cflags" != "x"; then
+      if test x"$linux_glibc_220_and_up" = "xyes"; then
+        new_libnet_cflags=""
+        for i in $libnet_cflags
+        do
+          if test x"$i" = "x-D_BSD_SOURCE"; then
+            new_libnet_cflags="$new_libnet_cflags -D_DEFAULT_SOURCE"
+          else
+            new_libnet_cflags="$new_libnet_cflags $i"
+          fi
+        done
+        CFLAGS="$CFLAGS $new_libnet_cflags"
+      else
+        CFLAGS="$CFLAGS $libnet_cflags"
       fi
+    fi
     dnl check for tuntap
     AC_CHECK_HEADER(linux/if_tun.h,
                     [AC_DEFINE(HAVE_TUNTAP,,
@@ -2489,7 +2580,6 @@ if test x"$enable_ethernet" = "xyes"; then
                      AC_DEFINE(HAVE_RAWNET,,[Support for CS8900A ethernet controller.])
                      have_tuntap=yes
                      HAVE_RAWNET_SUPPORT="yes"])
-    fi
   fi
   if test x"$TFE_LIBS" = "x" -a x"$is_win32" = "xno" -a x"$is_win32_gtk3" = "xno" -a x"$have_tuntap" = "xno"; then
     AC_MSG_ERROR([Needed pcap library not found, please install libpcap-dev or equivalent])
@@ -2608,7 +2698,7 @@ fi
 dsound_header_no_lib="no"
 
 if test x"$is_win32" = "xyes" -o x"$is_win32_gtk3" = "xyes"; then
-    if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+    if test x"$enable_sdl1ui" != "xyes" -a x"$enable_sdl2ui" != "xyes"; then
         SOUND_DRIVERS="$SOUND_DRIVERS soundwmm.o"
         AC_MSG_CHECKING(whether we can use directx sound)
         AC_CHECK_HEADER(dsound.h,
@@ -2781,10 +2871,6 @@ if test x"$is_unix_macosx" = "xyes"; then
   fi
 fi
 
-if test x"$is_win32_gtk3" = "xyes" -a x"$enable_native_gtk3ui" = "xyes"; then
-  SOUND_DRIVERS="$SOUND_DRIVERS soundwmm.o"
-fi
-
 AC_SUBST(SOUND_DRIVERS)
 AC_SUBST(SOUND_LIBS)
 
@@ -2803,7 +2889,7 @@ if test x"$is_unix" = "xyes"; then
       ;;
   esac
 
-  if test x"$enable_parsid" != "xno" -o x"$enable_ssi2001" != "xno" -o x"$enable_hardsid" != "xno" -o x"$enable_catweasel" != "xno"; then
+  if test x"$enable_parsid" = "xyes" -o x"$enable_ssi2001" = "xyes" -o x"$enable_hardsid" != "xno" -o x"$enable_catweasel" = "xyes"; then
 
     if test x"$enable_libieee1284" = "xyes"; then
       LIBIEEE1284_HEADERS_PRESENT=yes
@@ -2898,17 +2984,20 @@ if test x"$is_unix" = "xyes"; then
     fi
 
     if test x"$IOSID_SUPPORT" = "xyes"; then
-      if test x"$enable_parsid" != "xno"; then
+      if test x"$enable_parsid" = "xyno"; then
         AC_DEFINE(HAVE_PARSID,,[Support for ParSID.])
+        AM_CONDITIONAL(HAVE_PARSID, true)
         HAVE_PARSID_SUPPORT="yes"
       fi
-      if test x"$enable_ssi2001" != "xno"; then
+      if test x"$enable_ssi2001" = "xyes"; then
         AC_DEFINE(HAVE_SSI2001,,[Support for SSI2001 (ISA SID card).])
+        AM_CONDITIONAL(HAVE_SSI2001, true)
         HAVE_SSI2001_SUPPORT="yes"
       fi
-      if test x"$enable_catweasel" != "xno"; then
+      if test x"$enable_catweasel" = "xyes"; then
         AC_DEFINE(HAVE_CATWEASELMKIII,,[Support for Catweasel MKIII.])
         AC_DEFINE(HAVE_CATWEASELMKIII_IO,,[Support for direct PCI I/O access Catweasel MKIII.])
+        AM_CONDITIONAL(HAVE_CATWEASELMKIII, true)
         HAVE_CATWEASELMKIII_SUPPORT="yes"
       fi
       if test x"$enable_hardsid" != "xno"; then
@@ -2921,15 +3010,17 @@ if test x"$is_unix" = "xyes"; then
         AC_DEFINE(HAVE_HARDSID,,[Support for HardSID.])
         HAVE_HARDSID_SUPPORT="yes"
       fi
-      if test x"$enable_catweasel" != "xno" -a x"$CATWEASEL_HEADER_PRESENT" = "xyes"; then
+      if test x"$enable_catweasel" = "xyes" -a x"$CATWEASEL_HEADER_PRESENT" = "xyes"; then
         AC_DEFINE(HAVE_CATWEASELMKIII,,[Support for Catweasel MKIII.])
+        AM_CONDITIONAL(HAVE_CATWEASELMKIII, true)
         HAVE_CATWEASELMKIII_SUPPORT="yes"
       fi
     fi
 
     if test x"$PORTSID_SUPPORT" = "xyes"; then
-      if test x"$enable_parsid" != "xno" -a x"HAVE_PARSID_SUPPORT" != "xyes"; then
+      if test x"$enable_parsid" = "xyes" -a x"HAVE_PARSID_SUPPORT" != "xyes"; then
         AC_DEFINE(HAVE_PARSID,,[Support for ParSID.])
+        AM_CONDITIONAL(HAVE_PARSID, true)
         AC_DEFINE(HAVE_PORTSID,,[Support for file device based access to ParSID.])
         HAVE_PARSID_SUPPORT="yes"
       fi
@@ -2950,6 +3041,13 @@ AC_TYPE_SIGNAL
 AC_FUNC_VFORK
 AC_CHECK_TYPES(u_short)
 AC_CHECK_TYPES(socklen_t, [], [], [[#include <sys/socket.h>]])
+dnl POSIX provides off_t by including <stdio.h>, but on Windows we have to
+dnl include <sys/types.h>
+AC_CHECK_TYPES(off_t)
+AC_CHECK_TYPES(off_t,
+               [AC_DEFINE(HAVE_OFF_T_IN_SYS_TYPES,,[Include sys/types.h for off_t])],
+               [],
+               [[#include <sys/types.h>]])
 
 dnl some platforms have some of the functions in libbsd,
 dnl so we check it out first.
@@ -2959,7 +3057,7 @@ dnl some platforms have some of the functions in libposix,
 dnl so we check it out second.
 AC_CHECK_LIB(posix,gettimeofday,,,$LIBS)
 
-AC_CHECK_FUNCS(gettimeofday memmove atexit strerror strcasecmp strncasecmp dirname mkstemp swab getcwd getpwuid random rewinddir strtok strtok_r strtoul snprintf vsnprintf ltoa ultoa stpcpy strlcpy strlwr strrev fseeko ftello)
+AC_CHECK_FUNCS(gettimeofday memmove atexit strerror strcasecmp strncasecmp dirname mkstemp swab getcwd getpwuid random rewinddir strtok strtok_r strtoul snprintf vsnprintf ltoa ultoa stpcpy strlcpy strlwr strrev fseeko ftello _fseeki64 _ftelli64)
 AC_CHECK_FUNCS(strdup, [have_strdup_func=yes], [have_strdup_func=no])
 
 if test x"$have_strdup_func" = "xno"; then
@@ -2976,10 +3074,6 @@ fi
 
 AC_SUBST(LIBS)
 
-dnl check for usleep (do we need this anymore?)
-if test x"$is_win32" != "xyes" ; then
-  AC_REPLACE_FUNCS(usleep)
-fi
 
 AC_CHECK_FUNC(nanosleep,
               [ AC_DEFINE(HAVE_NANOSLEEP,,[Use nanosleep instead of usleep]) ])
@@ -2989,7 +3083,7 @@ dnl Check time.h.
 dnl AC_HEADER_TIME
 dnl AC_STRUCT_TM
 
-dnl GTK3-FIXME: check if readline is even needed for native GTK3 UI and disable the check if needed
+dnl GTK3-FIXME: check if readline is even needed for GTK3 UI and disable the check if needed
 
 dnl ----- Readline -----
 dnl Check whether we have GNU readline.  If not, use our replacement.
@@ -3029,7 +3123,7 @@ if test x"$is_unix_x11" = "xyes"; then
               [-lcurses],)
     fi
 
-    if test x"$enable_sdlui" != "xno" -o x"$enable_sdlui2" != "xno"; then
+    if test x"$enable_sdl1ui" != "xno" -o x"$enable_sdl2ui" != "xno"; then
       READLINE=""
     fi
 
@@ -3040,7 +3134,7 @@ if test x"$is_unix_x11" = "xyes"; then
     fi
     LIBS="${old_LIBS}"
   else
-    if test x"$enable_sdlui" != "xyes" -a x"$enable_sdlui2" != "xyes"; then
+    if test x"$enable_sdl1ui" != "xyes" -a x"$enable_sdl2ui" != "xyes"; then
       READLINE="\$(top_builddir)/src/arch/unix/readline/libreadline.a"
     fi
   fi
@@ -3121,22 +3215,6 @@ if test x"$with_gif" = "xyes"; then
  fi
 fi
 
-dnl check for jpeg support
-if test x"$with_jpeg" = "xyes" ; then
-  dnl Check for the JPEG library.
-  AC_CHECK_HEADER(jpeglib.h,,,-)
-
-  if test x"$ac_cv_header_jpeglib_h" = "xyes" ; then
-    AC_CHECK_LIB(jpeg, jpeg_CreateCompress, [
-                 GFXOUTPUT_LIBS="-ljpeg $GFXOUTPUT_LIBS";
-                 GFXOUTPUT_DRIVERS="$GFXOUTPUT_DRIVERS jpegdrv.o";
-                 HAVE_JPEG_SUPPORT="yes";
-                 AC_DEFINE(HAVE_JPEG,,[Can we use the JPEG library?]) ],,)
-  fi
-  if test x"$with_jpeg" = "xyes" -a x"$HAVE_JPEG_SUPPORT" != "xyes"; then
-    AC_MSG_ERROR([JPEG support is missing])
-  fi
-fi
 
 LIBS="$old_LIBS"
 AC_SUBST(GFXOUTPUT_DRIVERS)
@@ -3249,15 +3327,13 @@ fi
 
 
 dnl Setup the system-specific object files.
-if test x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
+AM_CONDITIONAL(USE_SDLUI, false)
+AM_CONDITIONAL(USE_SDL2UI, false)
+if test x"$enable_sdl1ui" = "xyes" -o x"$enable_sdl2ui" = "xyes"; then
   ARCH_DIR="\$(top_builddir)/src/arch/sdl"
   ARCH_SRC_DIR="\$(top_srcdir)/src/arch/sdl"
   ARCH_LIBS="$ARCH_DIR/libarch.a"
-  if test x"$is_win32" = "xyes"; then
-    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/mingw32-pcap/wpcap"
-  else
-    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch"
-  fi
+  ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/shared"
   if test x"$ac_cv_lib_readline_readline" = "xyes"; then
     AC_DEFINE(HAVE_READLINE,,[Enable the readline library])
   fi
@@ -3265,21 +3341,15 @@ if test x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
   HAVE_MOUSE_SUPPORT="yes"
   AC_DEFINE(HAVE_LIGHTPEN,,[Enable lightpen support])
   HAVE_LIGHTPEN_SUPPORT="yes"
-  AM_CONDITIONAL(SDL_COMPILE, true)
-  if test x"$enable_sdlui2" = "xyes"; then
-    AM_CONDITIONAL(SDL2_COMPILE, true)
-    SDL_VERSION=2
+
+  if test x"$enable_sdl2ui" = "xyes"; then
+    AM_CONDITIONAL(USE_SDL2UI, true)
     SDLCONFIG="$sdl2_config"
   else
-    AM_CONDITIONAL(SDL2_COMPILE, false)
-    SDL_VERSION=1
+    AM_CONDITIONAL(USE_SDLUI, true)
     SDLCONFIG="$sdl_config"
   fi
-  AC_SUBST(SDL_VERSION)
   AC_SUBST(SDLCONFIG)
-else
-  AM_CONDITIONAL(SDL_COMPILE, false)
-  AM_CONDITIONAL(SDL2_COMPILE, false)
 fi
 
 SDL_EXTRA_LIBS=""
@@ -3300,18 +3370,18 @@ else
 fi
 
 
-if test x"$enable_native_gtk3ui" = "xyes"; then
+if test x"$enable_gtk3ui" = "xyes"; then
   dnl Use C++ compiler/linker since novte uses C++
   LINKCC='$(CXX)'
   ARCH_DIR="\$(top_builddir)/src/arch/gtk3"
   ARCH_SRC_DIR="\$(top_srcdir)/src/arch/gtk3"
-  ARCH_LIBS="$ARCH_DIR/libarch.a $ARCH_DIR/widgets/libwidgets.a $ARCH_DIR/widgets/base/libbasewidgets.a $ARCH_DIR/novte/libnovte.a"
+  ARCH_LIBS="$ARCH_DIR/libarch.a $ARCH_DIR/widgets/libwidgets.a $ARCH_DIR/widgets/base/libbasewidgets.a $ARCH_DIR/novte/libnovte.a $ARCH_DIR/joystickdrv/libjoystickdrv.a"
   if test x"$is_win32" = "xyes" -o x"$is_win32_gtk3" = "xyes"; then
-    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/mingw32-pcap/wpcap"
+    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/shared -I\$(top_srcdir)/src/arch/mingw32-pcap/wpcap"
     AM_CONDITIONAL(MAKE_INSTALL, false)
     AM_CONDITIONAL(MAKE_BINDIST, true)
   else
-    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch"
+    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/shared -I\$(top_srcdir)/src/arch"
   fi
   if test x"$ac_cv_lib_readline_readline" = "xyes"; then
     AC_DEFINE(HAVE_READLINE,,[Enable the readline library])
@@ -3321,10 +3391,10 @@ if test x"$enable_native_gtk3ui" = "xyes"; then
   AC_DEFINE(HAVE_LIGHTPEN,,[Enable lightpen support])
   HAVE_LIGHTPEN_SUPPORT="yes"
 
-  AM_CONDITIONAL(NATIVE_GTK3_COMPILE, true)
+  AM_CONDITIONAL(USE_GTK3UI, true)
 
 else
-  AM_CONDITIONAL(NATIVE_GTK3_COMPILE, false)
+  AM_CONDITIONAL(USE_GTK3UI, false)
 fi
 
 
@@ -3335,7 +3405,7 @@ fi
 #
 # For now though, let's keep this intact. -- compyx
 #
-if test x"$enable_sdl" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
+if test x"$enable_sdl" = "xyes" -o x"$enable_sdl2ui" = "xyes"; then
   WINDRES_LIB="$ARCH_DIR/icon.res"
 else
   WINDRES_LIB=""
@@ -3347,11 +3417,11 @@ if test x"$enable_headlessui" = "xyes"; then
   ARCH_SRC_DIR="\$(top_srcdir)/src/arch/headless"
   ARCH_LIBS="$ARCH_DIR/libarch.a"
   if test x"$is_win32" = "xyes"; then
-    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/mingw32-pcap/wpcap"
+    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/shared -I\$(top_srcdir)/src/arch/mingw32-pcap/wpcap"
     AM_CONDITIONAL(MAKE_INSTALL, false)
     AM_CONDITIONAL(MAKE_BINDIST, true)
   else
-    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch"
+    ARCH_INCLUDES="-I$ARCH_SRC_DIR -I\$(top_srcdir)/src/arch/shared -I\$(top_srcdir)/src/arch"
   fi
   if test x"$ac_cv_lib_readline_readline" = "xyes"; then
     AC_DEFINE(HAVE_READLINE,,[Enable the readline library])
@@ -3361,15 +3431,15 @@ if test x"$enable_headlessui" = "xyes"; then
   AC_DEFINE(HAVE_LIGHTPEN,,[Enable lightpen support])
   HAVE_LIGHTPEN_SUPPORT="yes"
 
-  AM_CONDITIONAL(HEADLESS_COMPILE, true)
+  AM_CONDITIONAL(USE_HEADLESSUI, true)
 else
-  AM_CONDITIONAL(HEADLESS_COMPILE, false)
+  AM_CONDITIONAL(USE_HEADLESSUI, false)
 fi
 
 if test x"$is_unix" = "xyes"; then
 
   if test x"$is_win32_gtk3" = "xyes"; then
-    AC_DEFINE(WIN32_COMPILE,,[Are we compiling for windows?])
+    AC_DEFINE(WINDOWS_COMPILE,,[Are we compiling for windows?])
     LIBS="$LIBS -lntdll"
   else
     AC_DEFINE(UNIX_COMPILE,,[Are we compiling for unix?])
@@ -3377,26 +3447,24 @@ if test x"$is_unix" = "xyes"; then
 
   AM_CONDITIONAL(UNIX_COMPILE, true)
   if test x"$is_win32_gtk3" = "xyes"; then
-     AM_CONDITIONAL(WIN32_COMPILE, true)
+     AM_CONDITIONAL(WINDOWS_COMPILE, true)
   else
-     AM_CONDITIONAL(WIN32_COMPILE, false)
+     AM_CONDITIONAL(WINDOWS_COMPILE, false)
   fi
-  AM_CONDITIONAL(BEOS_COMPILE, false)
-  AM_CONDITIONAL(AMIGA_COMPILE, false)
 
   if test x"$is_unix_macosx" = "xyes" ; then
-    AM_CONDITIONAL(UNIX_MACOSX_COMPILE, true)
+    AM_CONDITIONAL(MACOS_COMPILE, true)
     dnl macOS supports both make install and make bindist
     AM_CONDITIONAL(MAKE_BINDIST, true)
   else
-    AM_CONDITIONAL(UNIX_MACOSX_COMPILE, false)
+    AM_CONDITIONAL(MACOS_COMPILE, false)
   fi
 
 
 elif test x"$is_win32" = "xyes"; then
-  AC_DEFINE(WIN32_COMPILE,,[Are we compiling for win32?])
+  AC_DEFINE(WINDOWS_COMPILE,,[Are we compiling for win32?])
 
-  if test x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
+  if test x"$enable_sdl1ui" = "xyes" -o x"$enable_sdl2ui" = "xyes"; then
     if test x"$host_cpu" = "xx86_64" -o x"$host_cpu" = "xamd64"; then
       SDL_EXTRA_LIBS="$UI_LIBS -lwinmm -lws2_32"
     else
@@ -3404,19 +3472,15 @@ elif test x"$is_win32" = "xyes"; then
     fi
   fi
 
-  AM_CONDITIONAL(WIN32_COMPILE, true)
+  AM_CONDITIONAL(WINDOWS_COMPILE, true)
   AM_CONDITIONAL(UNIX_COMPILE, false)
-  AM_CONDITIONAL(BEOS_COMPILE, false)
-  AM_CONDITIONAL(AMIGA_COMPILE, false)
-  AM_CONDITIONAL(UNIX_MACOSX_COMPILE, false)
+  AM_CONDITIONAL(MACOS_COMPILE, false)
   AM_CONDITIONAL(MAKE_INSTALL, false)
   AM_CONDITIONAL(MAKE_BINDIST, true)
 elif test x"$is_beos" = "xyes"; then
   AM_CONDITIONAL(UNIX_COMPILE, false)
-  AM_CONDITIONAL(WIN32_COMPILE, false)
-  AM_CONDITIONAL(BEOS_COMPILE, true)
-  AM_CONDITIONAL(AMIGA_COMPILE, false)
-  AM_CONDITIONAL(UNIX_MACOSX_COMPILE, false)
+  AM_CONDITIONAL(WINDOWS_COMPILE, false)
+  AM_CONDITIONAL(MACOS_COMPILE, false)
   AM_CONDITIONAL(MAKE_INSTALL, false)
   AM_CONDITIONAL(MAKE_BINDIST, true)
 else
@@ -3445,10 +3509,10 @@ AC_SUBST(WINDRES_LIB)
 
 PLATFORM_DOX_FLAGS=""
 if test x"$enable_platformdox" = "xyes"; then
-  if test x"$enable_sdlui" = "xyes" -o x"$enable_sdlui2" = "xyes"; then
+  if test x"$enable_sdl1ui" = "xyes" -o x"$enable_sdl2ui" = "xyes"; then
     PLATFORM_DOX_FLAGS="platformsdl"
   fi
-  if test x"$enable_native_gtk3ui" = "xyes"; then
+  if test x"$enable_gtk3ui" = "xyes"; then
     PLATFORM_DOX_FLAGS="platformgtk3"
   fi
 fi
@@ -3512,7 +3576,6 @@ fi
 
 AC_OUTPUT([Makefile
            build/Makefile
-           build/android/Makefile
            build/beos/Makefile
            build/mingw/Makefile
            build/mingw/frankenvice/Makefile
@@ -3539,88 +3602,26 @@ AC_OUTPUT([Makefile
            src/Makefile
            src/debug.h
            src/arch/Makefile
-           src/arch/android/Makefile
-           src/arch/android/AnVICE/AndroidManifest.xml
-           src/arch/android/AnVICE/Makefile
-           src/arch/android/AnVICE/.settings/Makefile
-           src/arch/android/AnVICE/assets-proto/Makefile
-           src/arch/android/AnVICE/jni/Makefile
-           src/arch/android/AnVICE/jni/locnet/Makefile
-           src/arch/android/AnVICE/jni/locnet_x64/Makefile
-           src/arch/android/AnVICE/jni/locnet_x64dtv/Makefile
-           src/arch/android/AnVICE/jni/locnet_x64sc/Makefile
-           src/arch/android/AnVICE/jni/locnet_x128/Makefile
-           src/arch/android/AnVICE/jni/locnet_xcbm2/Makefile
-           src/arch/android/AnVICE/jni/locnet_xcbm5x0/Makefile
-           src/arch/android/AnVICE/jni/locnet_xpet/Makefile
-           src/arch/android/AnVICE/jni/locnet_xplus4/Makefile
-           src/arch/android/AnVICE/jni/locnet_xscpu64/Makefile
-           src/arch/android/AnVICE/jni/locnet_xvic/Makefile
-           src/arch/android/AnVICE/jni/locnet_al/Makefile
-           src/arch/android/AnVICE/jni/sdl/Makefile
-           src/arch/android/AnVICE/jni/vice_x64/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_128_5x0/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_dtv_128_5x0/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_128/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_128_2_5x0_pet_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_128_2_5x0_pet_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_pet_4/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_5x0_pet_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_2_pet_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_dtv_scpu_128_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_5x0_pet_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_pet_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_2_pet_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_4/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64_sc_scpu_128_5x0_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x64dtv/Makefile
-           src/arch/android/AnVICE/jni/vice_x64sc/Makefile
-           src/arch/android/AnVICE/jni/vice_x64sc_scpu/Makefile
-           src/arch/android/AnVICE/jni/vice_x64sc_scpu_128_2_pet_4_20/Makefile
-           src/arch/android/AnVICE/jni/vice_x128/Makefile
-           src/arch/android/AnVICE/jni/vice_x128_2_5x0_pet/Makefile
-           src/arch/android/AnVICE/jni/vice_xcbm2/Makefile
-           src/arch/android/AnVICE/jni/vice_xcbm2_5x0/Makefile
-           src/arch/android/AnVICE/jni/vice_xcbm2_pet/Makefile
-           src/arch/android/AnVICE/jni/vice_xcbm5x0/Makefile
-           src/arch/android/AnVICE/jni/vice_xpet/Makefile
-           src/arch/android/AnVICE/jni/vice_xplus4/Makefile
-           src/arch/android/AnVICE/jni/vice_xscpu64/Makefile
-           src/arch/android/AnVICE/jni/vice_xvic/Makefile
-           src/arch/android/AnVICE/res-proto/Makefile
-           src/arch/android/AnVICE/res-proto/layout/Makefile
-           src/arch/android/AnVICE/res-proto/values/Makefile
-           src/arch/android/AnVICE/src-proto/Makefile
-           src/arch/android/AnVICE/src-proto/com/Makefile
-           src/arch/android/AnVICE/src-proto/com/locnet/Makefile
-           src/arch/android/AnVICE/src-proto/com/locnet/vice/Makefile
            src/arch/gtk3/Makefile
            src/arch/gtk3/data/Makefile
            src/arch/gtk3/data/macos/Makefile
            src/arch/gtk3/data/unix/Makefile
            src/arch/gtk3/data/win32/Makefile
+           src/arch/gtk3/joystickdrv/Makefile
            src/arch/gtk3/novte/Makefile
            src/arch/gtk3/widgets/Makefile
            src/arch/gtk3/widgets/base/Makefile
-           src/arch/mingw32-pcap/Makefile
-           src/arch/mingw32-pcap/wpcap/Makefile
-           src/arch/mingw32-pcap/wpcap/net/Makefile
            src/arch/sdl/Makefile
            src/arch/headless/Makefile
            src/arch/shared/Makefile
+           src/arch/shared/hwsiddrv/Makefile
+           src/arch/shared/iodrv/Makefile
+           src/arch/shared/mididrv/Makefile
+           src/arch/shared/socketdrv/Makefile
+           src/arch/shared/sounddrv/Makefile
            src/buildtools/Makefile
            src/c128/Makefile
+           src/c128/cart/Makefile
            src/c64/Makefile
            src/c64/cart/Makefile
            src/c64dtv/Makefile
@@ -3628,6 +3629,7 @@ AC_OUTPUT([Makefile
            src/cbm2/Makefile
            src/cbm2/cart/Makefile
            src/core/Makefile
+           src/core/rtc/Makefile
            src/crtc/Makefile
            src/datasette/Makefile
            src/diag/Makefile
@@ -3643,17 +3645,13 @@ AC_OUTPUT([Makefile
            src/fileio/Makefile
            src/fsdevice/Makefile
            src/gfxoutputdrv/Makefile
-           src/hwsiddrv/Makefile
            src/hvsc/Makefile
            src/iecbus/Makefile
            src/imagecontents/Makefile
-           src/iodrv/Makefile
            src/joyport/Makefile
-           src/joystickdrv/Makefile
            src/lib/Makefile
            src/lib/p64/Makefile
            src/lib/linenoise-ng/Makefile
-           src/mididrv/Makefile
            src/monitor/Makefile
            src/parallel/Makefile
            src/pet/Makefile
@@ -3662,12 +3660,9 @@ AC_OUTPUT([Makefile
            src/printerdrv/Makefile
            src/raster/Makefile
            src/rs232drv/Makefile
-           src/rtc/Makefile
            src/samplerdrv/Makefile
            src/serial/Makefile
            src/sid/Makefile
-           src/socketdrv/Makefile
-           src/sounddrv/Makefile
            src/tape/Makefile
            src/tapeport/Makefile
            src/tools/Makefile
@@ -3680,14 +3675,13 @@ AC_OUTPUT([Makefile
            src/vic20/cart/Makefile
            src/vicii/Makefile
            src/viciisc/Makefile
-           src/viciivsid/Makefile
            src/video/Makefile
            src/version.h
            src/vice-version.sh
            ])
 
 if test x"$enable_cmake" = x"yes" ; then
-  ./cmake-bootstrap.sh
+  "$srcdir/cmake-bootstrap.sh"
 fi
 
 dnl Local Variables:
@@ -3705,11 +3699,11 @@ else
         real_arch="BeOS"
     fi
     if test x"$is_unix_macosx" = "xyes"; then
-        show_arch="Mac OS X"
+        show_arch="macOS $enable_macos_minimum_version"
         real_arch="OSX"
     fi
     if test x"$is_win32" = "xyes" -o x"$is_win32_gtk3" = "xyes"; then
-        if test x"$enable_native_gtk3ui" = "xyes"; then
+        if test x"$enable_gtk3ui" = "xyes"; then
             show_arch="Win32-GTK3 (treated as Unix)"
             real_arch="Unix"
         fi
@@ -3720,19 +3714,19 @@ fi
 
 dnl construct show_gui
 show_gui="Unknown"
-if test x"$enable_sdlui" = "xyes"; then
-    show_gui="SDL1"
+if test x"$enable_sdl1ui" = "xyes"; then
+    show_gui="SDL 1.2"
 fi
 
-if test x"$enable_sdlui2" = "xyes"; then
-    show_gui="SDL2"
+if test x"$enable_sdl2ui" = "xyes"; then
+    show_gui="SDL 2.x"
 fi
 
-if test x"$enable_native_gtk3ui" = "xyes"; then
+if test x"$enable_gtk3ui" = "xyes"; then
     if test x"$enable_debug_gtk3ui" = "xyes"; then
-        show_gui="NATIVE GTK3 (debug)"
+        show_gui="GTK3 (debug)"
     else
-        show_gui="NATIVE GTK3"
+        show_gui="GTK3"
     fi
 fi
 
@@ -3752,9 +3746,6 @@ if test "x$ac_cv_func_SDL_NumJoysticks" = xyes; then
     HAVE_SDL_NUMJOYSTICKS_SUPPORT="yes"
 fi
 
-if test "x$ac_cv_header_proto_openpci_h" = xyes; then
-    HAVE_PROTO_OPENPCI_H_SUPPORT="yes"
-fi
 
 echo "----------------------------------------------------------------------"
 echo ""
@@ -3766,15 +3757,23 @@ echo "Architecture       : $show_arch"
 echo "GUI                : $show_gui"
 echo "Multithreaded UI   : $show_multithreaded"
 echo "OpenMP             : $have_openmp"
-echo ""
+if test x"$program_prefix" = "xNONE"; then
+    echo "Program prefix     : (none) (--program-prefix)"
+else
+    echo "Program prefix     : $program_prefix (--program-prefix)"
+fi
+if test x"$program_suffix" = "xNONE"; then
+    echo "Program suffix     : (none) (--program-suffix)"
+else
+    echo "Program suffix     : $program_suffix (--program-suffix)"
+fi
 
+echo ""
 echo "SCREEN/UI"
 echo "---------"
-
 if test x"$real_arch" != "xBeOS"; then
     echo "Hardware scaling support       : $HAVE_HWSCALE_SUPPORT"
 fi
-
 
 echo ""
 echo "SOUND"
@@ -3782,10 +3781,7 @@ echo "-----"
 echo "FastSID support              : $HAVE_FASTSID_SUPPORT (--with/without-fastsid)"
 echo "ReSID support                : $HAVE_RESID_SUPPORT (--with/without-resid)"
 echo "New 8580 filter support      : $USE_NEW_8580_FILTER (--enable/disable-new8580filter)"
-
-if test x"$real_arch" != "xAmiga"; then
-    echo "PortAudio sound input support: $USE_PORTAUDIO_SUPPORT (--enable/disable-portaudio)"
-fi
+echo "PortAudio sound input support: $USE_PORTAUDIO_SUPPORT (--enable/disable-portaudio)"
 
 if test x"$real_arch" = "xUnix"; then
     echo "OSS sound support            : $USE_OSS_SUPPORT (--with/without-oss)"
@@ -3796,10 +3792,6 @@ fi
 if test x"$real_arch" = "xOSX"; then
     echo "CoreAudio sound support      : $USE_COREAUDIO_SUPPORT"
     echo "AudioUnit sound support      : $HAVE_AUDIO_UNIT_SUPPORT"
-fi
-
-if test x"$real_arch" = "xAmiga"; then
-    echo "AHI sound support            : $HAVE_DEVICES_AHI_H_SUPPORT (--enable/disable-ahi)"
 fi
 
 if test x"$real_arch" = "xWin32" -o x"$is_win32_gtk3" = "xyes"; then
@@ -3842,14 +3834,13 @@ echo "SCREENSHOTS"
 echo "-----------"
 
 echo "GIF encoding support : $HAVE_GIF_SUPPORT (--with/without-gif)"
-echo "JPEG encoding support: $HAVE_JPEG_SUPPORT (--with/without-jpeg)"
 echo "PNG encoding support : $HAVE_PNG_SUPPORT (--with/without-png)"
 
 echo ""
 echo "VIDEO RECORDING"
 echo "---------------"
 
-echo "FFMPEG support                : $HAVE_FFMPEG_SUPPORT (--enable-external-ffmpeg)"
+echo "FFMPEG support                : $HAVE_FFMPEG_SUPPORT (--enable-ffmpeg)"
 echo "FFMPEG swscale support        : $HAVE_FFMPEG_SWSCALE_SUPPORT"
 if test x"$have_swresample" = "xyes"; then
   echo "Audio resampling library      : swresample"
@@ -3862,14 +3853,8 @@ echo "INPUT"
 echo "-----"
 
 echo "Mouse support               : $HAVE_MOUSE_SUPPORT"
+echo "Lightpen support            : $HAVE_LIGHTPEN_SUPPORT"
 
-if test x"$real_arch" = "xAmiga" -o x"$real_arch" = "xBeOS"; then
-    if test x"$show_gui" = "xSDL" -o x"$show_gui" = "xSDL2"; then
-        echo "Lightpen support            : $HAVE_LIGHTPEN_SUPPORT"
-    fi
-else
-    echo "Lightpen support            : $HAVE_LIGHTPEN_SUPPORT"
-fi
 
 if test x"$real_arch" = "xUnix"; then
     if test x"$show_gui" != "xSDL" -a x"$show_gui" != "xSDL2"; then
@@ -3942,9 +3927,6 @@ if test x"$real_arch" = "xUnix"; then
     echo "libieee1284 support               : $HAVE_LIBIEEE1284_SUPPORT"
 fi
 
-if test x"$real_arch" = "xAmiga"; then
-    echo "OpenPCI support        : $HAVE_PROTO_OPENPCI_H_SUPPORT"
-fi
 
 echo ""
 echo "DOCUMENTATION"
@@ -3995,3 +3977,5 @@ echo "MONITOR_CFLAGS: $MONITOR_CFLAGS"
 echo "User LDFLAGS:   $LDFLAGS"
 echo "VICE LDFLAGS:   $VICE_LDFLAGS"
 echo "----------------------------------------------------------------------"
+
+VICE_ARG_LIST_CHECK($cmdline_options, $enable_option_checking)

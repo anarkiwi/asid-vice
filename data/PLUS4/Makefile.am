@@ -1,14 +1,14 @@
 plus4dir = $(VICE_DATADIR)/PLUS4
 
 roms = \
-	3plus1hi \
-	3plus1lo \
-	basic \
-	kernal \
-	kernal.005 \
-	kernal.232 \
-	kernal.364 \
-	c2lo.364
+	3plus1-317053-01.bin \
+	3plus1-317054-01.bin \
+	basic-318006-01.bin \
+	kernal-318004-05.bin \
+	kernal-318005-05.bin \
+	kernal-318004-01.bin \
+	kernal-364.bin \
+	c2lo-364.bin
 
 romsets = \
 	default.vrs
@@ -41,12 +41,22 @@ sdl_keymaps = \
 sdl_hotkeys = \
 	sdl-hotkeys.vhk
 
-if SDL_COMPILE
+if USE_SDLUI
 plus4_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sdl_hotkeys)
-
 EXTRA_DIST = $(plus4_DATA) $(gtk3_keymaps) $(gtk3_hotkeys)
-else
-plus4_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(gtk3_hotkeys)
+endif
 
+if USE_SDL2UI
+plus4_DATA = $(roms) $(romsets) $(palettes) $(sdl_keymaps) $(sdl_hotkeys)
+EXTRA_DIST = $(plus4_DATA) $(gtk3_keymaps) $(gtk3_hotkeys)
+endif
+
+if USE_GTK3UI
+plus4_DATA = $(roms) $(romsets) $(palettes) $(gtk3_keymaps) $(gtk3_hotkeys)
 EXTRA_DIST = $(plus4_DATA) $(sdl_keymaps) $(sdl_hotkeys)
+endif
+
+if USE_HEADLESSUI
+plus4_DATA = $(roms) $(romsets) $(palettes)
+EXTRA_DIST = $(plus4_DATA) $(sdl_keymaps) $(sdl_hotkeys) $(gtk3_keymaps) $(gtk3_hotkeys)
 endif

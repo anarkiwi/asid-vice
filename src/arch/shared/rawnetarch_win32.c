@@ -27,11 +27,22 @@
 
 #include "vice.h"
 
-#ifdef HAVE_RAWNET
+#ifdef HAVE_PCAP
 
 /* #define WPCAP */
 
-#include "pcap.h"
+/*
+    To compile with PCAP support, the respective header files must be present.
+    These Headers are NOT in the VICE tree anymore, but have to be provided
+    when compiling. One easy way to do this is installing libpcap in msys2. The
+    more "correct" way would be downloading the SDK from the npcap website at
+    https://npcap.com/#download and point the CFLAGS at them when configuring.
+
+    To actually use the resulting binary with npcap, simple install it using
+    the installer from https://npcap.com/#download (select winpcap compatible
+    mode) and then run the emulator.
+*/
+#include <pcap.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -128,7 +139,7 @@ static void EthernetPcapFreeLibrary(void)
 
 /* since I don't like typing too much... */
 #define GET_PROC_ADDRESS_AND_TEST( _name_ )                              \
-    p_##_name_ = (_name_##_t) GetProcAddress(pcap_library, #_name_);     \
+    p_##_name_ = (_name_##_t)(void*)GetProcAddress(pcap_library, #_name_);     \
     if (!p_##_name_ ) {                                                  \
         log_message(rawnet_arch_log, "GetProcAddress " #_name_ " failed!"); \
         EthernetPcapFreeLibrary();                                            \
@@ -294,7 +305,7 @@ static BOOL EthernetPcapOpenAdapter(const char *interface_name)
 }
 
 /* ------------------------------------------------------------------------- */
-/*    the architecture-dependend functions                                   */
+/*    the architecture-dependent functions                                   */
 
 int rawnet_arch_init(void)
 {
@@ -572,4 +583,4 @@ void rawnet_arch_resources_shutdown(void)
 
 }
 
-#endif /* #ifdef HAVE_RAWNET */
+#endif /* #ifdef HAVE_PCAP */

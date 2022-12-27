@@ -94,6 +94,12 @@ const char *file_chooser_pattern_fliplist[] = {
     "*.[vV][fF][lL]", "*.[lL][sS][tT]", NULL
 };
 
+/** \brief  Patterns for playlists
+ */
+const char *file_chooser_pattern_playlist[] = {
+    "*.[mM]3[uU]", "*.[mM]3[uU]8", NULL
+};
+
 /** \brief  Patterns for program files
  */
 const char *file_chooser_pattern_program[] = {
@@ -133,6 +139,12 @@ const char *file_chooser_pattern_archive[] = {
 const char *file_chooser_pattern_compressed[] = {
     "*7[zZ]", "*.[bB][zZ]2", "*.[gG][zZ]", ".[rR][aA][rR]",
     "*.[zZ]", "*.[zZ][iI][pP]", NULL
+};
+
+
+/** \brief  Patterns for hotkeys files */
+const char *file_chooser_pattern_hotkeys[] = {
+    "*.vhk", NULL
 };
 
 
@@ -182,6 +194,12 @@ const ui_file_filter_t file_chooser_filter_fliplist = {
     file_chooser_pattern_fliplist
 };
 
+/** \brief  Filter for playlist files */
+const ui_file_filter_t file_chooser_filter_playlist = {
+    "Playlists",
+    file_chooser_pattern_playlist
+};
+
 /** \brief  Filter for program files */
 const ui_file_filter_t file_chooser_filter_program = {
     "Program files",
@@ -206,7 +224,11 @@ const ui_file_filter_t file_chooser_filter_snapshot = {
     file_chooser_pattern_snapshot
 };
 
-
+/** \brief  Filter for hotkeys files */
+const ui_file_filter_t file_chooser_filter_hotkeys = {
+    "Hotkeys files",
+    file_chooser_pattern_hotkeys
+};
 
 /** \brief  Create a GtkFileFilter instance from \a filter
  *

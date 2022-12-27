@@ -37,18 +37,17 @@
 #include "vice.h"
 
 #include <gtk/gtk.h>
-#if !defined(MACOSX_SUPPORT) && !defined(WIN32_COMPILE)
+#if !defined(MACOS_COMPILE) && !defined(WINDOWS_COMPILE)
 #include <gdk/gdkx.h>
 #endif
-
-#ifdef MACOSX_SUPPORT
+#include <string.h>
+#ifdef MACOS_COMPILE
 #import <CoreGraphics/CGEvent.h>
-
-#elif defined(WIN32_COMPILE)
+#elif defined(WINDOWS_COMPILE)
 #include <windows.h>
 #endif
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 #include "directx_renderer.h"
 #else
 #include "opengl_renderer.h"
@@ -56,18 +55,19 @@
 
 #include "lightpen.h"
 #include "log.h"
+#include "machine.h"
+#ifdef MACOS_COMPILE
+#include "macOS-util.h"
+#endif
 #include "mousedrv.h"
 #include "resources.h"
+#include "ui.h"
+#include "uimachinemenu.h"
 #include "videoarch.h"
 #include "vsyncapi.h"
 
-#include "ui.h"
-#include "uimachinemenu.h"
 #include "uimachinewindow.h"
 
-#ifdef MACOSX_SUPPORT
-#include "macOS-util.h"
-#endif
 
 /* FIXME:   someone please add Doxygen docs for this, I can guess what it means
  *          but I'll probably get it wrong. --compyx
@@ -78,7 +78,9 @@
 #define VICE_EMPTY_POINTER  canvas->blank_ptr
 #endif
 
-static gboolean event_box_stillness_tick_cb(GtkWidget *widget, GdkFrameClock *clock, gpointer user_data);
+static gboolean event_box_stillness_tick_cb(GtkWidget *widget,
+                                            GdkFrameClock *clock,
+                                            gpointer user_data);
 
 /** \brief  Ignore the hide-mouse-cursor event handlers
  *
@@ -114,16 +116,20 @@ static int host_delta_origin_x = 0.0;
  */
 static int host_delta_origin_y = 0.0;
 
+/** \brief Number of frames the mouse didn't move, used for pointer hiding
+ */
+static int _mouse_still_frames = 0;
+
 /** \brief Mouse warp for each platform.
  */
 static void warp(int x, int y)
 {
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
 
     CGWarpMouseCursorPosition(CGPointMake(x, y));
     CGAssociateMouseAndMouseCursorPosition(true);
 
-#elif defined(WIN32_COMPILE)
+#elif defined(WINDOWS_COMPILE)
 
     SetCursorPos(x, y);
 
@@ -258,7 +264,7 @@ static gboolean event_box_motion_cb(GtkWidget *widget,
         int widget_x, widget_y;
         gtk_widget_translate_coordinates(widget, gtk_widget_get_toplevel(widget), 0, 0, &widget_x, &widget_y);
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
         CGRect native_frame, content_rect;
 
         vice_macos_get_widget_frame_and_content_rect(widget, &native_frame, &content_rect);
@@ -271,7 +277,7 @@ static gboolean event_box_motion_cb(GtkWidget *widget,
             main_display_height - native_frame.origin.y - content_rect.size.height + widget_y + motion->y
             );
 
-#elif defined(WIN32_COMPILE)
+#elif defined(WINDOWS_COMPILE)
 
         int scale = gtk_widget_get_scale_factor(widget);
         mouse_host_moved(motion->x_root * scale, motion->y_root * scale);
@@ -369,7 +375,7 @@ static gboolean event_box_mouse_button_cb(GtkWidget *widget, GdkEvent *event, gp
             mouse_button(button - 1, 0);
         }
     }
-    
+
     /* Ignore all other mouse button events, though we'll be sent
      * things like double- and triple-click. */
     return FALSE;
@@ -607,12 +613,16 @@ static void machine_window_create(video_canvas_t *canvas)
 {
     GtkWidget *new_event_box;
     GtkWidget *menu_bar;
-    int backend = 0;
     char *backend_label;
+    unsigned w, h, vstretch = 0, hstretch = 0;
+    gint window_id = PRIMARY_WINDOW;
 
-    resources_get_int("GTKBackend", &backend);
+    /* hack to determine window index for use in UI action handling later */
+    if (strcmp(canvas->videoconfig->chip_name, "VDC") == 0) {
+        window_id = SECONDARY_WINDOW;
+    }
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
     canvas->renderer_backend = &vice_directx_backend;
     backend_label = "DirectX";
 #else
@@ -647,23 +657,93 @@ static void machine_window_create(video_canvas_t *canvas)
     /* I'm pretty sure when running x128 we get two menu instances, so this
      * should go somewhere else: call ui_menu_bar_create() once and attach the
      * result menu to each GtkWindow instance
+     *
+     *   Won't work since a GtkWidget cannot have two parents. I already tried
+     *   this, Gtk hade a huge fit. --compyx
      */
-    menu_bar = ui_machine_menu_bar_create();
+    menu_bar = ui_machine_menu_bar_create(window_id);
 
     gtk_container_add(GTK_CONTAINER(canvas->grid), menu_bar);
     gtk_container_add(GTK_CONTAINER(canvas->grid), new_event_box);
 
+    /* Crazy hack to make the initial window open at the right place of the screen. The Problem here is, that
+       if we don't explicitly set a window position (eg because we start with -default), then the window would
+       be initially created smaller than it will be when initialization finished. The window manager will take
+       that small size for determining the initial position, and if it then resizes after that, the window may
+       no more be centered, or even partially off screen.
+
+       To prevent this from happening, we try to set the correct final size here.
+
+       CAUTION: since the resources are not properly initialized yet, this is tricky and we must use some dirty
+       tricks and assumptions. the following also shows shortcomings / problems in other parts of the code.
+    */
+#if 1
+    log_debug("chip_name: %s", canvas->videoconfig->chip_name);
+    log_debug(" screen_size: %u x %u", canvas->geometry->screen_size.width, canvas->geometry->screen_size.height);
+    log_debug(" first/lastline: %u x %u", canvas->viewport->first_line, canvas->viewport->last_line);
+    log_debug(" gfx_size: %u x %u", canvas->geometry->gfx_size.width, canvas->geometry->gfx_size.height);
+    log_debug(" gfx_position: %u x %u", canvas->geometry->gfx_position.x, canvas->geometry->gfx_position.y);
+    log_debug(" first/last displayed line: %u x %u", canvas->geometry->first_displayed_line, canvas->geometry->last_displayed_line);
+    log_debug(" extra offscreen border left/right: %u x %u", canvas->geometry->extra_offscreen_border_left, canvas->geometry->extra_offscreen_border_right);
+    log_debug(" screen_display_wh: %f x %f", (float)canvas->screen_display_w, (float)canvas->screen_display_h);
+    log_debug(" canvas_physical_wh: %u x %u", canvas->draw_buffer->canvas_physical_width, canvas->draw_buffer->canvas_physical_width);
+    log_debug(" scalexy: %d x %d", canvas->videoconfig->scalex, canvas->videoconfig->scaley);
+    log_debug(" sizexy: %u x %u", canvas->videoconfig->cap->single_mode.sizex, canvas->videoconfig->cap->single_mode.sizey);
+    log_debug(" rmode: %u", canvas->videoconfig->cap->single_mode.rmode);
+    log_debug(" aspect ratio: %f", (float)canvas->geometry->pixel_aspect_ratio);
+#endif
+    /* find out if we have a videochip that uses vertical stretching. since the resources are not
+       initialized, assume it always is stretched (this is the default) */
+    if (!strcmp("Crtc", canvas->videoconfig->chip_name)) {
+        /* resources_get_int("CrtcStretchVertical", &vstretch); */
+        if (machine_class == VICE_MACHINE_PET) {
+            vstretch = 1; /* HACK: doing it for xcbm2 gives wrong result */
+            hstretch = 1; /* HACK: compensate for missing scalex setup */
+        }
+    } else if (!strcmp("VDC", canvas->videoconfig->chip_name)) {
+        /* resources_get_int("VDCStretchVertical", &vstretch); */
+        /* vstretch = 1; */ /* HACK: for some reason that doesn't give the wanted result */
+    }
+#if 1
+    log_debug(" hstretch: %u", hstretch);
+    log_debug(" vstretch: %u", vstretch);
+#endif
+    /* calculate the initial size from the values we have
+       WARNING: terrible hacks coming up
+    */
+    w = (canvas->geometry->screen_size.width - canvas->geometry->gfx_position.x)
+        * canvas->videoconfig->scalex * (hstretch ? 2 : 1);
+    if (machine_class == VICE_MACHINE_VIC20) {
+        w = canvas->geometry->gfx_size.width
+            * canvas->videoconfig->scalex * (hstretch ? 2 : 1);
+    }
+
+    h = (canvas->geometry->last_displayed_line - canvas->geometry->first_displayed_line)
+        * canvas->videoconfig->scaley * (vstretch ? 2 : 1);
+    if (machine_class != VICE_MACHINE_PLUS4) {
+        h = (unsigned)(((double)h) * canvas->geometry->pixel_aspect_ratio);
+    }
+#if 1
+    log_debug(" initializing with width, height: %u x %u", w, h);
+#endif
+    /* finally set the size. use -1 for width and height to compensate for single pixel errors. this
+       will be corrected by the resize that will happen at the end of initialization */
+    gtk_widget_set_size_request (new_event_box, w - 1, h - 1);
+    /* finally trigger a resize of the window to adjust to smallest size */
+    gtk_window_resize(GTK_WINDOW(gtk_widget_get_parent(canvas->grid)), 1, 1);
     return;
 }
 
+
+/** \brief  Set up any resources needed to create new machine windows */
 void ui_machine_window_init(void)
 {
     ui_set_create_window_func(machine_window_create);
     return;
 }
 
-/** \brief grab the mouse pointer when mouse emulation is enabled
- */
+
+/** \brief  Grab the mouse pointer when mouse emulation is enabled */
 void ui_mouse_grab_pointer(void)
 {
     GtkWidget *window;
@@ -685,7 +765,7 @@ void ui_mouse_grab_pointer(void)
      * each time we detect mouse movement.
      */
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
 
     CGRect native_frame, content_rect;
     vice_macos_get_widget_frame_and_content_rect(window, &native_frame, &content_rect);
@@ -698,7 +778,7 @@ void ui_mouse_grab_pointer(void)
 
 #else
 
-    /* First calculate destination relateive to window */
+    /* First calculate destination relative to window */
     int window_width, window_height;
     gtk_window_get_size(GTK_WINDOW(window), &window_width, &window_height);
 
@@ -707,7 +787,7 @@ void ui_mouse_grab_pointer(void)
     warp_x = (float)window_width  / 2.0f * scale;
     warp_y = (float)window_height / 2.0f * scale;
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 
     /* Windows uses SetCursorPos, which needs screen co-ordinates */
     int window_x, window_y;
@@ -722,8 +802,7 @@ void ui_mouse_grab_pointer(void)
     mouse_host_capture(warp_x, warp_y);
 }
 
-/** \brief ungrab the mouse pointer when it was grabbed before
- */
+/** \brief  Ungrab the mouse pointer when it was grabbed before */
 void ui_mouse_ungrab_pointer(void)
 {
     mouse_host_uncapture();

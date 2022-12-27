@@ -62,6 +62,7 @@
 #include "archdep.h"
 #include "lib.h"
 #include "log.h"
+#include "uiactions.h"
 #include "util.h"
 #include "machine.h"
 #include "resources.h"
@@ -75,80 +76,82 @@
 #include "ui.h"
 #include "c64dtvflashsettingswidget.h"
 #include "c64memhackswidget.h"
-#include "dqbbwidget.h"
-#include "easyflashwidget.h"
-#include "expertwidget.h"
-#include "georamwidget.h"
-#include "gmod2widget.h"
-#include "gmod3widget.h"
-#include "ide64widget.h"
-#include "isepicwidget.h"
-#include "ltkernalwidget.h"
-#include "mmc64widget.h"
-#include "mmcrwidget.h"
 #include "netplaywidget.h"
-#include "ramcartwidget.h"
-#include "ramlinkwidget.h"
-#include "retroreplaywidget.h"
-#include "reuwidget.h"
-#include "rexramfloppywidget.h"
 #include "scpu64settingswidget.h"
 #include "settings_autofire.h"
 #include "settings_autostart.h"
 #include "settings_controlport.h"
+#include "settings_cpm.h"
 #include "settings_default_cart.h"
+#include "settings_digimax.h"
+#include "settings_dqbb.h"
 #include "settings_drive.h"
+#include "settings_ds12c887.h"
+#include "settings_easyflash.h"
+#ifdef HAVE_RAWNET
+# include "settings_ethernetcart.h"
+#endif
+#include "settings_expert.h"
+#include "settings_finalexpansion.h"
 #include "settings_fsdevice.h"
+#include "settings_georam.h"
+#include "settings_gmod2.h"
+#include "settings_gmod2c128.h"
+#include "settings_gmod3.h"
 #include "settings_hotkeys.h"
+#include "settings_ide64.h"
+#include "settings_ieee488.h"
+#include "settings_ieeeflash64.h"
 #include "settings_io.h"
+#include "settings_isepic.h"
 #include "settings_joystick.h"
 #include "settings_keyboard.h"
+#include "settings_ltkernal.h"
+#include "settings_magicvoice.h"
+#ifdef HAVE_MIDI
+# include "settings_midi.h"
+#endif
 #include "settings_misc.h"
+#include "settings_megacart.h"
+#include "settings_mmc64.h"
+#include "settings_mmcr.h"
 #include "settings_model.h"
 #include "settings_monitor.h"
 #include "settings_printer.h"
+#include "settings_ramcart.h"
+#include "settings_ramlink.h"
 #include "settings_ramreset.h"
+#include "settings_retroreplay.h"
+#include "settings_reu.h"
+#include "settings_rexramfloppy.h"
 #include "settings_romset.h"
+#ifdef HAVE_RAWNET
+# include "settings_rrnetmk3.h"
+#endif
 #include "settings_rs232.h"
 #include "settings_sampler.h"
+#include "settings_sfxsoundexpander.h"
+#include "settings_sfxsoundsampler.h"
 #include "settings_snapshot.h"
 #include "settings_sound.h"
 #include "settings_soundchip.h"
 #include "settings_speed.h"
+#include "settings_supersnapshot.h"
+#include "settings_tapeport.h"
+#include "settings_ultimem.h"
+#include "settings_vicflashplugin.h"
 #include "settings_video.h"
 
-#ifdef HAVE_RAWNET
-# include "ethernetcartwidget.h"
-# include "rrnetmk3widget.h"
-#endif
-
 #include "c128functionromwidget.h"
-#include "ieee488widget.h"
-#include "digimaxwidget.h"
-#include "magicvoicewidget.h"
-#ifdef HAVE_MIDI
-# include "midiwidget.h"
-#endif
-#include "sfxsoundexpanderwidget.h"
-#include "ds12c887widget.h"
 #include "userportdeviceswidget.h"
-#include "tapeportdeviceswidget.h"
 #include "sidcartwidget.h"
-#include "sfxsoundsamplerwidget.h"
-#include "megacartwidget.h"
 #include "petreuwidget.h"
 #include "petcolourgraphicswidget.h"
 #include "petdwwwidget.h"
-#include "supersnapshotwidget.h"
-#include "cpmwidget.h"
 #include "burstmodewidget.h"
 #include "c128fullbankswidget.h"
 #include "plus4digiblasterwidget.h"
-#include "finalexpansionwidget.h"
-#include "vicflashwidget.h"
-#include "ultimemwidget.h"
 #include "vicieee488widget.h"
-#include "ieeeflash64widget.h"
 #include "vicioramwidget.h"
 #include "vfliwidget.h"
 #include "petdiagpinwidget.h"
@@ -228,7 +231,7 @@ enum {
  * This is not how tall the dialog will actually become, that is determined by
  * the Gtk theme applied. But it's a rough estimate.
  */
-#define DIALOG_HEIGHT 560
+#define DIALOG_HEIGHT 500
 
 
 /** \brief  Maximum width the UI can be
@@ -285,22 +288,22 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "Double Quick Brown Box",
       "dqbb",
-      dqbb_widget_create, NULL },
+      settings_dqbb_widget_create, NULL },
     { "GEO-RAM",
       "geo-ram",
-      georam_widget_create, NULL },
+      settings_georam_widget_create, NULL },
     { "RAM Expansion Module",
       "reu",
-      reu_widget_create, NULL },
+      settings_reu_widget_create, NULL },
     { "RamCart",    /* FIXME: shouldnt this be in "Memory Hacks" ? */
       "ramcart",
-      ramcart_widget_create, NULL },
+      settings_ramcart_widget_create, NULL },
     { "RAMLink",
       "ramlink",
-      ramlink_widget_create, NULL },
+      settings_ramlink_widget_create, NULL },
     { "REX Ram-Floppy",
       "rexramfloppy",
-      rexramfloppy_widget_create, NULL },
+      settings_rexramfloppy_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -308,13 +311,13 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "EasyFlash",
       "easyflash",
-      easyflash_widget_create, NULL },
+      settings_easyflash_widget_create, NULL },
     { "GMod2",
       "gmod2",
-      gmod2_widget_create, NULL },
+      settings_gmod2_widget_create, NULL },
     { "GMod3",
       "gmod3",
-      gmod3_widget_create, NULL },
+      settings_gmod3_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -322,16 +325,16 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "Expert Cartridge",
       "expert-cart",
-      expert_widget_create, NULL },
+      settings_expert_widget_create, NULL },
     { "ISEPIC",
       "isepic",
-      isepic_widget_create, NULL },
+      settings_isepic_widget_create, NULL },
     { "Retro Replay",
       "retroreplay",
-      retroreplay_widget_create, NULL },
+      settings_retroreplay_widget_create, NULL },
     { "Super Snapshot V5",
       "super-snapshot",
-      super_snapshot_widget_create, NULL },
+      settings_supersnapshot_widget_create, NULL },
 #ifdef HAVE_RAWNET
 
     UI_SETTINGS_SEPARATOR,
@@ -340,10 +343,10 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "Ethernet Cartridge",
       "ethernet-cart",
-      ethernet_cart_widget_create, NULL },
+      settings_ethernetcart_widget_create, NULL },
     { "RR-Net Mk3",
       "rrnetmk3",
-      rrnetmk3_widget_create, NULL },
+      settings_rrnetmk3_widget_create, NULL },
 
 #endif
     UI_SETTINGS_SEPARATOR,
@@ -352,22 +355,22 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "IDE64",
       "ide64",
-      ide64_widget_create, NULL },
+      settings_ide64_widget_create, NULL },
     { "IEEE-448 Interface",
       "ieee-488",
-      ieee488_widget_create, NULL },
+      settings_ieee488_widget_create, NULL },
     { "IEEE Flash! 64 Interface",
       "ieee-flash-64",
-      ieeeflash64_widget_create, NULL },
+      settings_ieeeflash64_widget_create, NULL },
     { "Lt. Kernal Host Adapter",
       "ltkernal",
-      ltkernal_widget_create, NULL },
+      settings_ltkernal_widget_create, NULL },
     { "MMC64",
       "mmc64",
-      mmc64_widget_create, NULL },
+      settings_mmc64_widget_create, NULL },
     { "MMC Replay",
       "mmcr",
-      mmcr_widget_create, NULL },
+      settings_mmcr_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -375,21 +378,21 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "DigiMAX",
       "digimax",
-      digimax_widget_create, NULL },
+      settings_digimax_widget_create, NULL },
     { "Magic Voice",
       "magic-voice",
-      magic_voice_widget_create, NULL },
+      settings_magicvoice_widget_create, NULL },
 #ifdef HAVE_MIDI
     { "MIDI emulation",
       "midi",
-      midi_widget_create, NULL },
+      settings_midi_widget_create, NULL },
 #endif
     { "SFX Sound Expander",
       "sfx-expander",
-      sfx_sound_expander_widget_create, NULL },
+      settings_sfxsoundexpander_widget_create, NULL },
     { "SFX Sound Sampler",
       "sfx-sampler",
-      sfx_sound_sampler_widget_create, NULL },
+      settings_sfxsoundsampler_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -397,7 +400,7 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "CP/M Cartridge",
       "cpm-cart",
-      cpm_widget_create, NULL },
+      settings_cpm_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -405,7 +408,7 @@ static ui_settings_tree_node_t c64_cartridges[] = {
 
     { "DS12C887 Real Time Clock",
       "ds12c887-rtc",
-      ds12c887_widget_create, NULL },
+      settings_ds12c887_widget_create, NULL },
      UI_SETTINGS_TERMINATOR
 };
 /* }}} */
@@ -424,22 +427,22 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
 
     { "GEO-RAM",
       "geo-ram",
-      georam_widget_create, NULL },
+      settings_georam_widget_create, NULL },
     { "RAM Expansion Module",
       "reu",
-      reu_widget_create, NULL },
+      settings_reu_widget_create, NULL },
     { "RamCart",
       "ramcart",
-      ramcart_widget_create, NULL },
+      settings_ramcart_widget_create, NULL },
     { "REX Ram-Floppy",
       "rexramfloppy",
-      rexramfloppy_widget_create, NULL },
+      settings_rexramfloppy_widget_create, NULL },
     { "RAMLink",
       "ramlink",
-      ramlink_widget_create, NULL },
+      settings_ramlink_widget_create, NULL },
     { "Double Quick Brown Box",
       "dqbb",
-      dqbb_widget_create, NULL },
+      settings_dqbb_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -447,13 +450,13 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
 
     { "EasyFlash",
       "easyflash",
-      easyflash_widget_create, NULL },
+      settings_easyflash_widget_create, NULL },
     { "GMod2",
       "gmod2",
-      gmod2_widget_create, NULL },
+      settings_gmod2_widget_create, NULL },
     { "GMod3",
       "gmod3",
-      gmod3_widget_create, NULL },
+      settings_gmod3_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -461,16 +464,16 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
 
     { "Expert Cartridge",
       "expert-cart",
-      expert_widget_create, NULL },
+      settings_expert_widget_create, NULL },
     { "ISEPIC",
       "isepic",
-      isepic_widget_create, NULL },
+      settings_isepic_widget_create, NULL },
     { "Retro Replay",
       "retroreplay",
-      retroreplay_widget_create, NULL },
+      settings_retroreplay_widget_create, NULL },
     { "Super Snapshot V5",
       "super-snapshot",
-      super_snapshot_widget_create, NULL },
+      settings_supersnapshot_widget_create, NULL },
 #ifdef HAVE_RAWNET
 
     UI_SETTINGS_SEPARATOR,
@@ -479,10 +482,10 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
 
     { "Ethernet Cartridge",
       "ethernet-cart",
-      ethernet_cart_widget_create, NULL },
+      settings_ethernetcart_widget_create, NULL },
     { "RR-Net Mk3",
       "rrnetmk3",
-      rrnetmk3_widget_create, NULL },
+      settings_rrnetmk3_widget_create, NULL },
 #endif
 
     UI_SETTINGS_SEPARATOR,
@@ -491,16 +494,16 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
 
     { "IDE64",
       "ide64",
-      ide64_widget_create, NULL },
+      settings_ide64_widget_create, NULL },
     { "IEEE-448 Interface",
       "ieee-488",
-      ieee488_widget_create, NULL },
+      settings_ieee488_widget_create, NULL },
     { "MMC64",
       "mmc64",
-      mmc64_widget_create, NULL },
+      settings_mmc64_widget_create, NULL },
     { "MMC Replay",
       "mmcr",
-      mmcr_widget_create, NULL },
+      settings_mmcr_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -508,21 +511,21 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
 
     { "DigiMAX",
       "digimax",
-      digimax_widget_create, NULL },
+      settings_digimax_widget_create, NULL },
     { "Magic Voice",
       "magic-voice",
-      magic_voice_widget_create, NULL },
+      settings_magicvoice_widget_create, NULL },
 #ifdef HAVE_MIDI
     { "MIDI emulation",
       "midi",
-      midi_widget_create, NULL },
+      settings_midi_widget_create, NULL },
 #endif
     { "SFX Sound Expander",
       "sfx-expander",
-      sfx_sound_expander_widget_create, NULL },
+      settings_sfxsoundexpander_widget_create, NULL },
     { "SFX Sound Sampler",
       "sfx-sampler",
-      sfx_sound_sampler_widget_create, NULL },
+      settings_sfxsoundsampler_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -530,7 +533,7 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
 
     { "DS12C887 Real Time Clock",
       "ds12c887-rtc",
-      ds12c887_widget_create, NULL },
+      settings_ds12c887_widget_create, NULL },
 
     UI_SETTINGS_TERMINATOR
 };
@@ -550,22 +553,22 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "GEO-RAM",
       "geo-ram",
-      georam_widget_create, NULL },
+      settings_georam_widget_create, NULL },
     { "RAM Expansion Module",
       "reu",
-      reu_widget_create, NULL },
+      settings_reu_widget_create, NULL },
     { "RAMLink",
       "ramlink",
-      ramlink_widget_create, NULL },
+      settings_ramlink_widget_create, NULL },
     { "REX Ram-Floppy",
       "rexramfloppy",
-      rexramfloppy_widget_create, NULL },
+      settings_rexramfloppy_widget_create, NULL },
     { "RamCart",
       "ramcart",
-      ramcart_widget_create, NULL },
+      settings_ramcart_widget_create, NULL },
     { "Double Quick Brown Box",
       "dqbb",
-      dqbb_widget_create, NULL },
+      settings_dqbb_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -573,13 +576,16 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "EasyFlash",
       "easyflash",
-      easyflash_widget_create, NULL },
+      settings_easyflash_widget_create, NULL },
     { "GMod2",
       "gmod2",
-      gmod2_widget_create, NULL },
+      settings_gmod2_widget_create, NULL },
+    { "GMod2-C128",
+      "gmod2c128",
+      settings_gmod2c128_widget_create, NULL },
     { "GMod3",
       "gmod3",
-      gmod3_widget_create, NULL },
+      settings_gmod3_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -587,16 +593,16 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "Expert Cartridge",
       "expert-cart",
-      expert_widget_create, NULL },
+      settings_expert_widget_create, NULL },
     { "ISEPIC",
       "isepic",
-      isepic_widget_create, NULL },
+      settings_isepic_widget_create, NULL },
     { "Retro Replay",
       "retroreplay",
-      retroreplay_widget_create, NULL },
+      settings_retroreplay_widget_create, NULL },
     { "Super Snapshot V5",
       "super-snapshot",
-      super_snapshot_widget_create, NULL },
+      settings_supersnapshot_widget_create, NULL },
 #ifdef HAVE_RAWNET
     UI_SETTINGS_SEPARATOR,
 
@@ -604,10 +610,10 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "Ethernet Cartridge",
       "ethernet-cart",
-      ethernet_cart_widget_create, NULL },
+      settings_ethernetcart_widget_create, NULL },
     { "RR-Net Mk3",
       "rrnetmk3",
-      rrnetmk3_widget_create, NULL },
+      settings_rrnetmk3_widget_create, NULL },
 #endif
     UI_SETTINGS_SEPARATOR,
 
@@ -615,19 +621,19 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "IDE64",
       "ide64",
-      ide64_widget_create, NULL },
+      settings_ide64_widget_create, NULL },
     { "Lt. Kernal Host Adapter",
       "ltkernal",
-      ltkernal_widget_create, NULL },
+      settings_ltkernal_widget_create, NULL },
     { "IEEE-448 Interface",
       "ieee-488",
-      ieee488_widget_create, NULL },
+      settings_ieee488_widget_create, NULL },
     { "MMC64",
       "mmc64",
-      mmc64_widget_create, NULL },
+      settings_mmc64_widget_create, NULL },
     { "MMC Replay",
       "mmcr",
-      mmcr_widget_create, NULL },
+      settings_mmcr_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -635,21 +641,21 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "DigiMAX",
       "digimax",
-      digimax_widget_create, NULL },
+      settings_digimax_widget_create, NULL },
     { "Magic Voice",
       "magic-voice",
-      magic_voice_widget_create, NULL },
+      settings_magicvoice_widget_create, NULL },
 #ifdef HAVE_MIDI
     { "MIDI emulation",
       "midi",
-      midi_widget_create, NULL },
+      settings_midi_widget_create, NULL },
 #endif
     { "SFX Sound Expander",
       "sfx-expander",
-      sfx_sound_expander_widget_create, NULL },
+      settings_sfxsoundexpander_widget_create, NULL },
     { "SFX Sound Sampler",
       "sfx-sampler",
-      sfx_sound_sampler_widget_create, NULL },
+      settings_sfxsoundsampler_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -657,7 +663,7 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "CP/M Cartridge",
       "cpm-cart",
-      cpm_widget_create, NULL },
+      settings_cpm_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -665,7 +671,7 @@ static ui_settings_tree_node_t c128_cartridges[] = {
 
     { "DS12C887 Real Time Clock",
       "ds12c887-rtc",
-       ds12c887_widget_create, NULL },
+       settings_ds12c887_widget_create, NULL },
 
     UI_SETTINGS_TERMINATOR
 };
@@ -685,16 +691,16 @@ static ui_settings_tree_node_t vic20_cartridges[] = {
 
     { "Final Expansion",
       "final-expansion",
-      final_expansion_widget_create, NULL },
+      settings_finalexpansion_widget_create, NULL },
     { "Mega Cart",
       "mega-cart",
-      mega_cart_widget_create, NULL },
+      settings_megacart_widget_create, NULL },
     { "UltiMem",
       "ultimem",
-      ultimem_widget_create, NULL },
+      settings_ultimem_widget_create, NULL },
     { "Vic Flash Plugin",
       "vic-flash-plugin",
-      vic_flash_widget_create, NULL },
+      settings_vicflashplugin_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -711,7 +717,7 @@ static ui_settings_tree_node_t vic20_cartridges[] = {
 #ifdef HAVE_MIDI
     { "MIDI emulation",
       "midi",
-      midi_widget_create, NULL },
+      settings_midi_widget_create, NULL },
 #endif
 
     UI_SETTINGS_SEPARATOR,
@@ -720,24 +726,24 @@ static ui_settings_tree_node_t vic20_cartridges[] = {
 
     { "DigiMAX (MasC=uerade",
       "digimax",
-      digimax_widget_create, NULL },
+      settings_digimax_widget_create, NULL },
     { "DS12C887 RTC (MasC=uerade)",
       "ds12c887-rtc",
-      ds12c887_widget_create, NULL },
+      settings_ds12c887_widget_create, NULL },
 #ifdef HAVE_RAWNET
     { "Ethernet Cartridge (MasC=uerade)",
       "ethernet-cart",
-      ethernet_cart_widget_create, NULL },
+      settings_ethernetcart_widget_create, NULL },
 #endif
     { "GEO-RAM (MasC=uerade)",
       "geo-ram",
-      georam_widget_create, NULL },
+      settings_georam_widget_create, NULL },
     { "SFX Sound Expander (MasC=uerade)",
       "sfx-expander",
-      sfx_sound_expander_widget_create, NULL },
+      settings_sfxsoundexpander_widget_create, NULL },
     { "SFX Sound Sampler (MasC=uerade)",
       "sfx-sampler",
-      sfx_sound_sampler_widget_create, NULL },
+      settings_sfxsoundsampler_widget_create, NULL },
 
     UI_SETTINGS_TERMINATOR
 };
@@ -865,6 +871,9 @@ static ui_settings_tree_node_t main_nodes_vsid[] = {
     { "HVSC",
       "hvsc",
       hvsc_settings_widget_create, NULL },
+    { "Hotkeys",
+      "hotkeys",
+      settings_hotkeys_widget_create, NULL },
 
     UI_SETTINGS_TERMINATOR
 };
@@ -1035,7 +1044,7 @@ static ui_settings_tree_node_t peripheral_nodes_c64[] = {
       userport_devices_widget_create, NULL },
     { "Tape port devices",
       "tapeport-devices",
-      tapeport_devices_widget_create, NULL },
+      settings_tapeport_widget_create, NULL },
 #ifdef HAVE_RAWNET
     { "Ethernet",
       "ethernet",
@@ -1194,7 +1203,10 @@ static ui_settings_tree_node_t peripheral_nodes_c64dtv[] = {
     { "Printer",
       "printer",
       settings_printer_widget_create, NULL },
-    UI_SETTINGS_TERMINATOR
+    { "Userport devices",
+      "userport-devices",
+      userport_devices_widget_create, NULL },
+      UI_SETTINGS_TERMINATOR
 };
 /* }}} */
 
@@ -1355,7 +1367,7 @@ static ui_settings_tree_node_t peripheral_nodes_c128[] = {
       userport_devices_widget_create, NULL },
     { "Tape port devices",
       "tapeport-devices",
-      tapeport_devices_widget_create, NULL },
+      settings_tapeport_widget_create, NULL },
 #ifdef HAVE_RAWNET
     { "Ethernet",
       "ethernet",
@@ -1680,7 +1692,7 @@ static ui_settings_tree_node_t peripheral_nodes_vic20[] = {
       userport_devices_widget_create, NULL },
     { "Tapeport devices",
       "tapeport-devices",
-      tapeport_devices_widget_create, NULL },
+      settings_tapeport_widget_create, NULL },
 #ifdef HAVE_RAWNET
     { "Ethernet",
       "ethernet",
@@ -1835,7 +1847,7 @@ static ui_settings_tree_node_t peripheral_nodes_plus4[] = {
       userport_devices_widget_create, NULL },
     { "Tape port devices",
       "tapeport-devices",
-      tapeport_devices_widget_create, NULL },
+      settings_tapeport_widget_create, NULL },
 #ifdef HAVE_RAWNET
     { "Ethernet",
       "ethernet",
@@ -1990,7 +2002,7 @@ static ui_settings_tree_node_t peripheral_nodes_pet[] = {
       userport_devices_widget_create, NULL },
     { "Tape port devices",
       "tapeport-devices",
-      tapeport_devices_widget_create, NULL },
+      settings_tapeport_widget_create, NULL },
 #if 0 /* not implemented/supported */
 #ifdef HAVE_RAWNET
     { "Ethernet",
@@ -2139,7 +2151,7 @@ static ui_settings_tree_node_t peripheral_nodes_cbm5x0[] = {
 #endif
     { "Tape port devices",
       "tapeport-devices",
-      tapeport_devices_widget_create, NULL },
+      settings_tapeport_widget_create, NULL },
 
     UI_SETTINGS_TERMINATOR
 };
@@ -2291,7 +2303,7 @@ static ui_settings_tree_node_t peripheral_nodes_cbm6x0[] = {
       userport_devices_widget_create, NULL },
     { "Tape port devices",
       "tapeport_devices",
-      tapeport_devices_widget_create, NULL },
+      settings_tapeport_widget_create, NULL },
 
     UI_SETTINGS_TERMINATOR
 };
@@ -2395,6 +2407,7 @@ static GtkTreePath *last_node_path = NULL;
 static void on_settings_dialog_destroy(GtkWidget *widget, gpointer data)
 {
     settings_window = NULL;
+    ui_action_finish(ACTION_SETTINGS_DIALOG);
 }
 
 
@@ -2473,14 +2486,13 @@ static void on_tree_selection_changed(GtkTreeSelection *selection,
         GtkWidget *(*callback)(void *) = NULL;
         const char *id;
 
-
         gtk_tree_model_get(model, &iter, COLUMN_NAME, &name, -1);
         gtk_tree_model_get(model, &iter, COLUMN_CALLBACK, &callback, -1);
         gtk_tree_model_get(model, &iter, COLUMN_ID, &id, -1);
 
         if (callback != NULL) {
             GtkTreeIter parent;
-            char *title;
+            char title[256];
 
             /* try to get parent's name */
             if (gtk_tree_model_iter_parent(model, &parent, &iter)) {
@@ -2488,13 +2500,16 @@ static void on_tree_selection_changed(GtkTreeSelection *selection,
             }
 
             if (parent_name != NULL) {
-                title = lib_msprintf("%s settings :: %s :: %s",
-                        machine_name, parent_name, name);
+                g_snprintf(title, sizeof title,
+                           "%s settings :: %s :: %s",
+                           machine_name, parent_name, name);
             } else {
-                title = lib_msprintf("%s settings :: %s", machine_name, name);
+                g_snprintf(title, sizeof title,
+                           "%s settings :: %s",
+                           machine_name, name);
             }
             gtk_window_set_title(GTK_WINDOW(settings_window), title);
-            lib_free(title);
+
             /* create new central widget, using settings_window (this dialog)
              * as its parent, this will allow for proper blocking in modal
              * dialogs, while ui_get_active_window() breaks that. */
@@ -2609,9 +2624,9 @@ static GtkTreeStore *populate_tree_model(void)
             nodes = main_nodes_vsid;
             break;
         default:
-            fprintf(stderr,
-                    "Error: %s:%d:%s(): unsupported machine_class %d\n",
-                    __FILE__, __LINE__, __func__, machine_class);
+            log_error(LOG_ERR,
+                      "Error: %s:%d:%s(): unsupported machine_class %d\n",
+                      __FILE__, __LINE__, __func__, machine_class);
             archdep_vice_exit(1);
             break;
     }
@@ -2734,7 +2749,10 @@ static void ui_settings_set_central_widget(GtkWidget *widget)
     }
     gtk_paned_pack2(GTK_PANED(paned_widget), widget, TRUE, FALSE);
     /* add a little space around the widget */
-    g_object_set(widget, "margin", 16, NULL);
+    gtk_widget_set_margin_top(widget, 16);
+    gtk_widget_set_margin_start(widget, 16);
+    gtk_widget_set_margin_end(widget, 16);
+    gtk_widget_set_margin_bottom(widget, 16);
 }
 
 
@@ -2811,7 +2829,10 @@ static GtkWidget *create_content_widget(GtkWidget *widget)
     extra = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(extra), 8);
     gtk_grid_set_row_spacing(GTK_GRID(extra), 8);
-    g_object_set(extra, "margin", 16, NULL);
+    gtk_widget_set_margin_top(extra, 16);
+    gtk_widget_set_margin_start(extra, 16);
+    gtk_widget_set_margin_end(extra, 16);
+    gtk_widget_set_margin_bottom(extra, 16);
 
     gtk_grid_attach(GTK_GRID(extra), create_save_on_exit_checkbox(),
             0, 0, 1, 1);
@@ -2826,7 +2847,7 @@ static GtkWidget *create_content_widget(GtkWidget *widget)
     gtk_widget_show(settings_grid);
     gtk_widget_show(settings_tree);
 
-    gtk_widget_set_size_request(scrolled_window, 250, 500);
+    gtk_widget_set_size_request(scrolled_window, 250, 400);
     gtk_widget_set_size_request(settings_grid, DIALOG_WIDTH, DIALOG_HEIGHT);
 
     selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(settings_tree));
@@ -2911,36 +2932,15 @@ static gboolean on_dialog_configure_event(GtkWidget *widget,
 {
     if (event->type == GDK_CONFIGURE) {
         GdkEventConfigure *cfg = (GdkEventConfigure *)event;
-#if 0
-        int width = cfg->width;
-        int height = cfg->height;
-#endif
+
         /* Update dialog position, using gtk_window_get_position() doesn't
          * work, it reports the position of the dialog when it was spawned,
          * not the position if it has been moved afterwards. */
         settings_xpos = cfg->x;
         settings_ypos = cfg->y;
     }
-#if 0
-        /* debug_gtk3("width %d, height %d.", width, height); */
-        if (width > DIALOG_WIDTH_MAX || height > DIALOG_HEIGHT_MAX) {
-            /* uncomment the following to get some 'help' while building
-             * new dialogs: */
-#if 0
-            gtk_window_set_title(GTK_WINDOW(widget),
-                    "HELP! --- DIALOG IS TOO BLOODY LARGE -- ERROR!");
-#endif
-            debug_gtk3("Dialog is too large: %dx%d (max: %dx%d).",
-                    width, height, DIALOG_WIDTH_MAX, DIALOG_HEIGHT_MAX);
-        }
-#if 0
-        debug_gtk3("XPOS: %d - YPOS: %d", cfg->x, cfg->y);
-#endif
-    }
-#endif
     return FALSE;
 }
-
 
 
 /** \brief  Dialog create helper
@@ -2959,14 +2959,6 @@ static GtkWidget *dialog_create_helper(void)
             title,
             ui_get_active_window(),
             GTK_DIALOG_MODAL,
-            /*
-             * Temp. disabled due to code freeze, will work on this again
-             * after the code freeze -- compyx
-             */
-#if 0
-            "Revert changes", RESPONSE_RESET,
-            "Factory reset", RESPONSE_FACTORY,
-#endif
             "Close", GTK_RESPONSE_DELETE_EVENT,
             NULL);
 
@@ -2988,31 +2980,6 @@ static GtkWidget *dialog_create_helper(void)
 
     return dialog;
 }
-
-
-#if 0
-/** \brief  Callback to create the main settings dialog from the menu
- *
- * \param[in]   widget      (direct) parent widget, the menu item
- * \param[in]   user_data   data for the event (unused)
- *
- * \note    The appearance of minimize/maximize buttons seems to depend on
- *          which Window Manager is active:
- *
- *          On MATE (marco, a Metacity fork) both buttons are hidden.
- *          On KDE (KWin) the maximize button is still visible but inactive
- *          On OpenBox both min/max are visible with only minimize working
- *
- * \return  TRUE (avoids the key press getting passed to the emulated machine)
- */
-static gboolean ui_settings_dialog_create(GtkWidget *widget, gpointer user_data)
-{
-
-    ui_settings_dialog_create_and_activate_node(NULL);
-
-    return TRUE;
-}
-#endif
 
 
 /** \brief  Clean up resources used on emu exit
@@ -3043,7 +3010,7 @@ void ui_settings_shutdown(void)
  *
  * \return  bool
  */
-gboolean ui_settings_dialog_activate_node(const char *path)
+static gboolean ui_settings_dialog_activate_node(const char *path)
 {
     GtkTreeIter iter;
     gchar **parts;
@@ -3056,7 +3023,7 @@ gboolean ui_settings_dialog_activate_node(const char *path)
         return FALSE;
     }
     if (path == NULL || *path == '\0') {
-        log_error(LOG_ERR, "NULL or empty path pased.");
+        log_error(LOG_ERR, "NULL or empty path passed.");
         return FALSE;
     }
 
@@ -3149,7 +3116,7 @@ gboolean ui_settings_dialog_activate_node(const char *path)
  *
  * \return  FALSE
  */
-static gboolean ui_settings_dialog_create_and_activate_node_impl(gpointer user_data)
+static gboolean ui_settings_dialog_show_impl(gpointer user_data)
 {
     const char *path = (const char *)user_data;
     GtkWidget *dialog;
@@ -3176,37 +3143,17 @@ static gboolean ui_settings_dialog_create_and_activate_node_impl(gpointer user_d
     return FALSE;
 }
 
-
-/** \brief  Show settings main dialog and activate a node
- *
- * \param[in]   path    NULL or path to name ("foo/bar/blah")
- *
- * \return  TRUE which means nothing.
- */
-gboolean ui_settings_dialog_create_and_activate_node(const char *path)
-{
-    /* call from ui thread without locking - creating the settings dialog is heavy */
-    gdk_threads_add_timeout(0, ui_settings_dialog_create_and_activate_node_impl, (gpointer)path);
-
-    return TRUE;
-}
-
-
 /** \brief  Menu callback for the settings dialog
  *
- * Opens the main settings dialog and activates the previously activate node,
- * if any.
+ * Opens the main settings dialog and activates a node, if any.
  *
- * \param[in]   widget      unused
- * \param[in]   user_data   path to previously active node
+ * \param[in]   path   path to node
  *
  * \return  TRUE
  */
-gboolean ui_settings_dialog_create_and_activate_node_callback(
-        GtkWidget *widget,
-        gpointer user_data)
+void ui_settings_dialog_show(const char *path)
 {
-    int pause_on_settings;
+    int pause_on_settings = 0;
 
     settings_old_pause_state = ui_pause_active();
 
@@ -3214,7 +3161,7 @@ gboolean ui_settings_dialog_create_and_activate_node_callback(
     if (pause_on_settings) {
         ui_pause_enable();
     }
-    ui_settings_dialog_create_and_activate_node((const char *)user_data);
 
-    return TRUE;
+    /* call from ui thread without locking - creating the settings dialog is heavy */
+    gdk_threads_add_timeout(0, ui_settings_dialog_show_impl, (gpointer)path);
 }

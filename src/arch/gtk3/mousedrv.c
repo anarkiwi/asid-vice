@@ -27,10 +27,10 @@
 
 #include "vice.h"
 
-#if defined(MACOSX_SUPPORT)
+#if defined(MACOS_COMPILE)
 #import <CoreGraphics/CGRemoteOperation.h>
 #import <CoreGraphics/CGEvent.h>
-#elif defined(WIN32_COMPILE)
+#elif defined(WINDOWS_COMPILE)
 #include <windows.h>
 #else
 #include <X11/Xlib.h>
@@ -110,7 +110,7 @@ void mousedrv_mouse_changed(void)
 {
     /** \todo Tell UI level to capture mouse cursor if necessary and
      *        permitted */
-    log_message(LOG_DEFAULT, "GTK3MOUSE: Status changed: %d (%s)\n",
+    log_message(LOG_DEFAULT, "GTK3MOUSE: Status changed: %d (%s)",
             _mouse_enabled, _mouse_enabled ? "enabled" : "disabled");
     if (_mouse_enabled) {
         ui_mouse_grab_pointer();

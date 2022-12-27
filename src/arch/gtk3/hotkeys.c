@@ -26,6 +26,11 @@
  *  02111-1307  USA.
  */
 
+/* Resources manipulated in this file:
+ *
+ * $VICERES HotkeyFile all
+ */
+
 #include "vice.h"
 
 #include <gtk/gtk.h>
@@ -42,13 +47,15 @@
 #include "archdep.h"
 #include "debug_gtk3.h"
 #include "cmdline.h"
+#include "hotkeymap.h"
 #include "lib.h"
 #include "log.h"
 #include "machine.h"
 #include "resources.h"
 #include "sysfile.h"
+#include "ui.h"
 #include "uiactions.h"
-#include "uimachinemenu.h"
+#include "uimenu.h"
 #include "util.h"
 #include "version.h"
 #ifdef USE_SVN_REVISION
@@ -71,7 +78,7 @@ static int hotkeys_file_set(const char *val, void *param);
 #define ARRAY_LEN(arr)  (sizeof(arr) / sizeof(arr[0]))
 
 
-#ifdef ARCHDEP_OS_MACOS
+#ifdef MACOS_COMPILE
 /** \brief  Replacement of 'Primary' for MacOS */
 #define PRIMARY_REPLACEMENT "Command"
 #else
@@ -235,15 +242,11 @@ static const hotkeys_modifier_t hotkeys_modifier_list[] = {
 
 
 
-
-
-
 /** \brief  Path to current hotkey file
  *
  * \note    Free with hotkeys_shutdown() on emulator shutdown.
  */
 static char *hotkeys_file = NULL;
-
 
 /** \brief  Default hotkeys file name
  *
@@ -251,6 +254,22 @@ static char *hotkeys_file = NULL;
  */
 static char *hotkeys_file_default = NULL;
 
+/** \brief  A .vhk file is pending
+ *
+ * When the 'HotkeyFile' resource is initially set the UI hasn't finished
+ * building the menu and registering actions, so trying to parse a hotkeys
+ * file and adding hotkeys for actions will fail. This flag is used to
+ * indicate a hotkey file is pending to be parsed.
+ */
+static bool hotkeys_file_pending = false;
+
+/** \brief  The hotkeys system is initialized
+ *
+ * This flag is used to determine if a new HotkeyFile resource value can be
+ * used to parse a hotkeys file, or if it needs to be marked as pending,
+ * waiting for the UI to be fully initialized.
+ */
+static bool hotkeys_init_done = false;
 
 /** \brief  Log instance for hotkeys
  */
@@ -267,13 +286,9 @@ static bool hotkeys_debug = false;
 /* {{{ VICE resources, command line options and their handlers */
 
 /** \brief  String type resources
- *
- * \note    Make sure "HotkeyFile" remains the first element in the list, the
- *          init code sets the factory value during runtime, using array index
- *          0.
  */
 static resource_string_t resources_string[] = {
-    { "HotkeyFile", NULL, RES_EVENT_NO, NULL,
+    { "HotkeyFile", "", RES_EVENT_NO, NULL,
       &hotkeys_file, hotkeys_file_set, NULL },
     RESOURCE_STRING_LIST_END
 };
@@ -298,8 +313,6 @@ static const cmdline_option_t cmdline_options[] = {
  */
 static int hotkeys_file_set(const char *val, void *param)
 {
-    debug_gtk3("Got hotkey file '%s'", val);
-
     if (util_string_set(&hotkeys_file, val) != 0) {
         /* new value was the same as the old value, don't do anything */
         return 0;
@@ -307,15 +320,29 @@ static int hotkeys_file_set(const char *val, void *param)
 
     /* process hotkeys */
     if (help_requested) {
-        debug_gtk3("--help on command line, skip parsing.");
         return 0;
     }
 
-    log_message(hotkeys_log, "Hotkeys: parsing '%s':", val);
-    ui_hotkeys_parse(val);
+    if (val != NULL && *val != '\0') {
+        if (hotkeys_init_done) {
+            /* UI is properly initialized, directly parse the hotkeys file */
+            log_message(hotkeys_log, "Hotkeys: parsing '%s':", val);
+            ui_hotkeys_parse(val);
+            hotkeys_file_pending = false;
+        } else {
+            /* UI is not yet fully initialized, mark parsing of hotkeys file
+             * pending */
+            hotkeys_file_pending = true;
+        }
+    }
     return 0;
 }
 /* }}} */
+
+
+/*
+ * Hotkey mappings data and functions
+ */
 
 
 /** \brief  Initialize resources used by the custom hotkeys
@@ -324,11 +351,6 @@ static int hotkeys_file_set(const char *val, void *param)
  */
 int ui_hotkeys_resources_init(void)
 {
-    /* set the default filename */
-    hotkeys_file_default = archdep_default_hotkey_file_name();
-    resources_string[0].factory_value = hotkeys_file_default;
-
-    /* register the resources */
     return resources_register_string(resources_string);
 }
 
@@ -343,9 +365,39 @@ int ui_hotkeys_cmdline_options_init(void)
 }
 
 
+/** \brief  Load the default hotkeys
+ *
+ * Parse the VICE-provided hotkey files, clearing any user-defined hotkeys.
+ * Also set the "HotkeyFile" resource to "".
+ */
+void ui_hotkeys_load_default(void)
+{
+    bool result;
+
+    /* kludge:  We use `machine_name` to determine where to load the default
+     *          hotkeys from, and `machine_name` is C64 for VSID, so we load
+     *          from ${DATADIR}/C64 for vsid.
+     */
+    if (machine_class == VICE_MACHINE_VSID) {
+        log_message(hotkeys_log, "Hotkeys: Parsing VSID hotkeys file:");
+        result = ui_hotkeys_parse(VHK_DEFAULT_NAME_VSID);
+    } else {
+        log_message(hotkeys_log, "Hotkeys: Parsing %s hotkeys file:", machine_name);
+        result = ui_hotkeys_parse(VHK_DEFAULT_NAME);
+    }
+    if (result) {
+        log_message(hotkeys_log, "Hotkeys: OK.");
+        /* clear the custom hotkeys file resource */
+        resources_set_string("HotkeyFile", "");
+    } else {
+        log_message(hotkeys_log, "Hotkeys: Failed, continuing anyway.");
+    }
+}
+
+
 /** \brief  Initialize hotkeys
  *
- * Initialize hotkey handling resources such as logs and objects.
+ * Initialize hotkey resources such as logs and objects; load default hotkeys.
  *
  * \note    Does *not* initialize command line options or vice resources, that
  *          is done separately in hotkeys_cmdline_options_init() and
@@ -355,12 +407,17 @@ void ui_hotkeys_init(void)
 {
     hotkeys_log = log_open("HOTKEYS");
     log_message(hotkeys_log, "Hotkeys: Initializing.");
+    /* When we get to there the UI has been initialized */
+    hotkeys_init_done = true;
 
-    log_message(hotkeys_log, "Hotkeys: Parsing %s hotkeys file:", machine_name);
-    if (!ui_hotkeys_parse(VHK_DEFAULT_NAME)) {
-        log_message(hotkeys_log, "Hotkeys: Failed, continuing anyway.");
+    if (hotkeys_file == NULL || *hotkeys_file == '\0') {
+        ui_hotkeys_load_default();
     } else {
-        log_message(hotkeys_log, "Hotkeys: OK.");
+        if (hotkeys_file_pending) {
+            /* We have a peding hotkeys file to parse */
+            ui_hotkeys_parse(hotkeys_file);
+            hotkeys_file_pending = false;
+        }
     }
 }
 
@@ -379,7 +436,7 @@ void ui_hotkeys_shutdown(void)
         lib_free(hotkeys_file_default);
         hotkeys_file_default = NULL;
     }
-
+    hotkey_map_shutdown();
     log_close(hotkeys_log);
 }
 
@@ -529,10 +586,8 @@ static bool textfile_reader_open(textfile_reader_t *reader, const char *path)
     }
 
     /* try to open new file */
-    debug_gtk3("Opening new file '%s':", path);
     reader->fp = sysfile_open(path, machine_name, &complete_path, "rb");
     if (reader->fp == NULL) {
-        debug_gtk3("failed.");
         return false;
     } else {
         /* add new file to stack */
@@ -718,52 +773,6 @@ static const char *textfile_reader_filename(const textfile_reader_t *reader)
 
 /* {{{ Parser methods and helpers */
 
-/** \brief  Skip leading whitespace in string
- *
- * \param[in]   s   string
- *
- * \return  pointer to first non-whitespace character or terminating nul
- */
-static const char *skip_whitespace(const char *s)
-{
-    while (*s != '\0' && isspace((int)*s)) {
-        s++;
-    }
-    return s;
-}
-
-
-/** \brief  Skip trailing whitespace in string
- *
- * \param[in]   s   string
- *
- * \return  pointer to first non-whitespace character or terminating nul,
- *          starting from the end of the string
- */
-static const char *skip_whitespace_trailing(const char *s)
-{
-    const char *p;
-
-    if (*s == '\0') {
-        /* empty string */
-        return s;
-    }
-
-    /* last character in the string */
-    p = s + strlen(s) - 1;
-
-    while (*p != '\0' && isspace((int)*p)) {
-        p--;
-    }
-    if (p < s) {
-        /* entire string contained whitespace */
-        return s;
-    } else {
-        return p;
-    }
-}
-
-
 /** \brief  Strip leading and trailing whitespace
  *
  * Remove leading and trailing whitespace from string \a s.
@@ -779,14 +788,14 @@ static char *parser_strtrim(const char *s)
 {
     char *t;
 
-    s = skip_whitespace(s);
+    s = util_skip_whitespace(s);
 
     if (*s == '\0') {
         /* empty string */
         t = lib_calloc(1, 1);
     } else {
         /* trim trailing whitespace */
-        const char *p = skip_whitespace_trailing(s);
+        const char *p = util_skip_whitespace_trailing(s);
         p++;
         /* add 1 for the terminating nul char */
         t = lib_malloc(p - s + 1);
@@ -875,46 +884,6 @@ static char *parser_strsubst(const char *original,
     }
     return result;
 }
-
-
-/** \brief  Case-insensitive compare string \a s1 to string \a s2
- *
- * Compare two strings, \a s1 and \a s2, using at most \a n bytes of either
- * string, in a case-insenstive manner.
- *
- * \return  0 when equal, -1 when s1 < s2, +1 when s1 > s2
- */
-static int parser_strncasecmp(const char *s1, const char *s2, size_t n)
-{
-    size_t i;
-#if 0
-    debug_gtk3("compare (%s, %s).", s1, s2);
-#endif
-    for (i = 0; *s1 != '\0' && *s2 != '\0' && i < n; s1++, s2++, i++) {
-        int c1 = tolower((int)*s1);
-        int c2 = tolower((int)*s2);
-
-        if (c1 < c2) {
-            return -1;
-        } else if (c1 > c2) {
-            return 1;
-        }
-    }
-
-    if (*s1 != '\0' && *s2 != '\0') {
-        /* more data, but equal for the requested first n chars */
-        return 0;
-    } else if (*s1 == '\0' && *s2 == '\0') {
-        /* no more data, strings match */
-        return 0;
-    } else if (*s1 == '\0') {
-        /* s2 is longer */
-        return 1;
-    } else {
-        return -1;
-    }
-}
-
 
 
 /** \brief  Scan string for keyword
@@ -1208,7 +1177,7 @@ static bool parser_do_clear(const char *line, textfile_reader_t *reader)
                     textfile_reader_filename(reader),
                     textfile_reader_linenum(reader));
     }
-    ui_clear_vice_menu_item_hotkeys();
+    ui_clear_hotkeys();
     return true;
 }
 
@@ -1229,11 +1198,11 @@ static bool parser_do_debug(const char *line, textfile_reader_t *reader)
 #if 0
     debug_gtk3("Found !DEBUG, check arg.");
 #endif
-    arg = skip_whitespace(line);
+    arg = util_skip_whitespace(line);
     for (i = 0; i < ARRAY_LEN(debug_arglist); i++) {
-        if (parser_strncasecmp(debug_arglist[i].symbol,
-                               arg,
-                               strlen(debug_arglist[i].symbol)) == 0) {
+        if (util_strncasecmp(debug_arglist[i].symbol,
+                             arg,
+                             strlen(debug_arglist[i].symbol)) == 0) {
 #if 0
             debug_gtk3("Found '%s' -> '%s'.",
                        debug_arglist[i].symbol,
@@ -1278,11 +1247,7 @@ static bool parser_do_include(const char *line, textfile_reader_t *reader)
     char *a;
     bool result;
 
-    debug_gtk3("called.");
-
-    s = skip_whitespace(line);
-    debug_gtk3("!INCLUDE argument: '%s'.", s);
-
+    s = util_skip_whitespace(line);
     if (*s == '\0') {
         /* missing argument */
         log_message(hotkeys_log,
@@ -1370,6 +1335,8 @@ static bool parser_do_include(const char *line, textfile_reader_t *reader)
  * \return  bool
  *
  * \note    errors are reported with log_message()
+ *
+ * \todo    Support two windows for x128
  */
 static bool parser_do_undef(const char *line, textfile_reader_t *reader)
 {
@@ -1377,11 +1344,9 @@ static bool parser_do_undef(const char *line, textfile_reader_t *reader)
     const char *oldpos;
     GdkModifierType mask;
     guint keyval;
-    ui_menu_item_t *item;
+    hotkey_map_t *map;
 
-    s = skip_whitespace(line);
-    debug_gtk3("!UNDEF argument: '%s'.", s);
-
+    s = util_skip_whitespace(line);
     if (*s == '\0') {
         /* error: missing argument */
         log_message(hotkeys_log,
@@ -1407,18 +1372,18 @@ static bool parser_do_undef(const char *line, textfile_reader_t *reader)
                     gdk_keyval_name(keyval));
     }
 
-    /* look up menu item by hotkey */
-    item = ui_get_vice_menu_item_by_hotkey(mask, keyval);
-    if (item != NULL) {
+    /* lookup map for hotkey */
+    map = hotkey_map_get_by_hotkey(keyval, mask);
+    if (map != NULL) {
         if (hotkeys_debug) {
             log_message(hotkeys_log,
-                        "Hotkeys: %s:%ld: found menu item for hotkey: '%s'.",
+                        "Hotkeys: %s:%ld: found hotkey defined for action %d (%s),"
+                        " clearing.",
                         textfile_reader_filename(reader),
                         textfile_reader_linenum(reader),
-                        item->label);
+                        map->action, ui_action_get_name(map->action));
         }
-        item->keysym = 0;
-        item->modifier = 0;
+        hotkey_map_clear_hotkey(map);
     } else {
         /* cannot use gtk_accelerator_name(): Gtk throws a fit about not having
          * a display and thus no GdkKeymap. :( */
@@ -1542,9 +1507,11 @@ static bool parser_handle_mapping(const char *line, textfile_reader_t* reader)
 {
     const char *s;
     const char *oldpos;
-    char action[256];
-    guint keyval = 0;
+    char action_name[256];
+    int action_id = ACTION_INVALID;
+    guint keysym = 0;
     GdkModifierType mask = 0;
+    hotkey_map_t *map;
 
     s = line;
 
@@ -1563,7 +1530,7 @@ static bool parser_handle_mapping(const char *line, textfile_reader_t* reader)
                     textfile_reader_linenum(reader));
         return false;
     }
-    if (s - oldpos >= sizeof(action)) {
+    if (s - oldpos >= sizeof(action_name)) {
         log_message(hotkeys_log,
                     "Hotkeys: %s:%ld: error: action name is too long.",
                     textfile_reader_filename(reader),
@@ -1572,33 +1539,59 @@ static bool parser_handle_mapping(const char *line, textfile_reader_t* reader)
     }
 
     /* make properly nul-terminated string of action name for lookups*/
-    memcpy(action, oldpos, s - oldpos);
-    action[s - oldpos] = '\0';
+    memcpy(action_name, oldpos, s - oldpos);
+    action_name[s - oldpos] = '\0';
 
-    s = skip_whitespace(s);
+    s = util_skip_whitespace(s);
 
     /* get combined modifier masks and keyval */
-    if (!parser_get_gdk_mask_and_keyval(s, &s, reader, &mask, &keyval)) {
+    if (!parser_get_gdk_mask_and_keyval(s, &s, reader, &mask, &keysym)) {
         /* error already logged */
         return false;
     }
 
     if (hotkeys_debug) {
         log_message(hotkeys_log,
-                    "Hotkeys: mask: %04x, keyval: %08x, keyname: %s, action: %s",
-                    (unsigned int)mask, keyval, gdk_keyval_name(keyval), action);
+                    "Hotkeys: mask: %04x, keysym: %08x, keyname: %s, action: %s",
+                    (unsigned int)mask, keysym, gdk_keyval_name(keysym), action_name);
     }
+
     /* finally try to register the hotkey */
-    if (!ui_set_vice_menu_item_hotkey_by_name(action,
-                                              gdk_keyval_name(keyval),
-                                              mask)) {
+    action_id = ui_action_get_id(action_name);
+    if (action_id <= ACTION_NONE) {
         log_message(hotkeys_log,
-                    "Hotkeys: %s:%ld: failed to register hotkey.",
+                    "Hotkeys: %s:%ld: error: unknown action '%s'.",
                     textfile_reader_filename(reader),
-                    textfile_reader_linenum(reader));
-        return false;
+                    textfile_reader_linenum(reader),
+                    action_name);
+        /* allow parsing to continue */
+        return true;
     }
-    return true;
+
+    /* register mapping, first try looking up the item */
+    map = hotkey_map_get_by_action(action_id);
+    if (map != NULL) {
+#if 0
+        debug_gtk3("Got mapping for action %d, updating with hotkey data.",
+                    action_id);
+#endif
+        map->keysym = keysym;
+        map->modifier = mask;
+    } else {
+#if 0
+        debug_gtk3("Couldn't find mapping for action %d, allocating new mapping.",
+                    action_id);
+#endif
+        map = hotkey_map_new();
+        map->action = action_id;
+        map->keysym = keysym;
+        map->modifier = mask;
+        hotkey_map_append(map);
+    }
+
+    /* set hotkey for menu item, if it exists */
+    hotkey_map_setup_hotkey(map);
+   return true;
 }
 
 
@@ -1631,9 +1624,9 @@ bool ui_hotkeys_parse(const char *path)
                 char *trimmed = parser_strtrim(line);
 
                 if (hotkeys_debug) {
-                    printf("LINE %3ld: '%s'\n",
-                           textfile_reader_linenum(&reader),
-                           line);
+                    log_debug("LINE %3ld: '%s'",
+                              textfile_reader_linenum(&reader),
+                              line);
                 }
 
                 if (*trimmed == '\0'
@@ -1680,19 +1673,18 @@ bool ui_hotkeys_parse(const char *path)
 
 /** \brief  Return a string describing the key+modifiers for \a action
  *
- * \param[in]   action  action name
+ * \param[in]   action_id   action ID
  *
  * \return  string with key name and modifiers
  * \note    free the string after use with lib_free()
  */
-char *ui_hotkeys_get_hotkey_string_for_action(const char *action)
+char *ui_hotkeys_get_hotkey_string_for_action(gint action_id)
 {
-    ui_menu_item_t *item;
     char *str = NULL;
+    hotkey_map_t *map = hotkey_map_get_by_action(action_id);
 
-    item = ui_get_vice_menu_item_by_name(action);
-    if (item != NULL) {
-        str = gtk_accelerator_get_label(item->keysym, item->modifier);
+    if (map != NULL) {
+        str = gtk_accelerator_get_label(map->keysym, map->modifier);
         if (str != NULL) {
             /* make VICE take ownership */
             char *tmp = lib_strdup(str);
@@ -1787,7 +1779,7 @@ static bool export_header(FILE *fp)
 bool ui_hotkeys_export(const char *path)
 {
     FILE *fp;
-    ui_vice_menu_iter_t iter;
+    hotkey_map_t *map;
 
     log_message(hotkeys_log,
                 "Hotkeys: exporting current hotkeys to '%s'.", path);
@@ -1802,40 +1794,31 @@ bool ui_hotkeys_export(const char *path)
 
     export_header(fp);
 
-    ui_vice_menu_iter_init(&iter);
-    do {
-        GdkModifierType mask;
-        guint keysym;
-        ui_menu_item_type_t type;
-        const char *name;
+    for (map = hotkey_map_get_head(); map != NULL; map = map->next) {
+        if (map->keysym > 0) {
+            gchar *accel;
+            int result;
 
-        ui_vice_menu_iter_get_type(&iter, &type);
-        if (type == UI_MENU_TYPE_ITEM_ACTION ||
-                type == UI_MENU_TYPE_ITEM_CHECK) {
-            ui_vice_menu_iter_get_name(&iter, &name);
-            ui_vice_menu_iter_get_hotkey(&iter, &mask, &keysym);
-            if (keysym != 0 && name != NULL) {
-                char *accel;
-                int result;
+            accel = gtk_accelerator_name(map->keysym, map->modifier);
+            if (accel != NULL) {
+                char *hotkey;
+                const char *name;
 
-                accel = gtk_accelerator_name(keysym, mask);
-                if (accel != NULL) {
-                    /* replace 'Primary' with 'Command' or 'Control' */
-                    char *hotkey = parser_strsubst(accel, "Primary", PRIMARY_REPLACEMENT);
+                hotkey = parser_strsubst(accel, "Primary", PRIMARY_REPLACEMENT);
+                g_free(accel);
+                name = ui_action_get_name(map->action);
 
-                    g_free(accel);
-                    result = fprintf(fp, "%-30s  %s\n", name, hotkey);
-                    if (result < 0) {
-                        export_log_io_error();
-                        lib_free(hotkey);
-                        fclose(fp);
-                        return false;
-                    }
+                result = fprintf(fp, "%-30s  %s\n", name, hotkey);
+                if (result < 0) {
+                    export_log_io_error();
                     lib_free(hotkey);
+                    fclose(fp);
+                    return false;
                 }
+                lib_free(hotkey);
             }
         }
-    } while (ui_vice_menu_iter_next(&iter));
+    }
 
     fclose(fp);
     return true;

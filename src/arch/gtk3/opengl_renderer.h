@@ -27,9 +27,11 @@
 #ifndef VICE_OPENGL_RENDERER_H
 #define VICE_OPENGL_RENDERER_H
 
+#include "vice.h"
+
 #include <GL/glew.h>
 
-#ifndef MACOSX_SUPPORT
+#ifndef MACOS_COMPILE
 #include <X11/Xlib.h>
 #include <GL/glxew.h>
 #endif
@@ -49,10 +51,13 @@ extern vice_renderer_backend_t vice_opengl_backend;
  *  \sa video_canvas_s::renderer_context */
 typedef struct vice_opengl_renderer_context_s {
     /** \brief needed to coordinate access to the context between vice and main threads */
-    pthread_mutex_t canvas_lock;
+    pthread_mutex_t *canvas_lock_ptr;
 
     /** \brief used to coordinate access to native rendering resources */
     pthread_mutex_t render_lock;
+
+    /** \brief While true, render jobs will be skipped. Used during resize on macOS. */
+    bool render_skip;
 
     /** \brief A 'pool' of one thread used to render backbuffers */
     render_thread_t render_thread;
@@ -60,7 +65,7 @@ typedef struct vice_opengl_renderer_context_s {
     /** \brief A queue of backbuffers ready for painting to the widget */
     void *render_queue;
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
     /** \brief native child window for OpenGL to draw on */
     void *native_view;
 #else

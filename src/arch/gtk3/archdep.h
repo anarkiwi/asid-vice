@@ -65,13 +65,22 @@
  */
 #define ARCHDEP_SEPERATE_MONITOR_WINDOW
 
+/** \brief  Default state of mouse grab
+ */
+#define ARCHDEP_MOUSE_ENABLE_DEFAULT    0
+
+/** \brief  Factory value of the CHIPShowStatusbar resource
+ */
+#define ARCHDEP_SHOW_STATUSBAR_FACTORY  1
+
+
 /******************************************************************************/
 
 #ifdef UNIX_COMPILE
 #include "archdep_unix.h"
 #endif
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 #include "archdep_win32.h"
 #endif
 

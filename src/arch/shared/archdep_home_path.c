@@ -47,13 +47,13 @@
 #include "lib.h"
 #include "log.h"
 
-#ifdef ARCHDEP_OS_UNIX
+#ifdef UNIX_COMPILE
 # include <unistd.h>
 # include <sys/types.h>
 # include <pwd.h>
 #endif
 
-#ifdef ARCHDEP_OS_WINDOWS
+#ifdef WINDOWS_COMPILE
 # include <windows.h>
 # include <shlobj.h>
 #endif
@@ -80,9 +80,9 @@ static char *home_dir = NULL;
 const char *archdep_home_path(void)
 {
     /* stupid vice code rules, only declare vars at the top */
-#ifdef ARCHDEP_OS_UNIX
+#ifdef UNIX_COMPILE
     char *home;
-#elif defined(ARCHDEP_OS_WINDOWS)
+#elif defined(WINDOWS_COMPILE)
     DWORD err;
     char home[MAX_PATH];
 #endif
@@ -91,7 +91,7 @@ const char *archdep_home_path(void)
         return home_dir;
     }
 
-#ifdef ARCHDEP_OS_UNIX
+#ifdef UNIX_COMPILE
     home = getenv("HOME");
     if (home == NULL) {
         struct passwd *pwd;
@@ -104,7 +104,7 @@ const char *archdep_home_path(void)
         }
     }
     home_dir = lib_strdup(home);
-#elif defined(ARCHDEP_OS_WINDOWS)
+#elif defined(WINDOWS_COMPILE)
     if (FAILED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, home))) {
         /* error */
         err = GetLastError();
@@ -114,7 +114,7 @@ const char *archdep_home_path(void)
         home[1] = '\0';
     }
     home_dir = lib_strdup(home);
-#elif defined(ARCHDEP_OS_BEOS)
+#elif defined(BEOS_COMPILE)
     /* Beos/Haiku is single-user */
     home_dir = lib_strdup("/boot/home");
 #else

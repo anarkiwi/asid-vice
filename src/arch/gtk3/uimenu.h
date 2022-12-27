@@ -31,38 +31,12 @@
 
 #include "vice.h"
 #include <gtk/gtk.h>
-#include <stdbool.h>
 
 #include "uitypes.h"
 
-
-
-
-/*
- * Public functions
- */
-
-GtkWidget * ui_menu_submenu_create(GtkWidget *bar, const char *label);
-GtkWidget * ui_menu_add(GtkWidget *menu, ui_menu_item_t *items);
-GtkWidget * ui_get_gtk_submenu_item_by_name(GtkWidget *submenu,
-                                            const char *name);
-GtkWidget * ui_get_gtk_submenu_item_by_hotkey(GtkWidget *submenu,
-                                              GdkModifierType mask,
-                                              guint keyval);
-void        ui_set_gtk_check_menu_item_blocked(GtkWidget *item,
-                                               gboolean state);
-void        ui_set_gtk_check_menu_item_blocked_by_name(const char *name,
-                                                       gboolean state);
-void        ui_set_gtk_check_menu_item_blocked_by_resource(const char *name,
-                                                           const char *resource);
-
-
-
-/* FIXME: is this still even used? */
-void        ui_menu_init_accelerators(GtkWidget *window);
-
-gboolean    ui_menu_remove_accel_via_vice_item(ui_menu_item_t *item);
-void        ui_menu_set_accel_via_vice_item(GtkWidget *item_gtk,
-                                            ui_menu_item_t *item_vice);
+GtkWidget *ui_menu_submenu_create(GtkWidget *bar, const char *label);
+GtkWidget *ui_menu_add(GtkWidget *menu,
+                       const ui_menu_item_t *items,
+                       gint window_id);
 
 #endif

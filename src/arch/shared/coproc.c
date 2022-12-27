@@ -51,12 +51,9 @@
 
 #include "vice.h"
 
-#ifdef UNIX_COMPILE
-
-/* Solaris and Gtk3 eh? */
-#ifdef __svr4__
-#define _POSIX_SOURCE
-#endif
+/* TODO: Perhaps implement fork_coproc() on Haiku using Haiku-specific code
+ *       instead of relying on the POSIX compatibility layer? */
+#if defined(UNIX_COMPILE) || defined(HAIKU_COMPILE)
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -65,24 +62,19 @@
 #include <errno.h>
 #include <signal.h>
 
-
 #include "archdep.h"
+#include "log.h"
 
 #include "coproc.h"
 
-#include "log.h"
-
+/* On Haiku /bin/sh is symlinked to /boot/system/bin/bash, so the following
+ * also works on Haiku:
+ */
 #define SHELL "/bin/sh"
 
 #ifndef sigset_t
 #define sigset_t int
 #endif
-
-/* HP-UX 9 fix */
-#ifndef SA_RESTART
-#define SA_RESTART 0
-#endif
-
 
 static struct sigaction ignore;
 
@@ -141,9 +133,7 @@ int fork_coproc(int *fd_wr, int *fd_rd, char *cmd)
     return 0;
 }
 
-#endif
-
-#ifdef WIN32_COMPILE
+#elif defined(WINDOWS_COMPILE)
 
 #include "archdep.h"
 #include "coproc.h"
@@ -265,6 +255,15 @@ int fork_coproc(int *fd_wr, int *fd_rd, char *cmd)
     *fd_rd = _open_osfhandle((intptr_t)hChildStd_OUT_Rd, _O_RDONLY | _O_BINARY);
 
     return 0;
+}
+
+#else
+
+/* Stub for systems other than Unix, MacOS, Windows or Haiku: */
+int fork_coproc(int *fd_wr, int *fd_rd, char *cmd)
+{
+    log_error(LOG_DEFAULT, "FIXME: fork_coproc() not implemented for this system.");
+    return -1;
 }
 
 #endif

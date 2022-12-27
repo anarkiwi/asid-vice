@@ -1,8 +1,7 @@
-
 Prerequisites:
 --------------
 
-- update README and NEWS
+- update NEWS
 
 to get a list of all changes since last release you can use svn log like this:
 
@@ -19,13 +18,17 @@ $ ./checklinks.sh
 - update vice.texi. use checkdoc.mak to find missing resources and options in
   the documentation.
 
+$ cd doc
 $ make -f checkdoc.mak full
+
+  (this only works for in-tree builds and with --enable-x64)
 
 - make sure the list of team members is correct (vice.texi, infocontrib.sed)
   vice.texi contains the author list twice, once under "@c
   ---vice-core-team---", and once under "@node Copyright"
 
-- run the vicedate.h update script to upated the current year.
+- run src/buildtools/updatereadme.sh to update README and vicedate.h with the
+  current year.
 - make sure to 'touch' vice.texi so that the current year will be put into all
   needed files.
 
@@ -45,17 +48,33 @@ $ svn commit -m "preparing release"
     m4_define(vice_version_major, 3)
     m4_define(vice_version_minor, 6)
     m4_define(vice_version_build, 0)
-    m4_define(vice_version_label, )
 
-- make sure the version is updated in other files (html/index.html).
+  These three defines are all that is needed for a version number, the absence
+  or presence of an SVN revision determines if a release is a point release or
+  a development release.
+  We do not use odd/even MINOR/BUILD numbering for development/stable releases.
 
-These actually update the user-visible version in the binary/docs, so it should
-happen only immediately before the release.
+  The BUILD number is bumped by one on each point release, except when we do
+  our "traditional" Christmas release, then we bump MINOR and reset BUILD to 0.
+  For massive changes we can decide to bump MAJOR and set MINOR and BUILD to 0,
+  for example when merging the 'vice-4' branch somewhere in the future.
+
+- propagate the updated version into the documentation:
+
+$ touch doc/vice.texi
+$ make all
+
+This will update the user-visible version in the binary/docs (README, index.html
+etc), so it should happen only immediately before the release.
 
 while at it, also check the following:
 
 - are the "banners" on various sourceforge pages (tickets) still up to date?
 - are the "readmes" in the files areas still up to date?
+
+Make sure everything is fine, and commit the release
+
+$ svn commit -m "this is the 3.6.0 release - merry xmas"
 
 ****************************************
  Tarball and Windows Builds - Automated
@@ -99,7 +118,7 @@ while at it, also check the following:
 
   (make sure dos2unix is installed)
 
-  first update and clean your sourcetree
+  first update and clean your source tree
 
   $ svn up
   $ make distclean
@@ -115,15 +134,6 @@ while at it, also check the following:
   now unpack into a separate directory and test if compiling works. fix makefiles
   in case files are missing and build the tarball again.
 
-  create a tagged branch on the svn
-
-  $ svn cp <url of svn trunk> <url of svn tag>
-
-  eg
-
-  $ svn cp --username=gpz svn+ssh://gpz@svn.code.sf.net/p/vice-emu/code/trunk/ svn+ssh://gpz@svn.code.sf.net/p/vice-emu/code/tags/v3.4/
-
-
   generate windows binaries:
   --------------------------
 
@@ -132,6 +142,15 @@ while at it, also check the following:
   $ make bindistzip
 
 *************************************
+
+create a tagged branch on the svn
+---------------------------------
+
+  $ svn cp <url of svn trunk> <url of svn tag>
+
+  e.g.
+
+  $ svn cp --username=gpz -r <revision of release> svn+ssh://gpz@svn.code.sf.net/p/vice-emu/code/trunk/ svn+ssh://gpz@svn.code.sf.net/p/vice-emu/code/tags/v3.4/
 
 
 publish the release

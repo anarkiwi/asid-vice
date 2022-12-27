@@ -27,7 +27,7 @@
 
 #include "vice.h"
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 
 #include "directx_renderer.h"
 #include "directx_renderer_impl.h"
@@ -102,7 +102,7 @@ static void vice_directx_initialise_canvas(video_canvas_t *canvas)
     /* First create the context_t that we'll need everywhere */
     context = lib_calloc(1, sizeof(context_t));
 
-    context->canvas_lock = canvas->lock;
+    context->canvas_lock_ptr = &canvas->lock;
     pthread_mutex_init(&context->render_lock, NULL);
     canvas->renderer_context = context;
 
@@ -223,7 +223,7 @@ static void on_widget_resized(GtkWidget *widget, GdkRectangle *allocation, gpoin
     context->viewport_height = allocation->height * gtk_scale;
 
     /* Set the background colour */
-    if (ui_is_fullscreen()) {
+    if (ui_is_fullscreen_from_canvas(canvas)) {
         context->render_bg_colour.r = 0.0f;
         context->render_bg_colour.g = 0.0f;
         context->render_bg_colour.b = 0.0f;

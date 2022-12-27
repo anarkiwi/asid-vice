@@ -60,8 +60,10 @@ extern void sdljoy_unset(SDL_Event e);
 extern void sdljoy_set_joystick_axis(SDL_Event e, int port, int pot);
 extern char *get_joy_pin_mapping_string(int joy, int pin);
 extern char *get_joy_pot_mapping_string(int joynr, int pot);
+extern char *get_joy_extra_mapping_string(int type);
 extern void sdljoy_delete_pin_mapping(int port, int pin);
 extern void sdljoy_delete_pot_mapping(int port, int pot);
+extern void sdljoy_delete_extra_mapping(int type);
 extern int sdljoy_get_joynum_for_event(Uint8 event_device_id);
 extern int sdljoy_rescan(void);
 extern void sdljoy_clear_presses(void);
@@ -77,11 +79,7 @@ extern int sdljoy_get_swap_ports(void) ;
 #define JOYDEV_KEYSET2  3
 #define JOYDEV_JOYSTICK 4
 
-#ifdef ANDROID_COMPILE
-#define JOYDEV_DEFAULT JOYDEV_JOYSTICK
-#else
 #define JOYDEV_DEFAULT JOYDEV_NUMPAD
-#endif
 
 #ifdef HAVE_SDL_NUMJOYSTICKS
 #define JOYDEV_MAX            JOYDEV_JOYSTICK

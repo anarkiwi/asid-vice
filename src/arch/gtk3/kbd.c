@@ -29,11 +29,16 @@
  *
  */
 
+/* #define HAVE_DEBUG_GTK3UI */
+
 #include "vice.h"
 
 #include <stdio.h>
 #include <gtk/gtk.h>
+#include <string.h>
 #include "debug_gtk3.h"
+
+#include "hotkeymap.h"
 #include "hotkeys.h"
 #include "lib.h"
 #include "log.h"
@@ -41,12 +46,21 @@
 #include "kbddebugwidget.h"
 #include "keyboard.h"
 #include "mainlock.h"
-#include "uimachinemenu.h"
+#include "uiactions.h"
 #include "uimenu.h"
 #include "uimedia.h"
 #include "uistatusbar.h"
 
 #include "kbd.h"
+
+/** \brief  Gdk keyval translation table array indexes
+ */
+enum {
+    KV_FIXED,       /**< target keysym (Unix) */
+    KV_ALIAS,       /**< Windows/MacOS keysym alias */
+    KV_BIT8,        /**< bit 8 of the scancode */
+    KV_ARR_SIZE     /**< size of the array for a single translation entry */
+};
 
 
 /** \brief  Initialize keyboard handling
@@ -158,7 +172,7 @@ static void kbd_fix_shift_press(GdkEvent *report)
                     caps-lock key. on macOS we get a key down event when caps
                     become locked, and a key up event when it becomes unlocked */
         case GDK_KEY_Caps_Lock:
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
             capslock_lock_state = 1;
 #else
             capslock_state = 1;
@@ -166,7 +180,7 @@ static void kbd_fix_shift_press(GdkEvent *report)
             break;
         /* HACK: this will update the capslock state from other keypresses,
                  hopefully making sure its kept in sync at all times */
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
         default:
             capslock_lock_state = (report->key.state & GDK_LOCK_MASK) ? 1 : 0;
             break;
@@ -192,7 +206,7 @@ static void kbd_fix_shift_release(GdkEvent *report)
                     caps-lock key. on macOS we get a key down event when caps
                     become locked, and a key up event when it becomes unlocked */
         case GDK_KEY_Caps_Lock:
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
             capslock_lock_state = 0;
 #else
             capslock_lock_state ^= 1;
@@ -201,7 +215,7 @@ static void kbd_fix_shift_release(GdkEvent *report)
             break;
         /* HACK: this will update the capslock state from other keypresses,
                  hopefully making sure its kept in sync at all times */
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
         default:
             capslock_lock_state = (report->key.state & GDK_LOCK_MASK) ? 1 : 0;
             break;
@@ -223,7 +237,7 @@ static void kbd_fix_shift_clear(void)
  */
 static void kbd_sync_caps_lock(void)
 {
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
     if (keyboard_get_shiftlock() != capslock_lock_state) {
         keyboard_set_shiftlock(capslock_lock_state);
     }
@@ -400,24 +414,154 @@ static int removepressedkey(GdkEvent *report, int *key, int *mod)
  */
 static gboolean isresethotkey(GdkEvent *report)
 {
-    static char *checkaccel[2] = { "reset-soft", "reset-hard" };
+    int checkaccel[2] = { ACTION_RESET_SOFT, ACTION_RESET_HARD };
     gboolean res = FALSE;
     int i;
     char *this_accel = gtk_accelerator_get_label(report->key.keyval,
                                                  report->key.state & VHK_ACCEPTED_MODIFIERS);
     for (i = 0; i < 2; i++) {
-        ui_menu_item_t *item = ui_get_vice_menu_item_by_name(checkaccel[i]);
-        if (item != NULL) {
-            char *accel = gtk_accelerator_get_label(item->keysym, item->modifier);
-            if (!strcmp(this_accel, accel)) {
-                i = 2;
-                res = TRUE;
-            }
-            g_free(accel);
+        gchar *accel = hotkey_map_get_accel_label_for_action(checkaccel[i]);
+
+        if (accel != NULL && strcmp(this_accel, accel) == 0) {
+            i = 2;
+            res = TRUE;
         }
+        g_free(accel);
     }
     g_free(this_accel);
     return res;
+}
+
+#ifdef WINDOWS_COMPILE
+/** \brief  Table of numpad keyval translations
+ *
+ * Array of translations from Gdk Windows keyvals to "proper" Gdk keyvals
+ * on Linux, as expected by the VICE keymaps.
+ *
+ * The first entry is the (correct) keyval on Linux, the second the (incorrect)
+ * keyval on Windows and the third the state of bit 8 in the scancode.
+ *
+ * The list is terminated with 0 in the first (Linux) entry.
+ */
+static const guint numpad_fixes[][KV_ARR_SIZE] = {
+    /* Linux                Windows             scancode bit 8 */
+    { GDK_KEY_KP_Home,      GDK_KEY_Home,       FALSE },    /* 7 Home */
+    { GDK_KEY_KP_Up,        GDK_KEY_Up,         FALSE },    /* 8 arrow up */
+    { GDK_KEY_KP_Page_Up,   GDK_KEY_Page_Up,    FALSE },    /* 9 PgUp (same keyval as _Prior) */
+    { GDK_KEY_KP_Prior,     GDK_KEY_Prior,      FALSE },    /* 9 Prior (same keyval as _Page_Up) */
+    { GDK_KEY_KP_Left,      GDK_KEY_Left,       FALSE },    /* 4 arrow left */
+    { GDK_KEY_KP_Begin,     GDK_KEY_Begin,      FALSE },    /* 5 Begin */
+#if 0
+    /* GDK_KEY_KP_Clear does not exist, the alias is remapped instead */
+    { GDK_KEY_KP_Clear,     GDK_KEY_Clear,      FALSE },    /* 5 Clear */
+#endif
+    { GDK_KEY_KP_Right,     GDK_KEY_Right,      FALSE },    /* 6 arrow right */
+    { GDK_KEY_KP_End,       GDK_KEY_End,        FALSE },    /* 1 End */
+    { GDK_KEY_KP_Down,      GDK_KEY_Down,       FALSE },    /* 2 arrow down */
+    { GDK_KEY_KP_Page_Down, GDK_KEY_Page_Down,  FALSE },    /* 3 PgDn (same keyval as _Next) */
+    { GDK_KEY_KP_Next,      GDK_KEY_Next,       FALSE },    /* 3 Next (same keyval as _Page_Down) */
+    { GDK_KEY_KP_Insert,    GDK_KEY_Insert,     FALSE },    /* 0 Ins */
+    { GDK_KEY_KP_Delete,    GDK_KEY_Delete,     FALSE },    /* . Del */
+    { GDK_KEY_KP_Enter,     GDK_KEY_Return,     TRUE },     /* Enter */
+    { 0,                    0,                  FALSE }
+};
+#endif
+
+#ifdef WINDOWS_COMPILE
+/** \brief  Fix numpad keyvals
+ *
+ * On Windows Gdk doesn't discriminate between some "normal" keys and some
+ * numpad keys, so we try to translate these for the VICE keymaps.
+ *
+ * ShiftLock OFF (US keyboard):
+ *
+ *  Key             Linux           Windows
+ *  ----------      --------------- -----------
+ *  /               KP_Divide       KP_Divide
+ *  *               KP_Multiply     KP_Multiply
+ *  -               KP_Subtract     KP_Subtract
+ *  +               KP_Add          KP_Add
+ *  . Del           KP_Delete       Delete
+ *  Enter           KP_Enter        Return
+ *  7 Home          KP_Home         Home
+ *  8 up arrow      KP_Up           Up
+ *  9 PgUp          KP_Page_Up      Page_Up
+ *  4 left arrow    KP_Left         Left
+ *  5               KP_Begin        Clear
+ *  6 right arrow   KP_Right        Right
+ *  1 End           KP_End          End
+ *  2 down arrow    KP_Down         Down
+ *  3 PgDn          KP_Next         Page_Down
+ *
+ * \param[in]   event   key press/release event
+ *
+ * \return  fixed keyval for numpad keys
+ */
+static guint fix_numpad_keyval(GdkEvent *event)
+{
+    guint keyval = event->key.keyval;
+    int scancode = gdk_event_get_scancode(event);
+    gboolean numpad = (scancode & 0x100) ? TRUE : FALSE;
+    int i = 0;
+    debug_gtk3("scancode 0x%04x numpad: %d",
+               (unsigned int)scancode, numpad);
+    while (numpad_fixes[i][KV_FIXED] != 0) {
+        if (keyval == numpad_fixes[i][KV_ALIAS] && numpad == numpad_fixes[i][KV_BIT8]) {
+            return numpad_fixes[i][KV_FIXED];
+        }
+        i++;
+    }
+    return keyval;
+}
+#endif
+
+/** \brief  Table of numpad aliases
+ *
+ * Depending on the Keyboard layout some keys produce different keycodes, which
+ * we try to combat here. Eg on a german keyboard there is a comma on the "delete"
+ * key instead of the decimal point.
+ *
+ * The first entry is the (correct) keyval, the second the (incorrect) alias.
+ *
+ * CAUTION: when a key exist on KP and as a regular key (example: HOME), you
+ *          MUST make sure to only map KP to KP and non KP to non KP symbols here.
+ *
+ * The list is terminated with 0 in the first (Linux) entry.
+ */
+static const guint numpad_aliases[][2] = {
+    /* Linux                Linux (alias) */
+    { GDK_KEY_KP_Decimal,   GDK_KEY_KP_Separator }, /* . Del (same physical key) */
+    { GDK_KEY_KP_Page_Up,   GDK_KEY_KP_Prior     }, /* 9 PgUp */
+    { GDK_KEY_KP_Page_Down, GDK_KEY_KP_Next      }, /* 3 PgDn */
+    /* GDK_KEY_KP_Clear does not exist, but Clear only exists on numpad */
+    { GDK_KEY_KP_Begin,     GDK_KEY_Clear        }, /* 5 Begin */
+    { GDK_KEY_Page_Up,      GDK_KEY_Prior        }, /* 9 PgUp */
+    { GDK_KEY_Page_Down,    GDK_KEY_Next         }, /* 3 PgDn */
+    { 0,                    0,                   }
+};
+
+/** \brief  Fix numpad aliases
+ *
+ * Depending on the Keyboard Layout/Localisation some numpad keys produce
+ * a different keyval - we fix it here so the joystick mappings can always
+ * use the same values
+ *
+ * \param[in]   event   key press/release event
+ *
+ * \return  fixed keyval for numpad keys
+ */
+static guint fix_numpad_aliases(GdkEvent *event)
+{
+    guint keyval = event->key.keyval;
+    int i = 0;
+    debug_gtk3("fix_numpad_aliases: keyval 0x%04x", (unsigned int)keyval);
+    while (numpad_aliases[i][0] != 0) {
+        if (keyval == numpad_aliases[i][1]) {
+            return numpad_aliases[i][0];
+        }
+        i++;
+    }
+    return keyval;
 }
 
 /** \brief  Gtk keyboard event handler
@@ -430,16 +574,15 @@ static gboolean isresethotkey(GdkEvent *report)
  */
 static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
 {
-    gint key;
-    int mod;
+    int key = report->key.keyval;
+    int mod = 0;
 
-    key = report->key.keyval;
     switch (report->type) {
         case GDK_KEY_PRESS:
             /* fprintf(stderr, "GDK_KEY_PRESS: %u %04x.\n",
                        report->key.keyval,  report->key.state); */
             kbd_fix_shift_press(report);
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 /* HACK: The Alt-Gr Key seems to work differently on windows and linux.
          On Linux one Keypress "ISO_Level3_Shift" will be produced, and
          the modifier mask for combined keys will be GDK_MOD5_MASK.
@@ -462,13 +605,23 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
             /* fprintf(stderr, "               %u %04x.\n",
                        report->key.keyval,  report->key.state); */
 #endif
-            /* On a german keyboard there is a comma on the "delete" key instead
-               of a decimal point, and we get KP_Seperator instead of KP_decimal.
-               Remap it here so we don't have to handle it elsewhere. */
-            if (report->key.keyval == GDK_KEY_KP_Separator) {
-                key = report->key.keyval = GDK_KEY_KP_Decimal;
-            }
 
+#ifdef WINDOWS_COMPILE
+            debug_gtk3("(press) key before numpad fix: 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
+            key = report->key.keyval = fix_numpad_keyval(report);
+            debug_gtk3("(press) key after numpad fix : 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
+#endif
+            debug_gtk3("(press) key before aliases fix : 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
+            key = report->key.keyval = fix_numpad_aliases(report);
+            debug_gtk3("(press) key after aliases fix : 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
+
+            /* FIXME:   This still gets the unmodified keyval, but we cannot
+             *          modify `report` since that's owned by Gdk.
+             */
             ui_statusbar_update_kbd_debug(report);
 
             /* Don't hold the mainlock while dealing with hotkeys. Some of these
@@ -490,21 +643,6 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
             }
             mainlock_obtain();
 
-            /* Disable weird hack, doesn't appear to be required anymore
-             * --compyx
-             */
-#if 0
-            /* For some reason, the Alt-D of going fullscreen doesn't
-             * return true when CAPS LOCK isn't on, but only it does
-             * this. */
-            if (key == GDK_KEY_d && report->key.state & GDK_MOD1_MASK) {
-                return TRUE;
-            }
-            /* check the custom hotkeys */
-            if (kbd_hotkey_handle(report)) {
-                return TRUE;
-            }
-#endif
             /* only press keys that were not yet pressed */
             if (addpressedkey(report, &key, &mod)) {
 #if 0
@@ -518,14 +656,14 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
 /* HACK: on windows the caps-lock key generates an invalid keycode of 0xffffff,
          so when we see this in the event we explicitly sync caps-lock state
          to make it work in the emulation */
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
             if (report->key.keyval == 0xffffff) {
                 kbd_sync_caps_lock();
             }
 #endif
 /* HACK: on macOS caps-lock ON and OFF generate events, checking the state as
          such does not work, so we must track und update on our own */
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
             kbd_sync_caps_lock();
 #endif
             return TRUE;
@@ -533,7 +671,7 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
             /* fprintf(stderr, "GDK_KEY_RELEASE: %u %04x.\n",
                        report->key.keyval,  report->key.state); */
             kbd_fix_shift_release(report);
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
             /* HACK: remap control,alt+r to alt-gr, see above */
             if (report->key.keyval == GDK_KEY_Alt_R) {
                 key = report->key.keyval = GDK_KEY_ISO_Level3_Shift;
@@ -541,20 +679,19 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
             /* fprintf(stderr, "                 %u %04x.\n",
                        report->key.keyval,  report->key.state); */
 #endif
-#if 0
-            /* WTH was this supposed to fix? */
-            if (key == GDK_KEY_Shift_L ||
-                key == GDK_KEY_Shift_R ||
-                key == GDK_KEY_ISO_Level3_Shift) {
-                keyboard_key_clear();
-            }
+
+#ifdef WINDOWS_COMPILE
+            debug_gtk3("(release) key before numpad fix: 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
+            key = report->key.keyval = fix_numpad_keyval(report);
+            debug_gtk3("(release) key after numpad fix : 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
 #endif
-            /* On a german keyboard there is a comma on the "delete" key instead
-               of a decimal point, and we get KP_Seperator instead of KP_decimal.
-               Remap it here so we don't have to handle it elsewhere. */
-            if (report->key.keyval == GDK_KEY_KP_Separator) {
-                key = report->key.keyval = GDK_KEY_KP_Decimal;
-            }
+            debug_gtk3("(release) key before aliases fix : 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
+            key = report->key.keyval = fix_numpad_aliases(report);
+            debug_gtk3("(release) key after aliases fix : 0x%04x (GDK_KEY_%s).",
+                       (unsigned int)key, gdk_keyval_name(key));
 
             ui_statusbar_update_kbd_debug(report);
 
@@ -575,14 +712,14 @@ static gboolean kbd_event_handler(GtkWidget *w, GdkEvent *report, gpointer gp)
 /* HACK: on windows the caps-lock key generates an invalid keycode of 0xffffff,
          so when we see this in the event we explicitly sync caps-lock state
          to make it work in the emulation */
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
             if (report->key.keyval == 0xffffff) {
                 kbd_sync_caps_lock();
             }
 #endif
 /* HACK: on macOS caps-lock ON and OFF generate events, checking the state as
          such does not work, so we must track und update on our own */
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
             kbd_sync_caps_lock();
 #endif
             break;

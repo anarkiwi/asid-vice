@@ -43,6 +43,7 @@ libbasewidgets_a_SOURCES = \
 	filechooserhelpers.c \
 	lastdir.c \
 	openfiledialog.c \
+	popupmenu.c \
 	resourcebrowser.c \
 	resourcecheckbutton.c \
 	resourcecombobox.c \
@@ -55,6 +56,7 @@ libbasewidgets_a_SOURCES = \
 	resourceswitch.c \
 	savefiledialog.c \
 	selectdirectorydialog.c \
+	uiactionbutton.c \
 	widgethelpers.c
 
 EXTRA_DIST = \
@@ -68,6 +70,7 @@ EXTRA_DIST = \
 	filechooserhelpers.h \
 	lastdir.h \
 	openfiledialog.h \
+	popupmenu.h \
 	resourcebrowser.h \
 	resourcecheckbutton.h \
 	resourcecombobox.h \
@@ -80,6 +83,7 @@ EXTRA_DIST = \
 	resourceswitch.h \
 	savefiledialog.h \
 	selectdirectorydialog.h \
+	uiactionbutton.h \
 	vice_gtk3.h \
 	vice_gtk3_settings.h \
 	widgethelpers.h

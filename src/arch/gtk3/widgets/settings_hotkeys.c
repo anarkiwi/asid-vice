@@ -25,12 +25,19 @@
  *
  */
 
+/* Resources manipulated in this file:
+ *
+ * $VICERES HotkeyFile all
+ */
+
 #include "vice.h"
 #include <gtk/gtk.h>
 #include <time.h>
+#include <string.h>
 #include "vice_gtk3.h"
 
 #include "archdep.h"
+#include "hotkeymap.h"
 #include "hotkeys.h"
 #include "lib.h"
 #include "log.h"
@@ -38,7 +45,7 @@
 #include "ui.h"
 #include "uiactions.h"
 #include "uiapi.h"
-#include "uimachinemenu.h"
+#include "uihotkeysload.h"
 #include "uimenu.h"
 #include "uitypes.h"
 #include "util.h"
@@ -69,6 +76,7 @@ typedef struct mod_mask_s {
 /** \brief  Columns for the hotkeys table
  */
 enum {
+    COL_ACTION_ID,      /**< action ID (integer) */
     COL_ACTION_NAME,    /**< action name (string) */
     COL_ACTION_DESC,    /**< action description (string) */
     COL_HOTKEY          /**< key and modifiers (string) */
@@ -115,6 +123,8 @@ static const mod_mask_t mod_mask_list[] = {
  */
 static GtkWidget *hotkeys_view;
 
+static GtkWidget *hotkeys_path;
+
 #ifdef DEBUG_HOTKEYS
 static GtkWidget *modifiers_grid;
 static GtkWidget *modifiers_string;
@@ -147,6 +157,53 @@ static GtkWidget *accepted_mods_grid;
 #endif
 
 
+/** \brief  Clear all hotkeys and update the view
+ */
+static void clear_all_hotkeys(void)
+{
+    GtkTreeModel *model;
+    GtkTreeIter iter;
+
+    ui_clear_hotkeys();
+
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(hotkeys_view));
+    if (gtk_tree_model_get_iter_first(model, &iter)) {
+        do {
+            gtk_list_store_set(GTK_LIST_STORE(model), &iter, COL_HOTKEY, NULL, -1);
+        } while (gtk_tree_model_iter_next(model, &iter));
+    }
+}
+
+
+/** \brief  Update hotkeys path widget */
+static void update_hotkeys_path(void)
+{
+    const char *hotkeyfile = NULL;
+
+    resources_get_string("HotkeyFile", &hotkeyfile);
+    if (hotkeyfile != NULL && *hotkeyfile != '\0') {
+        gtk_entry_set_text(GTK_ENTRY(hotkeys_path), hotkeyfile);
+    } else {
+        /* default location */
+        char *path;
+        char *datadir = archdep_get_vice_datadir();
+
+        if (machine_class == VICE_MACHINE_VSID) {
+            path = util_join_paths(datadir, machine_name, VHK_DEFAULT_NAME_VSID, NULL);
+        } else {
+            path = util_join_paths(datadir, machine_name, VHK_DEFAULT_NAME, NULL);
+        }
+        lib_free(datadir);
+
+        gtk_entry_set_text(GTK_ENTRY(hotkeys_path), path);
+        lib_free(path);
+    }
+}
+
+
+
+/* Will be replaced with UI actions */
+#if 0
 /** \brief  Callback for the 'Export' button
  *
  * Save current hotkeys to \a filename and close \a dialog.
@@ -222,14 +279,14 @@ static GtkWidget *create_browse_widget(void)
                                             NULL);
     return widget;
 }
+#endif
+
+
 
 
 /** \brief  Create model for the hotkeys table
  *
  * \return  new list store
- *
- * \todo    Implement proper Gtk menu items iterator so we can avoid having to
- *          look up each action in the menus to test if it's actually available.
  */
 static GtkListStore *create_hotkeys_model(void)
 {
@@ -237,32 +294,35 @@ static GtkListStore *create_hotkeys_model(void)
     ui_action_info_t *list;
     const ui_action_info_t *action;
 
-    model = gtk_list_store_new(3,
+    model = gtk_list_store_new(4,
+                               G_TYPE_INT,      /* action ID */
                                G_TYPE_STRING,   /* action name */
                                G_TYPE_STRING,   /* action description */
                                G_TYPE_STRING    /* hotkey as string */
                                );
 
     list = ui_action_get_info_list();
-    for (action = list; action->name != NULL; action++) {
+    for (action = list; action->id > ACTION_NONE; action++) {
         GtkTreeIter iter;
-        GtkWidget *item;
-        char *hotkey;
+        hotkey_map_t *map;
+        gchar *hotkey = NULL;
 
-        /* is the action present in the current menu structure? */
-        item = ui_get_gtk_menu_item_by_name(action->name);
-        if (item != NULL) {
-            hotkey = ui_hotkeys_get_hotkey_string_for_action(action->name);
-            gtk_list_store_append(model, &iter);
-            gtk_list_store_set(model,
-                               &iter,
-                               COL_ACTION_NAME, action->name,
-                               COL_ACTION_DESC, action->desc,
-                               COL_HOTKEY, hotkey,
-                               -1);
-            if (hotkey != NULL) {
-                lib_free(hotkey);
-            }
+        /* Is there a hotkey defined for the current action? */
+        map = hotkey_map_get_by_action(action->id);
+        if (map != NULL) {
+            hotkey = hotkey_map_get_accel_label(map);
+        }
+
+        gtk_list_store_append(model, &iter);
+        gtk_list_store_set(model,
+                           &iter,
+                           COL_ACTION_ID, action->id,
+                           COL_ACTION_NAME, action->name,
+                           COL_ACTION_DESC, action->desc,
+                           COL_HOTKEY, hotkey,
+                           -1);
+        if (hotkey != NULL) {
+            g_free(hotkey);
         }
     }
     lib_free(list);
@@ -303,7 +363,6 @@ static gboolean on_key_release_event(GtkWidget *dialog,
         return TRUE;
     }
 
-
     /* Check for plain Return/Enter or Escape: these we want to pass to the
      * dialog's event handler to trigger the response handler. */
     if (((event->state & accepted_mods) == 0)) {
@@ -342,7 +401,7 @@ static gboolean on_key_release_event(GtkWidget *dialog,
 #endif
 
     /*
-     * Keyboards can generate lots of weird keys, for example alt-w produces ∑ on macOS.
+     * Keyboards can generate lots of weird keys, for example alt-w produces Sigma on macOS.
      * We can ask GDK for a list of them given a hardware keycode and a keymap.
      *
      * We use the entry with a group and level of 0 for the raw key with no modifiers,
@@ -434,7 +493,6 @@ static gboolean on_key_release_event(GtkWidget *dialog,
 }
 
 
-
 /** \brief  Update the hotkey string of the currently selected row
  *
  * \param[in]   accel   hotkey string
@@ -460,6 +518,16 @@ static gboolean update_treeview_hotkey(const gchar *accel)
     }
     return FALSE;
 }
+
+/** \brief  Update treeview by regenerating model with current hotkeys
+ */
+static void update_treeview_full(void)
+{
+    GtkListStore *model = create_hotkeys_model();
+
+    gtk_tree_view_set_model(GTK_TREE_VIEW(hotkeys_view), GTK_TREE_MODEL(model));
+}
+
 
 
 /** \brief  Remove the accelerator label \a accel from the model
@@ -499,99 +567,91 @@ static gboolean remove_treeview_hotkey(const gchar *accel)
 }
 
 
+/** \brief  Set/update hotkey in accelerator group, connect to item(s), if any
+ *
+ * \param[in]   action  UI action ID
+ */
+static void dialog_accept_handler(int action)
+{
+    gchar *accel;
+
+    accel = gtk_accelerator_get_label(hotkey_keysym, hotkey_mask);
+    debug_gtk3("Setting accelerator: %s (keysym: %04x, mask: %04x)"
+               " for action %d (%s).",
+               accel, hotkey_keysym, hotkey_mask, action, ui_action_get_name(action));
+
+    /* Look up item for new hotkey and remove the hotkey from that
+     * action/menu item.
+     *
+     * XXX: somehow the mask gets OR'ed with $2000, which is a reserved
+     *      flag, so we mask out any reserved bits:
+     */
+    hotkey_map_t *map = hotkey_map_get_by_hotkey(hotkey_keysym,
+                                                 hotkey_mask & accepted_mods);
+    if (map == NULL) {
+        debug_gtk3("No previously registered action for hotkey %s. OK.", accel);
+    } else if (map->keysym != 0) {
+        debug_gtk3("Removing old accelerator: %s from action %d (%s)",
+                   accel, map->action, ui_action_get_name(map->action));
+        hotkey_map_clear_hotkey(map);
+        remove_treeview_hotkey(accel);
+    }
+
+    map = hotkey_map_get_by_action(action);
+    if (map == NULL) {
+        debug_gtk3("Error: Couldn't find hotkey map for action %d!", action);
+        g_free(accel);
+        return;
+    }
+    debug_gtk3("Setting new accelerator %s for action %d (%s)",
+               accel, action, ui_action_get_name(action));
+    if (!hotkey_map_update_hotkey(map, hotkey_keysym, hotkey_mask & accepted_mods)) {
+        debug_gtk3("Error: Failed to update hotkey!");
+    } else {
+        update_treeview_hotkey(accel);
+    }
+    g_free(accel);
+}
+
+/** \brief  Clear hotkey from accelerator group and item(s), if any
+ *
+ * \param[in]   action  UI action ID
+ */
+static void dialog_clear_handler(int action)
+{
+    if (hotkey_map_clear_hotkey_by_action(action)) {
+        update_treeview_hotkey(NULL);
+    }
+}
+
 /** \brief  Handler for the 'response' event of the dialog
  *
  * \param[in]   dialog      hotkey dialog
  * \param[in]   response_id response ID
- * \param[in]   data        action name
+ * \param[in]   data        action ID
  */
 static void on_response(GtkDialog *dialog, gint response_id, gpointer data)
 {
-    gchar *accel;
-    gchar *action = data;
-    ui_menu_item_t *item_vice;
-    GtkWidget *item_gtk;
+    int action = GPOINTER_TO_INT(data);
 
     switch (response_id) {
 
         case GTK_RESPONSE_ACCEPT:
-            debug_gtk3("Response ID %d: Accept '%s'", response_id, action);
+            debug_gtk3("Response ID %d: Accept '%s'",
+                       response_id,
+                       ui_action_get_name(action));
 
             if (hotkey_keysym == 0) {
                 debug_gtk3("User clicked accepted/pressed enter without having set a hotkey.");
                 break;
             }
-
-            accel = gtk_accelerator_get_label(hotkey_keysym, hotkey_mask);
-            debug_gtk3("Setting accelerator: %s.", accel);
-
-            debug_gtk3("hotkey keysym: %04x, mask: %04x.",
-                    hotkey_keysym, hotkey_mask);
-
-            /* lookup item for new hotkey and remove the hotkey
-             * from that action/menu item */
-            /* XXX: somehow the mask gets OR'ed with $2000, which is a reserved
-             *      flag, so we mask out any reserved bits:
-             * TODO: Better do the masking out in the called function */
-            item_vice = ui_get_vice_menu_item_by_hotkey(hotkey_mask & accepted_mods,
-                                                        hotkey_keysym);
-            if (item_vice != NULL) {
-                debug_gtk3("Removing old hotkey: label: %s, action: %s.", item_vice->label,
-                        item_vice->action_name);
-                ui_menu_remove_accel_via_vice_item(item_vice);
-                if (!remove_treeview_hotkey(accel)) {
-                    /* since we found the menu item via the hotkey, the call
-                     * shouldn't have failed */
-                    debug_gtk3("Failed to remove hotkey from table!");
-                }
-                item_vice->keysym = 0;
-                item_vice->modifier = 0;
-            }
-
-
-            debug_gtk3("Looking up action '%s'.", action);
-            item_vice = ui_get_vice_menu_item_by_name(action);
-            item_gtk = ui_get_gtk_menu_item_by_name(action);
-
-            /* update vice item and gtk item */
-            if (item_vice != NULL && item_gtk != NULL) {
-                debug_gtk3("FOUND.");
-                /* remove old accelerator */
-                ui_menu_remove_accel_via_vice_item(item_vice);
-                /* update vice menu item */
-                item_vice->keysym = hotkey_keysym;
-                item_vice->modifier = hotkey_mask;
-                /* now update the accelerator and closure with the updated
-                 * vice menu item */
-                ui_menu_set_accel_via_vice_item(item_gtk, item_vice);
-                /* update treeview */
-                update_treeview_hotkey(accel);
-            } else {
-                debug_gtk3("NOT FOUND.");
-            }
-
-            g_free(accel);
+            dialog_accept_handler(action);
             break;
 
         case RESPONSE_CLEAR:
-            debug_gtk3("Response ID %d: Clear '%s'", response_id, action);
-            item_vice = ui_get_vice_menu_item_by_name(action);
-
-#if 0
-            debug_gtk3("item_vice = %p, item_gtk = %p.",
-                    (void*)item_vice, (void*)item_gtk);
-#endif
-            if (item_vice != NULL) {
-                debug_gtk3("Got vice item.");
-                /* remove old accelerator */
-                ui_menu_remove_accel_via_vice_item(item_vice);
-                /* update vice menu item */
-                item_vice->keysym = 0;
-                item_vice->modifier = 0;
-                /* update treeview */
-                update_treeview_hotkey(NULL);
-            }
-
+            debug_gtk3("Response ID %d: Clear '%s'",
+                       response_id, ui_action_get_name(action));
+            dialog_clear_handler(action);
             break;
 
         case GTK_RESPONSE_CANCEL:       /* fall through */
@@ -604,7 +664,6 @@ static void on_response(GtkDialog *dialog, gint response_id, gpointer data)
             debug_gtk3("Unhandled response ID: %d.", response_id);
     }
 
-    g_free(action);
     gtk_widget_destroy(GTK_WIDGET(dialog));
 }
 
@@ -794,8 +853,7 @@ static GtkWidget *create_accepted_mods_widget(void)
     gtk_widget_set_halign(accepted_mods_string, GTK_ALIGN_START);
     gtk_label_set_markup(GTK_LABEL(accepted_mods_string), text);
     gtk_grid_attach(GTK_GRID(wrapper), accepted_mods_string, 1, 0, 1, 1);
-
-    g_object_set(wrapper, "margin-top", 8, NULL);
+    gtk_widget_set_margin_top(wrapper, 8);
     gtk_widget_show_all(wrapper);
 
     gtk_grid_attach(GTK_GRID(grid), wrapper, 0, maxrow + 1, 2, 1);
@@ -824,7 +882,8 @@ static GtkWidget *create_content_widget(const gchar *action, const gchar *hotkey
     int row = 0;
 
     grid = vice_gtk3_grid_new_spaced(16, 0);
-    g_object_set(grid, "margin-left", 16, "margin-right", 16, NULL);
+    gtk_widget_set_margin_start(grid, 16);
+    gtk_widget_set_margin_end(grid, 16);
 
     label = gtk_label_new(NULL);
     g_snprintf(text,
@@ -845,19 +904,20 @@ static GtkWidget *create_content_widget(const gchar *action, const gchar *hotkey
     gtk_label_set_markup(GTK_LABEL(label), text);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_widget_set_hexpand(label, FALSE);
-    g_object_set(G_OBJECT(label), "margin-bottom", 32, NULL);
+    gtk_widget_set_margin_bottom(label, 32);
     gtk_grid_attach(GTK_GRID(grid), label, 0, row, 2, 1);
     row++;
 #ifdef DEBUG_HOTKEYS
     label = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(label), "<b>Reported modifiers:</b>");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-top", 32, NULL);
+    gtk_widget_set_margin_top(label, 32);
     gtk_grid_attach(GTK_GRID(grid), label, 0, row, 2, 1);
     row++;
 
     modifiers_grid = create_modifier_list();
-    g_object_set(modifiers_grid, "margin-top", 8, "margin-bottom", 16, NULL);
+    gtk_widget_set_margin_top(modifiers_grid, 8);
+    gtk_widget_set_margin_bottom(modifiers_grid, 16);
     gtk_grid_attach(GTK_GRID(grid), modifiers_grid, 0, row, 2, 1);
     row++;
 
@@ -931,7 +991,8 @@ static GtkWidget *create_content_widget(const gchar *action, const gchar *hotkey
     label = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(label), "<b>Accepted GDK modifier masks:</b>");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-top", 24, "margin-bottom", 8, NULL);
+    gtk_widget_set_margin_top(label, 24);
+    gtk_widget_set_margin_bottom(label, 8);
     gtk_grid_attach(GTK_GRID(grid), label, 0, row, 2, 1);
     row++;
 
@@ -945,37 +1006,31 @@ static GtkWidget *create_content_widget(const gchar *action, const gchar *hotkey
 }
 
 
-/** \brief  Handler for the 'row-activated' event of the treeview
+/** \brief  Show dialog to set/edit hotkey for an action
  *
- * Handler triggered by double-clicked or pressing Return on a tree row.
- *
- * \param[in]   view    tree view
- * \param[in]   path    tree path to activated row
- * \param[in]   column  activated column
- * \param[in]   data    extra event data (unused)
+ * \param[in]   path    tree path to selected item in tree view
  */
-static void on_row_activated(GtkTreeView *view,
-                             GtkTreePath *path,
-                             GtkTreeViewColumn *column,
-                             gpointer data)
+static void show_hotkey_dialog(GtkTreePath *path)
 {
     GtkTreeModel *model;
     GtkTreeIter iter;
 
-    model = gtk_tree_view_get_model(view);
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(hotkeys_view));
     if (gtk_tree_model_get_iter(model, &iter, path)) {
 
         GtkWidget *dialog;
         GtkWidget *content_area;
         GtkWidget *content_widget;
-        gchar *action = NULL;
+        gint action_id = 0;
+        gchar *action_name = NULL;
         gchar *hotkey = NULL;
         guint keysym = 0;
         GdkModifierType mask = 0;
 
         /* get current hotkey info */
         gtk_tree_model_get(model, &iter,
-                           COL_ACTION_NAME, &action,
+                           COL_ACTION_ID, &action_id,
+                           COL_ACTION_NAME, &action_name,
                            COL_HOTKEY, &hotkey,
                            -1);
 
@@ -996,12 +1051,12 @@ static void on_row_activated(GtkTreeView *view,
         }
 
         debug_gtk3("Row clicked: '%s' -> %s (mask: %04x, keysym: %04x).",
-                   action,
+                   action_name,
                    hotkey != NULL ? hotkey : NULL,
                    mask,
                    keysym);
 
-        dialog = gtk_dialog_new_with_buttons("Set/Unset hotkey",
+        dialog = gtk_dialog_new_with_buttons("Set/Edit hotkey",
                                              ui_get_active_window(),
                                              GTK_DIALOG_MODAL,
                                              "Accept", GTK_RESPONSE_ACCEPT,
@@ -1009,24 +1064,250 @@ static void on_row_activated(GtkTreeView *view,
                                              "Cancel", GTK_RESPONSE_REJECT,
                                              NULL);
         content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-        content_widget = create_content_widget(action, hotkey);
+        content_widget = create_content_widget(action_name, hotkey);
 
         gtk_box_pack_start(GTK_BOX(content_area), content_widget, TRUE, TRUE, 16);
 
         g_signal_connect(dialog,
                          "response",
                          G_CALLBACK(on_response),
-                         (gpointer)action);
+                         GINT_TO_POINTER(action_id));
         g_signal_connect(dialog,
                          "key-release-event",
                          G_CALLBACK(on_key_release_event),
                          NULL);
         gtk_widget_show_all(dialog);
 
-        g_free(hotkey);
+        if (action_name != NULL) {
+            g_free(action_name);
+        }
+        if (hotkey != NULL) {
+            g_free(hotkey);
+        }
     }
 }
 
+
+
+/** \brief  Handler for the 'row-activated' event of the treeview
+ *
+ * Handler triggered by double-clicked or pressing Return on a tree row.
+ *
+ * \param[in]   view    tree view (unused)
+ * \param[in]   path    tree path to activated row
+ * \param[in]   column  activated column (unused)
+ * \param[in]   unused  extra event data (unused)
+ */
+static void on_row_activated(GtkTreeView *view,
+                             GtkTreePath *path,
+                             GtkTreeViewColumn *column,
+                             gpointer data)
+{
+    show_hotkey_dialog(path);
+}
+
+
+/******************************************************************************
+ *  Treeview context menu event handlers                                      *
+ *****************************************************************************/
+
+/** \brief  Handler for the 'activate' event of the context menu 'set'/'edit' item
+ *
+ * Pops up dialog to set/edit/clear the selected hotkey.
+ *
+ * \param[in]   unused      menu item (unused)
+ * \param[in]   treepath    GtkTreePath to the selected row in the table
+ */
+static void on_context_edit_activate(GtkWidget *item, gpointer treepath)
+{
+    show_hotkey_dialog((GtkTreePath*)treepath);
+}
+
+
+/** \brief  Handler for the 'activate' event of the context menu 'clear' item
+ *
+ * Clears selected hotkey from the menu(s) and updated the table.
+ *
+ * \param[in]   unused      menu item (unused)
+ * \param[in]   treepath    GtkTreePath to the selected row in the table
+ */
+static void on_context_clear_activate(GtkWidget *unused, gpointer treepath)
+{
+    GtkTreeModel *model;
+    GtkTreeIter iter;
+    GtkTreePath *path = (GtkTreePath*)treepath;
+
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(hotkeys_view));
+    if (gtk_tree_model_get_iter(model, &iter, path)) {
+        gint action_id;
+
+        gtk_tree_model_get(model, &iter, COL_ACTION_ID, &action_id, -1);
+        if (hotkey_map_clear_hotkey_by_action(action_id)) {
+            update_treeview_hotkey(NULL);   /* clear hotkey of selected row */
+        }
+    }
+}
+
+
+/** \brief  Callback for the 'clear all' confirmation dialog
+ *
+ * \param[in]   dialog  confirmation dialog
+ * \param[in]   result  result of the dialog
+ */
+static void clear_dialog_callback(GtkDialog *dialog, gboolean result)
+{
+    if (result) {
+        clear_all_hotkeys();
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+
+/** \brief  Show confirmation dialog for clearing all hotkeys
+ */
+static void show_clear_all_confirm_dialog(void)
+{
+    vice_gtk3_message_confirm(clear_dialog_callback,
+                              "Clear all hotkeys",
+                              "Are you sure you want to clear all hotkeys? "
+                              "This action cannot be undone.");
+}
+
+
+/** \brief  Handler for the 'activate' event of the context menu 'clear all' item
+ *
+ * Clears all hotkeys.
+ *
+ * \param[in]   unused      menu item (unused)
+ * \param[in]   treepath    GtkTreePath to the selected row in the table
+ */
+static void on_context_clear_all_activate(GtkWidget *item, gpointer unused)
+{
+    show_clear_all_confirm_dialog();
+}
+
+
+/** \brief  Create context menu for the tree view
+ *
+ * \param[in]   path    tree view path of selected row
+ *
+ * \return  GtkMenu
+ */
+static GtkWidget *create_context_menu(GtkTreePath *path)
+{
+    GtkTreeModel *model;
+    GtkTreeIter iter;
+
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(hotkeys_view));
+    if (gtk_tree_model_get_iter(model, &iter, path)) {
+        GtkWidget *menu;
+        GtkWidget *item;
+        gint action_id;
+        gchar *action_name = NULL;
+        gchar *hotkey = NULL;
+        gchar buffer[1024];
+
+        gtk_tree_model_get(model, &iter,
+                           COL_ACTION_ID, &action_id,
+                           COL_ACTION_NAME, &action_name,
+                           COL_HOTKEY, &hotkey,
+                           -1);
+
+        menu = gtk_menu_new();
+        debug_gtk3("ID = %d, Name = %s, Hotkey = %s",
+                action_id, action_name, hotkey);
+
+        /* Determine if to use "Edit" or "Set" */
+        if (hotkey == NULL || *hotkey == '\0') {
+            g_snprintf(buffer, sizeof(buffer), "Set hotkey for '%s'", action_name);
+        } else {
+            g_snprintf(buffer, sizeof(buffer), "Update hotkey for '%s'", action_name);
+        }
+        item = gtk_menu_item_new_with_label(buffer);
+        g_signal_connect(item,
+                         "activate",
+                         G_CALLBACK(on_context_edit_activate),
+                         (gpointer)path);
+        gtk_container_add(GTK_CONTAINER(menu), item);
+
+        if (hotkey != NULL && *hotkey != '\0') {
+            g_snprintf(buffer, sizeof(buffer), "Clear hotkey %s", hotkey);
+            item = gtk_menu_item_new_with_label(buffer);
+            g_signal_connect(item,
+                             "activate",
+                             G_CALLBACK(on_context_clear_activate),
+                             (gpointer)path);
+            gtk_container_add(GTK_CONTAINER(menu), item);
+        }
+
+        item = gtk_separator_menu_item_new();
+        gtk_container_add(GTK_CONTAINER(menu), item);
+
+        item = gtk_menu_item_new_with_label("Clear all hotkeys");
+        g_signal_connect(item,
+                         "activate",
+                         G_CALLBACK(on_context_clear_all_activate),
+                         (gpointer)path);
+        gtk_container_add(GTK_CONTAINER(menu), item);
+
+        if (action_name != NULL) {
+            g_free(action_name);
+        }
+        if (hotkey != NULL) {
+            g_free(hotkey);
+        }
+
+        gtk_widget_show_all(menu);
+        return menu;
+    }
+    return NULL;
+}
+
+
+/** \brief  Handler for the 'button-press-event' event of the treeview
+ *
+ * \param[in]   view    tree view
+ * \param[in]   event   button press event data
+ * \param[in]   unused  extra event data (unused)
+ *
+ * \return  `TRUE` to stop event propagation (right-click), `FALSE` to continue
+ *          event propagation (other clicks)
+ */
+static gboolean on_button_press_event(GtkWidget *view,
+                                      GdkEvent *event,
+                                      gpointer data)
+{
+    GdkEventButton *eb = (GdkEventButton*)event;
+
+    if (eb->button == GDK_BUTTON_SECONDARY) {
+        GtkTreePath *path = NULL;
+
+        /* grab tree path at pointer */
+        if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(view),
+                                          eb->x,
+                                          eb->y,
+                                          &path,
+                                          NULL, /* column */
+                                          NULL, /* cell_x */
+                                          NULL  /* cell_y */)) {
+            GtkTreeSelection *selection;
+            GtkWidget *menu;
+
+            /* select current row so updating the table works via its current
+             * selection */
+            selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
+            gtk_tree_selection_select_path(selection, path);
+
+            /* pop up context menu at row */
+            menu = create_context_menu(path);
+            if (menu != NULL) {
+                gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
+            }
+            return TRUE;    /* don't propagate further */
+        }
+    }
+    return FALSE;    /* propagate further so double-clicking a row still works */
+}
 
 
 /** \brief  Create the table view of the hotkeys
@@ -1079,10 +1360,74 @@ static GtkWidget *create_hotkeys_view(void)
     gtk_tree_view_append_column(GTK_TREE_VIEW(view), column);
 
     g_signal_connect(view, "row-activated", G_CALLBACK(on_row_activated), NULL);
+    g_signal_connect(view, "button-press-event", G_CALLBACK(on_button_press_event), NULL);
 
     return view;
 }
 
+
+/** \brief  Handler for the 'clicked' event handler of the 'Clear all hotkeys'
+ *          button
+ *
+ * \param[in]   button  button (unused)
+ * \param[in]   unused  extra event data (unused)
+ */
+static void on_clear_clicked(GtkWidget *button, gpointer unused)
+{
+    show_clear_all_confirm_dialog();
+}
+
+/** \brief  Handler for the 'clicked' event handler of the 'Reset to default'
+ *          button
+ *
+ * \param[in]   button  button (unused)
+ * \param[in]   unused  extra event data (unused)
+ */
+static void on_defaults_clicked(GtkButton *button, gpointer unused)
+{
+    ui_hotkeys_load_default();
+    update_treeview_full();
+    update_hotkeys_path();
+}
+
+/** \brief  Handler for the 'clicked' event handler of the 'Reload hotkeys'
+ *          button
+ *
+ * \param[in]   button  button (unused)
+ * \param[in]   unused  extra event data (unused)
+ */
+static void on_load_clicked(GtkButton *button, gpointer unused)
+{
+    /* We can trigger an action here since we're on the UI thread: the action's
+     * handler will not be pused onto a thread or timeout but simply execute
+     * in this thread */
+    ui_action_trigger(ACTION_HOTKEYS_LOAD);
+    update_treeview_full();
+    update_hotkeys_path();
+}
+
+/** \brief  Callback for the hotkeys load dialog
+ *
+ * \param[in]   result  user loaded a file
+ */
+static void load_from_callback(gboolean result)
+{
+    if (result) {
+        update_treeview_full();
+        update_hotkeys_path();
+    }
+}
+
+/** \brief  Handler for the 'clicked' event handler of the 'Load hotkeys from...'
+ *          button
+ *
+ * \param[in]   button  button (unused)
+ * \param[in]   unused  extra event data (unused)
+ */
+static void on_load_from_clicked(GtkButton *button, gpointer unused)
+{
+    ui_hotkeys_load_dialog_show(load_from_callback);
+}
 
 
 /** \brief  Create main widget
@@ -1095,8 +1440,13 @@ GtkWidget *settings_hotkeys_widget_create(GtkWidget *parent)
 {
     GtkWidget *grid;
     GtkWidget *scroll;
+#if 0
     GtkWidget *browse;
     GtkWidget *export;
+#endif
+    GtkWidget *button;
+    GtkWidget *wrapper;
+    GtkWidget *label;
 
     grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT);
 
@@ -1110,15 +1460,58 @@ GtkWidget *settings_hotkeys_widget_create(GtkWidget *parent)
     gtk_widget_set_vexpand(scroll, TRUE);
     gtk_container_add(GTK_CONTAINER(scroll), hotkeys_view);
     gtk_widget_show_all(scroll);
-    gtk_grid_attach(GTK_GRID(grid), scroll, 0, 0, 1, 1);
-
+    gtk_grid_attach(GTK_GRID(grid), scroll, 0, 0, 2, 1);
+#if 0
     browse = create_browse_widget();
-    gtk_grid_attach(GTK_GRID(grid), browse, 0, 1, 1, 1);
-
-    export = gtk_button_new_with_label("Save current hotkeys to file");
+    gtk_grid_attach(GTK_GRID(grid), browse, 0, 1, 2, 1);
+    export = gtk_button_new_with_label("Save hotkeys...");
     g_signal_connect(export, "clicked", G_CALLBACK(on_export_clicked), NULL);
     gtk_grid_attach(GTK_GRID(grid), export, 0, 2, 1, 1);
+#endif
 
+    /* add widget to show path to current hotkeys file */
+    wrapper = gtk_grid_new();
+    gtk_grid_set_column_spacing(GTK_GRID(wrapper), 16);
+
+    label = gtk_label_new("Current hotkeys file:");
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_widget_set_hexpand(label, FALSE);
+    gtk_grid_attach(GTK_GRID(wrapper), label, 0, 0, 1, 1);
+
+    hotkeys_path = gtk_entry_new();
+    gtk_widget_set_hexpand(hotkeys_path, TRUE);
+    gtk_editable_set_editable(GTK_EDITABLE(hotkeys_path), FALSE);
+    gtk_widget_set_can_focus(hotkeys_path, FALSE);
+    gtk_grid_attach(GTK_GRID(wrapper), hotkeys_path, 1, 0, 1, 1);
+    update_hotkeys_path();
+
+    gtk_widget_set_margin_top(wrapper, 8);
+    gtk_widget_set_margin_bottom(wrapper, 8);
+    gtk_grid_attach(GTK_GRID(grid), wrapper, 0, 1, 2, 1);
+
+    /* need to regenerate the view after this action is triggered */
+    button = gtk_button_new_with_label("Reset to default");
+    g_signal_connect(button, "clicked", G_CALLBACK(on_defaults_clicked), NULL);
+    gtk_grid_attach(GTK_GRID(grid), button, 0, 2, 1 ,1);
+
+    /* this one pops up a confirmation dialog, so we don't use an action ID */
+    button = gtk_button_new_with_label("Clear all hotkeys");
+    g_signal_connect(button, "clicked", G_CALLBACK(on_clear_clicked), NULL);
+    gtk_grid_attach(GTK_GRID(grid), button, 1, 2, 1 ,1);
+
+    button = gtk_button_new_with_label("Reload hotkeys");
+    g_signal_connect(button, "clicked", G_CALLBACK(on_load_clicked), NULL);
+    gtk_grid_attach(GTK_GRID(grid), button, 0, 3, 1, 1);
+
+    button = gtk_button_new_with_label("Load hotkeys from...");
+    g_signal_connect(button, "clicked", G_CALLBACK(on_load_from_clicked), NULL);
+    gtk_grid_attach(GTK_GRID(grid), button, 1, 3, 1, 1);
+
+    button = ui_action_button_new(ACTION_HOTKEYS_SAVE, "Save hotkeys");
+    gtk_grid_attach(GTK_GRID(grid), button, 0, 4, 1, 1);
+
+    button = ui_action_button_new(ACTION_HOTKEYS_SAVE_TO, "Save hotkeys to...");
+    gtk_grid_attach(GTK_GRID(grid), button, 1, 4, 1, 1);
 
     gtk_widget_show_all(grid);
     return grid;

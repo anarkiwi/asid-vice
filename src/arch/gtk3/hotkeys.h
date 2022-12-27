@@ -27,6 +27,8 @@
 #ifndef VICE_HOTKEYS_H
 #define VICE_HOTKEYS_H
 
+#include "vice.h"
+
 #include <gtk/gtk.h>
 #include <stdbool.h>
 #include "archdep_defs.h"
@@ -34,10 +36,12 @@
 
 /** \brief  Name of Gtk3 main hotkeys files
  */
-#ifdef ARCHDEP_OS_MACOS
-# define VHK_PREFIX "gtk3-hotkeys-mac"
+#ifdef MACOS_COMPILE
+# define VHK_PREFIX         "gtk3-hotkeys-mac"
+# define VHK_PREFIX_VSID    "gtk3-vsid-hotkeys-mac"
 #else
-# define VHK_PREFIX "gtk3-hotkeys"
+# define VHK_PREFIX         "gtk3-hotkeys"
+# define VHK_PREFIX_VSID    "gtk3-vsid-hotkeys"
 #endif
 
 /** \brief  Extension of Gtk3 hotkeys files
@@ -49,7 +53,11 @@
 
 /** \brief  Filename of default Gtk3 hotkeys files
  */
-#define VHK_DEFAULT_NAME    VHK_PREFIX VHK_EXT
+#define VHK_DEFAULT_NAME        VHK_PREFIX VHK_EXT
+
+/** \brief  Filename of default Gtk3 VSID hotkeys file
+ */
+#define VHK_DEFAULT_NAME_VSID   VHK_PREFIX_VSID VHK_EXT
 
 
 /** \brief  Accepted GDK modifiers for hotkeys
@@ -65,7 +73,7 @@
  * managers on Linux, and Windows itself, use this key for all sorts of things,
  * we filter it out.
  */
-#ifdef ARCHDEP_OS_MACOS
+#ifdef MACOS_COMPILE
 /* Command, Control, Option, Shift */
 # define VHK_ACCEPTED_MODIFIERS \
     (GDK_SHIFT_MASK|GDK_CONTROL_MASK|GDK_MOD1_MASK|GDK_META_MASK)
@@ -112,6 +120,7 @@ typedef struct hotkeys_modifier_s {
 } hotkeys_modifier_t;
 
 
+
 int     ui_hotkeys_resources_init(void);
 int     ui_hotkeys_cmdline_options_init(void);
 
@@ -119,11 +128,10 @@ void    ui_hotkeys_init(void);
 void    ui_hotkeys_shutdown(void);
 
 bool    ui_hotkeys_parse(const char *path);
-
-char *  ui_hotkeys_get_hotkey_string_for_action(const char *action);
-
 bool    ui_hotkeys_export(const char *path);
+void    ui_hotkeys_load_default(void);
 
+char *  ui_hotkeys_get_hotkey_string_for_action(gint action_id);
 const hotkeys_modifier_t *ui_hotkeys_get_modifier_list(void);
 
 #endif

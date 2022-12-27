@@ -65,6 +65,16 @@ enum {
 };
 
 
+/** \brief  Encode unit and drive number for an attach/detach callback argument
+ *
+ * Encodes unit and drive number into a value to be used as a data argument
+ * for event handlers.
+ *
+ * \param[in]   U   unit number (8-11)
+ * \param[in]   D   drive number (0 or 1)
+ */
+#define UNIT_DRIVE_TO_PTR(U, D) GINT_TO_POINTER(((U) << 8) | ((D) & 0xff))
+
 
 extern GtkTargetEntry ui_drag_targets[UI_DRAG_TARGETS_COUNT];
 
@@ -84,13 +94,16 @@ void ui_destroy_main_window(int index);
 void ui_dispatch_events(void);
 void ui_exit(void);
 
-int  ui_is_fullscreen(void);
-void ui_trigger_resize(void);
-
-
+gboolean ui_is_fullscreen(void);
+gboolean ui_is_fullscreen_from_canvas(const video_canvas_t *canvas);
+void     ui_set_fullscreen_enabled(gboolean enabled);
+gboolean ui_fullscreen_has_decorations(void);
+void     ui_trigger_resize(void);
+void     ui_update_fullscreen_decorations(void);
 
 GtkWindow *ui_get_active_window(void);
 video_canvas_t *ui_get_active_canvas(void);
+video_canvas_t *ui_get_canvas_for_window(int index);
 
 /*
  * New pause 'API'
@@ -102,21 +115,7 @@ void ui_pause_enter_monitor(void);
 void ui_pause_disable(void);
 void ui_pause_toggle(void);
 
-/*
- * UI 'actions' for the custom hotkeys, perhaps move to uicommands.c/uiactions.c?
- */
-gboolean ui_action_toggle_pause(void);
-gboolean ui_action_toggle_warp(void);
-gboolean ui_action_advance_frame(void);
-gboolean ui_action_toggle_fullscreen(void);
-gboolean ui_action_toggle_fullscreen_decorations(void);
-void     ui_action_set_speed(int speed);
-void     ui_action_set_fps(int fps);
-
-gboolean ui_speed_custom_toggled(GtkWidget *widget, gpointer data);
-gboolean ui_fps_custom_toggled(GtkWidget *widget, gpointer data);
-gboolean ui_cpu_speed_callback(GtkWidget *widget, gpointer data);
-gboolean ui_fps_callback(GtkWidget *widget, gpointer data);
+gboolean ui_action_toggle_show_statusbar(void);
 
 void ui_update_lightpen(void);
 void ui_enable_crt_controls(int enabled);
@@ -125,30 +124,8 @@ void ui_enable_mixer_controls(int enabled);
 GtkWidget *ui_get_window_by_index(int index);
 int ui_get_window_index(GtkWidget *widget);
 int ui_get_main_window_index(void);
+GtkWidget *ui_get_main_window_by_index(gint index);
 
 gboolean ui_get_autostart_on_doubleclick(void);
-
-#if 0
-#define UI_DRAG_TARGETS_COUNT   3
-
-extern GtkTargetEntry ui_drag_targets[UI_DRAG_TARGETS_COUNT];
-
-gboolean ui_on_drag_drop(
-        GtkWidget *widget,
-        GdkDragContext *context,
-        gint x,
-        gint y,
-        guint time,
-        gpointer data);
-
-void ui_on_drag_data_received(
-        GtkWidget *widget,
-        GdkDragContext *context,
-        int x,
-        int y,
-        GtkSelectionData *data,
-        guint info,
-        guint time);
-#endif
 
 #endif

@@ -1,0 +1,242 @@
+<HTML>
+<HEAD>
+<!-- This HTML file has been created by texi2html 1.52
+     from vice.texi on 11 November 2022 -->
+
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-15">
+<TITLE>VICE Manual - 10  Media images</TITLE>
+<style type="text/css">
+    @import 'vice.css';
+</style>
+</HEAD>
+<BODY>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_9.html">previous</A>, <A HREF="vice_11.html">next</A>, <A HREF="vice_23.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+<P><HR><P>
+
+
+<H1><A NAME="SEC274" HREF="vice_toc.html#TOC274">10  Media images</A></H1>
+
+
+
+<H2><A NAME="SEC275" HREF="vice_toc.html#TOC275">10.1  Media images resources</A></H2>
+
+<DL COMPACT>
+
+<DT><CODE>OCPOversizeHandling</CODE>
+<DD>
+<A NAME="IDX2000"></A>
+ 
+Integer specifying the way the oversized input should be handled
+(all emulators except vsid).
+(0: scale down, 1: crop left top, 2: crop center top,
+3: crop right top, 4: crop left center, 5: crop center,
+6: crop right center, 7: crop left bottom, 8: crop center bottom,
+9: crop right bottom)
+
+<A NAME="IDX2001"></A>
+<DT><CODE>OCPUndersizeHandling</CODE>
+<DD>
+Integer specifying the way the undersized input should be handled
+(all emulators except vsid).
+(0: scale, 1: borderize)
+
+<A NAME="IDX2002"></A>
+<DT><CODE>OCPMultiColorHandling</CODE>
+<DD>
+Integer specifying the way the multicolor to hires should be handled
+(all emulators except vsid).
+(0: b&#38;w, 1: 2 colors, 2: 4 colors, 3: gray scale,  4: best cell colors)
+
+<A NAME="IDX2003"></A>
+<DT><CODE>OCPTEDLumHandling</CODE>
+<DD>
+Integer specifying the way the TED luminosity should be handled
+(all emulators except vsid).
+(0: ignore, 1: dither)
+
+<A NAME="IDX2004"></A>
+<DT><CODE>KoalaOversizeHandling</CODE>
+<DD>
+Integer specifying the way the oversized input should be handled
+(all emulators except vsid).
+(0: scale down, 1: crop left top, 2: crop center top,
+3: crop right top, 4: crop left center, 5: crop center,
+6: crop right center, 7: crop left bottom, 8: crop center bottom,
+9: crop right bottom)
+
+<A NAME="IDX2005"></A>
+<DT><CODE>KoalaUndersizeHandling</CODE>
+<DD>
+Integer specifying the way the undersized input should be handled
+(all emulators except vsid).
+(0: scale, 1: borderize)
+
+<A NAME="IDX2006"></A>
+<DT><CODE>KoalaTEDLumHandling</CODE>
+<DD>
+Integer specifying the way the TED luminosity should be handled
+(all emulators except vsid).
+(0: ignore, 1: dither)
+
+<A NAME="IDX2007"></A>
+<DT><CODE>MinipaintOversizeHandling</CODE>
+<DD>
+Integer specifying the way the oversized input should be handled
+(all emulators except vsid).
+(0: scale down, 1: crop left top, 2: crop center top,
+3: crop right top, 4: crop left center, 5: crop center,
+6: crop right center, 7: crop left bottom, 8: crop center bottom,
+9: crop right bottom)
+
+<A NAME="IDX2008"></A>
+<DT><CODE>MinipaintUndersizeHandling</CODE>
+<DD>
+Integer specifying the way the undersized input should be handled
+(all emulators except vsid).
+(0: scale, 1: borderize)
+
+<A NAME="IDX2009"></A>
+<DT><CODE>MinipaintTEDLumHandling</CODE>
+<DD>
+Integer specifying the way the TED luminosity should be handled
+(all emulators except vsid).
+(0: ignore, 1: dither)
+
+<A NAME="IDX2010"></A>
+<DT><CODE>FFMPEGFormat</CODE>
+<DD>
+String specifying the current FFMPEG output driver.
+<A NAME="IDX2011"></A>
+<DT><CODE>FFMPEGAudioBitrate</CODE>
+<DD>
+Integer specifying the current FFMPEG audio bitrate.
+<A NAME="IDX2012"></A>
+<DT><CODE>FFMPEGVideoBitrate</CODE>
+<DD>
+Integer specifying the current FFMPEG video bitrate.
+<A NAME="IDX2013"></A>
+<DT><CODE>FFMPEGAudioCodec</CODE>
+<DD>
+Integer specifying the current FFMPEG audio codec.
+<A NAME="IDX2014"></A>
+<DT><CODE>FFMPEGVideoCodec</CODE>
+<DD>
+Integer specifying the current FFMPEG video codec.
+<A NAME="IDX2015"></A>
+<DT><CODE>FFMPEGVideoHalveFramerate</CODE>
+<DD>
+Boolean, if true record only every other frame.
+
+</DL>
+
+
+
+<H2><A NAME="SEC276" HREF="vice_toc.html#TOC276">10.2  Media images command-line options</A></H2>
+
+<DL COMPACT>
+
+<DT><CODE>-ocpoversize &#60;method&#62;</CODE>
+<DD>
+<A NAME="IDX2016"></A>
+ 
+Select the way the oversized input should be handled
+(<CODE>OCPOversizeHandling</CODE>)
+(all emulators except vsid).
+(0: scale down, 1: crop left top, 2: crop center top,
+3: crop right top, 4: crop left center, 5: crop center,
+6: crop right center, 7: crop left bottom,
+8: crop center bottom, 9: crop right bottom)
+
+<A NAME="IDX2017"></A>
+<DT><CODE>-ocpundersize &#60;method&#62;</CODE>
+<DD>
+Select the way the undersized input should be handled
+(<CODE>OCPUndersizeHandling</CODE>)
+(all emulators except vsid).
+(0: scale, 1: borderize)
+
+<A NAME="IDX2018"></A>
+<DT><CODE>-ocpmc &#60;method&#62;</CODE>
+<DD>
+Select the way the multicolor to hires should be handled
+(<CODE>OCPMultiColorHandling</CODE>)
+(all emulators except vsid).
+(0: b&#38;w, 1: 2 colors, 2: 4 colors, 3: gray scale, 4: best cell colors)
+
+<A NAME="IDX2019"></A>
+<DT><CODE>-ocptedlum &#60;method&#62;</CODE>
+<DD>
+Select the way the TED luminosity should be handled
+(<CODE>OCPTEDLumHandling</CODE>)
+(all emulators except vsid).
+(0: ignore, 1: dither)
+
+<A NAME="IDX2020"></A>
+<DT><CODE>-koalaoversize &#60;method&#62;</CODE>
+<DD>
+Select the way the oversized input should be handled
+(<CODE>KoalaOversizeHandling</CODE>)
+(all emulators except vsid).
+(0: scale down, 1: crop left top, 2: crop center top,
+3: crop right top, 4: crop left center, 5: crop center,
+6: crop right center, 7: crop left bottom,
+8: crop center bottom, 9: crop right bottom)
+
+<A NAME="IDX2021"></A>
+<DT><CODE>-koalaundersize &#60;method&#62;</CODE>
+<DD>
+Select the way the undersized input should be handled
+(<CODE>KoalaUndersizeHandling</CODE>)
+(all emulators except vsid).
+(0: scale, 1: borderize)
+
+<A NAME="IDX2022"></A>
+<DT><CODE>-koalatedlum &#60;method&#62;</CODE>
+<DD>
+Select the way the TED luminosity should be handled
+(<CODE>KoalaTEDLumHandling</CODE>)
+(all emulators except vsid).
+(0: ignore, 1: dither)
+
+<A NAME="IDX2023"></A>
+<DT><CODE>-minipaintoversize &#60;method&#62;</CODE>
+<DD>
+Select the way the oversized input should be handled
+(<CODE>MinipaintOversizeHandling</CODE>)
+(all emulators except vsid).
+(0: scale down, 1: crop left top, 2: crop center top,
+3: crop right top, 4: crop left center, 5: crop center,
+6: crop right center, 7: crop left bottom,
+8: crop center bottom, 9: crop right bottom)
+
+<A NAME="IDX2024"></A>
+<DT><CODE>-minipaintundersize &#60;method&#62;</CODE>
+<DD>
+Select the way the undersized input should be handled
+(<CODE>MinipaintUndersizeHandling</CODE>)
+(all emulators except vsid).
+(0: scale, 1: borderize)
+
+<A NAME="IDX2025"></A>
+<DT><CODE>-minipainttedlum &#60;method&#62;</CODE>
+<DD>
+Select the way the TED luminosity should be handled
+(<CODE>MinipaintTEDLumHandling</CODE>)
+(all emulators except vsid).
+(0: ignore, 1: dither)
+
+<A NAME="IDX2026"></A>
+<DT><CODE>-ffmpegaudiobitrate &#60;value&#62;</CODE>
+<DD>
+Set bitrate for audio stream in media file
+<A NAME="IDX2027"></A>
+<DT><CODE>-ffmpegvideobitrate &#60;value&#62;</CODE>
+<DD>
+Set bitrate for video stream in media file
+
+</DL>
+
+<P><HR><P>
+Go to the <A HREF="vice_1.html">first</A>, <A HREF="vice_9.html">previous</A>, <A HREF="vice_11.html">next</A>, <A HREF="vice_23.html">last</A> section, <A HREF="vice_toc.html">table of contents</A>.
+</BODY>
+</HTML>

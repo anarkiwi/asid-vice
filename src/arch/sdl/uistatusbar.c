@@ -126,7 +126,7 @@ static void display_speed(void)
     int vsync_metric_warp_enabled;
 
     vsyncarch_get_metrics(&vsync_metric_cpu_percent, &vsync_metric_emulated_fps, &vsync_metric_warp_enabled);
-    
+
     sep = ui_pause_active() ? ('P' | 0x80) : vsync_metric_warp_enabled ? ('W' | 0x80) : '/';
 
     len = sprintf(&(statusbar_text[STATUSBAR_SPEED_POS]), "%3d%%%c%2dfps", (int)(vsync_metric_cpu_percent + 0.5), sep, (int)(vsync_metric_emulated_fps + 0.5));
@@ -167,14 +167,14 @@ void ui_enable_drive_status(ui_drive_enable_t state, int *drive_led_color)
         if (drive_state & 1) {
             statusbar_drive_offset[drive_number][0] = (int)offset;
             ui_display_drive_led(drive_number, 0, 0, 0);
-            ui_display_drive_track(drive_number, 0, 
+            ui_display_drive_track(drive_number, 0,
                                    statusbar_drive_track[drive_number][0],
                                    statusbar_drive_side[drive_number][0]);
             if (drive_is_dualdrive_by_devnr(drive_number + 8)) {
                 offset += (drive_number > 1) ? 6 : 5;
                 statusbar_drive_offset[drive_number][1] = (int)offset;
                 ui_display_drive_led(drive_number, 1, 0, 0);
-                ui_display_drive_track(drive_number, 1, 
+                ui_display_drive_track(drive_number, 1,
                                     statusbar_drive_track[drive_number][1],
                                     statusbar_drive_side[drive_number][1]);
             } else {
@@ -192,8 +192,8 @@ void ui_enable_drive_status(ui_drive_enable_t state, int *drive_led_color)
     }
 }
 
-void ui_display_drive_track(unsigned int drive_number, 
-                            unsigned int drive_base, 
+void ui_display_drive_track(unsigned int drive_number,
+                            unsigned int drive_base,
                             unsigned int half_track_number,
                             unsigned int disk_side)
 {
@@ -222,9 +222,9 @@ void ui_display_drive_track(unsigned int drive_number,
 }
 
 /* The pwm value will vary between 0 and 1000.  */
-void ui_display_drive_led(unsigned int drive_number, 
-                          unsigned int drive_base, 
-                          unsigned int led_pwm1, 
+void ui_display_drive_led(unsigned int drive_number,
+                          unsigned int drive_base,
+                          unsigned int led_pwm1,
                           unsigned int led_pwm2)
 {
     int high, low, trk;
@@ -240,7 +240,7 @@ void ui_display_drive_led(unsigned int drive_number,
     low = "8901"[drive_number] | ((led_pwm1 > 500) ? 0x80 : 0);
     high = '1' | ((led_pwm1 > 500) ? 0x80: 0);
     trk = 'T' | ((led_pwm2 > 500) ? 0x80: 0);
-    
+
     offset = statusbar_drive_offset[drive_number][drive_base];
 
     if (drive_number < 2) {
@@ -435,7 +435,7 @@ void uistatusbar_draw(void)
     color_b = limits->color_default_back;
     pitch = limits->pitch;
 
-    line = MIN(sdl_active_canvas->viewport->last_line, 
+    line = MIN(sdl_active_canvas->viewport->last_line,
                sdl_active_canvas->geometry->last_displayed_line);
 
     draw_offset = (line - menufont->h + 1) * pitch
@@ -495,7 +495,7 @@ void ui_display_kbd_status(SDL_Event *e)
     resources_get_int("KbdStatusbar", &kbd_status);
 
     if (kbd_status) {
-        memmove(kbdstatusbar_text, &kbdstatusbar_text[KBDSTATUSENTRYLEN], 
+        memmove(kbdstatusbar_text, &kbdstatusbar_text[KBDSTATUSENTRYLEN],
                 MAX_STATUSBAR_LEN - KBDSTATUSENTRYLEN);
         memset(p + KBDSTATUSENTRYLEN, ' ', MAX_STATUSBAR_LEN - (KBDSTATUSENTRYLEN * 3));
         /* The SDL1 and SDL2 ports have different types for the e->key.keysym.sym
@@ -503,7 +503,7 @@ void ui_display_kbd_status(SDL_Event *e)
          * warnings, but that might bite us in the arse in the future.
          * So I use conditional compiling to make the issue clear.  -- compyx
          */
-#ifdef USE_SDLUI2
+#ifdef USE_SDL2UI
         sprintf(p, "%c%03d>%03d %c%04x    ",
 #else
         sprintf(p, "%c%03u>%03u %c%04x    ",
@@ -513,7 +513,7 @@ void ui_display_kbd_status(SDL_Event *e)
                 SDL2x_to_SDL1x_Keys(e->key.keysym.sym),
                 ((e->key.keysym.sym & 0xffff0000) == 0x40000000) ? 'M' : ((e->key.keysym.sym & 0xffff0000) != 0x00000000) ? 'E' : ' ',
                 e->key.keysym.mod);
-#ifdef USE_SDLUI2
+#ifdef USE_SDL2UI
         log_message(LOG_DEFAULT, "%s %03d>%03d %c%04x",
 #else
         log_message(LOG_DEFAULT, "%s %03u>%03u %c%04x",
@@ -525,15 +525,6 @@ void ui_display_kbd_status(SDL_Event *e)
                 e->key.keysym.mod);
     }
 }
-
-
-#ifdef ANDROID_COMPILE
-void loader_set_statusbar(int val)
-{
-    set_statusbar(val, 0);
-}
-#endif
-
 
 /** \brief  Show reset on statusbar
  *

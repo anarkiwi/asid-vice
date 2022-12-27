@@ -1,6 +1,25 @@
 # vim: set noet ts=8 sw=8 sts=8:
 commondir = $(VICE_DATADIR)/common
 
+gtk3_hotkeys = gtk3-hotkeys-cartridge.vhk \
+	       gtk3-hotkeys-cartridge-mac.vhk \
+	       gtk3-hotkeys-debug.vhk \
+	       gtk3-hotkeys-debug-mac.vhk \
+	       gtk3-hotkeys-drive.vhk \
+	       gtk3-hotkeys-drive-mac.vhk \
+	       gtk3-hotkeys-datasette1.vhk \
+	       gtk3-hotkeys-datasette1-mac.vhk \
+	       gtk3-hotkeys-datasette2.vhk \
+	       gtk3-hotkeys-datasette2-mac.vhk \
+	       gtk3-hotkeys-fliplist.vhk \
+	       gtk3-hotkeys-fliplist-mac.vhk \
+	       gtk3-hotkeys-help.vhk \
+	       gtk3-hotkeys-help-mac.vhk \
+	       gtk3-hotkeys-settings.vhk \
+	       gtk3-hotkeys-settings-mac.vhk \
+	       gtk3-hotkeys-snapshot.vhk \
+	       gtk3-hotkeys-snapshot-mac.vhk
+
 common_DATA = CBM_Logo.svg \
 	      C64_Pro_Mono-STYLE.ttf \
 	      icon1024x1024.png \
@@ -41,6 +60,7 @@ common_DATA = CBM_Logo.svg \
 	      PET_64.png \
 	      PET_256.png \
 	      PET_256.svg \
+	      PET_1024.svg \
 	      Plus4_16.png \
 	      Plus4_24.png \
 	      Plus4_32.png \
@@ -68,26 +88,7 @@ common_DATA = CBM_Logo.svg \
 	      VIC20_48.png \
 	      VIC20_64.png \
 	      VIC20_256.png \
-	      VIC20_1024.svg \
-	      gtk3-hotkeys-cartridge.vhk \
-	      gtk3-hotkeys-cartridge-mac.vhk \
-	      gtk3-hotkeys-debug.vhk \
-	      gtk3-hotkeys-debug-mac.vhk \
-	      gtk3-hotkeys-drive.vhk \
-	      gtk3-hotkeys-drive-mac.vhk \
-	      gtk3-hotkeys-datasette1.vhk \
-	      gtk3-hotkeys-datasette1-mac.vhk \
-	      gtk3-hotkeys-datasette2.vhk \
-	      gtk3-hotkeys-datasette2-mac.vhk \
-	      gtk3-hotkeys-fliplist.vhk \
-	      gtk3-hotkeys-fliplist-mac.vhk \
-	      gtk3-hotkeys-help.vhk \
-	      gtk3-hotkeys-help-mac.vhk \
-	      gtk3-hotkeys-settings.vhk \
-	      gtk3-hotkeys-settings-mac.vhk \
-	      gtk3-hotkeys-snapshot.vhk \
-	      gtk3-hotkeys-snapshot-mac.vhk
-
+	      VIC20_1024.svg
 
 EXTRA_DIST = $(common_DATA) \
 	      x64.rc \
@@ -107,7 +108,7 @@ EXTRA_DIST = $(common_DATA) \
 #all: x64.res x64sc.res x64dtv.res xscpu64.res x128.res xvic.res xplus4.res xpet.res xcbm2.res xcbm5x0.res vsid.res $(GRESOURCE_TARGET)
 #
 
-if NATIVE_GTK3_COMPILE
+if USE_GTK3UI
 
 # Generate gresource binary file, required by all Gtk3 emus
 GRESOURCE_TARGET = $(builddir)/vice.gresource
@@ -116,7 +117,8 @@ GRESOURCE_XML = $(srcdir)/vice.gresource.xml
 $(GRESOURCE_TARGET): $(GRESOURCE_XML)
 	glib-compile-resources --sourcedir $(top_srcdir) $< --target $@
 
-common_DATA += $(GRESOURCE_TARGET)
+common_DATA += $(GRESOURCE_TARGET) \
+	       $(gtk3_hotkeys)
 
 # The *.ico and *.res files are currently generated in
 # src/arch/gtk3/data/win32/Makefile.am, but the plan is to move that to here
@@ -146,4 +148,8 @@ CLEANFILES = \
 	xcbm5x0.res \
 	vsid.res
 
-endif
+else !USE_GTK3UI
+
+EXTRA_DIST += $(gtk3_hotkeys)
+
+endif !USE_GTK3UI

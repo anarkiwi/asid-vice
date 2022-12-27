@@ -29,16 +29,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
-#if !defined(USE_HEADLESSUI) && !defined(USE_SDLUI2) && !defined(USE_SDLUI)
+#if !defined(USE_HEADLESSUI) && !defined(USE_SDL2UI) && !defined(USE_SDLUI)
 #ifdef UNIX_COMPILE
-#ifndef MACOSX_SUPPORT
+#ifndef MACOS_COMPILE
 #include <X11/Xlib.h>
 #endif
 #endif
 #endif
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 #include <windows.h>
 #include <mmsystem.h>
 #include <objbase.h>
@@ -46,9 +47,9 @@
 
 #include <assert.h>
 
-#ifdef USE_NATIVE_GTK3
+#ifdef USE_GTK3UI
 #include <gtk/gtk.h>
-#endif /* #ifdef USE_NATIVE_GTK3 */
+#endif /* #ifdef USE_GTK3UI */
 
 #ifdef USE_VICE_THREAD
 #include <pthread.h>
@@ -68,7 +69,7 @@ static pthread_t main_thread;
 #include "main.h"
 #include "mainlock.h"
 
-#ifdef MACOSX_SUPPORT
+#ifdef MACOS_COMPILE
 #include "macOS-util.h"
 #endif
 
@@ -79,31 +80,31 @@ static bool is_exiting;
 
 bool archdep_is_exiting(void) {
     bool result;
-    
+
     LOCK();
     result = is_exiting;
     UNLOCK();
-    
+
     return result;
 }
 
 static void actually_exit(int exit_code)
 {
     LOCK();
-    
+
     if (is_exiting) {
         log_message(LOG_DEFAULT, "Ignoring recursive call to archdep_vice_exit()");
         UNLOCK();
         return;
     }
     is_exiting = true;
-    
+
     UNLOCK();
 
     /* Some exit stuff not safe to run afer exit() is called so we do it here */
     main_exit();
 
-#if defined(WIN32_COMPILE)
+#if defined(WINDOWS_COMPILE)
     /* Relax scheduler accuracy */
     timeEndPeriod(1);
 #endif
@@ -115,7 +116,7 @@ static void actually_exit(int exit_code)
     exit(exit_code);
 }
 
-#ifdef USE_NATIVE_GTK3
+#ifdef USE_GTK3UI
 
 /*
  * GTK3 needs a more controlled shutdown due to the multiple threads involved.
@@ -133,14 +134,14 @@ static gboolean exit_on_main_thread(gpointer not_used)
 
 void archdep_thread_init(void)
 {
-#if defined(WIN32_COMPILE)
+#if defined(WINDOWS_COMPILE)
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 #endif
 }
 
 void archdep_thread_shutdown(void)
 {
-#if defined(WIN32_COMPILE)
+#if defined(WINDOWS_COMPILE)
     CoUninitialize();
 #endif
 }
@@ -149,14 +150,14 @@ void archdep_set_main_thread(void)
 {
     main_thread = pthread_self();
 
-#if defined(MACOSX_SUPPORT)
+#if defined(MACOS_COMPILE)
 
     /* macOS specific main thread init written in objective-c */
     vice_macos_set_main_thread();
 
 #elif defined(UNIX_COMPILE)
 
-#ifdef USE_NATIVE_GTK3
+#ifdef USE_GTK3UI
     /* Our GLX OpenGL init stuff will crash if we let GDK use wayland directly */
     putenv("GDK_BACKEND=x11");
 #endif
@@ -168,7 +169,7 @@ void archdep_set_main_thread(void)
 
     /* TODO - set UI/main thread priority for X11 */
 
-#elif defined(WIN32_COMPILE)
+#elif defined(WINDOWS_COMPILE)
 
     /* Increase Windows scheduler accuracy */
     timeBeginPeriod(1);
@@ -202,7 +203,7 @@ void archdep_vice_exit(int exit_code)
     }
 }
 
-#else /* #ifdef USE_NATIVE_GTK3 */
+#else /* #ifdef USE_GTK3UI */
 
 /** \brief  Wrapper around exit()
  */
@@ -211,4 +212,4 @@ void archdep_vice_exit(int exit_code)
     actually_exit(exit_code);
 }
 
-#endif /* #ifdef USE_NATIVE_GTK3 else */
+#endif /* #ifdef USE_GTK3UI else */

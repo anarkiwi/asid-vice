@@ -45,11 +45,6 @@
 #include "settings_sampler.h"
 
 
-/** \brief  Function to retrieve the list of sampler input devices
- */
-static sampler_device_t *(*devices_getter)(void) = NULL;
-
-
 /** \brief  Reference to the text entry
  *
  * Used by the "browse" button callback to set the new file name and trigger
@@ -160,11 +155,14 @@ static GtkWidget *create_device_widget(void)
     resources_get_int("SamplerDevice", &current);
 
     combo = gtk_combo_box_text_new();
+#if 0
     if (devices_getter != NULL) {
         devices = devices_getter();
     } else {
         return combo;
     }
+#endif
+    devices = sampler_get_devices();
     for (i = 0; devices[i].name != NULL; i++) {
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo),
                 devices[i].name, devices[i].name);
@@ -190,7 +188,7 @@ static GtkWidget *create_gain_widget(void)
     int i;
 
     label = gtk_label_new("Sampler gain");
-    g_object_set(label, "margin-left",16, NULL);
+    gtk_widget_set_margin_start(label, 16);
 
     scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL,
             0.0, 200.0, 25.0);
@@ -249,16 +247,6 @@ static GtkWidget *create_input_button(void)
 }
 
 
-/** \brief  Set the function to retrieve the input devices list
- *
- * \param[in]   func    pointer to function to retrieve devices list
- */
-void settings_sampler_set_devices_getter(sampler_device_t *(*func)(void))
-{
-    devices_getter = func;
-}
-
-
 /** \brief  Create widget to control sampler settings
  *
  * \param[in]   parent  parent widget
@@ -279,7 +267,7 @@ GtkWidget *settings_sampler_widget_create(GtkWidget *parent)
     /* sampler device list */
     label = gtk_label_new("Sampler device");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-left", 16, NULL);
+    gtk_widget_set_margin_start(label, 16);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 1, 1, 1);
     combo = create_device_widget();
     gtk_grid_attach(GTK_GRID(grid), combo, 1, 1, 2, 1);
@@ -287,14 +275,14 @@ GtkWidget *settings_sampler_widget_create(GtkWidget *parent)
     /* sampler gain */
     label = gtk_label_new("Sampler gain");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-left", 16, NULL);
+    gtk_widget_set_margin_start(label, 16);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 2, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), create_gain_widget(), 1, 2, 2, 1);
 
     /* sampler input file text entry and browse button */
     label = gtk_label_new("Sampler media file");
     gtk_widget_set_halign(label, GTK_ALIGN_START);
-    g_object_set(label, "margin-left", 16, NULL);
+    gtk_widget_set_margin_start(label, 16);
     gtk_grid_attach(GTK_GRID(grid), label, 0, 3, 1, 1);
     entry_widget = create_input_entry();
     gtk_widget_set_hexpand(entry_widget, TRUE);

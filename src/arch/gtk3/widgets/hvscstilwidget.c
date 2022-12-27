@@ -109,6 +109,14 @@ static void hvsc_stil_widget_create_tags(void)
 
     gtk_text_buffer_create_tag(
             buffer,
+            "name",
+            "left-margin", 16,
+            "weight", PANGO_WEIGHT_BOLD,
+            "foreground", "dimgrey",
+            NULL);
+
+    gtk_text_buffer_create_tag(
+            buffer,
             "artist",
             "left-margin", 16,
             "foreground", "darkgreen",
@@ -126,6 +134,9 @@ static GtkWidget *create_view(void)
     GtkWidget *textview = gtk_text_view_new();
 
     gtk_text_view_set_editable(GTK_TEXT_VIEW(textview), FALSE);
+    /* work around bug in Gtk3 that still allows insertin emoji's in read-only
+     * textviews */
+    gtk_text_view_set_input_hints(GTK_TEXT_VIEW(textview), GTK_INPUT_HINT_NO_EMOJI);
     gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(textview), GTK_WRAP_WORD_CHAR);
     gtk_widget_set_can_focus(textview, FALSE);
     gtk_widget_set_vexpand(textview, TRUE);
@@ -144,13 +155,15 @@ GtkWidget *hvsc_stil_widget_create(void)
     GtkWidget *scroll;
 
 
-    grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, VICE_GTK3_DEFAULT);
+    grid = vice_gtk3_grid_new_spaced(VICE_GTK3_DEFAULT, 8);
 
     /* add title label */
     label = gtk_label_new(NULL);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_label_set_markup(GTK_LABEL(label), "<b>STIL entry:</b>");
-    g_object_set(G_OBJECT(label), "margin-bottom", 16, NULL);
+#if 0
+    gtk_widget_set_margin_bottom(label, 8);
+#endif
 
     gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
 
@@ -161,13 +174,19 @@ GtkWidget *hvsc_stil_widget_create(void)
 
     scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_widget_set_vexpand(scroll, TRUE);
-    gtk_widget_set_size_request(scroll, 400, 400);
+#if 0
+    gtk_widget_set_size_request(scroll, 400, 100);
+#endif
     gtk_widget_set_hexpand(scroll, TRUE);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
             GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_container_add(GTK_CONTAINER(scroll), stil_view);
     gtk_grid_attach(GTK_GRID(grid), scroll, 0, 1, 1, 1);
-    gtk_widget_set_vexpand(grid, TRUE);
+#if 0
+    gtk_widget_set_vexpand(grid, FALSE);
+#endif
+    gtk_widget_set_size_request(grid, 600, 120);
+    gtk_widget_set_hexpand(scroll, TRUE);
     gtk_widget_show_all(grid);
     return grid;
 }
@@ -247,6 +266,7 @@ int hvsc_stil_widget_set_psid(const char *psid)
 
         /* handle fields for the current subtune */
         for (f = 0; f < block->fields_used; f++) {
+            gchar *utf8 = NULL;
 
 #if 0
             g_snprintf(line, 1024, "    %s %s\n",
@@ -257,12 +277,8 @@ int hvsc_stil_widget_set_psid(const char *psid)
 #endif
             if (block->fields[f]->type == HVSC_FIELD_COMMENT) {
                 /* add tune-specific comment */
-
-                gchar *utf8;
-
-                g_snprintf(line, 1024, "%s\n", block->fields[f]->text);
+                g_snprintf(line, sizeof line, "%s\n", block->fields[f]->text);
                 utf8 = convert_to_utf8(line);
-
                 gtk_text_buffer_insert_with_tags_by_name(
                         buffer,
                         &end,
@@ -270,7 +286,6 @@ int hvsc_stil_widget_set_psid(const char *psid)
                         -1,
                         "tune-comment",
                         NULL);
-
                 g_free(utf8);
             }
 
@@ -281,13 +296,13 @@ int hvsc_stil_widget_set_psid(const char *psid)
                 long to = block->fields[f]->timestamp.to;
 
                 if (to < 0) {
-                    g_snprintf(line, 1024,
+                    g_snprintf(line, sizeof line,
                             "%ld:%02ld.%03ld\n",
                             from / 60 / 1000,
                             (from / 1000) % 60,
                             (from % 1000));
                 } else {
-                    g_snprintf(line, 1024,
+                    g_snprintf(line, sizeof line,
                             "%ld:%02ld.%03ld-%ld:%02ld.%03ld\n",
                             from / 60 / 1000,
                             (from / 1000) % 60,
@@ -296,7 +311,6 @@ int hvsc_stil_widget_set_psid(const char *psid)
                             (to / 1000) % 60,
                             (to % 1000));
                 }
-
                 gtk_text_buffer_insert_with_tags_by_name(
                         buffer,
                         &end,
@@ -313,12 +327,8 @@ int hvsc_stil_widget_set_psid(const char *psid)
             /* title? */
             if (block->fields[f]->type == HVSC_FIELD_TITLE
                     && block->fields[f]->text != NULL) {
-
-                gchar *utf8;
-
-                g_snprintf(line, 1024, "%s\n", block->fields[f]->text);
+                g_snprintf(line, sizeof line, "%s\n", block->fields[f]->text);
                 utf8 = convert_to_utf8(line);
-
                 gtk_text_buffer_insert_with_tags_by_name(
                         buffer,
                         &end,
@@ -326,17 +336,27 @@ int hvsc_stil_widget_set_psid(const char *psid)
                         -1,
                         "title",
                         NULL);
+                g_free(utf8);
+            }
 
+            /* name? */
+            if (block->fields[f]->type == HVSC_FIELD_NAME
+                    && block->fields[f]->text != NULL) {
+                g_snprintf(line, sizeof line, "%s\n", block->fields[f]->text);
+                utf8 = convert_to_utf8(line);
+                gtk_text_buffer_insert_with_tags_by_name(
+                        buffer,
+                        &end,
+                        line,
+                        -1,
+                        "name",
+                        NULL);
                 g_free(utf8);
             }
 
             /* album? */
             if (block->fields[f]->album != NULL) {
-
-                gchar *utf8;
-
-                g_snprintf(line, 1024, "%s\n",
-                        block->fields[f]->album);
+                g_snprintf(line, sizeof line, "%s\n", block->fields[f]->album);
                 utf8 = convert_to_utf8(line);
 
                 gtk_text_buffer_insert_with_tags_by_name(
@@ -353,12 +373,8 @@ int hvsc_stil_widget_set_psid(const char *psid)
             /* artist? */
             if (block->fields[f]->type == HVSC_FIELD_ARTIST
                     && block->fields[f]->text != NULL) {
-
-                gchar *utf8;
-
-                g_snprintf(line, 1024, "%s\n\n", block->fields[f]->text);
+                g_snprintf(line, sizeof line, "%s\n\n", block->fields[f]->text);
                 utf8 = convert_to_utf8(line);
-
                 gtk_text_buffer_insert_with_tags_by_name(
                         buffer,
                         &end,
@@ -374,7 +390,7 @@ int hvsc_stil_widget_set_psid(const char *psid)
 
         /* add newlines when not last subtune */
         if (t < stil.blocks_used - 1) {
-            gtk_text_buffer_insert(buffer, &end, "\n\n", -1);
+            gtk_text_buffer_insert(buffer, &end, "\n", -1);
         }
     }
 

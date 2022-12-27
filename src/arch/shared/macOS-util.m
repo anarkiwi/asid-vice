@@ -45,7 +45,7 @@
 #define NANOS_PER_MICRO 1000ULL
 #define MICROS_PER_SEC  1000000ULL
 
-#ifdef USE_NATIVE_GTK3
+#ifdef USE_GTK3UI
 /* For some reason this isn't in the GDK quartz headers */
 id gdk_quartz_window_get_nswindow (GdkWindow *window);
 #endif
@@ -57,7 +57,7 @@ void vice_macos_set_main_thread(void)
      * Starting a new thread via the NSThread interface is enough to flip
      * the bit.
      */
-    
+
     [NSThread detachNewThreadSelector: @selector(class)
                              toTarget: [NSObject class]
                            withObject: nil];
@@ -77,7 +77,7 @@ static void move_pthread_to_normal_scheduling_class(pthread_t pthread)
     /*
      * See Chromium source file platform_thread_mac.mm for more examples
      */
-    
+
     kern_return_t result;
     mach_port_t thread_id = pthread_mach_thread_np(pthread);
 
@@ -113,7 +113,7 @@ static void move_pthread_to_realtime_scheduling_class(pthread_t pthread, int per
     /*
      * See Chromium source file platform_thread_mac.mm for more examples
      */
-    
+
     kern_return_t result;
     mach_port_t thread_id = pthread_mach_thread_np(pthread);
 
@@ -178,7 +178,7 @@ void vice_macos_set_render_thread_priority(void)
     move_pthread_to_realtime_scheduling_class(pthread_self(), 0, MICROS_PER_SEC / 1000 * 5, MICROS_PER_SEC / 1000 * 17);
 }
 
-#ifdef USE_NATIVE_GTK3
+#ifdef USE_GTK3UI
 void vice_macos_get_widget_frame_and_content_rect(GtkWidget *widget, CGRect *native_frame, CGRect *content_rect)
 {
     id native_window  = gdk_quartz_window_get_nswindow(gtk_widget_get_window(widget));

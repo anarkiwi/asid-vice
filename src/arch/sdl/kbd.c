@@ -139,7 +139,7 @@ int sdlkbd_init_cmdline(void)
    SDL1 key handling, but a proper solution for
    handling unicode will still need to be made.
  */
-#ifdef USE_SDLUI2
+#ifdef USE_SDL2UI
 typedef struct SDL2Key_s {
     SDLKey SDL1x;
     SDLKey SDL2x;
@@ -482,7 +482,7 @@ ui_menu_action_t sdlkbd_press(SDLKey key, SDLMod mod)
 #ifdef SDL_DEBUG
     log_debug("%s: %i (%s),%04x", __func__, key, SDL_GetKeyName(key), mod);
 #endif
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 /* HACK: The Alt-Gr Key seems to work differently on windows and linux.
          On Linux one Keypress "SDLK_RALT" will be produced.
          On Windows two Keypresses will be produced, first "SDLK_LCTRL"
@@ -537,7 +537,7 @@ ui_menu_action_t sdlkbd_release(SDLKey key, SDLMod mod)
     log_debug("%s: %i (%s),%04x", __func__, key, SDL_GetKeyName(key), mod);
 #endif
 
-#ifdef WIN32_COMPILE
+#ifdef WINDOWS_COMPILE
 /* HACK: The Alt-Gr Key seems to work differently on windows and linux.
          see above */
     if (SDL1x_to_SDL2x_Keys(key) == SDLK_RALT) {
@@ -700,10 +700,13 @@ char *kbd_get_path_keyname(char *path)
     for (i = 0; i < SDLKBD_UI_HOTKEYS_MAX; ++i) {
         if (sdlkbd_ui_hotkeys[i]) {
             hotkey_path = sdl_ui_hotkey_path(sdlkbd_ui_hotkeys[i]);
-            if (!strcmp(hotkey_path, path)) {
-                mod_key = (i / SDL_NUM_SCANCODES);
-                key = i - (mod_key * SDL_NUM_SCANCODES);
-                found++;
+            if (hotkey_path != NULL) {
+                if (strcmp(hotkey_path, path) == 0) {
+                    mod_key = (i / SDL_NUM_SCANCODES);
+                    key = i - (mod_key * SDL_NUM_SCANCODES);
+                    found++;
+                }
+                lib_free(hotkey_path);
             }
         }
     }

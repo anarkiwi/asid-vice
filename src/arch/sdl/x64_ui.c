@@ -32,6 +32,7 @@
 
 #include "debug.h"
 #include "c64mem.h"
+#include "c64rom.h"
 #include "c64ui.h"
 #include "menu_c64_common_expansions.h"
 #include "menu_c64cart.h"
@@ -169,7 +170,7 @@ static ui_menu_entry_t x64_main_menu[] = {
       MENU_ENTRY_SUBMENU,
       submenu_callback,
       (ui_callback_data_t)settings_manager_menu },
-#ifdef USE_SDLUI2
+#ifdef USE_SDL2UI
     { "Edit",
       MENU_ENTRY_SUBMENU,
       submenu_callback,
@@ -191,7 +192,7 @@ static ui_menu_entry_t x64_main_menu[] = {
 #endif
 static UI_MENU_CALLBACK(pause_callback_wrapper)
 {
-    x64_main_menu[MENU_ADVANCE_FRAME_IDX].status = 
+    x64_main_menu[MENU_ADVANCE_FRAME_IDX].status =
         sdl_pause_state || !sdl_menu_state ? MENU_STATUS_ACTIVE : MENU_STATUS_INACTIVE;
     x64_main_menu[MENU_VIRTUAL_KEYBOARD_IDX].status =
         sdl_pause_state ? MENU_STATUS_INACTIVE : MENU_STATUS_ACTIVE;
@@ -249,7 +250,7 @@ int c64ui_init(void)
     uimedia_menu_create();
 
     sdl_ui_set_main_menu(x64_main_menu);
-    sdl_ui_font_init("chargen", 0, 0x800, 0);
+    sdl_ui_font_init(C64_CHARGEN_NAME, 0, 0x800, 0);
     sdl_vkbd_set_vkbd(&vkbd_c64);
 
 #ifdef HAVE_FFMPEG
