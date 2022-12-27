@@ -5,3 +5,4 @@ Doxyfile
 Makefile
 *.o
 *.a
+.deps/
