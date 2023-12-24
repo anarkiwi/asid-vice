@@ -36,6 +36,7 @@ typedef HANDLE vice_pid_t;
 typedef pid_t vice_pid_t;
 #endif
 
-int fork_coproc(int *fd_wr, int *fd_rd, char *cmd);
+int fork_coproc(int *fd_wr, int *fd_rd, char *cmd, vice_pid_t *childpid);
+void kill_coproc(vice_pid_t pid);
 
 #endif
