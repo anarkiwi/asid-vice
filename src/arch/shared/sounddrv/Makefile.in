@@ -133,16 +133,16 @@ DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/lamelib.Po ./$(DEPDIR)/soundaiff.Po \
-	./$(DEPDIR)/soundalsa.Po ./$(DEPDIR)/soundbeos.Po \
-	./$(DEPDIR)/soundbsp.Po ./$(DEPDIR)/soundcoreaudio.Po \
-	./$(DEPDIR)/sounddummy.Po ./$(DEPDIR)/sounddump.Po \
-	./$(DEPDIR)/sounddx.Po ./$(DEPDIR)/soundflac.Po \
-	./$(DEPDIR)/soundfs.Po ./$(DEPDIR)/soundiff.Po \
-	./$(DEPDIR)/soundmovie.Po ./$(DEPDIR)/soundmp3.Po \
-	./$(DEPDIR)/soundpulse.Po ./$(DEPDIR)/soundsdl.Po \
-	./$(DEPDIR)/soundsun.Po ./$(DEPDIR)/soundvoc.Po \
-	./$(DEPDIR)/soundvorbis.Po ./$(DEPDIR)/soundwav.Po \
-	./$(DEPDIR)/soundwmm.Po
+	./$(DEPDIR)/soundalsa.Po ./$(DEPDIR)/soundasid.Po \
+	./$(DEPDIR)/soundbeos.Po ./$(DEPDIR)/soundbsp.Po \
+	./$(DEPDIR)/soundcoreaudio.Po ./$(DEPDIR)/sounddummy.Po \
+	./$(DEPDIR)/sounddump.Po ./$(DEPDIR)/sounddx.Po \
+	./$(DEPDIR)/soundflac.Po ./$(DEPDIR)/soundfs.Po \
+	./$(DEPDIR)/soundiff.Po ./$(DEPDIR)/soundmovie.Po \
+	./$(DEPDIR)/soundmp3.Po ./$(DEPDIR)/soundpulse.Po \
+	./$(DEPDIR)/soundsdl.Po ./$(DEPDIR)/soundsun.Po \
+	./$(DEPDIR)/soundvoc.Po ./$(DEPDIR)/soundvorbis.Po \
+	./$(DEPDIR)/soundwav.Po ./$(DEPDIR)/soundwmm.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -446,6 +446,7 @@ noinst_LIBRARIES = libsounddrv.a
 # These sources are linked only under certain circumstances.
 EXTRA_libsounddrv_a_SOURCES = \
 	soundalsa.c \
+	soundasid.c \
 	soundbeos.cc \
 	soundbsp.cc \
 	soundcoreaudio.c \
@@ -539,6 +540,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lamelib.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundaiff.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundalsa.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundasid.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundbeos.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundbsp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundcoreaudio.Po@am__quote@ # am--include-marker
@@ -718,6 +720,7 @@ distclean: distclean-am
 		-rm -f ./$(DEPDIR)/lamelib.Po
 	-rm -f ./$(DEPDIR)/soundaiff.Po
 	-rm -f ./$(DEPDIR)/soundalsa.Po
+	-rm -f ./$(DEPDIR)/soundasid.Po
 	-rm -f ./$(DEPDIR)/soundbeos.Po
 	-rm -f ./$(DEPDIR)/soundbsp.Po
 	-rm -f ./$(DEPDIR)/soundcoreaudio.Po
@@ -784,6 +787,7 @@ maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/lamelib.Po
 	-rm -f ./$(DEPDIR)/soundaiff.Po
 	-rm -f ./$(DEPDIR)/soundalsa.Po
+	-rm -f ./$(DEPDIR)/soundasid.Po
 	-rm -f ./$(DEPDIR)/soundbeos.Po
 	-rm -f ./$(DEPDIR)/soundbsp.Po
 	-rm -f ./$(DEPDIR)/soundcoreaudio.Po

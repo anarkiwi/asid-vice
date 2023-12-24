@@ -2591,7 +2591,7 @@ if test x"$is_unix" = "xyes" -a x"$is_unix_macosx" = "xno"; then
   dnl ALSA support checks
   if test x"$with_alsa" != "xno"; then
     AC_CHECK_HEADERS(alsa/asoundlib.h,[AC_CHECK_LIB(asound, snd_pcm_open,
-                     [SOUND_DRIVERS="$SOUND_DRIVERS soundalsa.o";
+                     [SOUND_DRIVERS="$SOUND_DRIVERS soundalsa.o soundasid.o";
                       SOUND_LIBS="$SOUND_LIBS -lasound";
                       USE_ALSA_SUPPORT="yes";
                       AC_DEFINE(USE_ALSA,,[Enable alsa support.])],,$SOUND_LIBS)])

@@ -267,6 +267,7 @@ int sound_cmdline_options_init(void);
 
 /* device initialization prototypes */
 int sound_init_alsa_device(void);
+int sound_init_asid_device(void);
 int sound_init_dummy_device(void);
 int sound_init_dump_device(void);
 int sound_init_fs_device(void);
