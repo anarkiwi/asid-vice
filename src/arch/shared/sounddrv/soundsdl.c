@@ -274,6 +274,7 @@ static const sound_device_t sdl_device =
     sdl_write,
     NULL,
     NULL,
+    NULL,
     sdl_bufferspace,
     sdl_close,
     sdl_suspend,

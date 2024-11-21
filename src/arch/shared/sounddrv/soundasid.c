@@ -364,6 +364,7 @@ static sound_device_t asid_device =
     asid_init,
     asid_write,
     asid_dump,
+    NULL,
     asid_flush,
     NULL,
     asid_close,

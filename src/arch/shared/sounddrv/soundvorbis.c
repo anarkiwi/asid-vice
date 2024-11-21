@@ -162,6 +162,7 @@ static const sound_device_t vorbis_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     vorbis_close,
     NULL,
     NULL,

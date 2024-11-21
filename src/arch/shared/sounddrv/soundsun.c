@@ -233,6 +233,7 @@ static const sound_device_t sun_device =
     sun_write,
     NULL,
     NULL,
+    NULL,
     sun_bufferspace,
     sun_close,
     NULL,

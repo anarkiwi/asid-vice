@@ -161,6 +161,7 @@ static const sound_device_t iff_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     iff_close,
     NULL,
     NULL,
