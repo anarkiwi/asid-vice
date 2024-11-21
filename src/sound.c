@@ -46,6 +46,7 @@
 #include "fixpoint.h"
 #include "lib.h"
 #include "log.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "maincpu.h"
 #include "mainlock.h"
@@ -1734,9 +1735,10 @@ void sound_store(uint16_t addr, uint8_t val, int chipno)
     }
 
     if (playdev_is_dump) {
-        addr += chipno * 32;
+        i = snddata.playdev->dump2(addr, val, maincpu_clk - snddata.wclk, chipno, maincpu_clk - maincpu_int_status->irq_clk, maincpu_clk - maincpu_int_status->nmi_clk);
+    } else {
+        i = snddata.playdev->dump(addr, val, maincpu_clk - snddata.wclk);
     }
-    i = snddata.playdev->dump(addr, val, maincpu_clk - snddata.wclk);
 
     snddata.wclk = maincpu_clk;
 

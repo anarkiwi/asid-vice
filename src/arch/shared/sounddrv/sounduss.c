@@ -265,6 +265,7 @@ static const sound_device_t uss_device =
     uss_write,
     NULL,
     NULL,
+    NULL,
     uss_bufferspace,
     uss_close,
     uss_suspend,

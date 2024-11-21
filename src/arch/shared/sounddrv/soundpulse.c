@@ -122,6 +122,7 @@ static const sound_device_t pulsedrv_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     pulsedrv_close,
     pulsedrv_suspend,
     NULL,

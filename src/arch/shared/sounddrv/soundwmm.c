@@ -536,6 +536,7 @@ static const sound_device_t wmm_device =
     wmm_write,
     NULL,
     NULL,
+    NULL,
     wmm_bufferspace,
     wmm_close,
     wmm_suspend,

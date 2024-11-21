@@ -52,6 +52,12 @@ static int dump_dump(uint16_t addr, uint8_t byte, CLOCK clks)
     return (fprintf(dump_fd, "%d %d %d\n", (int)clks, addr, byte) < 0);
 }
 
+static int dump_dump2(uint16_t addr, uint8_t byte, CLOCK clks, uint8_t chipno, CLOCK irq_clks, CLOCK nmi_clks)
+{
+   return (fprintf(dump_fd, "%d %d %d %d %d %d\n", (int)clks, (int)irq_clks, (int)nmi_clks, addr, byte) < 0);
+}
+
+
 static int dump_flush(char *state)
 {
     if (fprintf(dump_fd, "%s", state) < 0) {
@@ -73,6 +79,7 @@ static const sound_device_t dump_device =
     dump_init,
     dump_write,
     dump_dump,
+    dump_dump2,
     dump_flush,
     NULL,
     dump_close,

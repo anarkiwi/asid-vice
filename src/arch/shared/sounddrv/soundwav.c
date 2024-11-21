@@ -133,6 +133,7 @@ static const sound_device_t wav_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     wav_close,
     NULL,
     NULL,
