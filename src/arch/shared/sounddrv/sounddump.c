@@ -52,9 +52,9 @@ static int dump_dump(uint16_t addr, uint8_t byte, CLOCK clks)
     return (fprintf(dump_fd, "%d %d %d\n", (int)clks, addr, byte) < 0);
 }
 
-static int dump_dump2(uint16_t addr, uint8_t byte, CLOCK clks, uint8_t chipno, CLOCK irq_clks, CLOCK nmi_clks)
+static int dump_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks, uint8_t chipno, uint16_t addr, uint8_t byte)
 {
-   return (fprintf(dump_fd, "%d %d %d %d %d %d\n", (int)clks, (int)irq_clks, (int)nmi_clks, addr, byte) < 0);
+   return (fprintf(dump_fd, "%d %d %d %d %d %d\n", (int)clks, (int)irq_clks, (int)nmi_clks, chipno, addr, byte) < 0);
 }
 
 

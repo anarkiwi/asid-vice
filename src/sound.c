@@ -1735,7 +1735,7 @@ void sound_store(uint16_t addr, uint8_t val, int chipno)
     }
 
     if (playdev_is_dump) {
-        i = snddata.playdev->dump2(addr, val, maincpu_clk - snddata.wclk, chipno, maincpu_clk - maincpu_int_status->irq_clk, maincpu_clk - maincpu_int_status->nmi_clk);
+        i = snddata.playdev->dump2(maincpu_clk - snddata.wclk, maincpu_clk - maincpu_int_status->irq_clk, maincpu_clk - maincpu_int_status->nmi_clk, chipno, addr, val);
     } else {
         i = snddata.playdev->dump(addr, val, maincpu_clk - snddata.wclk);
     }
