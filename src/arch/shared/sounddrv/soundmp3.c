@@ -150,6 +150,7 @@ static const sound_device_t mp3_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     mp3_close,
     NULL,
     NULL,

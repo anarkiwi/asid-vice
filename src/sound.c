@@ -46,6 +46,7 @@
 #include "fixpoint.h"
 #include "lib.h"
 #include "log.h"
+#include "interrupt.h"
 #include "machine.h"
 #include "maincpu.h"
 #include "mainlock.h"
@@ -87,6 +88,7 @@ static const sound_register_devices_t sound_register_devices[] = {
 #endif
 #ifdef USE_ALSA
     { "alsa", "ALSA sound output", sound_init_alsa_device, SOUND_PLAYBACK_DEVICE },
+    { "asid", "ASID sound output", sound_init_asid_device, SOUND_PLAYBACK_DEVICE },
 #endif
 #ifdef USE_COREAUDIO
     { "coreaudio", "Mac OS X Audio output", sound_init_coreaudio_device, SOUND_PLAYBACK_DEVICE },
@@ -151,6 +153,8 @@ static const sound_register_devices_t sound_register_devices[] = {
 static uint16_t offset = 0;
 
 static sound_chip_t *sound_calls[SOUND_CHIPS_MAX];
+
+static bool playdev_is_dump = false;
 
 uint16_t sound_chip_register(sound_chip_t *chip)
 {
@@ -1155,6 +1159,10 @@ int sound_open(void)
     /* find pdev */
     for (i = 0; (pdev = sound_devices[i]); i++) {
         if (!playname || (pdev->name && !util_strcasecmp(playname, pdev->name))) {
+            if (!util_strcasecmp(pdev->name, "dump")) {
+                log_warning(sound_log, "using dump");
+                playdev_is_dump = true;
+            }
             break;
         }
     }
@@ -1746,7 +1754,11 @@ void sound_store(uint16_t addr, uint8_t val, int chipno)
         return;
     }
 
-    i = snddata.playdev->dump(addr, val, maincpu_clk - snddata.wclk);
+    if (playdev_is_dump) {
+        i = snddata.playdev->dump2(maincpu_clk - snddata.wclk, maincpu_clk - maincpu_int_status->irq_clk, maincpu_clk - maincpu_int_status->nmi_clk, chipno, addr, val);
+    } else {
+        i = snddata.playdev->dump(addr, val, maincpu_clk - snddata.wclk);
+    }
 
     snddata.wclk = maincpu_clk;
 

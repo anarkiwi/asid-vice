@@ -166,6 +166,7 @@ static const sound_device_t voc_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     voc_close,
     NULL,
     NULL,

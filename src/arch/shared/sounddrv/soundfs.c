@@ -61,6 +61,7 @@ static const sound_device_t fs_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     fs_close,
     NULL,
     NULL,

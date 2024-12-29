@@ -176,6 +176,7 @@ static const sound_device_t flac_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     flac_close,
     NULL,
     NULL,

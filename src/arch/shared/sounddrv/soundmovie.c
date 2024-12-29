@@ -113,6 +113,7 @@ static const sound_device_t soundmovie_device =
     NULL,
     NULL,
     NULL,
+    NULL,
     soundmovie_close,
     NULL,
     NULL,

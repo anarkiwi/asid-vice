@@ -604,6 +604,7 @@ static const sound_device_t dx_device =
     dx_write,
     NULL,
     NULL,
+    NULL,
     dx_bufferspace,
     dx_close,
     dx_suspend,

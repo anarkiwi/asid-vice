@@ -771,6 +771,7 @@ static const sound_device_t coreaudio_device =
     coreaudio_write,
     NULL,
     NULL,
+    NULL,
     coreaudio_bufferspace,
     coreaudio_close,
     coreaudio_suspend,

@@ -249,6 +249,7 @@ static const sound_device_t alsa_device =
     alsa_write,
     NULL,
     NULL,
+    NULL,
     alsa_bufferspace,
     alsa_close,
     alsa_suspend,
