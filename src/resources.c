@@ -63,7 +63,7 @@
 
 
 #ifdef VICE_DEBUG_RESOURCES
-#define DBG(x)  printf x
+#define DBG(x)  log_printf x
 #else
 #define DBG(x)
 #endif
@@ -139,7 +139,7 @@ static unsigned int resources_calc_hash_key(const char *name)
 {
     unsigned int key, i, shift;
 
-    DBG(("resources_calc_hash_key: '%s'\n", name ? name : "<empty/null>"));
+    DBG(("resources_calc_hash_key: '%s'", name ? name : "<empty/null>"));
 
     key = 0; shift = 0;
     for (i = 0; name[i] != '\0'; i++) {
@@ -232,7 +232,7 @@ static resource_ram_t *lookup(const char *name)
     resource_ram_t *res;
     unsigned int hashkey;
 
-    DBG(("lookup name:'%s'\n", name ? name : "<empty/null>"));
+    DBG(("lookup name:'%s'", name ? name : "<empty/null>"));
 
     if (name == NULL) {
         return NULL;
@@ -258,7 +258,7 @@ int resources_register_int(const resource_int_t *r)
     const resource_int_t *sp;
     resource_ram_t *dp;
 
-    DBG(("resources_register_int name:'%s'\n", r->name ? r->name : "<empty/null>"));
+    DBG(("resources_register_int name:'%s'", r->name ? r->name : "<empty/null>"));
 
     sp = r;
     dp = resources + num_resources;
@@ -286,7 +286,7 @@ int resources_register_int(const resource_int_t *r)
 
         dp->name = lib_strdup(sp->name);
         dp->type = RES_INTEGER;
-        dp->factory_value = uint_to_void_ptr(sp->factory_value);
+        dp->factory_value = vice_uint_to_ptr(sp->factory_value);
         dp->value_ptr = (void *)(sp->value_ptr);
         dp->event_relevant = sp->event_relevant;
         dp->event_strict_value = sp->event_strict_value;
@@ -311,7 +311,7 @@ int resources_register_string(const resource_string_t *r)
     const resource_string_t *sp;
     resource_ram_t *dp;
 
-    DBG(("resources_register_string name:'%s'\n", r->name ? r->name : "<empty/null>"));
+    DBG(("resources_register_string name:'%s'", r->name ? r->name : "<empty/null>"));
 
     sp = r;
     dp = resources + num_resources;
@@ -614,7 +614,7 @@ int resources_set_int(const char *name, int value)
     /* if netplay is connected, and resource is tagged RES_EVENT_SAME,
        record the resource change event so it will be distributed to the client */
     if (r->event_relevant == RES_EVENT_SAME && network_connected()) {
-        resource_record_event(r, uint_to_void_ptr(value));
+        resource_record_event(r, vice_uint_to_ptr(value));
         return 0;
     }
 
@@ -662,7 +662,7 @@ void resources_set_value_event(void *data, int size)
         log_error(LOG_DEFAULT, "resources_set_value_event: resource '%s' does not exist.", name);
     } else {
         if (r->type == RES_INTEGER) {
-            resources_set_value_internal(r, (resource_value_t) uint_to_void_ptr(*(uint32_t *)valueptr));
+            resources_set_value_internal(r, (resource_value_t) vice_uint_to_ptr(*(uint32_t *)valueptr));
         } else {
             resources_set_value_internal(r, (resource_value_t)valueptr);
         }
@@ -900,7 +900,7 @@ int resources_set_default_int(const char *name, int value)
         return -1;
     }
 
-    r->factory_value = uint_to_void_ptr(value);
+    r->factory_value = vice_uint_to_ptr(value);
     return 0;
 }
 
@@ -951,6 +951,9 @@ int resources_set_defaults(void)
 {
     unsigned int i;
 
+    log_message(LOG_DEFAULT, "%s", ""); /* ugly hack to produce a blank log line, but not trigger a warning */
+    log_message(LOG_DEFAULT, "Setting resources to default...");
+
     /* the cartridge system uses internal state variables so the default cartridge
        can be unset without changing the attached cartridge and/or attach another
        cartridge without changing the default. to completely restore the default,
@@ -964,7 +967,7 @@ int resources_set_defaults(void)
     tape_image_detach_all();
 
     for (i = 0; i < num_resources; i++) {
-        DBG(("setting default for '%s'\n", resources[i].name));
+        DBG(("setting default for '%s'", resources[i].name));
         switch (resources[i].type) {
             /* CAUTION: the following MUST NOT fail and NOT return early when resetting
                         a resource fails - else we get strange side effects in the case
@@ -974,7 +977,7 @@ int resources_set_defaults(void)
             case RES_INTEGER:
                 if ((*resources[i].set_func_int)(vice_ptr_to_int(resources[i].factory_value),
                                                  resources[i].param) < 0) {
-                    log_verbose("Cannot set int resource '%s' to default '%d'",
+                    log_verbose(LOG_DEFAULT, "Cannot set int resource '%s' to default '%d'",
                                 resources[i].name, vice_ptr_to_int(resources[i].factory_value));
                     /*return -1;*/
                 }
@@ -982,19 +985,20 @@ int resources_set_defaults(void)
             case RES_STRING:
                 if ((*resources[i].set_func_string)((const char *)(resources[i].factory_value),
                                                     resources[i].param) < 0) {
-                    log_verbose("Cannot set string resource '%s' to default '%s'",
+                    log_verbose(LOG_DEFAULT, "Cannot set string resource '%s' to default '%s'",
                                 resources[i].name, (const char *)(resources[i].factory_value));
                     /*return -1;*/
                 }
                 break;
         }
-        DBG(("issue callback for '%s'\n", resources[i].name));
+        DBG(("issue callback for '%s'", resources[i].name));
         resources_issue_callback(resources + i, 0);
     }
 
     if (resource_modified_callback != NULL) {
         resources_exec_callback_chain(resource_modified_callback, NULL);
     }
+    log_verbose(LOG_DEFAULT, "Done setting resources to default.");
 
     return 0;
 }
@@ -1010,7 +1014,7 @@ int resources_set_event_safe(void)
                 if (resources[i].event_relevant == RES_EVENT_STRICT) {
                     if ((*resources[i].set_func_int)(vice_ptr_to_int(resources[i].event_strict_value),
                                                      resources[i].param) < 0) {
-                        log_error(LOG_DEFAULT, "failed to set event-safe resource value for '%s'\n", resources[i].name);
+                        log_error(LOG_DEFAULT, "failed to set event-safe resource value for '%s'", resources[i].name);
                         return -1;
                     }
                 }
@@ -1019,7 +1023,7 @@ int resources_set_event_safe(void)
                 if (resources[i].event_relevant == RES_EVENT_STRICT) {
                     if ((*resources[i].set_func_string)((const char *)(resources[i].event_strict_value),
                                                         resources[i].param) < 0) {
-                        log_error(LOG_DEFAULT, "failed to set event-safe resource value for '%s'\n", resources[i].name);
+                        log_error(LOG_DEFAULT, "failed to set event-safe resource value for '%s'", resources[i].name);
                         return -1;
                     }
                 }
@@ -1085,7 +1089,7 @@ int resources_toggle(const char *name, int *new_value_return)
     /* if netplay is connected, and resource is tagged RES_EVENT_SAME,
        record the resource change event so it will be distributed to the client */
     if (r->event_relevant == RES_EVENT_SAME && network_connected()) {
-        resource_record_event(r, uint_to_void_ptr(value));
+        resource_record_event(r, vice_uint_to_ptr(value));
         return 0;
     }
 
@@ -1268,7 +1272,7 @@ static int check_resource_file_version(const char *fname)
             if (strcmp(tag, "ConfigVersion") == 0) {
                 tag = strtok(NULL, "=");
                 if (strcmp(tag, VERSION) != 0) {
-                    log_warning(LOG_DEFAULT, "Config file version mismatch (is '%s', expected '%s').\n",
+                    log_warning(LOG_DEFAULT, "Config file version mismatch (is '%s', expected '%s').",
                                 tag, VERSION);
                     ui_error("WARNING: Configuration file version mismatch (is '%s', expected '%s').\n\n%s",
                             tag, VERSION, versionmessage);
@@ -1300,6 +1304,7 @@ static int load_resource_file(const char *fname)
         return RESERR_FILE_NOT_FOUND;
     }
 
+    log_message(LOG_DEFAULT, "%s", ""); /* ugly hack to produce a blank log line, but not trigger a warning */
     log_message(LOG_DEFAULT, "Reading configuration file `%s'.", fname);
 
     /* Find the start of the configuration section for this emulator.  */
@@ -1395,7 +1400,7 @@ static char *string_resource_item(int num, const char *delim)
 
     switch (resources[num].type) {
         case RES_INTEGER:
-            v = (resource_value_t) uint_to_void_ptr(*(int *)resources[num].value_ptr);
+            v = (resource_value_t) vice_uint_to_ptr(*(int *)resources[num].value_ptr);
             line = lib_msprintf("%s=%d%s", resources[num].name, vice_ptr_to_int(v), delim);
             break;
         case RES_STRING:
@@ -1438,22 +1443,21 @@ static int resource_item_isdefault(int num)
 
     switch (resources[num].type) {
         case RES_INTEGER:
-            v = (resource_value_t) uint_to_void_ptr(*(int *)resources[num].value_ptr);
-            i1 = vice_ptr_to_int(v);
+            i1 = *(int*)resources[num].value_ptr;
             i2 = vice_ptr_to_int(resources[num].factory_value);
             if (i1 == i2) {
                 return 1;
             }
-            DBG(("%s = (int) default: \"%d\" is: \"%d\"\n", resources[num].name, i2, i1));
+            DBG(("%s = (int) default: \"%d\" is: \"%d\"", resources[num].name, i2, i1));
             break;
         case RES_STRING:
             v = *resources[num].value_ptr;
-            s1 = (char *)v == NULL ? "" : (char *)v;
-            s2 = (char *)resources[num].factory_value == NULL ? "" : (char *)resources[num].factory_value;
-            if (!strcmp(s1, s2)) {
+            s1 = v == NULL ? "" : v;
+            s2 = resources[num].factory_value == NULL ? "" : resources[num].factory_value;
+            if (strcmp(s1, s2) == 0) {
                 return 1;
             }
-            DBG(("%s = (string) default: \"%s\" is: \"%s\"\n", resources[num].name, s2, s1));
+            DBG(("%s = (string) default: \"%s\" is: \"%s\"", resources[num].name, s2, s1));
             break;
         default:
             log_error(LOG_DEFAULT, "Unknown value type for resource `%s'.", resources[num].name);
@@ -1675,7 +1679,7 @@ void resources_log_active(void)
             char *line = string_resource_item(i, "");
             if (line != NULL) {
                 if (n == 0) {
-                    log_message(LOG_DEFAULT, "\nResources with non default values:");
+                    log_message(LOG_DEFAULT, "\n" LOG_COL_LWHITE "Resources with non default values" LOG_COL_OFF ":");
                     n++;
                 }
                 log_message(LOG_DEFAULT, "%s", line);

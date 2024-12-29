@@ -17,6 +17,7 @@ sudo apt update && sudo apt install \
 	dos2unix \
 	flex \
 	libasound2-dev \
+	libevdev-dev \
 	libglew-dev \
 	libglib2.0-dev \
 	libpng-dev \
