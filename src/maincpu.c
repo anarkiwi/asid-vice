@@ -49,12 +49,16 @@
 #endif
 #include "h6809regs.h"
 #include "snapshot.h"
+#include "resources.h"
+#include "cmdline.h"
 #include "traps.h"
 #include "types.h"
 
 #ifndef EXIT_FAILURE
 #define EXIT_FAILURE 1
 #endif
+
+log_t maincpu_log = LOG_DEFAULT;
 
 /* MACHINE_STUFF should define/undef
 
@@ -88,6 +92,10 @@
 
 #ifdef FEATURE_CPUMEMHISTORY
 #ifndef C64DTV /* FIXME: fix DTV and remove this */
+
+/* NOTE: the functions called here are in src/plus4/plus4cpu.c, src/c128/c128cpu.c,
+ * src/cbm2/cbm2cpu.c, src/c64/vsidcpu.c, src/c64/c64cpu.c, src/pet/petcpu.c,
+ * src/c64dtv/c64dtvcpu.c */
 
 /* map access functions to memmap hooks */
 #ifndef STORE
@@ -284,6 +292,60 @@ mos6510dtv_regs_t maincpu_regs;
 mos6510_regs_t maincpu_regs;
 #endif
 
+static int maincpu_jammed = 0;
+
+/* ------------------------------------------------------------------------- */
+
+static int ane_log_level = 0; /* 0: none, 1: unstable only 2: all */
+static int lxa_log_level = 0; /* 0: none, 1: unstable only 2: all */
+
+static int set_ane_log_level(int val, void *param)
+{
+    if ((val < 0) || (val > 2)) {
+        return -1;
+    }
+    ane_log_level = val;
+    return 0;
+}
+
+static int set_lxa_log_level(int val, void *param)
+{
+    if ((val < 0) || (val > 2)) {
+        return -1;
+    }
+    lxa_log_level = val;
+    return 0;
+}
+
+static const resource_int_t maincpu_resources_int[] = {
+    { "LogLevelANE", 0, RES_EVENT_NO, NULL,
+      &ane_log_level, set_ane_log_level, NULL },
+    { "LogLevelLXA", 0, RES_EVENT_NO, NULL,
+      &lxa_log_level, set_lxa_log_level, NULL },
+    RESOURCE_INT_LIST_END
+};
+
+int maincpu_resources_init(void)
+{
+    return resources_register_int(maincpu_resources_int);
+}
+
+static const cmdline_option_t cmdline_options_maincpu[] =
+{
+    { "-aneloglevel", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
+      NULL, NULL, "LogLevelANE", NULL,
+      "<Type>", "Set ANE log level: (0: None, 1: Unstable, 2: All)" },
+    { "-lxaloglevel", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
+      NULL, NULL, "LogLevelLXA", NULL,
+      "<Type>", "Set LXA log level: (0: None, 1: Unstable, 2: All)" },
+    CMDLINE_LIST_END
+};
+
+int maincpu_cmdline_options_init(void)
+{
+    return cmdline_register_options(cmdline_options_maincpu);
+}
+
 /* ------------------------------------------------------------------------- */
 
 monitor_interface_t *maincpu_monitor_interface_get(void)
@@ -343,6 +405,8 @@ monitor_interface_t *maincpu_monitor_interface_get(void)
 void maincpu_early_init(void)
 {
     maincpu_int_status = interrupt_cpu_status_new();
+
+    maincpu_log = log_open("Main CPU");
 }
 
 void maincpu_init(void)
@@ -461,7 +525,7 @@ void maincpu_resync_limits(void)
 
 void maincpu_mainloop(void)
 {
-#define origin (0)
+#define ORIGIN_MEMSPACE (e_comp_space)
 #ifndef C64DTV
     /* Notice that using a struct for these would make it a lot slower (at
        least, on gcc 2.7.2.x).  */
@@ -518,6 +582,10 @@ void maincpu_mainloop(void)
     machine_trigger_reset(MACHINE_RESET_MODE_RESET_CPU);
 
     while (1) {
+#define CPU_LOG_ID maincpu_log
+#define ANE_LOG_LEVEL ane_log_level
+#define LXA_LOG_LEVEL lxa_log_level
+#define CPU_IS_JAMMED maincpu_jammed
 #define CLK maincpu_clk
 #define RMW_FLAG maincpu_rmw_flag
 #define LAST_OPCODE_INFO last_opcode_info
@@ -547,7 +615,7 @@ void maincpu_mainloop(void)
                 DO_INTERRUPT(IK_RESET);                               \
                 break;                                                \
             case JAM_POWER_CYCLE:                                     \
-                mem_powerup();                                        \
+                machine_powerup();                                    \
                 DO_INTERRUPT(IK_RESET);                               \
                 break;                                                \
             case JAM_MONITOR:                                         \
@@ -693,7 +761,7 @@ unsigned int maincpu_get_sp(void) {
 
 static char snap_module_name[] = "MAINCPU";
 #define SNAP_MAJOR 1
-#define SNAP_MINOR 2
+#define SNAP_MINOR 3
 
 int maincpu_snapshot_write_module(snapshot_t *s)
 {
@@ -731,7 +799,10 @@ int maincpu_snapshot_write_module(snapshot_t *s)
             || SMW_BA(m, burst_cache, 4) < 0
             || SMW_W(m, burst_addr) < 0
             || SMW_DW(m, dtvclockneg) < 0
-            || SMW_DW(m, (uint32_t)last_opcode_info) < 0) {
+            || SMW_DW(m, (uint32_t)last_opcode_info) < 0
+            || SMW_DW(m, (uint32_t)ane_log_level) < 0
+            || SMW_DW(m, (uint32_t)lxa_log_level) < 0
+        ) {
         goto fail;
     }
 #else
@@ -742,7 +813,10 @@ int maincpu_snapshot_write_module(snapshot_t *s)
             || SMW_B(m, MOS6510_REGS_GET_SP(&maincpu_regs)) < 0
             || SMW_W(m, (uint16_t)MOS6510_REGS_GET_PC(&maincpu_regs)) < 0
             || SMW_B(m, (uint8_t)MOS6510_REGS_GET_STATUS(&maincpu_regs)) < 0
-            || SMW_DW(m, (uint32_t)last_opcode_info) < 0) {
+            || SMW_DW(m, (uint32_t)last_opcode_info) < 0
+            || SMW_DW(m, (uint32_t)ane_log_level) < 0
+            || SMW_DW(m, (uint32_t)lxa_log_level) < 0
+        ) {
         goto fail;
     }
 #endif
@@ -810,7 +884,10 @@ int maincpu_snapshot_read_module(snapshot_t *s)
             || SMR_W(m, &burst_addr) < 0
             || SMR_DW_INT(m, &dtvclockneg) < 0
 #endif
-            || SMR_DW_UINT(m, &last_opcode_info) < 0) {
+            || SMR_DW_UINT(m, &last_opcode_info) < 0
+            || SMR_DW_INT(m, &ane_log_level) < 0
+            || SMR_DW_INT(m, &lxa_log_level) < 0
+        ) {
         goto fail;
     }
 

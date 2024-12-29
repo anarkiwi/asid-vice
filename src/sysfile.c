@@ -42,7 +42,7 @@
 /* #define DBGSYSFILE */
 
 #ifdef DBGSYSFILE
-#define DBG(x)  printf x
+#define DBG(x)  log_printf x
 #else
 #define DBG(x)
 #endif
@@ -108,7 +108,7 @@ static int set_system_path(const char *val, void *param)
     lib_free(current_dir);
     lib_free(tmp_path_save);
 
-    DBG(("set_system_path -> expanded_system_path:'%s'\n", expanded_system_path));
+    DBG(("set_system_path -> expanded_system_path:'%s'", expanded_system_path));
 
     return 0;
 }
@@ -139,7 +139,7 @@ static const cmdline_option_t cmdline_options[] =
 int sysfile_init(const char *emu_id)
 {
     default_path = archdep_default_sysfile_pathlist(emu_id);
-    DBG(("sysfile_init(%s) -> default_path:'%s'\n", emu_id, default_path));
+    DBG(("sysfile_init(%s) -> default_path:'%s'", emu_id, default_path));
     /* HACK: set the default value early, so the systemfile locater also works
              in early startup */
     set_system_path("$$", NULL);
@@ -201,7 +201,7 @@ FILE *sysfile_open(const char *name, const char *subpath, char **complete_path_r
         /* make sure we're not opening a directory */
         archdep_stat(p, NULL, &isdir);
         if (isdir) {
-            log_error(LOG_ERR, "'%s' is a directory, not a file.", p);
+            log_error(LOG_DEFAULT, "'%s' is a directory, not a file.", p);
             if (complete_path_return != NULL) {
                 *complete_path_return = NULL;
             }
