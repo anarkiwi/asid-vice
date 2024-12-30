@@ -13,6 +13,7 @@ sudo apt update && sudo apt install \
   libglib2.0-dev \
   libgtk-3-dev \
   libpng-dev \
+  libpulse-dev \
   texmaker \
   xa65
 ./autogen.sh
