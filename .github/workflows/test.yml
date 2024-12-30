@@ -13,4 +13,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: test build
-        run: ./build.sh
+        run: docker build -f Dockerfile.2410 .
