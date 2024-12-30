@@ -7,19 +7,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: test build
-        run: |
-          sudo apt update && sudo apt install \
-            autoconf \
-            build-essential \
-            byacc \
-            dos2unix \
-            flex \
-            libasound2-dev \
-            libevdev-dev \
-            libglew-dev \
-            libglib2.0-dev \
-            libpng-dev \
-            libsdl2-dev \
-            texmaker \
-            xa65 && \
-            ./autogen.sh && ./configure --with-alsa && make -j
+        run: ./build.sh
+          
