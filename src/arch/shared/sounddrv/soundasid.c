@@ -62,7 +62,7 @@ const uint8_t regmask[] = {
     255, 255, 255,  15, 255, 255, 255, 255,
     //8    9   10   11   12   13   14   15
     255, 255,  15, 255, 255, 255, 255, 255,
-    //16  17   18   19   29   21   22   23  24
+    //16  17   18   19   20   21   22   23  24
     255,  15, 255, 255, 255,   7, 255, 255, 255};
 
 static snd_seq_t *seq;
@@ -292,7 +292,7 @@ static void _set_reg(uint8_t reg, uint8_t byte) {
     sid_modified_flag = true;
 }
 
-static int asid_write(int16_t *pbuf, size_t nr)
+static int asid_write_()
 {
     uint8_t i;
     uint8_t mapped_reg;
@@ -350,6 +350,10 @@ static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
 
     _set_reg(reg, byte);
     return 0;
+}
+
+static int asid_write(int16_t *pbuf, size_t nr) {
+    return asid_write_();
 }
 
 static void asid_close(void)
