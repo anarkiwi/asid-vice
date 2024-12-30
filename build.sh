@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-sudo apt update && sudo apt install \
+sudo apt-get -qy update
+sudo apt-get -qy install \
   autoconf \
   build-essential \
   byacc \
