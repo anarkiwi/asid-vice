@@ -8,7 +8,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: test build
         run: ./build.sh
-  test-build-24.10:
+  test-build-2410:
     runs-on: ubuntu-24.10
     steps:
       - uses: actions/checkout@v4
