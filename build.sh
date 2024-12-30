@@ -7,6 +7,7 @@ sudo apt update && sudo apt install \
   dos2unix \
   flex \
   libasound2-dev \
+  libcurl4-openssl-dev \
   libevdev-dev \
   libglew-dev \
   libglib2.0-dev \
