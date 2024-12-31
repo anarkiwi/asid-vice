@@ -46,10 +46,12 @@
 #define ASID_START 0x4c
 #define ASID_STOP 0x4d
 #define ASID_UPDATE 0x4e
+#define ASID_UPDATE2 0x50
 
 const uint8_t asid_start[] = {SYSEX_START, SYSEX_MAN_ID, ASID_START, SYSEX_STOP};
 const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
 const uint8_t asid_update[] = {SYSEX_START, SYSEX_MAN_ID, ASID_UPDATE};
+const uint8_t asid_update2[] = {SYSEX_START, SYSEX_MAN_ID, ASID_UPDATE2};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -201,7 +203,7 @@ static void _set_reg(uint8_t reg, uint8_t byte) {
     sid_modified_flag = true;
 }
 
-static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
+static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks, uint8_t chipno, uint16_t addr, uint8_t byte)
 {
     // Flush changes from previous IRQ.
     if (maincpu_int_status->irq_clk != last_irq) {
@@ -243,8 +245,8 @@ static sound_device_t asid_device =
     "asid",
     asid_init,
     asid_write,
-    asid_dump,
     NULL,
+    asid_dump2,
     asid_flush,
     NULL,
     asid_close,
