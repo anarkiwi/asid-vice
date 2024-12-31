@@ -46,10 +46,12 @@
 #define ASID_START 0x4c
 #define ASID_STOP 0x4d
 #define ASID_UPDATE 0x4e
+#define ASID_UPDATE2 0x50
 
 const uint8_t asid_start[] = {SYSEX_START, SYSEX_MAN_ID, ASID_START, SYSEX_STOP};
 const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
 const uint8_t asid_update[] = {SYSEX_START, SYSEX_MAN_ID, ASID_UPDATE};
+const uint8_t asid_update2[] = {SYSEX_START, SYSEX_MAN_ID, ASID_UPDATE2};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -64,12 +66,13 @@ const uint8_t regmask[] = {
     255, 255,  15, 255, 255, 255, 255, 255,
     //16  17   18   19   20   21   22   23  24
     255,  15, 255, 255, 255,   7, 255, 255, 255};
+#define CHIPS 2
 
 /* update preamble, mask/MSB, register map, stop. */
-static uint8_t asid_buffer[sizeof(asid_update) + 8 + sizeof(regmap) + 1];
-static uint8_t sid_register[sizeof(regmap)];
-static bool sid_modified[sizeof(regmap)];
-static bool sid_modified_flag = false;
+static uint8_t asid_buffer[CHIPS][sizeof(asid_update) + 8 + sizeof(regmap) + 1];
+static uint8_t sid_register[CHIPS][sizeof(regmap)];
+static bool sid_modified[CHIPS][sizeof(regmap)];
+static bool sid_modified_flag[CHIPS];
 static CLOCK last_irq = 0;
 snd_rawmidi_t *handle_out = 0;
 
@@ -108,63 +111,68 @@ static int _send_message(const uint8_t *message, uint8_t message_len)
 
 static int asid_write_()
 {
-    uint8_t i;
-    uint8_t mapped_reg;
-    uint32_t mask = 0;
-    uint32_t msb = 0;
-    uint8_t p = sizeof(asid_update) - 1;
+    for (uint8_t chip = 0; chip < CHIPS; ++chip) {
+        uint8_t i;
+        uint8_t mapped_reg;
+        uint32_t mask = 0;
+        uint32_t msb = 0;
+        uint8_t p = sizeof(asid_update) - 1;
+        uint8_t *buffer = &(asid_buffer[chip][0]);
 
-    if (!sid_modified_flag) {
-        return 0;
-    }
+        if (!sid_modified_flag[chip]) {
+            continue;
+        }
 
-    /* set bits in mask for each register that has been written to
-       write last bit of each register into msb. */
-    //log_message(LOG_DEFAULT, "begin");
-    for(i = 0; i < sizeof(regmap); ++i)
-    {
-        mapped_reg = regmap[i];
-        if (sid_modified[mapped_reg])
+        /* set bits in mask for each register that has been written to
+           write last bit of each register into msb. */
+        //log_message(LOG_DEFAULT, "begin");
+        for(i = 0; i < sizeof(regmap); ++i)
         {
-            mask = mask | (1<<i);
+            mapped_reg = regmap[i];
+            if (sid_modified[chip][mapped_reg])
+            {
+                mask = mask | (1<<i);
+            }
+            if (sid_register[chip][mapped_reg] > 0x7f)
+            {
+                msb = msb | (1<<i);
+            }
         }
-        if (sid_register[mapped_reg] > 0x7f)
+        buffer[++p] = mask & 0x7f;
+        buffer[++p] = (mask>>7) & 0x7f;
+        buffer[++p] = (mask>>14) & 0x7f;
+        buffer[++p] = (mask>>21) & 0x7f;
+        buffer[++p] = msb & 0x7f;
+        buffer[++p] = (msb>>7) & 0x7f;
+        buffer[++p] = (msb>>14) & 0x7f;
+        buffer[++p] = (msb>>21) & 0x7f;
+        for(i = 0; i < sizeof(regmap); ++i)
         {
-            msb = msb | (1<<i);
+            mapped_reg = regmap[i];
+            if (sid_modified[chip][mapped_reg])
+            {
+                buffer[++p] = sid_register[chip][mapped_reg] & 0x7f;
+                //log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg, sid_register[chip][mapped_reg]);
+            }
         }
+        //log_message(LOG_DEFAULT, "end");
+        buffer[++p] = SYSEX_STOP;
+        _send_message(buffer, p + 1);
     }
-    asid_buffer[++p] = mask & 0x7f;
-    asid_buffer[++p] = (mask>>7) & 0x7f;
-    asid_buffer[++p] = (mask>>14) & 0x7f;
-    asid_buffer[++p] = (mask>>21) & 0x7f;
-    asid_buffer[++p] = msb & 0x7f;
-    asid_buffer[++p] = (msb>>7) & 0x7f;
-    asid_buffer[++p] = (msb>>14) & 0x7f;
-    asid_buffer[++p] = (msb>>21) & 0x7f;
-    for(i = 0; i < sizeof(regmap); ++i)
-    {
-        mapped_reg = regmap[i];
-        if (sid_modified[mapped_reg])
-        {
-            asid_buffer[++p] = sid_register[mapped_reg] & 0x7f;
-            //log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg, sid_register[mapped_reg]);
-        }
-    }
-    //log_message(LOG_DEFAULT, "end");
-    asid_buffer[++p] = SYSEX_STOP;
     memset(sid_modified, false, sizeof(sid_modified));
-    sid_modified_flag = false;
-    return _send_message(asid_buffer, p + 1);
+    memset(sid_modified_flag, false, sizeof(sid_modified_flag));
 }
 
 static int asid_init(const char *param, int *speed,
                      int *fragsize, int *fragnr, int *channels)
 {
     int asid_port;
-    memcpy(asid_buffer, asid_update, sizeof(asid_update));
+    memcpy(&(asid_buffer[0][0]), asid_update, sizeof(asid_update));
+    if (CHIPS == 2) {
+        memcpy(&(asid_buffer[1][0]), asid_update2, sizeof(asid_update2));
+    }
 
-    /* No stereo capability. */
-    *channels = 1;
+    *channels = CHIPS;
 
     if (!param) {
       log_message(LOG_DEFAULT, "-soundarg <n> is required");
@@ -182,26 +190,26 @@ static int asid_init(const char *param, int *speed,
     }
     memset(sid_register, 0, sizeof(sid_register));
     memset(sid_modified, true, sizeof(sid_modified));
-    sid_modified_flag = true;
+    memset(sid_modified_flag, true, sizeof(sid_modified_flag));
     return asid_write_();
 }
 
-static void _set_reg(uint8_t reg, uint8_t byte) {
+static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chipno) {
     byte = regmask[reg] & byte;
-    if (sid_register[reg] == byte) {
+    if (sid_register[chipno][reg] == byte) {
         return;
     }
     // flush on change to control register.
-    if ((reg == 4 || reg == 11 || reg == 18) && sid_modified[reg]) {
+    if ((reg == 4 || reg == 11 || reg == 18) && sid_modified[chipno][reg]) {
         // log_message(LOG_DEFAULT, "expedite control");
         asid_write_();
     }
-    sid_register[reg] = byte;
-    sid_modified[reg] = true;
-    sid_modified_flag = true;
+    sid_register[chipno][reg] = byte;
+    sid_modified[chipno][reg] = true;
+    sid_modified_flag[chipno] = true;
 }
 
-static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
+static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks, uint8_t chipno, uint16_t addr, uint8_t byte)
 {
     // Flush changes from previous IRQ.
     if (maincpu_int_status->irq_clk != last_irq) {
@@ -214,7 +222,7 @@ static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
         return 0;
     }
 
-    _set_reg(reg, byte);
+    _set_reg(reg, byte, chipno);
 
     // Many playroutines write to all registers in sequence, so flush on the last register.
     if (reg == 24) {
@@ -243,8 +251,8 @@ static sound_device_t asid_device =
     "asid",
     asid_init,
     asid_write,
-    asid_dump,
     NULL,
+    asid_dump2,
     asid_flush,
     NULL,
     asid_close,
