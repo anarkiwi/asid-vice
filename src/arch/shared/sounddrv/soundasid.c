@@ -31,6 +31,9 @@
 #include "debug.h"
 #include "log.h"
 
+#include "maincpu.h"
+#include "interrupt.h"
+
 #include "sound.h"
 #include "types.h"
 
@@ -62,7 +65,7 @@ const uint8_t regmask[] = {
     255, 255, 255,  15, 255, 255, 255, 255,
     //8    9   10   11   12   13   14   15
     255, 255,  15, 255, 255, 255, 255, 255,
-    //16  17   18   19   29   21   22   23  24
+    //16  17   18   19   20   21   22   23  24
     255,  15, 255, 255, 255,   7, 255, 255, 255};
 
 static snd_seq_t *seq;
@@ -75,6 +78,7 @@ static uint8_t asid_buffer[sizeof(asid_update) + 8 + sizeof(regmap) + 1];
 static uint8_t sid_register[sizeof(regmap)];
 static bool sid_modified[sizeof(regmap)];
 static bool sid_modified_flag = false;
+static CLOCK last_irq = 0;
 
 /* TODO: refactor libmididrv API for cross platform support. */
 static int _initialize_midi(void)
@@ -282,17 +286,7 @@ static int asid_flush(char *state)
     return 0;
 }
 
-static void _set_reg(uint8_t reg, uint8_t byte) {
-    byte = regmask[reg] & byte;
-    if (sid_register[reg] == byte) {
-        return;
-    }
-    sid_register[reg] = byte;
-    sid_modified[reg] = true;
-    sid_modified_flag = true;
-}
-
-static int asid_write(int16_t *pbuf, size_t nr)
+static int asid_write_()
 {
     uint8_t i;
     uint8_t mapped_reg;
@@ -332,7 +326,7 @@ static int asid_write(int16_t *pbuf, size_t nr)
         if (sid_modified[mapped_reg])
         {
             asid_buffer[++p] = sid_register[mapped_reg] & 0x7f;
-            // log_debug("reg %u -> %u", i, sid_register[mapped_reg]);
+            // log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg, sid_register[mapped_reg]);
         }
     }
     asid_buffer[++p] = SYSEX_STOP;
@@ -341,14 +335,40 @@ static int asid_write(int16_t *pbuf, size_t nr)
     return _send_message(asid_buffer, p + 1);
 }
 
+static void _set_reg(uint8_t reg, uint8_t byte) {
+    byte = regmask[reg] & byte;
+    if (sid_register[reg] == byte) {
+        return;
+    }
+    if (sid_modified[reg]) {
+        asid_write_();
+    }
+    sid_register[reg] = byte;
+    sid_modified[reg] = true;
+    sid_modified_flag = true;
+}
+
 static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
 {
+    if (maincpu_int_status->irq_clk != last_irq) {
+        last_irq = maincpu_int_status->irq_clk;
+        asid_write_();
+    }
+
     uint8_t reg = addr & 0x1f;
     if (reg > max_sid_reg) {
         return 0;
     }
 
     _set_reg(reg, byte);
+
+    if (reg == 24) {
+        asid_write_();
+    }
+    return 0;
+}
+
+static int asid_write(int16_t *pbuf, size_t nr) {
     return 0;
 }
 
