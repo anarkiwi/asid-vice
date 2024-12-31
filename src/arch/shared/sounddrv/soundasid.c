@@ -233,6 +233,57 @@ static int _send_message(const uint8_t *message, uint8_t message_len)
     return 0;
 }
 
+static int asid_write_()
+{
+    uint8_t i;
+    uint8_t mapped_reg;
+    uint32_t mask = 0;
+    uint32_t msb = 0;
+    uint8_t p = sizeof(asid_update) - 1;
+
+    if (!sid_modified_flag) {
+        return 0;
+    }
+
+    /* set bits in mask for each register that has been written to
+       write last bit of each register into msb. */
+    //log_message(LOG_DEFAULT, "begin");
+    for(i = 0; i < sizeof(regmap); ++i)
+    {
+        mapped_reg = regmap[i];
+        if (sid_modified[mapped_reg])
+        {
+            mask = mask | (1<<i);
+        }
+        if (sid_register[mapped_reg] > 0x7f)
+        {
+            msb = msb | (1<<i);
+        }
+    }
+    asid_buffer[++p] = mask & 0x7f;
+    asid_buffer[++p] = (mask>>7) & 0x7f;
+    asid_buffer[++p] = (mask>>14) & 0x7f;
+    asid_buffer[++p] = (mask>>21) & 0x7f;
+    asid_buffer[++p] = msb & 0x7f;
+    asid_buffer[++p] = (msb>>7) & 0x7f;
+    asid_buffer[++p] = (msb>>14) & 0x7f;
+    asid_buffer[++p] = (msb>>21) & 0x7f;
+    for(i = 0; i < sizeof(regmap); ++i)
+    {
+        mapped_reg = regmap[i];
+        if (sid_modified[mapped_reg])
+        {
+            asid_buffer[++p] = sid_register[mapped_reg] & 0x7f;
+            //log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg, sid_register[mapped_reg]);
+        }
+    }
+    //log_message(LOG_DEFAULT, "end");
+    asid_buffer[++p] = SYSEX_STOP;
+    memset(sid_modified, false, sizeof(sid_modified));
+    sid_modified_flag = false;
+    return _send_message(asid_buffer, p + 1);
+}
+
 static int asid_init(const char *param, int *speed,
                      int *fragsize, int *fragnr, int *channels)
 {
@@ -240,13 +291,10 @@ static int asid_init(const char *param, int *speed,
     int nports;
     int asid_port;
     char name_buffer[256];
+    memcpy(asid_buffer, asid_update, sizeof(asid_update));
 
     /* No stereo capability. */
     *channels = 1;
-    memcpy(asid_buffer, asid_update, sizeof(asid_update));
-    memset(sid_register, 0, sizeof(sid_register));
-    memset(sid_modified, false, sizeof(sid_modified));
-    sid_modified_flag = false;
 
     if (_initialize_midi()) {
         log_message(LOG_DEFAULT, "failed to initialize MIDI");
@@ -278,61 +326,13 @@ static int asid_init(const char *param, int *speed,
     if (_open_port(asid_port)) {
         return -1;
     }
-    return _send_message(asid_start, sizeof(asid_start));
-}
-
-static int asid_flush(char *state)
-{
-    return 0;
-}
-
-static int asid_write_()
-{
-    uint8_t i;
-    uint8_t mapped_reg;
-    uint32_t mask = 0;
-    uint32_t msb = 0;
-    uint8_t p = sizeof(asid_update) - 1;
-
-    if (!sid_modified_flag) {
-        return 0;
+    if (_send_message(asid_start, sizeof(asid_start))) {
+        return -1;
     }
-
-    /* set bits in mask for each register that has been written to
-       write last bit of each register into msb. */
-    for(i = 0; i < sizeof(regmap); ++i)
-    {
-        mapped_reg = regmap[i];
-        if (sid_modified[mapped_reg])
-        {
-            mask = mask | (1<<i);
-        }
-        if (sid_register[mapped_reg] > 0x7f)
-        {
-            msb = msb | (1<<i);
-        }
-    }
-    asid_buffer[++p] = mask & 0x7f;
-    asid_buffer[++p] = (mask>>7) & 0x7f;
-    asid_buffer[++p] = (mask>>14) & 0x7f;
-    asid_buffer[++p] = (mask>>21) & 0x7f;
-    asid_buffer[++p] = msb & 0x7f;
-    asid_buffer[++p] = (msb>>7) & 0x7f;
-    asid_buffer[++p] = (msb>>14) & 0x7f;
-    asid_buffer[++p] = (msb>>21) & 0x7f;
-    for(i = 0; i < sizeof(regmap); ++i)
-    {
-        mapped_reg = regmap[i];
-        if (sid_modified[mapped_reg])
-        {
-            asid_buffer[++p] = sid_register[mapped_reg] & 0x7f;
-            // log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg, sid_register[mapped_reg]);
-        }
-    }
-    asid_buffer[++p] = SYSEX_STOP;
-    memset(sid_modified, false, sizeof(sid_modified));
-    sid_modified_flag = false;
-    return _send_message(asid_buffer, p + 1);
+    memset(sid_register, 0, sizeof(sid_register));
+    memset(sid_modified, true, sizeof(sid_modified));
+    sid_modified_flag = true;
+    return asid_write_();
 }
 
 static void _set_reg(uint8_t reg, uint8_t byte) {
@@ -340,7 +340,9 @@ static void _set_reg(uint8_t reg, uint8_t byte) {
     if (sid_register[reg] == byte) {
         return;
     }
-    if (sid_modified[reg]) {
+    // flush on change to control register.
+    if ((reg == 4 || reg == 11 || reg == 18) && sid_modified[reg]) {
+        // log_message(LOG_DEFAULT, "expedite control");
         asid_write_();
     }
     sid_register[reg] = byte;
@@ -350,6 +352,7 @@ static void _set_reg(uint8_t reg, uint8_t byte) {
 
 static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
 {
+    // Flush changes from previous IRQ.
     if (maincpu_int_status->irq_clk != last_irq) {
         last_irq = maincpu_int_status->irq_clk;
         asid_write_();
@@ -362,6 +365,7 @@ static int asid_dump(uint16_t addr, uint8_t byte, CLOCK clks)
 
     _set_reg(reg, byte);
 
+    // Many playroutines write to all registers in sequence, so flush on the last register.
     if (reg == 24) {
         asid_write_();
     }
@@ -376,6 +380,11 @@ static void asid_close(void)
 {
     _send_message(asid_stop, sizeof(asid_stop));
     _close_port();
+}
+
+static int asid_flush(char *state)
+{
+    return 0;
 }
 
 static sound_device_t asid_device =
