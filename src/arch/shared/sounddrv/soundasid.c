@@ -78,7 +78,7 @@ static int _initialize_midi(int asid_port)
 {
     char device_out[8];
     memset(&device_out, 0, sizeof(device_out));
-    snprintf(&device_out, sizeof(device_out), "hw:%d", asid_port);
+    snprintf(device_out, sizeof(device_out), "hw:%d", asid_port);
     log_message(LOG_DEFAULT, "opening asid device %s", device_out);
     int err = snd_rawmidi_open(NULL, &handle_out, device_out, 0);
     if (err) {
