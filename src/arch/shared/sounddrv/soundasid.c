@@ -80,7 +80,8 @@ static snd_seq_port_subscribe_t *subscription;
 static snd_midi_event_t *coder;
 
 /* update preamble, mask/MSB, register map, stop. */
-#define ASID_BUFFER_SIZE (sizeof(asid_prefix) + 1 + 8 + sizeof(regmap) + 1)
+#define ASID_BUFFER_SIZE                                                       \
+  ((sizeof(asid_prefix) + 1 + 8 + sizeof(regmap) + 1) * 2)
 
 typedef struct {
   uint8_t update_buffer[ASID_BUFFER_SIZE];
@@ -249,6 +250,10 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
     return -1;
   }
   snd_seq_drain_output(seq);
+
+  // for (int i = 0; i < message_len; ++i) {
+  //   log_message(LOG_DEFAULT, "%2u %x", i, message[i]);
+  // }
   return 0;
 }
 
@@ -259,27 +264,41 @@ static int asid_write_(uint8_t chip) {
     return 0;
   }
 
-  uint8_t i, mapped_reg;
+  uint8_t i;
   uint8_t m = sizeof(asid_prefix) + 1;
+  uint8_t t = sizeof(asid_prefix) + 1;
+
+  for (i = 0; i < sizeof(regmap); ++i) {
+    if (!state->sid_modified[i]) {
+      continue;
+    }
+    uint8_t val = state->sid_register[i];
+    state->update_reg_buffer[t++] = i;
+    if (val > 0x7f) {
+      state->update_reg_buffer[t] |= (1 << 6);
+    }
+    state->update_reg_buffer[t++] = val & 0x7f;
+  }
+  state->update_reg_buffer[t++] = SYSEX_STOP;
+
+  uint8_t mapped_reg;
   uint8_t p = m + 8;
   uint32_t mask = 0;
   uint32_t msb = 0;
 
   /* set bits in mask for each register that has been written to
      write last bit of each register into msb. */
-  // log_message(LOG_DEFAULT, "begin");
   for (i = 0; i < sizeof(regmap); ++i) {
     mapped_reg = regmap[i];
     if (!state->sid_modified[mapped_reg]) {
       continue;
     }
+    uint8_t val = state->sid_register[mapped_reg];
     mask = mask | (1 << i);
-    if (state->sid_register[mapped_reg] > 0x7f) {
+    if (val > 0x7f) {
       msb = msb | (1 << i);
     }
-    state->update_buffer[p++] = state->sid_register[mapped_reg] & 0x7f;
-    // log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg,
-    // state->sid_register[mapped_reg]);
+    state->update_buffer[p++] = val & 0x7f;
   }
   for (i = 0; i < sizeof(mask); ++i) {
     state->update_buffer[m++] = mask & 0x7f;
@@ -289,13 +308,11 @@ static int asid_write_(uint8_t chip) {
     state->update_buffer[m++] = msb & 0x7f;
     msb >>= 7;
   }
-  // log_message(LOG_DEFAULT, "end");
   state->update_buffer[p++] = SYSEX_STOP;
   state->sid_modified_flag = false;
   memset(&(state->sid_modified), false, sizeof(state->sid_modified));
-  if (_send_message(state->update_buffer, p)) {
-    return -1;
-  }
+  //  _send_message(state->update_reg_buffer, t);
+  _send_message(state->update_buffer, p);
   return 0;
 }
 
@@ -354,6 +371,7 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
     state->sid_modified_flag = true;
     state->last_irq = 0;
     if (asid_write_(chip)) {
+      log_message(LOG_DEFAULT, "initial write failed");
       return -1;
     }
   }
@@ -368,7 +386,6 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
   }
   // flush on change to control register.
   if ((reg == 4 || reg == 11 || reg == 18) && state->sid_modified[reg]) {
-    // log_message(LOG_DEFAULT, "expedite control");
     asid_write_(chip);
   }
   state->sid_register[reg] = byte;
