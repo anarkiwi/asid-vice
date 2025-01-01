@@ -57,3 +57,11 @@ The midi port can also be set in `vice.ini`:
 SoundDeviceName="asid"
 SoundDeviceArg="1"
 ```
+
+### 2SID support
+
+2SID is supported with Vessel
+
+```
+vsid -sound -soundoutput 2 -sidextra 1 -sounddev asid -soundarg 1 Voice_2SID.sid 
+```
