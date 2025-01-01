@@ -47,6 +47,8 @@
 #define ASID_STOP 0x4d
 #define ASID_UPDATE 0x4e
 #define ASID_UPDATE2 0x50
+#define ASID_UPDATE_REG 0x6c
+#define ASID_UPDATE2_REG 0x6d
 
 #define ALL_MIDI_PORTS -1
 #define NO_PORT -1
@@ -58,6 +60,7 @@ const uint8_t asid_start[] = {SYSEX_START, SYSEX_MAN_ID, ASID_START,
 const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
 const uint8_t asid_prefix[] = {SYSEX_START, SYSEX_MAN_ID};
 const uint8_t asid_update[] = {ASID_UPDATE, ASID_UPDATE2};
+const uint8_t asid_update_reg[] = {ASID_UPDATE_REG, ASID_UPDATE2_REG};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -81,6 +84,7 @@ static snd_midi_event_t *coder;
 
 typedef struct {
   uint8_t update_buffer[ASID_BUFFER_SIZE];
+  uint8_t update_reg_buffer[ASID_BUFFER_SIZE];
   uint8_t sid_register[sizeof(regmap)];
   uint8_t sid_modified[sizeof(regmap)];
   bool sid_modified_flag;
@@ -342,7 +346,9 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   for (int chip = 0; chip < CHIPS; ++chip) {
     asid_state_t *state = &asid_state[chip];
     memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
+    memcpy(&(state->update_reg_buffer), asid_prefix, sizeof(asid_prefix));
     state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
+    state->update_reg_buffer[sizeof(asid_prefix)] = asid_update_reg[chip];
     memset(&(state->sid_register), 0, sizeof(state->sid_register));
     memset(&(state->sid_modified), true, sizeof(state->sid_modified));
     state->sid_modified_flag = true;
