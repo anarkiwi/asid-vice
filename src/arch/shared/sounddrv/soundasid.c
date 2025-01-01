@@ -51,13 +51,13 @@
 #define ALL_MIDI_PORTS -1
 #define NO_PORT -1
 
-#define CHIPS 1
+#define CHIPS 2
 
 const uint8_t asid_start[] = {SYSEX_START, SYSEX_MAN_ID, ASID_START,
                               SYSEX_STOP};
 const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
-const uint8_t asid_update[] = {SYSEX_START, SYSEX_MAN_ID, ASID_UPDATE};
-const uint8_t asid_update2[] = {SYSEX_START, SYSEX_MAN_ID, ASID_UPDATE2};
+const uint8_t asid_prefix[] = {SYSEX_START, SYSEX_MAN_ID};
+const uint8_t asid_update[] = {ASID_UPDATE, ASID_UPDATE2};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -77,17 +77,17 @@ static snd_seq_port_subscribe_t *subscription;
 static snd_midi_event_t *coder;
 
 /* update preamble, mask/MSB, register map, stop. */
-#define ASID_BUFFER_SIZE (sizeof(asid_update) + 8 + sizeof(regmap) + 1)
+#define ASID_BUFFER_SIZE (sizeof(asid_prefix) + 1 + 8 + sizeof(regmap) + 1)
 
 typedef struct {
   uint8_t asid_buffer[ASID_BUFFER_SIZE];
   uint8_t sid_register[sizeof(regmap)];
   uint8_t sid_modified[sizeof(regmap)];
   bool sid_modified_flag;
+  CLOCK last_irq;
 } asid_state_t;
 
 static asid_state_t asid_state[CHIPS];
-static CLOCK last_irq = 0;
 
 /* TODO: refactor libmididrv API for cross platform support. */
 static int _initialize_midi(void) {
@@ -248,17 +248,16 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
   return 0;
 }
 
-static int asid_write_() {
-  for (uint8_t chip = 0; chip < CHIPS; ++chip) {
+static int asid_write_(uint8_t chip) {
     asid_state_t *state = &(asid_state[chip]);
 
     if (!state->sid_modified_flag) {
-      continue;
+      return 0;
     }
 
     uint8_t i, mapped_reg;
-    uint8_t p = sizeof(asid_update) + 8;
-    uint8_t m = sizeof(asid_update);
+    uint8_t m = sizeof(asid_prefix) + 1;
+    uint8_t p = m + 8;
     uint32_t mask = 0;
     uint32_t msb = 0;
 
@@ -293,7 +292,6 @@ static int asid_write_() {
     if (_send_message(state->asid_buffer, p)) {
       return -1;
     }
-  }
   return 0;
 }
 
@@ -343,12 +341,17 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   }
   for (int chip = 0; chip < CHIPS; ++chip) {
     asid_state_t *state = &asid_state[chip];
-    memcpy(&(state->asid_buffer), asid_update, sizeof(asid_update));
+    memcpy(&(state->asid_buffer), asid_prefix, sizeof(asid_prefix));
+    state->asid_buffer[sizeof(asid_prefix)] = asid_update[chip];
     memset(&(state->sid_register), 0, sizeof(state->sid_register));
     memset(&(state->sid_modified), true, sizeof(state->sid_modified));
     state->sid_modified_flag = true;
+    state->last_irq = 0;
+    if (asid_write_(chip)) {
+      return -1;
+    }
   }
-  return asid_write_();
+  return 0;
 }
 
 static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
@@ -360,7 +363,7 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
   // flush on change to control register.
   if ((reg == 4 || reg == 11 || reg == 18) && state->sid_modified[reg]) {
     // log_message(LOG_DEFAULT, "expedite control");
-    asid_write_();
+    asid_write_(chip);
   }
   state->sid_register[reg] = byte;
   state->sid_modified[reg] = true;
@@ -370,9 +373,9 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
 static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
                       uint8_t chipno, uint16_t addr, uint8_t byte) {
   // Flush changes from previous IRQ.
-  if (maincpu_int_status->irq_clk != last_irq) {
-    last_irq = maincpu_int_status->irq_clk;
-    asid_write_();
+  if (maincpu_int_status->irq_clk != asid_state[chipno].last_irq) {
+    asid_state[chipno].last_irq = maincpu_int_status->irq_clk;
+    asid_write_(chipno);
   }
 
   uint8_t reg = addr & 0x1f;
@@ -385,7 +388,7 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
   // Many playroutines write to all registers in sequence, so flush on the last
   // register.
   if (reg == 24) {
-    asid_write_();
+    asid_write_(chipno);
   }
   return 0;
 }
