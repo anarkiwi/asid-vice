@@ -80,7 +80,7 @@ static snd_midi_event_t *coder;
 #define ASID_BUFFER_SIZE (sizeof(asid_prefix) + 1 + 8 + sizeof(regmap) + 1)
 
 typedef struct {
-  uint8_t asid_buffer[ASID_BUFFER_SIZE];
+  uint8_t update_buffer[ASID_BUFFER_SIZE];
   uint8_t sid_register[sizeof(regmap)];
   uint8_t sid_modified[sizeof(regmap)];
   bool sid_modified_flag;
@@ -273,23 +273,23 @@ static int asid_write_(uint8_t chip) {
       if (state->sid_register[mapped_reg] > 0x7f) {
         msb = msb | (1 << i);
       }
-      state->asid_buffer[p++] = state->sid_register[mapped_reg] & 0x7f;
+      state->update_buffer[p++] = state->sid_register[mapped_reg] & 0x7f;
       // log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg,
       // state->sid_register[mapped_reg]);
     }
     for (i = 0; i < sizeof(mask); ++i) {
-      state->asid_buffer[m++] = mask & 0x7f;
+      state->update_buffer[m++] = mask & 0x7f;
       mask >>= 7;
     }
     for (i = 0; i < sizeof(msb); ++i) {
-      state->asid_buffer[m++] = msb & 0x7f;
+      state->update_buffer[m++] = msb & 0x7f;
       msb >>= 7;
     }
     // log_message(LOG_DEFAULT, "end");
-    state->asid_buffer[p++] = SYSEX_STOP;
+    state->update_buffer[p++] = SYSEX_STOP;
     state->sid_modified_flag = false;
     memset(&(state->sid_modified), false, sizeof(state->sid_modified));
-    if (_send_message(state->asid_buffer, p)) {
+    if (_send_message(state->update_buffer, p)) {
       return -1;
     }
   return 0;
@@ -341,8 +341,8 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   }
   for (int chip = 0; chip < CHIPS; ++chip) {
     asid_state_t *state = &asid_state[chip];
-    memcpy(&(state->asid_buffer), asid_prefix, sizeof(asid_prefix));
-    state->asid_buffer[sizeof(asid_prefix)] = asid_update[chip];
+    memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
+    state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
     memset(&(state->sid_register), 0, sizeof(state->sid_register));
     memset(&(state->sid_modified), true, sizeof(state->sid_modified));
     state->sid_modified_flag = true;
