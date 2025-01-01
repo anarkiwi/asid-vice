@@ -40,7 +40,9 @@ sudo make install
 
 ## Running
 To enable the asid output, use the `-sounddev asid` command line option.
-Select the MIDI port to use with `-soundarg n`, which will open ALSA device `hw:n`. 0 will open the default port.
+Select the midi port to use with `-soundarg`.
+The list of ports is output when the asid driver is started (either on the command line, or in vice.log)
+It defaults to port 0, which is usually some internal port.
 
 ```
 vsid -sounddev asid -soundarg 1 Commando.sid
@@ -54,4 +56,12 @@ The midi port can also be set in `vice.ini`:
 ```
 SoundDeviceName="asid"
 SoundDeviceArg="1"
+```
+
+### 2SID support
+
+2SID is supported with Vessel
+
+```
+vsid -sound -soundoutput 2 -sidextra 1 -sounddev asid -soundarg 1 Voice_2SID.sid
 ```

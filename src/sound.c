@@ -1207,7 +1207,7 @@ int sound_open(void)
             }
             if (channels_cap != channels) {
                 if (output_option != SOUND_OUTPUT_MONO) {
-                    log_warning(sound_log, "sound device lacks stereo capability, switching to mono output");
+                    log_warning(sound_log, "sound device lacks stereo capability (%u), switching to mono output", channels);
                 }
                 snddata.sound_output_channels = 1;
             } else {
@@ -1750,14 +1750,12 @@ void sound_store(uint16_t addr, uint8_t val, int chipno)
 
     sound_machine_store(snddata.psid[chipno], addr, val);
 
-    if (!snddata.playdev->dump) {
-        return;
-    }
-
-    if (playdev_is_dump) {
+    if (snddata.playdev->dump2) {
         i = snddata.playdev->dump2(maincpu_clk - snddata.wclk, maincpu_clk - maincpu_int_status->irq_clk, maincpu_clk - maincpu_int_status->nmi_clk, chipno, addr, val);
-    } else {
+    } else if (snddata.playdev->dump) {
         i = snddata.playdev->dump(addr, val, maincpu_clk - snddata.wclk);
+    } else {
+        return;
     }
 
     snddata.wclk = maincpu_clk;
