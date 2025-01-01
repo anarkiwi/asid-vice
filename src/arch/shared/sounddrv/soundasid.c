@@ -93,6 +93,8 @@ typedef struct {
 } asid_state_t;
 
 static asid_state_t asid_state[CHIPS];
+static uint32_t bytes_saved = 0;
+static uint32_t bytes_total = 0;
 
 /* TODO: refactor libmididrv API for cross platform support. */
 static int _initialize_midi(void) {
@@ -250,6 +252,7 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
     return -1;
   }
   snd_seq_drain_output(seq);
+  bytes_total += message_len;
 
   // for (int i = 0; i < message_len; ++i) {
   //   log_message(LOG_DEFAULT, "%2u %x", i, message[i]);
@@ -265,7 +268,6 @@ static int asid_write_(uint8_t chip) {
   }
 
   uint8_t i;
-  uint8_t m = sizeof(asid_prefix) + 1;
   uint8_t t = sizeof(asid_prefix) + 1;
 
   for (i = 0; i < sizeof(regmap); ++i) {
@@ -273,15 +275,17 @@ static int asid_write_(uint8_t chip) {
       continue;
     }
     uint8_t val = state->sid_register[i];
-    state->update_reg_buffer[t++] = i;
     if (val > 0x7f) {
-      state->update_reg_buffer[t] |= (1 << 6);
+      state->update_reg_buffer[t++] = i + (1 << 6);
+    } else {
+      state->update_reg_buffer[t++] = i;
     }
     state->update_reg_buffer[t++] = val & 0x7f;
   }
   state->update_reg_buffer[t++] = SYSEX_STOP;
 
   uint8_t mapped_reg;
+  uint8_t m = sizeof(asid_prefix) + 1;
   uint8_t p = m + 8;
   uint32_t mask = 0;
   uint32_t msb = 0;
@@ -311,8 +315,12 @@ static int asid_write_(uint8_t chip) {
   state->update_buffer[p++] = SYSEX_STOP;
   state->sid_modified_flag = false;
   memset(&(state->sid_modified), false, sizeof(state->sid_modified));
-  //  _send_message(state->update_reg_buffer, t);
-  _send_message(state->update_buffer, p);
+  if (t < p) {
+    _send_message(state->update_reg_buffer, t);
+    bytes_saved += (p - t);
+  } else {
+    _send_message(state->update_buffer, p);
+  }
   return 0;
 }
 
@@ -385,7 +393,7 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
     return;
   }
   // flush on change to control register.
-  if ((reg == 4 || reg == 11 || reg == 18) && state->sid_modified[reg]) {
+  if ((reg == 4 || reg == 11 || reg == 18) && (state->sid_modified[reg])) {
     asid_write_(chip);
   }
   state->sid_register[reg] = byte;
@@ -419,6 +427,8 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
 static int asid_write(int16_t *pbuf, size_t nr) { return 0; }
 
 static void asid_close(void) {
+  log_message(LOG_DEFAULT, "%u asid bytes sent, %u bytes saved", bytes_total,
+              bytes_saved);
   _send_message(asid_stop, sizeof(asid_stop));
   _close_port();
 }
