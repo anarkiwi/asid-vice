@@ -249,49 +249,49 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
 }
 
 static int asid_write_(uint8_t chip) {
-    asid_state_t *state = &(asid_state[chip]);
+  asid_state_t *state = &(asid_state[chip]);
 
-    if (!state->sid_modified_flag) {
-      return 0;
-    }
+  if (!state->sid_modified_flag) {
+    return 0;
+  }
 
-    uint8_t i, mapped_reg;
-    uint8_t m = sizeof(asid_prefix) + 1;
-    uint8_t p = m + 8;
-    uint32_t mask = 0;
-    uint32_t msb = 0;
+  uint8_t i, mapped_reg;
+  uint8_t m = sizeof(asid_prefix) + 1;
+  uint8_t p = m + 8;
+  uint32_t mask = 0;
+  uint32_t msb = 0;
 
-    /* set bits in mask for each register that has been written to
-       write last bit of each register into msb. */
-    // log_message(LOG_DEFAULT, "begin");
-    for (i = 0; i < sizeof(regmap); ++i) {
-      mapped_reg = regmap[i];
-      if (!state->sid_modified[mapped_reg]) {
-        continue;
-      }
-      mask = mask | (1 << i);
-      if (state->sid_register[mapped_reg] > 0x7f) {
-        msb = msb | (1 << i);
-      }
-      state->update_buffer[p++] = state->sid_register[mapped_reg] & 0x7f;
-      // log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg,
-      // state->sid_register[mapped_reg]);
+  /* set bits in mask for each register that has been written to
+     write last bit of each register into msb. */
+  // log_message(LOG_DEFAULT, "begin");
+  for (i = 0; i < sizeof(regmap); ++i) {
+    mapped_reg = regmap[i];
+    if (!state->sid_modified[mapped_reg]) {
+      continue;
     }
-    for (i = 0; i < sizeof(mask); ++i) {
-      state->update_buffer[m++] = mask & 0x7f;
-      mask >>= 7;
+    mask = mask | (1 << i);
+    if (state->sid_register[mapped_reg] > 0x7f) {
+      msb = msb | (1 << i);
     }
-    for (i = 0; i < sizeof(msb); ++i) {
-      state->update_buffer[m++] = msb & 0x7f;
-      msb >>= 7;
-    }
-    // log_message(LOG_DEFAULT, "end");
-    state->update_buffer[p++] = SYSEX_STOP;
-    state->sid_modified_flag = false;
-    memset(&(state->sid_modified), false, sizeof(state->sid_modified));
-    if (_send_message(state->update_buffer, p)) {
-      return -1;
-    }
+    state->update_buffer[p++] = state->sid_register[mapped_reg] & 0x7f;
+    // log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg,
+    // state->sid_register[mapped_reg]);
+  }
+  for (i = 0; i < sizeof(mask); ++i) {
+    state->update_buffer[m++] = mask & 0x7f;
+    mask >>= 7;
+  }
+  for (i = 0; i < sizeof(msb); ++i) {
+    state->update_buffer[m++] = msb & 0x7f;
+    msb >>= 7;
+  }
+  // log_message(LOG_DEFAULT, "end");
+  state->update_buffer[p++] = SYSEX_STOP;
+  state->sid_modified_flag = false;
+  memset(&(state->sid_modified), false, sizeof(state->sid_modified));
+  if (_send_message(state->update_buffer, p)) {
+    return -1;
+  }
   return 0;
 }
 
