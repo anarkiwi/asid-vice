@@ -47,6 +47,8 @@
 #define ASID_STOP 0x4d
 #define ASID_UPDATE 0x4e
 #define ASID_UPDATE2 0x50
+#define ASID_UPDATE_REG 0x6c
+#define ASID_UPDATE2_REG 0x6d
 
 #define ALL_MIDI_PORTS -1
 #define NO_PORT -1
@@ -58,6 +60,7 @@ const uint8_t asid_start[] = {SYSEX_START, SYSEX_MAN_ID, ASID_START,
 const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
 const uint8_t asid_prefix[] = {SYSEX_START, SYSEX_MAN_ID};
 const uint8_t asid_update[] = {ASID_UPDATE, ASID_UPDATE2};
+const uint8_t asid_update_reg[] = {ASID_UPDATE_REG, ASID_UPDATE2_REG};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -77,10 +80,12 @@ static snd_seq_port_subscribe_t *subscription;
 static snd_midi_event_t *coder;
 
 /* update preamble, mask/MSB, register map, stop. */
-#define ASID_BUFFER_SIZE (sizeof(asid_prefix) + 1 + 8 + sizeof(regmap) + 1)
+#define ASID_BUFFER_SIZE                                                       \
+  ((sizeof(asid_prefix) + 1 + 8 + sizeof(regmap) + 1) * 2)
 
 typedef struct {
-  uint8_t asid_buffer[ASID_BUFFER_SIZE];
+  uint8_t update_buffer[ASID_BUFFER_SIZE];
+  uint8_t update_reg_buffer[ASID_BUFFER_SIZE];
   uint8_t sid_register[sizeof(regmap)];
   uint8_t sid_modified[sizeof(regmap)];
   bool sid_modified_flag;
@@ -88,6 +93,9 @@ typedef struct {
 } asid_state_t;
 
 static asid_state_t asid_state[CHIPS];
+static uint32_t bytes_saved = 0;
+static uint32_t bytes_total = 0;
+static bool use_update_reg = false;
 
 /* TODO: refactor libmididrv API for cross platform support. */
 static int _initialize_midi(void) {
@@ -240,58 +248,80 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
   if (result < (int)message_len) {
     return -1;
   }
-  result = snd_seq_event_output(seq, &ev);
-  if (result < 0) {
+  if (snd_seq_event_output(seq, &ev) < 0) {
     return -1;
   }
   snd_seq_drain_output(seq);
+
+  bytes_total += message_len;
+
+  // for (int i = 0; i < message_len; ++i) {
+  //   log_message(LOG_DEFAULT, "%2u %x", i, message[i]);
+  // }
   return 0;
 }
 
 static int asid_write_(uint8_t chip) {
-    asid_state_t *state = &(asid_state[chip]);
+  asid_state_t *state = &(asid_state[chip]);
 
-    if (!state->sid_modified_flag) {
-      return 0;
-    }
+  if (!state->sid_modified_flag) {
+    return 0;
+  }
 
-    uint8_t i, mapped_reg;
-    uint8_t m = sizeof(asid_prefix) + 1;
-    uint8_t p = m + 8;
-    uint32_t mask = 0;
-    uint32_t msb = 0;
+  uint8_t i;
+  uint8_t t = sizeof(asid_prefix) + 1;
 
-    /* set bits in mask for each register that has been written to
-       write last bit of each register into msb. */
-    // log_message(LOG_DEFAULT, "begin");
-    for (i = 0; i < sizeof(regmap); ++i) {
-      mapped_reg = regmap[i];
-      if (!state->sid_modified[mapped_reg]) {
-        continue;
-      }
-      mask = mask | (1 << i);
-      if (state->sid_register[mapped_reg] > 0x7f) {
-        msb = msb | (1 << i);
-      }
-      state->asid_buffer[p++] = state->sid_register[mapped_reg] & 0x7f;
-      // log_message(LOG_DEFAULT, "reg %u -> %u", mapped_reg,
-      // state->sid_register[mapped_reg]);
+  for (i = 0; i < sizeof(regmap); ++i) {
+    if (!state->sid_modified[i]) {
+      continue;
     }
-    for (i = 0; i < sizeof(mask); ++i) {
-      state->asid_buffer[m++] = mask & 0x7f;
-      mask >>= 7;
+    uint8_t val = state->sid_register[i];
+    if (val > 0x7f) {
+      state->update_reg_buffer[t++] = i + (1 << 6);
+    } else {
+      state->update_reg_buffer[t++] = i;
     }
-    for (i = 0; i < sizeof(msb); ++i) {
-      state->asid_buffer[m++] = msb & 0x7f;
-      msb >>= 7;
+    state->update_reg_buffer[t++] = val & 0x7f;
+  }
+  state->update_reg_buffer[t++] = SYSEX_STOP;
+
+  uint8_t mapped_reg;
+  uint8_t m = sizeof(asid_prefix) + 1;
+  uint8_t p = m + 8;
+  uint32_t mask = 0;
+  uint32_t msb = 0;
+
+  /* set bits in mask for each register that has been written to
+     write last bit of each register into msb. */
+  for (i = 0; i < sizeof(regmap); ++i) {
+    mapped_reg = regmap[i];
+    if (!state->sid_modified[mapped_reg]) {
+      continue;
     }
-    // log_message(LOG_DEFAULT, "end");
-    state->asid_buffer[p++] = SYSEX_STOP;
-    state->sid_modified_flag = false;
-    memset(&(state->sid_modified), false, sizeof(state->sid_modified));
-    if (_send_message(state->asid_buffer, p)) {
-      return -1;
+    uint8_t val = state->sid_register[mapped_reg];
+    mask = mask | (1 << i);
+    if (val > 0x7f) {
+      msb = msb | (1 << i);
     }
+    state->update_buffer[p++] = val & 0x7f;
+  }
+  for (i = 0; i < sizeof(mask); ++i) {
+    state->update_buffer[m++] = mask & 0x7f;
+    mask >>= 7;
+  }
+  for (i = 0; i < sizeof(msb); ++i) {
+    state->update_buffer[m++] = msb & 0x7f;
+    msb >>= 7;
+  }
+  state->update_buffer[p++] = SYSEX_STOP;
+  state->sid_modified_flag = false;
+  memset(&(state->sid_modified), false, sizeof(state->sid_modified));
+  if (use_update_reg && (t < p)) {
+    _send_message(state->update_reg_buffer, t);
+    bytes_saved += (p - t);
+  } else {
+    _send_message(state->update_buffer, p);
+  }
   return 0;
 }
 
@@ -299,6 +329,7 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
                      int *channels) {
   int i;
   int nports;
+  int asid_param;
   int asid_port;
   char name_buffer[256];
 
@@ -325,29 +356,40 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
     return -1;
   }
 
-  asid_port = atoi(param);
+  asid_param = atoi(param);
+  asid_port = asid_param & 1023;
+  use_update_reg = asid_param & 1024;
+
   if (asid_port < 0 || asid_port > (nports - 1)) {
     log_message(LOG_DEFAULT, "invalid MIDI port in -soundarg");
     return -1;
   }
 
-  log_message(LOG_DEFAULT, "Using port: %d %s", asid_port,
+  if (use_update_reg) {
+    log_message(LOG_DEFAULT, "Using asid register update messages");
+  }
+
+  log_message(LOG_DEFAULT, "Using asid port: %d %s", asid_port,
               _get_port_name(asid_port, name_buffer, sizeof(name_buffer)));
   if (_open_port(asid_port)) {
     return -1;
   }
+
   if (_send_message(asid_start, sizeof(asid_start))) {
     return -1;
   }
   for (int chip = 0; chip < CHIPS; ++chip) {
     asid_state_t *state = &asid_state[chip];
-    memcpy(&(state->asid_buffer), asid_prefix, sizeof(asid_prefix));
-    state->asid_buffer[sizeof(asid_prefix)] = asid_update[chip];
+    memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
+    memcpy(&(state->update_reg_buffer), asid_prefix, sizeof(asid_prefix));
+    state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
+    state->update_reg_buffer[sizeof(asid_prefix)] = asid_update_reg[chip];
     memset(&(state->sid_register), 0, sizeof(state->sid_register));
     memset(&(state->sid_modified), true, sizeof(state->sid_modified));
     state->sid_modified_flag = true;
     state->last_irq = 0;
     if (asid_write_(chip)) {
+      log_message(LOG_DEFAULT, "initial write failed");
       return -1;
     }
   }
@@ -361,8 +403,7 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
     return;
   }
   // flush on change to control register.
-  if ((reg == 4 || reg == 11 || reg == 18) && state->sid_modified[reg]) {
-    // log_message(LOG_DEFAULT, "expedite control");
+  if ((reg == 4 || reg == 11 || reg == 18) && (state->sid_modified[reg])) {
     asid_write_(chip);
   }
   state->sid_register[reg] = byte;
@@ -396,6 +437,8 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
 static int asid_write(int16_t *pbuf, size_t nr) { return 0; }
 
 static void asid_close(void) {
+  log_message(LOG_DEFAULT, "%u asid bytes sent, %u bytes saved", bytes_total,
+              bytes_saved);
   _send_message(asid_stop, sizeof(asid_stop));
   _close_port();
 }

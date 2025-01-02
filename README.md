@@ -58,10 +58,22 @@ SoundDeviceName="asid"
 SoundDeviceArg="1"
 ```
 
+## Running with Vessel/VAP
+
+These features are only available using the Vessel interface and the VAP receiver.
+
 ### 2SID support
 
-2SID is supported with Vessel
+```
+vsid -sound -soundoutput 2 -sidextra 1 -sounddev asid -soundarg 1 2sidfile.sid
+```
+
+### Lower-latency register updates
+
+The ASID protocol is not efficient when updating only a few registers.
+
+Adding `1024` to `-soundarg` enables use of shorter register update messages, which reduces MIDI bandwidth and processing.
 
 ```
-vsid -sound -soundoutput 2 -sidextra 1 -sounddev asid -soundarg 1 Voice_2SID.sid
+vsid -sound -sounddev asid -soundarg 1025 sidfile.sid
 ```
