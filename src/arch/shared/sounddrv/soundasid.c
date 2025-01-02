@@ -330,19 +330,19 @@ static int asid_write_(uint8_t chip) {
   if (use_update_reg && (t < p)) {
     if (s < t) {
       for (i = 0; i < s; i += NOTELEN) {
-        if (_send_message((state->single_buffer) + i, NOTELEN) < NOTELEN) {
+        if (_send_message((state->single_buffer) + i, NOTELEN)) {
           return -1;
         }
       }
       bytes_saved += (p - s);
     } else {
-      if (_send_message(state->update_reg_buffer, t) < t) {
+      if (_send_message(state->update_reg_buffer, t)) {
         return -1;
       }
       bytes_saved += (p - t);
     }
   } else {
-    if (_send_message(state->update_buffer, p) < p) {
+    if (_send_message(state->update_buffer, p)) {
       return -1;
     }
   }
