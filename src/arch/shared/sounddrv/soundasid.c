@@ -44,6 +44,7 @@
 #define SYSEX_STOP 0xf7
 #define NOTEOFF16 0x8f
 #define NOTEOFF15 0x8e
+#define NOTELEN 3
 
 #define ASID_START 0x4c
 #define ASID_STOP 0x4d
@@ -83,11 +84,10 @@ static snd_seq_port_subscribe_t *subscription;
 static snd_midi_event_t *coder;
 
 /* update preamble, mask/MSB, register map, stop. */
-#define ASID_BUFFER_SIZE                                                       \
-  ((sizeof(asid_prefix) + 1 + 8 + sizeof(regmap) + 1) * 2)
+#define ASID_BUFFER_SIZE 256
 
 typedef struct {
-  uint8_t single_buffer[3];
+  uint8_t single_buffer[ASID_BUFFER_SIZE];
   uint8_t update_buffer[ASID_BUFFER_SIZE];
   uint8_t update_reg_buffer[ASID_BUFFER_SIZE];
   uint8_t sid_register[sizeof(regmap)];
@@ -273,6 +273,7 @@ static int asid_write_(uint8_t chip) {
   }
 
   uint8_t i;
+  uint8_t s = 0;
   uint8_t t = sizeof(asid_prefix) + 1;
   uint8_t c = 0;
 
@@ -281,15 +282,16 @@ static int asid_write_(uint8_t chip) {
       continue;
     }
     uint8_t val = state->sid_register[i];
+    state->single_buffer[s++] = asid_single_reg[chip];
+    uint8_t reg = i;
     if (val > 0x7f) {
-      state->update_reg_buffer[t++] = i + (1 << 6);
-      state->single_buffer[1] = i + (1 << 6);
-    } else {
-      state->update_reg_buffer[t++] = i;
-      state->single_buffer[1] = i;
+      reg |= (1 << 6);
     }
-    state->update_reg_buffer[t++] = val & 0x7f;
-    state->single_buffer[2] = val & 0x7f;
+    val &= 0x7f;
+    state->update_reg_buffer[t++] = reg;
+    state->single_buffer[s++] = reg;
+    state->update_reg_buffer[t++] = val;
+    state->single_buffer[s++] = val;
     ++c;
   }
   state->update_reg_buffer[t++] = SYSEX_STOP;
@@ -308,9 +310,9 @@ static int asid_write_(uint8_t chip) {
       continue;
     }
     uint8_t val = state->sid_register[mapped_reg];
-    mask = mask | (1 << i);
+    mask |= (1 << i);
     if (val > 0x7f) {
-      msb = msb | (1 << i);
+      msb |= (1 << i);
     }
     state->update_buffer[p++] = val & 0x7f;
   }
@@ -326,15 +328,23 @@ static int asid_write_(uint8_t chip) {
   state->sid_modified_flag = false;
   memset(&(state->sid_modified), false, sizeof(state->sid_modified));
   if (use_update_reg && (t < p)) {
-    if (c == 1) {
-      _send_message(state->single_buffer, sizeof(state->single_buffer));
-      bytes_saved += (p - sizeof(state->single_buffer));
+    if (s < t) {
+      for (i = 0; i < s; i += NOTELEN) {
+        if (_send_message((state->single_buffer) + i, NOTELEN) < NOTELEN) {
+          return -1;
+        }
+      }
+      bytes_saved += (p - s);
     } else {
-      _send_message(state->update_reg_buffer, t);
+      if (_send_message(state->update_reg_buffer, t) < t) {
+        return -1;
+      }
       bytes_saved += (p - t);
     }
   } else {
-    _send_message(state->update_buffer, p);
+    if (_send_message(state->update_buffer, p) < p) {
+      return -1;
+    }
   }
   return 0;
 }
@@ -395,7 +405,6 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   for (int chip = 0; chip < CHIPS; ++chip) {
     asid_state_t *state = &asid_state[chip];
     memset(&(state->single_buffer), 0, sizeof(state->single_buffer));
-    state->single_buffer[0] = asid_single_reg[chip];
     memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
     memcpy(&(state->update_reg_buffer), asid_prefix, sizeof(asid_prefix));
     state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
@@ -419,7 +428,8 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
     return;
   }
   // flush on change to control register.
-  if (((reg == 4 || reg == 11 || reg == 18) || use_update_reg) && state->sid_modified[reg]) {
+  if (((reg == 4 || reg == 11 || reg == 18) || use_update_reg) &&
+      state->sid_modified[reg]) {
     asid_write_(chip);
   }
   state->sid_register[reg] = byte;
