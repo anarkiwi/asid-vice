@@ -95,6 +95,7 @@ typedef struct {
 static asid_state_t asid_state[CHIPS];
 static uint32_t bytes_saved = 0;
 static uint32_t bytes_total = 0;
+static bool use_update_reg = false;
 
 /* TODO: refactor libmididrv API for cross platform support. */
 static int _initialize_midi(void) {
@@ -247,11 +248,11 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
   if (result < (int)message_len) {
     return -1;
   }
-  result = snd_seq_event_output(seq, &ev);
-  if (result < 0) {
+  if (snd_seq_event_output(seq, &ev) < 0) {
     return -1;
   }
   snd_seq_drain_output(seq);
+
   bytes_total += message_len;
 
   // for (int i = 0; i < message_len; ++i) {
@@ -315,7 +316,7 @@ static int asid_write_(uint8_t chip) {
   state->update_buffer[p++] = SYSEX_STOP;
   state->sid_modified_flag = false;
   memset(&(state->sid_modified), false, sizeof(state->sid_modified));
-  if (t < p) {
+  if (use_update_reg && (t < p)) {
     _send_message(state->update_reg_buffer, t);
     bytes_saved += (p - t);
   } else {
@@ -328,6 +329,7 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
                      int *channels) {
   int i;
   int nports;
+  int asid_param;
   int asid_port;
   char name_buffer[256];
 
@@ -354,17 +356,25 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
     return -1;
   }
 
-  asid_port = atoi(param);
+  asid_param = atoi(param);
+  asid_port = asid_param & 1023;
+  use_update_reg = asid_param & 1024;
+
   if (asid_port < 0 || asid_port > (nports - 1)) {
     log_message(LOG_DEFAULT, "invalid MIDI port in -soundarg");
     return -1;
   }
 
-  log_message(LOG_DEFAULT, "Using port: %d %s", asid_port,
+  if (use_update_reg) {
+    log_message(LOG_DEFAULT, "Using asid register update messages");
+  }
+
+  log_message(LOG_DEFAULT, "Using asid port: %d %s", asid_port,
               _get_port_name(asid_port, name_buffer, sizeof(name_buffer)));
   if (_open_port(asid_port)) {
     return -1;
   }
+
   if (_send_message(asid_start, sizeof(asid_start))) {
     return -1;
   }
