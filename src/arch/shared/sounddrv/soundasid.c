@@ -42,7 +42,8 @@
 #define SYSEX_START 0xf0
 #define SYSEX_MAN_ID 0x2d
 #define SYSEX_STOP 0xf7
-#define SONG_POINTER 0xf2
+#define NOTEOFF16 0x8f
+#define NOTEOFF15 0x8e
 
 #define ASID_START 0x4c
 #define ASID_STOP 0x4d
@@ -62,6 +63,7 @@ const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
 const uint8_t asid_prefix[] = {SYSEX_START, SYSEX_MAN_ID};
 const uint8_t asid_update[] = {ASID_UPDATE, ASID_UPDATE2};
 const uint8_t asid_update_reg[] = {ASID_UPDATE_REG, ASID_UPDATE2_REG};
+const uint8_t asid_single_reg[] = {NOTEOFF16, NOTEOFF15};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -393,7 +395,7 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   for (int chip = 0; chip < CHIPS; ++chip) {
     asid_state_t *state = &asid_state[chip];
     memset(&(state->single_buffer), 0, sizeof(state->single_buffer));
-    state->single_buffer[0] = SONG_POINTER;
+    state->single_buffer[0] = asid_single_reg[chip];
     memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
     memcpy(&(state->update_reg_buffer), asid_prefix, sizeof(asid_prefix));
     state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
