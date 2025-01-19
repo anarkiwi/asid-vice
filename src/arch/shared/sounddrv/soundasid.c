@@ -439,8 +439,11 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
 
 static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
                       uint8_t chipno, uint16_t addr, uint8_t byte) {
+  uint32_t irq_diff = maincpu_int_status->irq_clk - asid_state[chipno].last_irq;
+
   // Flush changes from previous IRQ.
-  if (maincpu_int_status->irq_clk != asid_state[chipno].last_irq) {
+  if (irq_diff > 256) {
+    //log_message(LOG_DEFAULT, "irq %u", irq_diff);
     asid_state[chipno].last_irq = maincpu_int_status->irq_clk;
     asid_write_(chipno);
   }
