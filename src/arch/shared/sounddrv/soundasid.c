@@ -439,8 +439,10 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
 
 static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
                       uint8_t chipno, uint16_t addr, uint8_t byte) {
+  CLOCK irq_diff = maincpu_int_status->irq_clk - asid_state[chipno].last_irq;
+
   // Flush changes from previous IRQ.
-  if (maincpu_int_status->irq_clk != asid_state[chipno].last_irq) {
+  if (irq_diff > 256) {
     asid_state[chipno].last_irq = maincpu_int_status->irq_clk;
     asid_write_(chipno);
   }
@@ -454,9 +456,9 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
 
   // Many playroutines write to all registers in sequence, so flush on the last
   // register.
-  if (reg == 24) {
-    asid_write_(chipno);
-  }
+  //if (reg == 24) {
+  //  asid_write_(chipno);
+  //}
   return 0;
 }
 
