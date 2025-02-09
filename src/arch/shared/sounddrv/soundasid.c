@@ -42,6 +42,7 @@
 #define SYSEX_START 0xf0
 #define SYSEX_MAN_ID 0x2d
 #define SYSEX_STOP 0xf7
+#define MIDI_CLOCK 0xf8
 #define NOTEOFF16 0x8f
 #define NOTEOFF15 0x8e
 #define NOTELEN 3
@@ -252,10 +253,9 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
   if (result < (int)message_len) {
     return -1;
   }
-  if (snd_seq_event_output(seq, &ev) < 0) {
+  if (snd_seq_event_output_direct(seq, &ev) < 0) {
     return -1;
   }
-  snd_seq_drain_output(seq);
 
   bytes_total += message_len;
 
