@@ -115,6 +115,7 @@ static int _initialize_midi(void) {
   int result =
       snd_seq_open(&seq, "default", SND_SEQ_OPEN_OUTPUT, SND_SEQ_NONBLOCK);
   if (result < 0) {
+    log_message(LOG_DEFAULT, "snd_seq_open() failed");
     return -1;
   }
 
@@ -124,9 +125,11 @@ static int _initialize_midi(void) {
   coder = 0;
   result = snd_midi_event_new(ASID_BUFFER_SIZE, &coder);
   if (result < 0) {
+    log_message(LOG_DEFAULT, "snd_midi_event_new() failed");
     return -1;
   }
   snd_midi_event_init(coder);
+  queue_id = snd_seq_alloc_named_queue(seq, "asid");
   snd_seq_set_client_pool_output(seq, ASID_BUFFER_SIZE);
   return 0;
 }
@@ -264,6 +267,7 @@ static int _send_message(const uint8_t *message, uint8_t message_len,
   result = snd_midi_event_encode(coder, message, message_len, &ev);
 
   if (result < (int)message_len) {
+    log_message(LOG_DEFAULT, "snd_midi_event_encode() failed");
     return -1;
   }
   snd_seq_real_time_t time;
@@ -271,6 +275,7 @@ static int _send_message(const uint8_t *message, uint8_t message_len,
   time.tv_nsec = nsec;
   snd_seq_ev_schedule_real(&ev, queue_id, SND_SEQ_TIME_MODE_REL, &time);
   if (snd_seq_event_output_direct(seq, &ev) < 0) {
+    log_message(LOG_DEFAULT, "snd_seq_ev_schedule_real() %u failed", nsec);
     return -1;
   }
   snd_seq_drain_output(seq);
@@ -375,6 +380,7 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   int asid_port;
   char name_buffer[256];
 
+  start_clock = 0;
   *channels = 2;
 
   if (_initialize_midi()) {
@@ -414,10 +420,12 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   log_message(LOG_DEFAULT, "Using asid port: %d %s", asid_port,
               _get_port_name(asid_port, name_buffer, sizeof(name_buffer)));
   if (_open_port(asid_port)) {
+    log_message(LOG_DEFAULT, "Open port failed");
     return -1;
   }
 
   if (_send_message(asid_start, sizeof(asid_start), 0)) {
+    log_message(LOG_DEFAULT, "asid start failed");
     return -1;
   }
   for (int chip = 0; chip < CHIPS; ++chip) {
