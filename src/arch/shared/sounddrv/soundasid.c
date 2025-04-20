@@ -66,6 +66,7 @@ const uint8_t asid_prefix[] = {SYSEX_START, SYSEX_MAN_ID};
 const uint8_t asid_update[] = {ASID_UPDATE, ASID_UPDATE2};
 const uint8_t asid_update_reg[] = {ASID_UPDATE_REG, ASID_UPDATE2_REG};
 const uint8_t asid_single_reg[] = {NOTEOFF16, NOTEOFF15};
+const uint8_t asid_clock[] = {MIDI_CLOCK};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -80,9 +81,10 @@ const uint8_t regmask[] = {
     255, 15, 255, 255, 255, 7, 255, 255, 255};
 
 static snd_seq_t *seq;
-static int vport;
+static int vport, queue_id;
 static snd_seq_port_subscribe_t *subscription;
 static snd_midi_event_t *coder;
+static uint64_t iq = 0;
 
 /* update preamble, mask/MSB, register map, stop. */
 #define ASID_BUFFER_SIZE 256
@@ -101,7 +103,13 @@ static asid_state_t asid_state[CHIPS];
 static uint32_t bytes_saved = 0;
 static uint32_t bytes_total = 0;
 static bool use_update_reg = false;
+static uint64_t start_clock = 0;
 
+uint64_t get_clock() {
+  struct timespec res;
+  clock_gettime(CLOCK_REALTIME, &res);
+  return (res.tv_sec * 1e9) + res.tv_nsec;
+}
 /* TODO: refactor libmididrv API for cross platform support. */
 static int _initialize_midi(void) {
   int result =
@@ -119,6 +127,9 @@ static int _initialize_midi(void) {
     return -1;
   }
   snd_midi_event_init(coder);
+  queue_id = snd_seq_alloc_named_queue(seq, "asid");
+  // start_clock = get_clock();
+  snd_seq_set_client_pool_output(seq, 65536);
   return 0;
 }
 
@@ -204,6 +215,8 @@ static int _open_port(unsigned int port_number) {
   if (snd_seq_subscribe_port(seq, subscription)) {
     return -1;
   }
+
+  snd_seq_start_queue(seq, queue_id, NULL);
   return 0;
 }
 
@@ -241,7 +254,8 @@ static char *_get_port_name(unsigned int port_number, char *name_buffer,
   return name_buffer;
 }
 
-static int _send_message(const uint8_t *message, uint8_t message_len) {
+static int _send_message(const uint8_t *message, uint8_t message_len,
+                         uint64_t nsec) {
   int result;
   snd_seq_event_t ev;
   snd_seq_ev_clear(&ev);
@@ -253,9 +267,14 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
   if (result < (int)message_len) {
     return -1;
   }
+  snd_seq_real_time_t time;
+  time.tv_sec = 0;
+  time.tv_nsec = nsec;
+  snd_seq_ev_schedule_real(&ev, queue_id, SND_SEQ_TIME_MODE_REL, &time);
   if (snd_seq_event_output_direct(seq, &ev) < 0) {
     return -1;
   }
+  snd_seq_drain_output(seq);
 
   bytes_total += message_len;
 
@@ -265,7 +284,7 @@ static int _send_message(const uint8_t *message, uint8_t message_len) {
   return 0;
 }
 
-static int asid_write_(uint8_t chip) {
+static int asid_write_(uint8_t chip, uint64_t nsec) {
   asid_state_t *state = &(asid_state[chip]);
 
   if (!state->sid_modified_flag) {
@@ -328,21 +347,21 @@ static int asid_write_(uint8_t chip) {
   state->sid_modified_flag = false;
   memset(&(state->sid_modified), false, sizeof(state->sid_modified));
   if (use_update_reg && (t < p)) {
-    //if (s < t) {
-    //  for (i = 0; i < s; i += NOTELEN) {
-    //    if (_send_message((state->single_buffer) + i, NOTELEN)) {
-    //      return -1;
-    //    }
-    //  }
-    //  bytes_saved += (p - s);
-    //} else {
-      if (_send_message(state->update_reg_buffer, t)) {
-        return -1;
-      }
-      bytes_saved += (p - t);
+    // if (s < t) {
+    //   for (i = 0; i < s; i += NOTELEN) {
+    //     if (_send_message((state->single_buffer) + i, NOTELEN)) {
+    //       return -1;
+    //     }
+    //   }
+    //   bytes_saved += (p - s);
+    // } else {
+    if (_send_message(state->update_reg_buffer, t, nsec)) {
+      return -1;
+    }
+    bytes_saved += (p - t);
     // }
   } else {
-    if (_send_message(state->update_buffer, p)) {
+    if (_send_message(state->update_buffer, p, nsec)) {
       return -1;
     }
   }
@@ -399,7 +418,7 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
     return -1;
   }
 
-  if (_send_message(asid_start, sizeof(asid_start))) {
+  if (_send_message(asid_start, sizeof(asid_start), 0)) {
     return -1;
   }
   for (int chip = 0; chip < CHIPS; ++chip) {
@@ -413,7 +432,7 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
     memset(&(state->sid_modified), true, sizeof(state->sid_modified));
     state->sid_modified_flag = true;
     state->last_irq = 0;
-    if (asid_write_(chip)) {
+    if (asid_write_(chip, 0)) {
       log_message(LOG_DEFAULT, "initial write failed");
       return -1;
     }
@@ -428,10 +447,10 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
     return;
   }
   // flush on change to control register.
-  if (((reg == 4 || reg == 11 || reg == 18) || use_update_reg) &&
-      state->sid_modified[reg]) {
-    asid_write_(chip);
-  }
+  // if (((reg == 4 || reg == 11 || reg == 18) || use_update_reg) &&
+  //    state->sid_modified[reg]) {
+  //  asid_write_(chip);
+  //}
   state->sid_register[reg] = byte;
   state->sid_modified[reg] = true;
   state->sid_modified_flag = true;
@@ -439,12 +458,23 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
 
 static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
                       uint8_t chipno, uint16_t addr, uint8_t byte) {
+  // log_message(LOG_DEFAULT, "%lu %lu", maincpu_int_status->irq_clk,
+  // get_clock() - start_clock);
+
   CLOCK irq_diff = maincpu_int_status->irq_clk - asid_state[chipno].last_irq;
 
   // Flush changes from previous IRQ.
   if (irq_diff > 256) {
+    if (start_clock == 0) {
+      start_clock = get_clock();
+    }
     asid_state[chipno].last_irq = maincpu_int_status->irq_clk;
-    asid_write_(chipno);
+    uint64_t n = (asid_state[chipno].last_irq / (17.734475 / 18 * 1e6) * 1e9) -
+                 (get_clock() - start_clock);
+    log_message(LOG_DEFAULT, "last_irq=%lu n=%lu",
+                asid_state[chipno].last_irq + irq_diff, n);
+    asid_write_(chipno, n);
+    //_send_message(asid_clock, sizeof(asid_clock), n);
   }
 
   uint8_t reg = addr & 0x1f;
@@ -456,7 +486,7 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
 
   // Many playroutines write to all registers in sequence, so flush on the last
   // register.
-  //if (reg == 24) {
+  // if (reg == 24) {
   //  asid_write_(chipno);
   //}
   return 0;
@@ -467,11 +497,23 @@ static int asid_write(int16_t *pbuf, size_t nr) { return 0; }
 static void asid_close(void) {
   log_message(LOG_DEFAULT, "%u asid bytes sent, %u bytes saved", bytes_total,
               bytes_saved);
-  _send_message(asid_stop, sizeof(asid_stop));
+  _send_message(asid_stop, sizeof(asid_stop), 0);
   _close_port();
 }
 
-static int asid_flush(char *state) { return 0; }
+static int asid_flush(char *state) {
+  // t++;
+  // if (flush && t > 312) {
+  //   uint64_t now = get_clock();
+  //   float ms = (now - start_clock) / 1e6;
+  //   // log_message(LOG_DEFAULT, "flush: %f %u", ms, t);
+  //   asid_write_(0);
+  //   start_clock = now;
+  //   flush = 0;
+  //   t = 0;
+  // }
+  return 0;
+}
 
 static sound_device_t asid_device = {
     "asid",     asid_init, asid_write, NULL, asid_dump2, asid_flush, NULL,
