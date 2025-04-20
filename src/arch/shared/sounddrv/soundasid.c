@@ -182,6 +182,9 @@ static unsigned int _get_port_count(void) {
 }
 
 static int _open_port(unsigned int port_number) {
+  bytes_total = 0;
+  bytes_saved = 0;
+
   unsigned int nports = _get_port_count();
   if (nports < 1) {
     return -1;
@@ -303,6 +306,8 @@ static int _send_message(const uint8_t *message, uint8_t message_len,
 }
 
 static int _close_port(void) {
+  log_message(LOG_DEFAULT, "%u asid bytes sent, %u bytes saved", bytes_total,
+              bytes_saved);
   if (vport != NO_PORT) {
     _send_message(asid_stop, sizeof(asid_stop), 0);
   }
@@ -516,8 +521,6 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
 static int asid_write(int16_t *pbuf, size_t nr) { return 0; }
 
 static void asid_close(void) {
-  log_message(LOG_DEFAULT, "%u asid bytes sent, %u bytes saved", bytes_total,
-              bytes_saved);
   _close_port();
   snd_midi_event_free(coder);
   snd_seq_close(seq);
