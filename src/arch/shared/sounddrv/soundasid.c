@@ -459,6 +459,7 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
   state->sid_modified_flag = true;
 }
 
+// TODO: assume PAL always
 static uint64_t clock_to_nanos(uint64_t clock) {
   return clock / (17.734475 / 18 * 1e6) * 1e9;
 }
@@ -469,6 +470,7 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
   CLOCK irq_diff = maincpu_int_status->irq_clk - state->last_irq;
 
   // Flush changes from previous IRQ.
+  // TODO: handle sound restarts
   if (irq_diff > 256) {
     uint64_t now = get_clock();
     if (state->start_clock == 0) {
