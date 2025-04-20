@@ -42,10 +42,6 @@
 #define SYSEX_START 0xf0
 #define SYSEX_MAN_ID 0x2d
 #define SYSEX_STOP 0xf7
-#define MIDI_CLOCK 0xf8
-#define NOTEOFF16 0x8f
-#define NOTEOFF15 0x8e
-#define NOTELEN 3
 
 #define ASID_START 0x4c
 #define ASID_STOP 0x4d
@@ -65,8 +61,6 @@ const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
 const uint8_t asid_prefix[] = {SYSEX_START, SYSEX_MAN_ID};
 const uint8_t asid_update[] = {ASID_UPDATE, ASID_UPDATE2};
 const uint8_t asid_update_reg[] = {ASID_UPDATE_REG, ASID_UPDATE2_REG};
-const uint8_t asid_single_reg[] = {NOTEOFF16, NOTEOFF15};
-const uint8_t asid_clock[] = {MIDI_CLOCK};
 const uint8_t max_sid_reg = 24;
 /* IDs 25-27 not implemented. They are rumoured to make additional updates to
    registers 4, 11, and 18, but asidxp.exe doesn't seem to use them. */
@@ -89,7 +83,6 @@ static snd_midi_event_t *coder;
 #define ASID_BUFFER_SIZE 256
 
 typedef struct {
-  uint8_t single_buffer[ASID_BUFFER_SIZE];
   uint8_t update_buffer[ASID_BUFFER_SIZE];
   uint8_t update_reg_buffer[ASID_BUFFER_SIZE];
   uint8_t sid_register[sizeof(regmap)];
@@ -133,7 +126,7 @@ static int _initialize_midi(void) {
     return -1;
   }
   snd_midi_event_init(coder);
-  snd_seq_set_client_pool_output(seq, ASID_BUFFER_SIZE);
+  snd_seq_set_client_pool_output(seq, 65536);
   return 0;
 }
 
@@ -230,7 +223,6 @@ static int _open_port(unsigned int port_number) {
 
   for (int chip = 0; chip < CHIPS; ++chip) {
     asid_state_t *state = &asid_state[chip];
-    memset(&(state->single_buffer), 0, sizeof(state->single_buffer));
     memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
     memcpy(&(state->update_reg_buffer), asid_prefix, sizeof(asid_prefix));
     state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
@@ -334,7 +326,6 @@ static int asid_write_(uint8_t chip, uint64_t nsec) {
   }
 
   uint8_t i;
-  uint8_t s = 0;
   uint8_t t = sizeof(asid_prefix) + 1;
   uint8_t c = 0;
 
@@ -343,16 +334,13 @@ static int asid_write_(uint8_t chip, uint64_t nsec) {
       continue;
     }
     uint8_t val = state->sid_register[i];
-    state->single_buffer[s++] = asid_single_reg[chip];
     uint8_t reg = i;
     if (val > 0x7f) {
       reg |= (1 << 6);
     }
     val &= 0x7f;
     state->update_reg_buffer[t++] = reg;
-    state->single_buffer[s++] = reg;
     state->update_reg_buffer[t++] = val;
-    state->single_buffer[s++] = val;
     ++c;
   }
   state->update_reg_buffer[t++] = SYSEX_STOP;
@@ -389,19 +377,10 @@ static int asid_write_(uint8_t chip, uint64_t nsec) {
   state->sid_modified_flag = false;
   memset(&(state->sid_modified), false, sizeof(state->sid_modified));
   if (use_update_reg && (t < p)) {
-    // if (s < t) {
-    //   for (i = 0; i < s; i += NOTELEN) {
-    //     if (_send_message((state->single_buffer) + i, NOTELEN)) {
-    //       return -1;
-    //     }
-    //   }
-    //   bytes_saved += (p - s);
-    // } else {
     if (_send_message(state->update_reg_buffer, t, nsec)) {
       return -1;
     }
     bytes_saved += (p - t);
-    // }
   } else {
     if (_send_message(state->update_buffer, p, nsec)) {
       return -1;
