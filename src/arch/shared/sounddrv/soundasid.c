@@ -306,8 +306,17 @@ static int _close_port(void) {
   if (vport != NO_PORT) {
     _send_message(asid_stop, sizeof(asid_stop), 0);
   }
+
+  snd_seq_remove_events_t *remove_ev;
+  snd_seq_remove_events_malloc(&remove_ev);
+  snd_seq_remove_events_set_queue(remove_ev, queue_id);
+  snd_seq_remove_events_set_condition(remove_ev, SND_SEQ_REMOVE_OUTPUT |
+                                                     SND_SEQ_REMOVE_IGNORE_OFF);
+  snd_seq_remove_events(seq, remove_ev);
+  snd_seq_remove_events_free(remove_ev);
   snd_seq_stop_queue(seq, queue_id, NULL);
   snd_seq_free_queue(seq, queue_id);
+
   if (vport != NO_PORT) {
     snd_seq_unsubscribe_port(seq, subscription);
     snd_seq_port_subscribe_free(subscription);
