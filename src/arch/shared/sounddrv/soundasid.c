@@ -138,7 +138,8 @@ static int _initialize_midi(void) {
 }
 
 static unsigned int _get_port_info(snd_seq_port_info_t *pinfo,
-                                   unsigned int port_type, int port_number) {
+                                   int port_number) {
+  unsigned int port_type = SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE;
   snd_seq_client_info_t *cinfo;
   int client;
   int count = 0;
@@ -175,10 +176,8 @@ static unsigned int _get_port_info(snd_seq_port_info_t *pinfo,
 static unsigned int _get_port_count(void) {
   snd_seq_port_info_t *pinfo;
   snd_seq_port_info_alloca(&pinfo);
-
-  return _get_port_info(pinfo,
-                        SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE,
-                        ALL_MIDI_PORTS);
+  unsigned int nports = _get_port_info(pinfo, ALL_MIDI_PORTS);
+  return nports;
 }
 
 static int _open_port(unsigned int port_number) {
@@ -193,9 +192,7 @@ static int _open_port(unsigned int port_number) {
   snd_seq_port_info_t *pinfo;
   snd_seq_port_info_alloca(&pinfo);
 
-  if (_get_port_info(pinfo,
-                     SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE,
-                     (int)port_number) == 0) {
+  if (_get_port_info(pinfo, (int)port_number) == 0) {
     return -1;
   }
 
@@ -223,7 +220,7 @@ static int _open_port(unsigned int port_number) {
     return -1;
   }
 
-  queue_id = snd_seq_alloc_named_queue(seq, "asid");
+  queue_id = snd_seq_alloc_queue(seq);
   snd_seq_start_queue(seq, queue_id, NULL);
 
   if (_send_message(asid_start, sizeof(asid_start), 0)) {
@@ -260,9 +257,7 @@ static char *_get_port_name(unsigned int port_number, char *name_buffer,
   snd_seq_port_info_alloca(&pinfo);
   memset(name_buffer, 0, max_name);
 
-  if (_get_port_info(pinfo,
-                     SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE,
-                     (int)port_number)) {
+  if (_get_port_info(pinfo, (int)port_number)) {
     int cnum = snd_seq_port_info_get_client(pinfo);
     snd_seq_get_any_client_info(seq, cnum, cinfo);
     snprintf(name_buffer, max_name, "%s:%d",
