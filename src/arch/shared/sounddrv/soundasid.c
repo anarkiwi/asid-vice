@@ -483,7 +483,7 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
   if (irq_diff > 256) {
     uint64_t now = get_clock();
     if (start_clock == 0) {
-      start_clock = now - clock_to_nanos(maincpu_clk);
+      start_clock = now;
     }
     asid_state[chipno].last_irq = maincpu_int_status->irq_clk;
     int64_t n =
