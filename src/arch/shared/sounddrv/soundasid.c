@@ -104,11 +104,15 @@ static uint32_t bytes_total = 0;
 static bool use_update_reg = false;
 static uint64_t start_clock = 0;
 
-uint64_t get_clock() {
+static uint64_t get_clock(void) {
   struct timespec res;
   clock_gettime(CLOCK_MONOTONIC, &res);
   return (res.tv_sec * 1e9) + res.tv_nsec;
 }
+
+static int _send_message(const uint8_t *message, uint8_t message_len,
+                         uint64_t nsec);
+static int asid_write_(uint8_t chip, uint64_t nsec);
 
 /* TODO: refactor libmididrv API for cross platform support. */
 static int _initialize_midi(void) {
@@ -129,7 +133,6 @@ static int _initialize_midi(void) {
     return -1;
   }
   snd_midi_event_init(coder);
-  queue_id = snd_seq_alloc_named_queue(seq, "asid");
   snd_seq_set_client_pool_output(seq, ASID_BUFFER_SIZE);
   return 0;
 }
@@ -179,6 +182,7 @@ static unsigned int _get_port_count(void) {
 }
 
 static int _open_port(unsigned int port_number) {
+  start_clock = 0;
   unsigned int nports = _get_port_count();
   if (nports < 1) {
     return -1;
@@ -217,21 +221,31 @@ static int _open_port(unsigned int port_number) {
     return -1;
   }
 
+  queue_id = snd_seq_alloc_named_queue(seq, "asid");
   snd_seq_start_queue(seq, queue_id, NULL);
-  return 0;
-}
 
-static int _close_port(void) {
-  if (vport != NO_PORT) {
-    snd_seq_drain_output(seq);
-    snd_seq_stop_queue(seq, queue_id, NULL);
-    snd_seq_free_queue(seq, queue_id);
-    snd_seq_unsubscribe_port(seq, subscription);
-    snd_seq_port_subscribe_free(subscription);
-    snd_seq_delete_port(seq, vport);
+  if (_send_message(asid_start, sizeof(asid_start), 0)) {
+    log_message(LOG_DEFAULT, "asid start failed");
+    return -1;
   }
-  snd_midi_event_free(coder);
-  snd_seq_close(seq);
+
+  for (int chip = 0; chip < CHIPS; ++chip) {
+    asid_state_t *state = &asid_state[chip];
+    memset(&(state->single_buffer), 0, sizeof(state->single_buffer));
+    memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
+    memcpy(&(state->update_reg_buffer), asid_prefix, sizeof(asid_prefix));
+    state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
+    state->update_reg_buffer[sizeof(asid_prefix)] = asid_update_reg[chip];
+    memset(&(state->sid_register), 0, sizeof(state->sid_register));
+    memset(&(state->sid_modified), true, sizeof(state->sid_modified));
+    state->sid_modified_flag = true;
+    state->last_irq = 0;
+    if (asid_write_(chip, 0)) {
+      log_message(LOG_DEFAULT, "initial write failed");
+      return -1;
+    }
+  }
+
   return 0;
 }
 
@@ -271,11 +285,11 @@ static int _send_message(const uint8_t *message, uint8_t message_len,
     return -1;
   }
   snd_seq_real_time_t time;
-  time.tv_sec = 0;
-  time.tv_nsec = nsec;
+  time.tv_sec = nsec / 1e9;
+  time.tv_nsec = nsec - (time.tv_sec * 1e9);
   snd_seq_ev_schedule_real(&ev, queue_id, SND_SEQ_TIME_MODE_REL, &time);
   if (snd_seq_event_output_direct(seq, &ev) < 0) {
-    log_message(LOG_DEFAULT, "snd_seq_ev_schedule_real() %u failed", nsec);
+    log_message(LOG_DEFAULT, "snd_seq_ev_schedule_real() %lu failed", nsec);
     return -1;
   }
   snd_seq_drain_output(seq);
@@ -285,6 +299,21 @@ static int _send_message(const uint8_t *message, uint8_t message_len,
   // for (int i = 0; i < message_len; ++i) {
   //   log_message(LOG_DEFAULT, "%2u %x", i, message[i]);
   // }
+  return 0;
+}
+
+static int _close_port(void) {
+  if (vport != NO_PORT) {
+    _send_message(asid_stop, sizeof(asid_stop), 0);
+  }
+  snd_seq_stop_queue(seq, queue_id, NULL);
+  snd_seq_free_queue(seq, queue_id);
+  if (vport != NO_PORT) {
+    snd_seq_unsubscribe_port(seq, subscription);
+    snd_seq_port_subscribe_free(subscription);
+    snd_seq_delete_port(seq, vport);
+    vport = NO_PORT;
+  }
   return 0;
 }
 
@@ -380,7 +409,6 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
   int asid_port;
   char name_buffer[256];
 
-  start_clock = 0;
   *channels = 2;
 
   if (_initialize_midi()) {
@@ -424,26 +452,6 @@ static int asid_init(const char *param, int *speed, int *fragsize, int *fragnr,
     return -1;
   }
 
-  if (_send_message(asid_start, sizeof(asid_start), 0)) {
-    log_message(LOG_DEFAULT, "asid start failed");
-    return -1;
-  }
-  for (int chip = 0; chip < CHIPS; ++chip) {
-    asid_state_t *state = &asid_state[chip];
-    memset(&(state->single_buffer), 0, sizeof(state->single_buffer));
-    memcpy(&(state->update_buffer), asid_prefix, sizeof(asid_prefix));
-    memcpy(&(state->update_reg_buffer), asid_prefix, sizeof(asid_prefix));
-    state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
-    state->update_reg_buffer[sizeof(asid_prefix)] = asid_update_reg[chip];
-    memset(&(state->sid_register), 0, sizeof(state->sid_register));
-    memset(&(state->sid_modified), true, sizeof(state->sid_modified));
-    state->sid_modified_flag = true;
-    state->last_irq = 0;
-    if (asid_write_(chip, 0)) {
-      log_message(LOG_DEFAULT, "initial write failed");
-      return -1;
-    }
-  }
   return 0;
 }
 
@@ -475,13 +483,13 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
   if (irq_diff > 256) {
     uint64_t now = get_clock();
     if (start_clock == 0) {
-      start_clock = now;
+      start_clock = now - clock_to_nanos(maincpu_clk);
     }
     asid_state[chipno].last_irq = maincpu_int_status->irq_clk;
     int64_t n =
         clock_to_nanos(asid_state[chipno].last_irq) - (now - start_clock);
     if (n < 0) {
-      float slip_ms = abs(n) / 1e6;
+      float slip_ms = labs(n) / 1e6;
       if (slip_ms > 1) {
         log_message(LOG_DEFAULT, "asid slip by %fms", slip_ms);
       }
@@ -510,8 +518,9 @@ static int asid_write(int16_t *pbuf, size_t nr) { return 0; }
 static void asid_close(void) {
   log_message(LOG_DEFAULT, "%u asid bytes sent, %u bytes saved", bytes_total,
               bytes_saved);
-  _send_message(asid_stop, sizeof(asid_stop), 0);
   _close_port();
+  snd_midi_event_free(coder);
+  snd_seq_close(seq);
 }
 
 static int asid_flush(char *state) { return 0; }
