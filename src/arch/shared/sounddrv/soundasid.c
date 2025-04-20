@@ -96,13 +96,13 @@ typedef struct {
   uint8_t sid_modified[sizeof(regmap)];
   bool sid_modified_flag;
   CLOCK last_irq;
+  uint64_t start_clock;
 } asid_state_t;
 
 static asid_state_t asid_state[CHIPS];
 static uint32_t bytes_saved = 0;
 static uint32_t bytes_total = 0;
 static bool use_update_reg = false;
-static uint64_t start_clock = 0;
 
 static uint64_t get_clock(void) {
   struct timespec res;
@@ -182,7 +182,6 @@ static unsigned int _get_port_count(void) {
 }
 
 static int _open_port(unsigned int port_number) {
-  start_clock = 0;
   unsigned int nports = _get_port_count();
   if (nports < 1) {
     return -1;
@@ -240,6 +239,7 @@ static int _open_port(unsigned int port_number) {
     memset(&(state->sid_modified), true, sizeof(state->sid_modified));
     state->sid_modified_flag = true;
     state->last_irq = 0;
+    state->start_clock = 0;
     if (asid_write_(chip, 0)) {
       log_message(LOG_DEFAULT, "initial write failed");
       return -1;
@@ -477,17 +477,17 @@ static uint64_t clock_to_nanos(uint64_t clock) {
 
 static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
                       uint8_t chipno, uint16_t addr, uint8_t byte) {
-  CLOCK irq_diff = maincpu_int_status->irq_clk - asid_state[chipno].last_irq;
+  asid_state_t *state = &asid_state[chipno];
+  CLOCK irq_diff = maincpu_int_status->irq_clk - state->last_irq;
 
   // Flush changes from previous IRQ.
   if (irq_diff > 256) {
     uint64_t now = get_clock();
-    if (start_clock == 0) {
-      start_clock = now;
+    if (state->start_clock == 0) {
+      state->start_clock = now;
     }
-    asid_state[chipno].last_irq = maincpu_int_status->irq_clk;
-    int64_t n =
-        clock_to_nanos(asid_state[chipno].last_irq) - (now - start_clock);
+    state->last_irq = maincpu_int_status->irq_clk;
+    int64_t n = clock_to_nanos(state->last_irq) - (now - state->start_clock);
     if (n < 0) {
       float slip_ms = labs(n) / 1e6;
       if (slip_ms > 1) {
