@@ -55,6 +55,8 @@
 
 #define CHIPS 2
 
+const unsigned int asid_cycle_pad = 20000;
+
 const uint8_t asid_start[] = {SYSEX_START, SYSEX_MAN_ID, ASID_START,
                               SYSEX_STOP};
 const uint8_t asid_stop[] = {SYSEX_START, SYSEX_MAN_ID, ASID_STOP, SYSEX_STOP};
@@ -467,7 +469,8 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
       state->start_clock = now;
     }
     state->last_irq = maincpu_int_status->irq_clk;
-    int64_t n = clock_to_nanos(state->last_irq) - (now - state->start_clock);
+    int64_t n = clock_to_nanos(state->last_irq + asid_cycle_pad) -
+                (now - state->start_clock);
     if (n < 0) {
       float slip_ms = labs(n) / 1e6;
       if (slip_ms > 1) {
@@ -484,12 +487,6 @@ static int asid_dump2(CLOCK clks, CLOCK irq_clks, CLOCK nmi_clks,
   }
 
   _set_reg(reg, byte, chipno);
-
-  // Many playroutines write to all registers in sequence, so flush on the last
-  // register.
-  // if (reg == 24) {
-  //   asid_write_(chipno);
-  // }
   return 0;
 }
 
