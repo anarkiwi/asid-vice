@@ -86,7 +86,7 @@ typedef struct {
   uint8_t update_buffer[ASID_BUFFER_SIZE];
   uint8_t update_reg_buffer[ASID_BUFFER_SIZE];
   uint8_t sid_register[sizeof(regmap)];
-  uint8_t sid_modified[sizeof(regmap)];
+  bool sid_modified[sizeof(regmap)];
   bool sid_modified_flag;
   CLOCK last_irq;
   uint64_t start_clock;
@@ -228,14 +228,10 @@ static int _open_port(unsigned int port_number) {
     state->update_buffer[sizeof(asid_prefix)] = asid_update[chip];
     state->update_reg_buffer[sizeof(asid_prefix)] = asid_update_reg[chip];
     memset(&(state->sid_register), 0, sizeof(state->sid_register));
-    memset(&(state->sid_modified), true, sizeof(state->sid_modified));
-    state->sid_modified_flag = true;
+    memset(&(state->sid_modified), false, sizeof(state->sid_modified));
+    state->sid_modified_flag = false;
     state->last_irq = 0;
     state->start_clock = 0;
-    if (asid_write_(chip, 0)) {
-      log_message(LOG_DEFAULT, "initial write failed");
-      return -1;
-    }
   }
 
   return 0;
@@ -327,21 +323,18 @@ static int asid_write_(uint8_t chip, uint64_t nsec) {
 
   uint8_t i;
   uint8_t t = sizeof(asid_prefix) + 1;
-  uint8_t c = 0;
 
   for (i = 0; i < sizeof(regmap); ++i) {
     if (!state->sid_modified[i]) {
       continue;
     }
-    uint8_t val = state->sid_register[i];
     uint8_t reg = i;
+    uint8_t val = state->sid_register[reg];
     if (val > 0x7f) {
       reg |= (1 << 6);
     }
-    val &= 0x7f;
     state->update_reg_buffer[t++] = reg;
-    state->update_reg_buffer[t++] = val;
-    ++c;
+    state->update_reg_buffer[t++] = val & 0x7f;
   }
   state->update_reg_buffer[t++] = SYSEX_STOP;
 
@@ -365,13 +358,11 @@ static int asid_write_(uint8_t chip, uint64_t nsec) {
     }
     state->update_buffer[p++] = val & 0x7f;
   }
-  for (i = 0; i < sizeof(mask); ++i) {
+  for (i = 0; i < sizeof(mask); ++i, mask >>= 7) {
     state->update_buffer[m++] = mask & 0x7f;
-    mask >>= 7;
   }
-  for (i = 0; i < sizeof(msb); ++i) {
+  for (i = 0; i < sizeof(msb); ++i, msb >>= 7) {
     state->update_buffer[m++] = msb & 0x7f;
-    msb >>= 7;
   }
   state->update_buffer[p++] = SYSEX_STOP;
   state->sid_modified_flag = false;
@@ -450,8 +441,7 @@ static void _set_reg(uint8_t reg, uint8_t byte, uint8_t chip) {
     return;
   }
   // flush on change to control register.
-  if (((reg == 4 || reg == 11 || reg == 18) || use_update_reg) &&
-      state->sid_modified[reg]) {
+  if ((reg == 4 || reg == 11 || reg == 18) && state->sid_modified[reg]) {
     asid_write_(chip, 0);
   }
   state->sid_register[reg] = byte;
