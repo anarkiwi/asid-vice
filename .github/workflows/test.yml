@@ -5,12 +5,12 @@ jobs:
   test-build-latest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: test build
         run: ./build.sh
   test-build-2410:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: test build
         run: docker build -f Dockerfile.2410 .
