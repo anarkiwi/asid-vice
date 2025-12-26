@@ -104,9 +104,11 @@
 #include "ltkernal.h"
 #include "mach5.h"
 #include "magicdesk.h"
+#include "magicdesk16.h"
 #include "magicformel.h"
 #include "magicvoice.h"
 #include "maxbasic.h"
+#include "megabyter.h"
 #include "mikroass.h"
 #include "mmc64.h"
 #include "mmcreplay.h"
@@ -115,6 +117,7 @@
 #include "pagefox.h"
 #include "partner64.h"
 #include "prophet64.h"
+#include "profidos.h"
 #include "ramlink.h"
 #include "retroreplay.h"
 #include "rexep256.h"
@@ -292,6 +295,7 @@ static cartridge_info_t cartlist[] = {
     { CARTRIDGE_NAME_MAGIC_FORMEL,        CARTRIDGE_MAGIC_FORMEL,        CARTRIDGE_GROUP_FREEZER },
     { CARTRIDGE_NAME_MAGIC_VOICE,         CARTRIDGE_MAGIC_VOICE,         CARTRIDGE_GROUP_UTIL },
     { CARTRIDGE_NAME_MAX_BASIC,           CARTRIDGE_MAX_BASIC,           CARTRIDGE_GROUP_UTIL },
+    { CARTRIDGE_NAME_MEGABYTER,           CARTRIDGE_MEGABYTER,           CARTRIDGE_GROUP_GAME },
     { CARTRIDGE_NAME_MIKRO_ASSEMBLER,     CARTRIDGE_MIKRO_ASSEMBLER,     CARTRIDGE_GROUP_UTIL },
     { CARTRIDGE_NAME_MMC64,               CARTRIDGE_MMC64,               CARTRIDGE_GROUP_UTIL },
     { CARTRIDGE_NAME_MMC_REPLAY,          CARTRIDGE_MMC_REPLAY,          CARTRIDGE_GROUP_FREEZER },
@@ -300,6 +304,7 @@ static cartridge_info_t cartlist[] = {
     { CARTRIDGE_NAME_P64,                 CARTRIDGE_P64,                 CARTRIDGE_GROUP_UTIL },
     { CARTRIDGE_NAME_PAGEFOX,             CARTRIDGE_PAGEFOX,             CARTRIDGE_GROUP_UTIL },
     { CARTRIDGE_NAME_PARTNER64,           CARTRIDGE_PARTNER64,           CARTRIDGE_GROUP_UTIL },
+    { CARTRIDGE_NAME_PROFIDOS,            CARTRIDGE_PROFIDOS,            CARTRIDGE_GROUP_UTIL },
     { CARTRIDGE_NAME_RAMLINK,             CARTRIDGE_RAMLINK,             CARTRIDGE_GROUP_UTIL },
     { CARTRIDGE_NAME_RETRO_REPLAY,        CARTRIDGE_RETRO_REPLAY,        CARTRIDGE_GROUP_FREEZER },
     { CARTRIDGE_NAME_REX,                 CARTRIDGE_REX,                 CARTRIDGE_GROUP_UTIL },
@@ -347,11 +352,14 @@ cartridge_info_t *cartridge_get_info_list(void)
     return &cartlist[0];
 }
 
-/* FIXME: this only works in slot 0 right now */
+/* FIXME: slot arg is ignored right now.
+   this should return a valid cartridge ID for a given slot, or CARTRIDGE_NONE
+   FIXME: should we return CARTRIDGE_CRT(0) or not?
+*/
 int cartridge_get_id(int slot)
 {
     int type = cart_getid_slotmain();
-    /*DBG(("cartridge_get_id(slot:%d): type:%d\n", slot, type));*/
+    /* DBG(("cartridge_get_id(slot:%d): type:%d\n", slot, type)); */
     return type;
 }
 
@@ -469,6 +477,7 @@ static int set_cartridge_type(int val, void *param)
         case CARTRIDGE_KCS_POWER:
         case CARTRIDGE_MACH5:
         case CARTRIDGE_MAGIC_DESK:
+        case CARTRIDGE_MAGIC_DESK_16:
         case CARTRIDGE_MAGIC_FORMEL:
         case CARTRIDGE_MAGIC_VOICE:
         case CARTRIDGE_MAX_BASIC:
@@ -480,6 +489,7 @@ static int set_cartridge_type(int val, void *param)
         case CARTRIDGE_P64:
         case CARTRIDGE_PAGEFOX:
         case CARTRIDGE_PARTNER64:
+        case CARTRIDGE_PROFIDOS:
         case CARTRIDGE_RAMLINK:
         case CARTRIDGE_RETRO_REPLAY:
         case CARTRIDGE_REX:
@@ -798,7 +808,7 @@ static int crt_attach(const char *filename, uint8_t *rawcart)
                 rc = capture_crt_attach(fd, rawcart);
                 break;
             case CARTRIDGE_COMAL80:
-                rc = comal80_crt_attach(fd, rawcart);
+                rc = comal80_crt_attach(fd, rawcart, header.subtype);
                 break;
             case CARTRIDGE_DELA_EP256:
                 rc = delaep256_crt_attach(fd, rawcart);
@@ -904,6 +914,9 @@ static int crt_attach(const char *filename, uint8_t *rawcart)
             case CARTRIDGE_MAGIC_DESK:
                 rc = magicdesk_crt_attach(fd, rawcart);
                 break;
+            case CARTRIDGE_MAGIC_DESK_16:
+                rc = magicdesk16_crt_attach(fd, rawcart);
+                break;
             case CARTRIDGE_MAGIC_FORMEL:
                 rc = magicformel_crt_attach(fd, rawcart);
                 break;
@@ -912,6 +925,9 @@ static int crt_attach(const char *filename, uint8_t *rawcart)
                 break;
             case CARTRIDGE_MAX_BASIC:
                 rc = maxbasic_crt_attach(fd, rawcart);
+                break;
+            case CARTRIDGE_MEGABYTER:
+                rc = megabyter_crt_attach(fd, rawcart, filename);
                 break;
             case CARTRIDGE_MIKRO_ASSEMBLER:
                 rc = mikroass_crt_attach(fd, rawcart);
@@ -936,6 +952,9 @@ static int crt_attach(const char *filename, uint8_t *rawcart)
                 break;
             case CARTRIDGE_PARTNER64:
                 rc = partner64_crt_attach(fd, rawcart);
+                break;
+            case CARTRIDGE_PROFIDOS:
+                rc = profidos_crt_attach(fd, rawcart);
                 break;
             case CARTRIDGE_UC1:
                 rc = uc1_crt_attach(fd, rawcart);
@@ -1169,6 +1188,12 @@ exiterror:
     lib_free(rawcart);
     log_message(LOG_DEFAULT, "CART: could not attach '%s'.", abs_filename);
     lib_free(abs_filename);
+    return -1;
+}
+
+/* FIXME: add additional image to standard cartridge */
+int cartridge_attach_add_image(int type, const char *filename)
+{
     return -1;
 }
 
