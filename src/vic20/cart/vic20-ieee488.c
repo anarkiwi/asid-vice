@@ -31,7 +31,6 @@
 #include "cmdline.h"
 #include "export.h"
 #include "machine.h"
-#include "parallel.h"
 #include "resources.h"
 #include "snapshot.h"
 #include "uiapi.h"
@@ -123,9 +122,6 @@ static const resource_int_t resources_int[] = {
 
 int vic20_ieee488_resources_init(void)
 {
-    if (parallel_resources_init() < 0) {
-        return -1;
-    }
     return resources_register_int(resources_int);
 }
 
@@ -142,9 +138,6 @@ static cmdline_option_t const cmdline_options[] =
 
 int vic20_ieee488_cmdline_options_init(void)
 {
-    if (parallel_cmdline_options_init() < 0) {
-        return -1;
-    }
     return cmdline_register_options(cmdline_options);
 }
 

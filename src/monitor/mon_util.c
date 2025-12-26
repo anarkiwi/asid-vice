@@ -49,18 +49,10 @@
 #include "uimon.h"
 #include "vsyncapi.h"
 
-/*#define DEBUG_MONUTIL*/
-
-#ifdef DEBUG_MONUTIL
-#define DBG(x)  log_printf x
-#else
-#define DBG(x)
-#endif
-
 static char *bigbuffer = NULL;
 static const unsigned int bigbuffersize = 10000;
 static unsigned int bigbufferwrite = 0;
-static unsigned int bigbuffermode = 0; /* 0: ascii, 1: petscii, 2: scrcode, 3: petscii (uppercase), 4: scrcode (uppercase) */
+static unsigned int bigbuffermode = 0; /* 0: ascii, 1: petscii, 2: scrcode */
 
 static FILE *mon_log_file = NULL;
 
@@ -195,9 +187,6 @@ static int mon_out_buffered(const char *buffer, int mode, int maxlen)
 {
     int rv = 0;
     int len;
-
-    DBG(("console_log:%p console_cannot_output:%d",
-         console_log, console_log ? console_log->console_cannot_output : -1));
 
     if (!console_log || console_log->console_cannot_output) {
 

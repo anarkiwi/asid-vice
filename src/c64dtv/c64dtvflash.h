@@ -47,4 +47,6 @@ extern uint8_t c64dtvflash_mem[];
 extern uint8_t c64dtvflash_mem_lock[];
 extern uint8_t c64dtvflash_state;
 
+extern int c64dtvflash_rom_loaded;
+
 #endif

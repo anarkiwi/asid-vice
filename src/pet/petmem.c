@@ -65,7 +65,6 @@
 
 static uint8_t mem_read_patchbuf(uint16_t addr);
 static void mem_initialize_memory_6809_flat(void);
-static void mem_initialize_memory_6809_banked(void);
 
 uint8_t petmem_2001_buf_ef[256];
 
@@ -208,11 +207,7 @@ static void store_extC(uint16_t addr, uint8_t value)
  */
 static uint8_t read_vmem(uint16_t addr)
 {
-    addr &= 0x3fff;
-    last_access = mem_ram[0x8000 + addr];
-#if CRTC_BEAM_RACING && CRTC_SNOW
-    crtc_update_snow(addr, last_access);
-#endif
+    last_access = mem_ram[0x8000 + (addr & 0x3fff)];
     return last_access;
 }
 
@@ -236,19 +231,13 @@ static void store_vmem(uint16_t addr, uint8_t value)
  */
 static uint8_t read_vmirror(uint16_t addr)
 {
-    addr &= 0x0bff;   /* 0x3FF + 0x800 */
-    last_access = mem_ram[0x8000 + addr];
-#if CRTC_BEAM_RACING
-    if (addr < 0x0400) {
-        crtc_update_snow(addr, last_access);
-    }
-#endif
+    last_access = mem_ram[0x8000 + (addr & 0x0bff)];   /* 0x3FF + 0x800 */
     return last_access;
 }
 
 static void store_vmirror(uint16_t addr, uint8_t value)
 {
-    addr &= 0x0bff;   /* 0x3FF + 0x800 */
+    addr &= 0x0bff;
     mem_ram[0x8000 + addr] = value;
     last_access = value;
 #if CRTC_BEAM_RACING
@@ -306,27 +295,9 @@ static void rom6809_store(uint16_t addr, uint8_t value)
 }
 #endif
 
-/*
- * This is a very complicated way to return "addr >> 8" in *most* cases.
- * This is because with a LOAD instruction, the last successful read on the
- * bus was the high byte of the address.
- * Example: LDA $9000 reads AD 00 90 as instruction bytes and then from $9000.
- * Even LDA ($12),Y reads B1 12 as instruction bytes, but then 00 90 from the
- * zero page, then from $9000.
- * The only exception is when there is indexing with a page crossing.
- * Then there is a dummy read from $90xx before the real read of $91xx.
- * In that case you get $90, not $91.
- *
- * Annoyingly, when viewing memory with Vice's monitor, this won't work right.
- */
-inline uint8_t read_unused(uint16_t addr)
+uint8_t read_unused(uint16_t addr)
 {
     return last_access;
-}
-
-static inline uint8_t peek_unused(uint16_t addr)
-{
-    return addr >> 8;
 }
 
 static uint8_t read_io_88_8f(uint16_t addr)
@@ -630,7 +601,6 @@ static int efe0_dump(void)
 
 void set_spet_bank(int banknr)
 {
-    spet_bank = banknr;
     spet_bank_ptr = &mem_ram[EXT_RAM + (banknr << 12)];
 }
 
@@ -639,11 +609,8 @@ void petmem_reset(void)
     spet_ramen = 1;
     set_spet_bank(0);
     spet_ctrlwp = 1;
+    spet_flat_mode = 0;
     spet_firq_disabled = 0;
-    if (spet_flat_mode) {
-        spet_flat_mode = 0;
-        mem_initialize_memory_6809_banked();
-    }
 
     petmem_map_reg = 0;
     petmem_ramON = 0;
@@ -668,7 +635,7 @@ int petmem_superpet_diag(void)
 static uint8_t read_super_io(uint16_t addr)
 {
     if (addr >= 0xeff4) {       /* unused / readonly */
-        return read_unused(addr);
+        return last_access;
     } else if (addr >= 0xeff0) {       /* ACIA */
         last_access = acia1_read((uint16_t)(addr & 0x03));
     } else if ((addr & 0x0010) == 0) {
@@ -683,10 +650,9 @@ static uint8_t read_super_io(uint16_t addr)
 #endif /* DEBUG_DONGLE */
         } else {
             last_access = 0xff;
-            return last_access;
         }
     }
-    return read_unused(addr);   /* fallback */
+    return last_access;   /* fallback */
 }
 
 static void store_super_io(uint16_t addr, uint8_t value)
@@ -702,7 +668,7 @@ static void store_super_io(uint16_t addr, uint8_t value)
         spet_firq_disabled = (value & 0x20);
         spet_flat_mode = (value & 0x40);
         spet_ctrlwp = !(value & 0x80);
-        /* printf("spet_bank := %2d  ", spet_bank);
+        /* printf("spet_bank := %x  ", spet_bank);
            printf("spet_flat_mode := %d  ", !!spet_flat_mode);
            printf("spet_firq_disabled := %d  ", !!spet_firq_disabled);
            printf("spet_ctrlwp := %d\n", !!spet_ctrlwp); */
@@ -715,14 +681,14 @@ static void store_super_io(uint16_t addr, uint8_t value)
              */
             mem_initialize_memory_6809_flat();
             /* mon_bank(e_default_space, "extram");
-               extern uint16_t PC;
+               extern WORD PC;
                 printf("next opcode: %04X: banked %02X, flat %02X\n",
                        PC,
-                       spet_bank_ptr[PC & 0x0FFF],
+                       mem_ram[EXT_RAM + spet_bank_4k + (PC & 0x0FFF)],
                        mem_ram[EXT_RAM + PC]
                   ); */
         }
-        /* else if (spet_bank != old_spet_bank) {
+        /* else if (spet_bank_4k != old_spet_bank_4k) {
          *      maincpu_resync_limits(); notyet: 6809 doesn't use bank_base yet.
          * }
          */
@@ -785,7 +751,7 @@ static void store_super_flat(uint16_t addr, uint8_t value)
 
 /* ------------------------------------------------------------------------- */
 
-/* Generic 6502 memory access.  */
+/* Generic memory access.  */
 
 void mem_store(uint16_t addr, uint8_t value)
 {
@@ -796,8 +762,6 @@ uint8_t mem_read(uint16_t addr)
 {
     return _mem_read_tab_ptr[addr >> 8](addr);
 }
-
-/* Generic 6809 memory access.  */
 
 #define PRINT_6809_STORE        0
 #define PRINT_6809_READ         0
@@ -934,10 +898,10 @@ static uint8_t read_io_e8(uint16_t addr)
             break;
         case 0x80:              /* CRTC */
             if (petres.model.crtc) {
-                return last_access = crtc_read(addr);
+                last_access = crtc_read(addr);
             } /* fall through */
         case 0x00:
-            return read_unused(addr); /* Empty space */
+            return last_access;
         default:                /* 0x30, 0x50, 0x60, 0x70, 0x90-0xf0 */
             if (addr & 0x10) {
                 v1 = pia1_read(addr);
@@ -1094,11 +1058,8 @@ static void set_std_9tof(void)
             ramE8 = petres.ramselA && !(petmem_map_reg & FFF0_IO_PEEK_THROUGH);
             ramF = petres.ramselA;
             /*
-             * In this case the window of the I/O peek through is
-             * E800-E8FF. See note [1].
-             * Q: If there is no I/O peek through, how can we write
+             * XXX: If there is no I/O peek through, how can we write
              * again to the E888 register to restore I/O?
-             * A: FFF0 is always writable so you can enable I/O peek through.
              */
         } else {
             ram9 = petres.ramsel9;
@@ -1119,30 +1080,17 @@ static void set_std_9tof(void)
             mem_read_limit_tab[i] = 0;
         }
     } else {
-        /*
-         * On 8296, $9xxx can be used by the CRTC.  With a jumper, even more
-         * than that, but we don't emulate that.
-         */
-        void (*store9)(uint16_t, uint8_t);
-
-        fetch = ram9            ? read_vmem : /* ram9 can only be set on 8296 */
-                petrom_9_loaded ? rom_read :
-                                  read_unused;
-        store9 = petres.map == PET_MAP_8296 ? store_vmem :
-                                              store;
-
+        fetch = ram9 ? ram_read : rom_read;
         for (i = 0x90; i < 0xa0; i++) {
             _mem_read_tab[i] = fetch;
-            _mem_write_tab[i] = store9;
+            _mem_write_tab[i] = store;
             _mem_read_base_tab[i] = NULL;
             mem_read_limit_tab[i] = 0;
         }
     }
 
     /* Setup RAM/ROM at $A000 - $AFFF. */
-    fetch = ramA            ? ram_read :
-            petrom_A_loaded ? rom_read :
-                              read_unused;
+    fetch = ramA ? ram_read : rom_read;
     for (i = 0xa0; i < 0xb0; i++) {
         _mem_read_tab[i] = fetch;
         _mem_write_tab[i] = store;
@@ -1156,20 +1104,9 @@ static void set_std_9tof(void)
                                  _mem_read_base_tab, mem_read_limit_tab);
     }
 
-    /* Setup RAM/ROM at $B000 - $BFFF: Basic 4.0 or EPROM socket. */
-    fetch = ramBCD          ? ram_read :
-            petrom_B_loaded ? rom_read :
-                              read_unused;
-    for (i = 0xb0; i < 0xc0; i++) {
-        _mem_read_tab[i] = fetch;
-        _mem_write_tab[i] = store;
-        _mem_read_base_tab[i] = NULL;
-        mem_read_limit_tab[i] = 0;
-    }
-
-    /* Setup RAM/ROM at $C000 - $DFFF: Basic. */
+    /* Setup RAM/ROM at $B000 - $DFFF: Basic. */
     fetch = ramBCD ? ram_read : rom_read;
-    for (i = 0xc0; i <= 0xdf; i++) {
+    for (i = 0xb0; i <= 0xdf; i++) {
         _mem_read_tab[i] = fetch;
         _mem_write_tab[i] = store;
         _mem_read_base_tab[i] = NULL;
@@ -1265,7 +1202,7 @@ void get_mem_access_tables(read_func_ptr_t **read, store_func_ptr_t **write, uin
     *limit = mem_read_limit_tab;
 }
 
-/* called by mem_initialize_memory(), mem_toggle_watchpoints() */
+/* called by mem_update_config(), mem_toggle_watchpoints() */
 static void mem_update_tab_ptrs(int flag)
 {
     if (flag) {
@@ -1338,22 +1275,6 @@ void mem_toggle_watchpoints(int flag, void *context)
  * The register is write-only, and the value is written through to the
  * previously selected ram bank.
  *
- * Note [1]: The I/O-peek-through in expansion memory is active for
- * E800-EFFF. UE5, FPLA II, has only the 5 top address bits available to
- * make its decisions.  Since the original 64K board used /NO_ROM to
- * disable the ROMs (it is directly connected to CS2 on the ROM chips),
- * it would blend out the Editor ROM even if you had an extended one. So
- * E900-EFFF would be either empty space, or extra I/O chips, but not
- * ROM.
- * But also in the 8296, the I/O peek through seems to be only 256
- * bytes.  UE6, FPLA I, has more address bits and uses /NOIO (=CR6) and
- * NOROM (=CR7) too. This is for accessing the extra 32 KB of "main"
- * memory when CR7 = 0.
- * So, if CR7 = 1, then the I/O peek through seems to be 2 KB.
- * If CR7 = 0 (and petmem_ramON), then it is 256 bytes.
- * Sources:
- * http://www.zimmers.net/anonftp/pub/cbm/firmware/computers/pet/8296/8296desc3.tar.gz
- * http://www.zimmers.net/anonftp/pub/cbm/schematics/computers/pet/8296/CBM8296_ServiceManual_DinA4_alle.pdf
  */
 
 #define FFF0_BANK_C      0x08
@@ -1390,8 +1311,8 @@ static void store_8x96(uint16_t addr, uint8_t value)
                 if (value & FFF0_SCREEN_PEEK_THROUGH) {
                     /* screen memory mapped through */
                     for (; l < 0x90; l++) {
-                        _mem_read_tab[l] = read_vmem;
-                        _mem_write_tab[l] = store_vmem;
+                        _mem_read_tab[l] = ram_read;
+                        _mem_write_tab[l] = ram_store;
                         _mem_read_base_tab[l] = NULL;
                         mem_read_limit_tab[l] = 0;
                     }
@@ -1417,16 +1338,8 @@ static void store_8x96(uint16_t addr, uint8_t value)
                 bankCoffset = 0x8000 + ((value & FFF0_BANK_C) ? 0x8000 : 0);
                 for (l = 0xc0; l < 0x100; l++) {
                     if ((l == 0xe8) && (value & FFF0_IO_PEEK_THROUGH)) {
-                        /* In this case the window of the I/O
-                         * peek through is E800-EFFF. See note [1]. */
                         _mem_read_tab[l] = read_io_e8;
                         _mem_write_tab[l] = store_io_e8;
-                        _mem_read_base_tab[l] = NULL;
-                        mem_read_limit_tab[l] = 0;
-                    } else if ((l >= 0xe9) && (l <= 0xef) &&
-                            (value & FFF0_IO_PEEK_THROUGH)) {
-                        _mem_read_tab[l] = read_io_e9_ef;
-                        _mem_write_tab[l] = store_io_e9_ef;
                         _mem_read_base_tab[l] = NULL;
                         mem_read_limit_tab[l] = 0;
                     } else {
@@ -1638,30 +1551,29 @@ void mem_initialize_memory_6809(void)
 }
 
 /*
- * Reset the memory mapping to 00 if a FIRQ happens.
- * See http://mikenaberezny.com/wp-content/uploads/2009/11/superos9-mmu-schematic-r2.jpg
- * Note that it swaps the meaning of Q5 and Q6.
+ * The memory mapping is probably reset even if FIRQ is disabled
+ * (see http://mikenaberezny.com/wp-content/uploads/2009/11/superos9-mmu-schematic-r2.jpg )
+ * but since a missing FIRQ basically halts the 6809, there is little
+ * difference in practice.
  */
 int superpet_sync(void)
 {
-    if (spet_firq_disabled) {
-        log_error(pet_mem_log, "SuperPET: SYNC encountered, but no FIRQ possible!");
-        return 1;
-    }
-    set_spet_bank(0);
-    spet_ctrlwp = 1;
     spet_flat_mode = 0;
-    spet_firq_disabled = 0;
     mem_initialize_memory_6809_banked();
     /* mon_bank(e_default_space, "6809");
-       extern uint16_t PC;
+       extern WORD PC;
        printf("next opcode: %04X: banked %02X, flat %02X\n",
                PC,
                mem_ram[EXT_RAM + spet_bank_4k + (PC & 0x0FFF)],
                mem_ram[EXT_RAM + PC]
           ); */
 
-    return 0;
+    if (spet_firq_disabled) {
+        log_error(pet_mem_log, "SuperPET: SYNC encountered, but no FIRQ possible!");
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 /* This does the plain 8032 configuration, as 8096 stuff only comes up when
@@ -1709,6 +1621,10 @@ void mem_initialize_memory(void)
     mem_read_limit_tab[0x100] = 0;
 
     ram_size = petres.model.ramSize * 1024;
+    _mem_read_tab_ptr = _mem_read_tab;
+    _mem_write_tab_ptr = _mem_write_tab;
+    _mem_read_tab_ptr_dummy = _mem_read_tab;
+    _mem_write_tab_ptr_dummy = _mem_write_tab;
 
     /* setup watchpoint tables */
     _mem_read_tab_watch[0] = zero_read_watch;
@@ -1742,10 +1658,10 @@ void mem_initialize_memory(void)
             _mem6809_read_tab_watch[i] = read6809_watch;
             _mem6809_write_tab_watch[i] = store6809_watch;
         }
-    }
 
-    /* Set memory access via watchpoints, if needed: _mem_read_tab_ptr etc */
-    mem_toggle_watchpoints(watchpoints_active, NULL);
+        _mem6809_read_tab_ptr = _mem6809_read_tab;
+        _mem6809_write_tab_ptr = _mem6809_write_tab;
+    }
 
     maincpu_resync_limits();
 }
@@ -1877,7 +1793,7 @@ static uint8_t peek_bank_io(uint16_t addr)
             }
             /* FALL THROUGH */
         case 0x00:
-            return peek_unused(addr); /* Empty space */
+            return addr >> 8;
         default:                /* 0x30, 0x50, 0x60, 0x70, 0x90-0xf0 */
             break;
     }
@@ -2066,18 +1982,16 @@ uint8_t mem_bank_peek(int bank, uint16_t addr, void *context)
             if (addr >= 0xE900 && addr < 0xE800 + petres.model.IOSize) {
                 uint8_t result;
                 /* is_peek_access = 1; FIXME */
-                result = peek_unused(addr);
+                result = read_unused(addr);
                 /* is_peek_access = 0; FIXME */
                 return result;
             }
-            if (addr >= 0x8800 && addr < 0x9000 &&
-                pet_colour_type == PET_COLOUR_TYPE_OFF) {
-                    return peek_io_88_8f(addr);
+            if (addr >= 0x8800 && addr < 0x9000) {
+                return peek_io_88_8f(addr);
             }
             /* FALLS THROUGH TO normal read with side effects */
     }
     /* For extram, rom, cpu/cpu6809 when not accessing I/O, and ram: */
-    /* TODO: might need PEEK for cases with empty space */
     return mem_bank_read(bank, addr, context);
 }
 

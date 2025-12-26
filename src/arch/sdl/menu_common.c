@@ -245,8 +245,8 @@ char win32_path_buf[80];
 
 static char *sdl_ui_menu_file_translate_seperator(const char *text)
 {
-    size_t len;
-    size_t i;
+    int len;
+    int i;
 
     len = strlen(text);
 

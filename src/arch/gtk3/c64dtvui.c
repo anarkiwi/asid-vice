@@ -53,7 +53,6 @@ static const char *c64dtv_model_list[] = {
     "V2 NTSC",
     "V3 PAL",
     "V3 NTSC",
-    "Hummer (PAL)",
     "Hummer (NTSC)",
     NULL
 };

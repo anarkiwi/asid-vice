@@ -28,33 +28,6 @@
  *
  */
 
-/*
-    calls an external program, waits for it to finish, and returns status
-
-    name            file name of external program
-                    - If the name contains slashes ("/"), the program at the exact
-                      location will be executed.
-                    - else PATH will be used to search for the binary
-    argv            array of pointers to arguments
-                    The  char *const  argv[]  argument is an array of pointers to null-terminated
-                    strings that represent the argument list available to the new program.
-                    The first argument, by convention, should point to the filename associated with
-                    the file being executed. The array of pointers must be terminated by a null pointer.
-
-    pstdout_redir   pointer to name of file to redirect stdout to
-                    - if file name is empty, a temporary name will be created
-                    - no redirection if NULL
-    stderr_redir    name of file to redirect stderr to
-                    - no redirection if NULL
-
-    returns:        -1          on errors
-                    any other   returncode of the called process
-*/
-
-/* this code is currently used to spawn sub processes in:
-    src/zfile.c
-    src/arch/gtk3/actions-help.c (fallback for gtk_show_uri_on_window)
-*/
 #include "vice.h"
 
 #include "archdep_defs.h"
@@ -63,12 +36,10 @@
 #include <string.h>
 #include <errno.h>
 
-#ifdef HAVE_UNISTD_H
-# include <unistd.h>
-#endif
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+# include <fcntl.h>
 
 #ifdef UNIX_COMPILE
 # include <sys/wait.h>
@@ -94,7 +65,7 @@
 /* #define DEBUG_SPAWN */
 
 #ifdef DEBUG_SPAWN
-#define LOG(a)      log_printf  a
+#define LOG(a) log_printf  a
 #else
 #define LOG(a)
 #endif
@@ -104,12 +75,10 @@
 int archdep_spawn(const char *name, char **argv,
                   char **pstdout_redir, const char *stderr_redir)
 {
-    pid_t pid;
     pid_t child_pid;
-    int child_status = 0;
+    int child_status;
     char *stdout_redir;
-    int stdout_errno = 0;
-    int stderr_errno = 0;
+
 
     if (pstdout_redir != NULL) {
         if (*pstdout_redir == NULL) {
@@ -120,48 +89,35 @@ int archdep_spawn(const char *name, char **argv,
         stdout_redir = NULL;
     }
 
-    log_message(LOG_DEFAULT, "Spawn: forking process '%s'", name);
-    child_pid = fork();
+    child_pid = vfork();
     if (child_pid < 0) {
-        log_error(LOG_DEFAULT, "fork() failed: %s.", strerror(errno));
+        log_error(LOG_DEFAULT, "vfork() failed: %s.", strerror(errno));
         return -1;
     } else {
         if (child_pid == 0) {
-            /* child - CAUTION: log system does not work here */
             if (stdout_redir && freopen(stdout_redir, "w", stdout) == NULL) {
-                stdout_errno = errno;
+                log_error(LOG_DEFAULT, "freopen(\"%s\") failed: %s.", stdout_redir, strerror(errno));
                 _exit(-1);
             }
             if (stderr_redir && freopen(stderr_redir, "w", stderr) == NULL) {
-                stderr_errno = errno;
+                log_error(LOG_DEFAULT, "freopen(\"%s\") failed: %s.", stderr_redir, strerror(errno));
                 _exit(-1);
             }
             execvp(name, argv);
-            /* execvp should never return, except when there was some error */
             _exit(-1);
         }
     }
 
-    /* wait for the child to finish */
-    if ((pid = waitpid(child_pid, &child_status, 0)) != child_pid) {
-        log_error(LOG_DEFAULT, "waitpid(%d) got pid %d (%d): %s",
-                  child_pid, pid, errno, strerror(errno));
+    if (waitpid(child_pid, &child_status, 0) != child_pid) {
+        log_error(LOG_DEFAULT, "waitpid() failed: %s", strerror(errno));
         return -1;
     }
 
-    /* output the log messages in parent context */
-    if (stdout_errno) {
-        log_error(LOG_DEFAULT, "freopen(\"%s\") failed: %s.", stdout_redir, strerror(stdout_errno));
-    }
-    if (stderr_errno) {
-        log_error(LOG_DEFAULT, "freopen(\"%s\") failed: %s.", stderr_redir, strerror(stderr_errno));
-    }
-
-    LOG(("WIFEXITED(child_status):%d", WIFEXITED(child_status)));
     if (WIFEXITED(child_status)) {
         return WEXITSTATUS(child_status);
+    } else {
+        return -1;
     }
-    return -1;
 }
 
 #elif defined(WINDOWS_COMPILE)

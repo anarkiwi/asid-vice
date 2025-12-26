@@ -47,7 +47,6 @@
 #include "vice_gtk3.h"
 #include "ram.h"
 #include "resources.h"
-#include "lib.h"
 
 #include "settings_ramreset.h"
 
@@ -101,7 +100,7 @@ static const vice_gtk3_combo_entry_int_t powers_of_two[] = {
 
 /** \brief  Buffer used to print the raw text of the hexdump
  */
-static char *printbuffer = NULL;
+static char printbuffer[PREVIEWTEXTBYTES];
 
 
 /** \brief  Handler for the 'value-changed' event of the widgets in this dialog
@@ -117,11 +116,6 @@ static void on_value_changed(GtkWidget *widget, gpointer data)
     GtkTextIter start;
     GtkTextIter end;
 
-    /* FIXME: right now we allocate the buffer once on first use and never
-              free/release it */
-    if (printbuffer == NULL) {
-        printbuffer = lib_malloc(PREVIEWTEXTBYTES);
-    }
     ram_init_print_pattern(printbuffer, PREVIEWPATTERNBYTES, "\n");
 
     buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(data));

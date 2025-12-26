@@ -90,14 +90,8 @@ void datasette_reset_counter(int port);
 void datasette_event_playback_port1(CLOCK offset, void *data);
 void datasette_event_playback_port2(CLOCK offset, void *data);
 
-/*
- * Emulator specific functions.
- * Note that machine_set_tape_read_in() is implemented on a best-effort basis.
- * In many machines, the tape read signal is connected to an edge-triggered
- * input which does not store its level.
- */
+/* Emulator specific functions.  */
 void machine_trigger_flux_change(int port, unsigned int on);
-void machine_set_tape_read_in(int port, unsigned int on);
 void machine_set_tape_sense(int port, int sense);
 void machine_set_tape_write_in(int port, int val);
 void machine_set_tape_motor_in(int port, int val);

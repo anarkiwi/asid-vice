@@ -259,13 +259,14 @@ EXTRA_DIST = \
 	macOS-ui-runtime.sh \
 	Resources/VICE.icns \
 	vice-launcher.sh \
+	x11-launcher.sh \
 	vice_sdl.h
 
 if WINDOWS_COMPILE
 
-# Generate icons
+# Use Gtk's icon stuff to generate icon sets
 all:
-	(cd $(top_builddir)/data/common && $(MAKE) win32_res_files)
+	(cd ../gtk3/data/win32 && $(MAKE))
 
 endif
 

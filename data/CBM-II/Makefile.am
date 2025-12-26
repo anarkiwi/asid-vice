@@ -56,7 +56,6 @@ gtk3_keymaps = \
 
 sdl_keymaps = \
 	sdl_sym.vkm \
-	sdl_sym_de.vkm \
 	sdl_pos.vkm
 
 if USE_SDLUI

@@ -37,7 +37,6 @@
 #include "lib.h"
 #include "log.h"
 #include "monitor.h"
-#include "plus4cart.h"
 #include "plus4mem.h"
 #include "resources.h"
 #include "tedtypes.h"
@@ -49,13 +48,13 @@
 /* #define IODEBUGRW */
 
 #ifdef IODEBUG
-#define DBG(x) log_printf x
+#define DBG(x) printf x
 #else
 #define DBG(x)
 #endif
 
 #ifdef IODEBUGRW
-#define DBGRW(x) log_printf x
+#define DBGRW(x) printf x
 #else
 #define DBGRW(x)
 #endif
@@ -173,7 +172,7 @@ static void io_source_msg_detach_last(uint16_t addr, int amount, io_source_list_
 
     current = current->next;
 
-    DBG(("IO: check %d sources for addr %04x", amount, addr));
+    DBG(("IO: check %d sources for addr %04x", real_amount, addr));
     while (current) {
         /* DBG(("IO: check '%s'", current->device->name)); */
         if (current->device->io_source_valid &&
@@ -496,31 +495,15 @@ void cartio_set_highest_order(unsigned int nr)
 
 uint8_t plus4io_fd00_read(uint16_t addr)
 {
-    uint8_t value;
-
     DBGRW(("IO: io-fd00 r %04x", addr));
-
-    /* some cartridge(s) might force data on the bus when I/O is selected */
-    if (plus4cart_fd00_read(addr, &value) == CART_READ_VALID) {
-        ted.last_cpu_val = value;
-    } else {
-        ted.last_cpu_val = io_read(&plus4io_fd00_head, addr);
-    }
-    /*DBG(("IO read: io-fd00 r %04x val %02x", addr, ted.last_cpu_val));*/
+    ted.last_cpu_val = io_read(&plus4io_fd00_head, addr);
     return ted.last_cpu_val;
 }
 
-/* same as above, but without side effects (for the monitor) */
 uint8_t plus4io_fd00_peek(uint16_t addr)
 {
-    uint8_t value;
     DBGRW(("IO: io-fd00 p %04x", addr));
-
-    if (plus4cart_fd00_peek(addr, &value) != CART_READ_VALID) {
-        value = io_peek(&plus4io_fd00_head, addr);
-    }
-    /*DBG(("IO peek: io-fd00 r %04x val %02x", addr, value));*/
-    return value;
+    return io_peek(&plus4io_fd00_head, addr);
 }
 
 void plus4io_fd00_store(uint16_t addr, uint8_t value)
@@ -532,27 +515,15 @@ void plus4io_fd00_store(uint16_t addr, uint8_t value)
 
 uint8_t plus4io_fe00_read(uint16_t addr)
 {
-    uint8_t value;
     DBGRW(("IO: io-fe00 r %04x", addr));
-
-    /* some cartridge(s) might force data on the bus when I/O is selected */
-    if (plus4cart_fe00_read(addr, &value) == CART_READ_VALID) {
-        ted.last_cpu_val = value;
-    } else {
-        ted.last_cpu_val = io_read(&plus4io_fe00_head, addr);
-    }
+    ted.last_cpu_val = io_read(&plus4io_fe00_head, addr);
     return ted.last_cpu_val;
 }
 
-/* same as above, but without side effects (for the monitor) */
 uint8_t plus4io_fe00_peek(uint16_t addr)
 {
-    uint8_t value;
     DBGRW(("IO: io-fe00 p %04x", addr));
-    if (plus4cart_fe00_peek(addr, &value) != CART_READ_VALID) {
-        value = io_peek(&plus4io_fe00_head, addr);
-    }
-    return value;
+    return io_peek(&plus4io_fe00_head, addr);
 }
 
 void plus4io_fe00_store(uint16_t addr, uint8_t value)

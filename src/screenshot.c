@@ -34,11 +34,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
-#endif
 
-#include "cmdline.h"
 #include "gfxoutput.h"
 #include "lib.h"
 #include "log.h"
@@ -53,13 +50,6 @@
 #include "ui.h"
 #include "vsync.h"
 
-/* #define DEBUG_SCREENSHOT */
-
-#ifdef DEBUG_SCREENSHOT
-#define DBG(x) log_printf x
-#else
-#define DBG(x)
-#endif
 
 static log_t screenshot_log = LOG_DEFAULT;
 static gfxoutputdrv_t *recording_driver;
@@ -207,9 +197,7 @@ int screenshot_save(const char *drvname, const char *filename,
     screenshot_t screenshot;
     gfxoutputdrv_t *drv;
     int result;
-
-    DBG(("screenshot_save(%s, %s, ...)", drvname, filename));
-
+    /* printf("screenshot_save(%s, %s, ...)\n", drvname, filename); */
     if ((drv = gfxoutput_get_driver(drvname)) == NULL) {
         return -1;
     }
@@ -234,7 +222,7 @@ int screenshot_save(const char *drvname, const char *filename,
     }
 
     result = screenshot_save_core(&screenshot, drv, filename);
-    DBG(("screenshot_save_core result:%d", result));
+
     if (result < 0) {
         recording_driver = NULL;
         recording_canvas = NULL;
@@ -260,17 +248,13 @@ int memmap_screenshot_save(const char *drvname, const char *filename, int x_size
 }
 #endif
 
-/* called for each frame */
 int screenshot_record(void)
 {
     screenshot_t screenshot;
-    int result;
 
     if (recording_driver == NULL) {
         return 0;
     }
-
-    /* DBG(("screenshot_record")); */
 
     /* Retrive framebuffer and screen geometry.  */
     if (recording_canvas != NULL) {
@@ -284,15 +268,7 @@ int screenshot_record(void)
         return -1;
     }
 
-    result = screenshot_save_core(&screenshot, NULL, NULL);
-    DBG(("screenshot_record result:%d", result));
-    if (result < 0) {
-        /*log_error(screenshot_log, "Video recording failed, stopping...");*/
-        screenshot_stop_recording();
-        ui_display_recording(UI_RECORDING_STATUS_NONE);
-    }
-
-    return result;
+    return screenshot_save_core(&screenshot, NULL, NULL);
 }
 
 void screenshot_stop_recording(void)
@@ -350,12 +326,8 @@ char *screenshot_create_datetime_string(void)
 {
     time_t stamp = time(NULL);
     struct tm *stamp_tm = localtime(&stamp);
-#ifdef HAVE_GETTIMEOFDAY
     struct timeval tv;
-#else
-    static unsigned int count = 0;
-#endif
-    char *result, buf[40];
+    char *result, buf[20];
 
     if (stamp_tm == NULL ||
         strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", stamp_tm) == 0) {
@@ -363,20 +335,12 @@ char *screenshot_create_datetime_string(void)
         return NULL;
     }
 
-#ifdef HAVE_GETTIMEOFDAY
     if (gettimeofday(&tv, NULL) < 0 ||
         (result = lib_msprintf("%s%02ld", buf, (tv.tv_usec / 10000))) == NULL) {
         log_error(LOG_DEFAULT, "Could not generate autosave screenshot microsecond timestamp!");
         return NULL;
     }
-#else
-    /* TODO: add support for time functions? */
-    if ((result = lib_msprintf("%s-%u", buf, count)) == NULL) {
-        log_error(LOG_DEFAULT, "Could not generate autosave screenshot file name!");
-        return NULL;
-    }
-    count++;
-#endif
+
     return result;
 }
 
@@ -419,49 +383,10 @@ static resource_string_t resources_string[] = {
     RESOURCE_STRING_LIST_END
 };
 
-static int quicksave_set_func(const char *value, void *extra_param)
-{
-    char *s;
-    int i = 0;;
-    if (value == NULL) {
-        return -1;
-    }
-    s = lib_strdup(value);
-    while(s[i] != 0) {
-        s[i] = toupper(s[i]);
-        i++;
-    }
-    i = resources_set_string("QuicksaveScreenshotFormat", s);
-    lib_free(s);
-    return i;
-}
-
-static cmdline_option_t cmdline_options[] =
-{
-    { "-quicksaveformat", CALL_FUNCTION, CMDLINE_ATTRIB_NEED_ARGS,
-      quicksave_set_func, NULL, "QuicksaveScreenshotFormat", NULL,
-      "<Format>",
-    /* KLUDGES: this should really be generated at runtime */
-    "Specify format of quicksave screenshots ("
-#ifdef HAVE_PNG
-    "png, "
-#endif
-#ifdef HAVE_GIF
-    "gif ,"
-#endif
-    "bmp, iff, pcx, ppm, 4bt, artstudio, koala, minipaint)"
-    },
-    CMDLINE_LIST_END
-};
 
 int screenshot_resources_init(void)
 {
     return resources_register_string(resources_string);
-}
-
-int screenshot_cmdline_options_init(void)
-{
-    return cmdline_register_options(cmdline_options);
 }
 
 

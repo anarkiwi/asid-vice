@@ -216,7 +216,6 @@ static cmdline_option_t cmdline_options_chip_show_statusbar[] =
     CMDLINE_LIST_END
 };
 
-#if defined(HAVE_HWSCALE) || defined(USE_SDL2UI) || defined(USE_GTK3UI)
 /* aspect options */
 static const char * const cname_chip_gloptions[] =
 {
@@ -233,9 +232,7 @@ static const char * const cname_chip_gloptions[] =
     "+", "vsync", "VSync",
     NULL
 };
-#endif
 
-#if defined(HAVE_HWSCALE) || defined(USE_SDL2UI) || defined(USE_GTK3UI)
 static cmdline_option_t cmdline_options_chip_gloptions[] =
 {
     { NULL, SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
@@ -273,7 +270,6 @@ static cmdline_option_t cmdline_options_chip_gloptions[] =
       NULL, "Disable vsync to allow screen tearing" },
     CMDLINE_LIST_END
 };
-#endif
 
 /* CRT emulation options */
 static const char * const cname_chip_colors[] =
@@ -538,7 +534,6 @@ int video_cmdline_options_chip_init(const char *chipname,
     lib_free(cmdline_options_chip_show_statusbar[1].name);
     lib_free(cmdline_options_chip_show_statusbar[1].resource_name);
 
-#if defined(HAVE_HWSCALE) || defined(USE_SDL2UI) || defined(USE_GTK3UI)
     /* GL options */
     for (i = 0; cname_chip_gloptions[i * 3] != NULL; i++) {
         cmdline_options_chip_gloptions[i].name
@@ -556,7 +551,6 @@ int video_cmdline_options_chip_init(const char *chipname,
         lib_free(cmdline_options_chip_gloptions[i].name);
         lib_free(cmdline_options_chip_gloptions[i].resource_name);
     }
-#endif
 
     /* color generator */
     for (i = 0; cname_chip_colors[i * 3] != NULL; i++) {

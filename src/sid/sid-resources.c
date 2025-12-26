@@ -38,9 +38,6 @@
 #ifdef HAVE_PARSID
 #include "parsid.h"
 #endif
-#ifdef HAVE_USBSID
-#include "usbsid.h"
-#endif
 #include "resources.h"
 #include "sid-resources.h"
 #include "sid.h"
@@ -87,12 +84,6 @@ static int sid_engine;
 static int sid_hardsid_main;
 static int sid_hardsid_right;
 #endif
-#ifdef HAVE_USBSID
-static int sid_usbsid_readmode;
-static int sid_usbsid_audiomode;
-static int sid_usbsid_buffsize;
-static int sid_usbsid_diffsize;
-#endif
 
 static int set_sid_engine(int set_engine, void *param)
 {
@@ -123,9 +114,6 @@ static int set_sid_engine(int set_engine, void *param)
 #if !defined(WINDOWS_COMPILE) || (defined(WINDOWS_COMPILE) && defined(HAVE_LIBIEEE1284))
         case SID_ENGINE_PARSID:
 #endif
-#endif
-#ifdef HAVE_USBSID
-        case SID_ENGINE_USBSID:
 #endif
             break;
         default:
@@ -366,41 +354,6 @@ static int set_sid_hardsid_right(int val, void *param)
 }
 #endif
 
-#ifdef HAVE_USBSID
-static int set_sid_usbsid_readmode(int val, void *param)
-{
-    sid_usbsid_readmode = (unsigned int)val;
-    usbsid_set_readmode(sid_usbsid_readmode);
-
-    return 0;
-}
-
-static int set_sid_usbsid_audiomode(int val, void *param)
-{
-    sid_usbsid_audiomode = (unsigned int)val;
-    usbsid_set_audiomode(sid_usbsid_readmode);
-
-    return 0;
-}
-
-static int set_sid_usbsid_buffsize(int val, void *param)
-{
-    sid_usbsid_buffsize = (unsigned int)val;
-    usbsid_drv_set_buffsize(sid_usbsid_buffsize);
-
-    return 0;
-}
-
-static int set_sid_usbsid_diffsize(int val, void *param)
-{
-    sid_usbsid_diffsize = (unsigned int)val;
-    usbsid_drv_set_diffsize(sid_usbsid_diffsize);
-
-    return 0;
-}
-#endif
-
-
 #ifdef HAVE_RESID
 static int sid_enabled = 1;
 
@@ -417,13 +370,6 @@ void sid_set_enable(int value)
         sid_engine_set(SID_ENGINE_FASTSID);
     } else
 #endif
-
-#ifdef HAVE_USBSID
-    if (val) {
-        sid_engine_set(SID_ENGINE_USBSID);
-    } else
-#endif
-
     {
         sid_engine_set(sid_engine);
     }
@@ -474,7 +420,6 @@ static resource_int_t common_resources_int[] = {
 };
 
 #ifdef HAVE_HARDSID
-/* FIXME: resources are not documented */
 static const resource_int_t hardsid_resources_int[] = {
     { "SidHardSIDMain", 0, RES_EVENT_STRICT, (resource_value_t)0,
       &sid_hardsid_main, set_sid_hardsid_main, NULL },
@@ -483,21 +428,6 @@ static const resource_int_t hardsid_resources_int[] = {
     RESOURCE_INT_LIST_END
 };
 #endif
-
-#ifdef HAVE_USBSID
-static const resource_int_t usbsid_resources_int[] = {
-    { "SidUSBSIDReadMode", 0, RES_EVENT_NO, NULL,
-      &sid_usbsid_readmode, set_sid_usbsid_readmode, NULL },
-    { "SidUSBSIDAudioMode", 0, RES_EVENT_NO, NULL,
-      &sid_usbsid_audiomode, set_sid_usbsid_audiomode, NULL },
-    { "SidUSBSIDDiffSize", 64, RES_EVENT_NO, NULL,
-      &sid_usbsid_diffsize, set_sid_usbsid_diffsize, NULL },
-    { "SidUSBSIDBufferSize", 8192, RES_EVENT_NO, NULL,
-      &sid_usbsid_buffsize, set_sid_usbsid_buffsize, NULL },
-    RESOURCE_INT_LIST_END
-};
-#endif
-
 
 static const resource_int_t stereo_resources_int[] = {
     { "SidStereo", 0, RES_EVENT_SAME, NULL,
@@ -537,13 +467,6 @@ int sid_common_resources_init(void)
         }
     }
 #endif
-
-#ifdef HAVE_USBSID
-    if (resources_register_int(usbsid_resources_int) < 0) {
-        return -1;
-    }
-#endif
-
     return resources_register_int(common_resources_int);
 }
 
@@ -632,13 +555,6 @@ static sid_engine_model_t sid_engine_models_parsid[] = {
 #endif
 #endif
 
-#ifdef HAVE_USBSID
-static sid_engine_model_t sid_engine_models_usbsid[] = {
-    { "USBSID-Pico", SID_USBSID },
-    { NULL, -1 }
-};
-#endif
-
 static void add_sid_engine_models(sid_engine_model_t *sid_engine_models)
 {
     int i = 0;
@@ -687,12 +603,6 @@ sid_engine_model_t **sid_get_engine_model_list(void)
 #endif
 #endif
 
-#ifdef HAVE_USBSID
-    if (usbsid_available()) {
-        add_sid_engine_models(sid_engine_models_usbsid);
-    }
-#endif
-
     sid_engine_model_list[num_sid_engine_models] = NULL;
 
     return sid_engine_model_list;
@@ -705,7 +615,6 @@ static int sid_check_engine_model(int engine, int model)
         case SID_ENGINE_CATWEASELMKIII:
         case SID_ENGINE_HARDSID:
         case SID_ENGINE_PARSID:
-        case SID_ENGINE_USBSID:
             return 0;
         default:
             break;

@@ -58,7 +58,7 @@
 
 
 #define SNAP_MAJOR          3
-#define SNAP_MINOR          1
+#define SNAP_MINOR          0
 
 
 int vic20_snapshot_write(const char *name, int save_roms, int save_disks,

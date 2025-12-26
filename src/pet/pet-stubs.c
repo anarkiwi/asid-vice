@@ -44,11 +44,6 @@ int cartridge_attach_image(int type, const char *name)
     return -1;
 }
 
-int cartridge_attach_add_image(int type, const char *filename)
-{
-    return -1;
-}
-
 void cartridge_detach_image(int type)
 {
 }

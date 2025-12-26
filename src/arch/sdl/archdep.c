@@ -40,9 +40,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/stat.h>
-#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#endif
 
 #include "archdep.h"
 #include "findpath.h"
@@ -123,6 +121,7 @@ int archdep_init(int *argc, char **argv)
     return archdep_init_extra(argc, argv);
 }
 
+
 void archdep_shutdown(void)
 {
     /* free memory used by the exec path */
@@ -137,8 +136,6 @@ void archdep_shutdown(void)
     archdep_user_cache_path_free();
     /* free memory used by the config files path */
     archdep_user_config_path_free();
-    /* free memory used by the state files path */
-    archdep_user_state_path_free();
     /* free memory used by the sysfile pathlist */
     archdep_default_sysfile_pathlist_free();
 

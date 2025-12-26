@@ -160,16 +160,16 @@ int interface_serial_init_resources(void)
 
 static const cmdline_option_t cmdline_options[] =
 {
-    { "-devicebackend4", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
+    { "-device4", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
       NULL, NULL, "Printer4", NULL,
       "<Type>", "Set device type for device #4 (0: None, 1: Filesystem, 2: Real)" },
-    { "-devicebackend5", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
+    { "-device5", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
       NULL, NULL, "Printer5", NULL,
       "<Type>", "Set device type for device #5 (0: None, 1: Filesystem, 2: Real)" },
-    { "-devicebackend6", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
+    { "-device6", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
       NULL, NULL, "Printer6", NULL,
       "<Type>", "Set device type for device #6 (0: None, 1: Filesystem, 2: Real)" },
-    { "-devicebackend7", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
+    { "-device7", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
       NULL, NULL, "Printer7", NULL,
       "<Type>", "Set device type for device #7 (0: None, 2: Real)" },
     CMDLINE_LIST_END

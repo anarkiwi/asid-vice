@@ -163,7 +163,7 @@ int ps_file_open(void)
 
     sids_found = 0;
 
-    log_verbose(sid_log, "Detecting Linux ParSIDs.");
+    log_message(sid_log, "Detecting Linux ParSIDs.");
 
     for (i = 0; i < MAXSID; ++i) {
         pssids[sids_found] = open(parport_name[i], O_RDWR);
@@ -189,12 +189,12 @@ int ps_file_open(void)
                 pssids[sids_found] = -1;
             }
         } else {
-            log_verbose(sid_log, "Could not open %s.", parport_name[i]);
+            log_message(sid_log, "Could not open %s.", parport_name[i]);
         }
     }
 
     if (!sids_found) {
-        log_verbose(sid_log, "No Linux ParSIDs found.");
+        log_message(sid_log, "No Linux ParSIDs found.");
         return -1;
     }
 

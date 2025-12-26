@@ -93,14 +93,6 @@
 #include "video.h"
 #include "vsync.h"
 
-/*#define DEBUG_MONITOR*/
-
-#ifdef DEBUG_MONITOR
-#define DBG(x)  log_printf x
-#else
-#define DBG(x)
-#endif
-
 /*
    INITBREAK switched to a break point so that the first instruction doesn't
    run when '-initbreak reset' is used.
@@ -163,13 +155,12 @@ typedef struct symbol_table symbol_table_t;
 extern void set_yydebug(int debug);
 
 static char *last_cmd = NULL;
-enum exit_mon exit_mon = exit_mon_no;
+int exit_mon = 0;
 /* flag used by the single-stepping commands to prevent switching forth and back
  * to the emulator window when stepping a single instruction. note that this is
  * different from what keep_monitor_open does :)
  */
 static int mon_console_suspend_on_leaving = 1;
-
 /* flag used by the eXit command. it will force the monitor to close regardless
  * of keep_monitor_open.
  */
@@ -199,9 +190,8 @@ static CLOCK stopwatch_start_time[NUM_MEMSPACES];
 monitor_interface_t *mon_interfaces[NUM_MEMSPACES];
 
 MON_ADDR dot_addr[NUM_MEMSPACES];
-#define DATA_BUF_SIZE 256
-unsigned char data_buf[DATA_BUF_SIZE];
-unsigned char data_mask_buf[DATA_BUF_SIZE];
+unsigned char data_buf[256];
+unsigned char data_mask_buf[256];
 unsigned int data_buf_len;
 bool asm_mode;
 MON_ADDR asm_mode_addr;
@@ -411,17 +401,17 @@ void monitor_vsync_hook(void)
 /* Some local helper functions */
 static int find_cpu_type_from_string(const char *cpu_string)
 {
-    if ((util_strcasecmp(cpu_string, "6502") == 0) || (util_strcasecmp(cpu_string, "6510") == 0)) {
+    if ((strcasecmp(cpu_string, "6502") == 0) || (strcasecmp(cpu_string, "6510") == 0)) {
         return CPU_6502;
-    } else if (util_strcasecmp(cpu_string, "r65c02") == 0) {
+    } else if (strcasecmp(cpu_string, "r65c02") == 0) {
         return CPU_R65C02;
-    } else if (util_strcasecmp(cpu_string, "65816")==0) {
+    } else if (strcasecmp(cpu_string, "65816")==0) {
         return CPU_65816;
-    } else if (util_strcasecmp(cpu_string, "h6809") == 0 || strcmp(cpu_string, "6809") == 0) {
+    } else if (strcasecmp(cpu_string, "h6809") == 0 || strcmp(cpu_string, "6809") == 0) {
         return CPU_6809;
-    } else if (util_strcasecmp(cpu_string, "z80") == 0) {
+    } else if (strcasecmp(cpu_string, "z80") == 0) {
         return CPU_Z80;
-    } else if ((util_strcasecmp(cpu_string, "6502dtv") == 0) || (util_strcasecmp(cpu_string, "6510dtv") == 0)) {
+    } else if ((strcasecmp(cpu_string, "6502dtv") == 0) || (strcasecmp(cpu_string, "6510dtv") == 0)) {
         return CPU_6502DTV;
     } else {
         return -1;
@@ -986,19 +976,18 @@ void mon_set_mem_val_ex(MEMSPACE mem, int bank, uint16_t mem_addr, uint8_t val)
     }
 }
 
-/* exit monitor, G XXXX  */
+/* exit monitor  */
 void mon_jump(MON_ADDR addr)
 {
     mon_evaluate_default_addr(&addr);
     (monitor_cpu_for_memspace[addr_memspace(addr)]->mon_register_set_val)(addr_memspace(addr), e_PC, (uint16_t)(addr_location(addr)));
-    exit_mon = exit_mon_change_flow;
+    exit_mon = 1;
 }
 
-/* exit monitor, G (not G XXXX)  */
+/* exit monitor  */
 void mon_go(void)
 {
-    exit_mon = exit_mon_continue;
-    mon_console_suspend_on_leaving = 0;
+    exit_mon = 1;
 
     if (should_pause_on_exit_mon || ui_pause_active()) {
         should_pause_on_exit_mon = false;
@@ -1009,7 +998,7 @@ void mon_go(void)
 /* exit monitor, close monitor window  */
 void mon_exit(void)
 {
-    exit_mon = exit_mon_continue;
+    exit_mon = 1;
     mon_console_close_on_leaving = 1;
 
     if (should_pause_on_exit_mon || ui_pause_active()) {
@@ -1026,7 +1015,7 @@ void mon_exit(void)
 */
 void mon_quit(void)
 {
-    exit_mon = exit_mon_quit_vice;
+    exit_mon = 2;
 }
 
 void mon_keyboard_feed(const char *string)
@@ -1087,11 +1076,6 @@ void mon_clear_buffer(void)
 
 void mon_add_number_to_buffer(int number)
 {
-    int bytes_now = number > 0xff ? 2 : 1;
-    if (data_buf_len + bytes_now >= DATA_BUF_SIZE) {
-        mon_out("Trying to write more bytes than the buffer fits, ignoring\n");
-        return;
-    }
     unsigned int i = data_buf_len;
     data_buf[data_buf_len++] = (number & 0xff);
     if (number > 0xff) {
@@ -1337,7 +1321,7 @@ void mon_reset_machine(int type)
     switch (type) {
         case 1:
             machine_trigger_reset(MACHINE_RESET_MODE_POWER_CYCLE);
-            exit_mon = exit_mon_continue;
+            exit_mon = 1;
             break;
         case 8:
         case 9:
@@ -1347,7 +1331,7 @@ void mon_reset_machine(int type)
             break;
         default:
             machine_trigger_reset(MACHINE_RESET_MODE_RESET_CPU);
-            exit_mon = exit_mon_continue;
+            exit_mon = 1;
             break;
     }
 }
@@ -1642,7 +1626,7 @@ void monitor_init(monitor_interface_t *maincpu_interface_init,
     } else if (init_break_mode == ON_RESET) {
         mon_breakpoint_add_checkpoint((uint16_t)0, (uint16_t)0xffff,
                 true, e_exec, true, false);
-        exit_mon = exit_mon_no;
+        exit_mon = 0;
 #endif
     }
 }
@@ -2566,7 +2550,7 @@ void mon_instructions_step(int count)
     instruction_count = (count >= 0) ? count : 1;
     wait_for_return_level = 0;
     skip_jsrs = false;
-    exit_mon = exit_mon_continue;
+    exit_mon = 1;
 
     mon_console_suspend_on_leaving = 0;
 
@@ -2585,7 +2569,7 @@ void mon_instructions_next(int count)
     }
     wait_for_return_level = (int)((MONITOR_GET_OPCODE(default_memspace) == OP_JSR) ? 1 : 0);
     skip_jsrs = true;
-    exit_mon = exit_mon_continue;
+    exit_mon = 1;
 
     mon_console_suspend_on_leaving = 0;
 
@@ -2602,7 +2586,7 @@ void mon_instruction_return(void)
              || MONITOR_GET_OPCODE(default_memspace) == OP_RTI) ?
             0 : (MONITOR_GET_OPCODE(default_memspace) == OP_JSR) ? 2 : 1);
     skip_jsrs = true;
-    exit_mon = exit_mon_continue;
+    exit_mon = 1;
 
     monitor_mask[default_memspace] |= MI_STEP;
     interrupt_monitor_trap_on(mon_interfaces[default_memspace]->int_status);
@@ -3053,8 +3037,7 @@ static void monitor_open(void)
     mon_console_close_on_leaving = 0;
 
     if (console_mode) {
-        /* Shitty hack. We should support the console size etc.
-           NOTE: this is (only) for the case when VICE runs in console mode (-console) */
+        /* Shitty hack. We should support the console size etc. */
         static console_t console_log_console = { TTY_COLUMNS, TTY_ROWS, 0, 0, NULL };
         console_log = &console_log_console;
     } else if (monitor_is_remote() || monitor_is_binary()) {
@@ -3069,11 +3052,10 @@ static void monitor_open(void)
             uimon_set_interface(mon_interfaces, NUM_MEMSPACES);
         }
     }
-    DBG(("monitor_open console_mode:%d console_log:%p", console_mode, console_log));
 
     if (console_log == NULL) {
         log_error(LOG_DEFAULT, "monitor_open: could not open monitor console.");
-        exit_mon = exit_mon_continue;
+        exit_mon = 1;
         return;
     }
 
@@ -3199,7 +3181,7 @@ static void monitor_open(void)
 #endif
 }
 
-static void monitor_process(char *cmd)
+static int monitor_process(char *cmd)
 {
     char *trimmed_command;
 
@@ -3240,14 +3222,16 @@ static void monitor_process(char *cmd)
     lib_free(last_cmd);
 
     /* remember last command, except when leaving the monitor */
-    if (exit_mon != exit_mon_no && mon_console_suspend_on_leaving) {
+    if (exit_mon && mon_console_suspend_on_leaving) {
         lib_free(cmd);
         last_cmd = NULL;
     } else {
         last_cmd = cmd;
     }
 
-    uimon_notify_change();
+    uimon_notify_change(); /* @SRT */
+
+    return exit_mon;
 }
 
 static void monitor_close(bool check_exit)
@@ -3257,14 +3241,18 @@ static void monitor_close(bool check_exit)
 #endif
     inside_monitor = false;
 
-    if (check_exit && exit_mon == exit_mon_quit_vice) {
+    if (exit_mon) {
+        exit_mon--;
+    }
+
+    if (check_exit && exit_mon) {
         if (!monitor_is_remote()) {
             uimon_window_close();
         }
         archdep_vice_exit(0);
     }
 
-    exit_mon = exit_mon_no;
+    exit_mon = 0;
 
     if (!monitor_is_remote() && !monitor_is_binary()) {
         if (mon_console_suspend_on_leaving) {
@@ -3289,29 +3277,13 @@ static void monitor_close(bool check_exit)
         console_log = NULL;
     }
 
-    DBG(("monitor_close console_log:%p", console_log));
     vsync_suspend_speed_eval();
-}
-
-static int check_for_breakpoint(MEMSPACE mem)
-{
-    int reg_pc;
-
-    if (mem == e_default_space) {
-        mem = default_memspace;
-    }
-
-    reg_pc = (monitor_cpu_for_memspace[mem]->mon_register_get_val)(mem, e_PC);
-
-    return monitor_check_breakpoints(mem, (uint16_t)reg_pc);
 }
 
 void monitor_startup(MEMSPACE mem)
 {
     char prompt[40];
     char *p;
-
-    DBG(("monitor_startup console_log:%p", console_log));
 
     if (inside_monitor) {
         /*
@@ -3333,7 +3305,7 @@ void monitor_startup(MEMSPACE mem)
     }
 
     monitor_open();
-    for (;;) {
+    while (!exit_mon) {
 
         if (playback_fp) {
             playback_next_command();
@@ -3350,23 +3322,13 @@ void monitor_startup(MEMSPACE mem)
             make_prompt(prompt);
             p = uimon_in(prompt);
             if (p) {
-                monitor_process(p);
-            } else if (exit_mon == exit_mon_no) {
+                exit_mon = monitor_process(p);
+            } else if (exit_mon < 1) {
                 mon_exit();
             }
         }
 
-        if (exit_mon == exit_mon_change_flow) {
-            /*
-             * If we are about to exit the monitor with a change of program flow,
-             * check if we land on a breakpoint and if so, do not exit.
-             */
-            if (check_for_breakpoint(mem)) {
-                exit_mon = exit_mon_no;
-            }
-        }
-
-        if (exit_mon != exit_mon_no) {
+        if (exit_mon) {
             /* mon_out("exit\n"); */
             break;
         }

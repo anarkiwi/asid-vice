@@ -215,22 +215,16 @@ struct vic_s {
     /* Graphics buffer (chargen/bitmap) */
     uint8_t gbuf[VIC_MAX_TEXT_COLS];
 
-    /* Geometry and timing parameters of the selected VIC emulation.  */
+    unsigned int cycles_per_line;
     unsigned int screen_height;
     unsigned int first_displayed_line;
     unsigned int last_displayed_line;
-
-    int screen_leftborderwidth;
-    int screen_rightborderwidth;
-
-    unsigned int screen_width;  /* max width of video (different for PAL/NTSC) */
-    unsigned int display_width; /* width to display (different for border modes) */
-
-    /* parameters (set by vic-chip-model). */
-    unsigned int cycles_per_line;
-
+    unsigned int screen_width;
+    unsigned int display_width;
     unsigned int cycle_offset;
     unsigned int max_text_cols;
+    int screen_leftborderwidth;
+    int screen_rightborderwidth;
 
     vic_light_pen_t light_pen;
 

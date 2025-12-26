@@ -32,16 +32,7 @@
 #include "machine.h"
 #include "lightpen.h"
 #include "lightpendrv.h"
-#include "log.h"
 #include "videoarch.h"
-
-/* #define DEBUG_LIGHTPEN */
-
-#ifdef DEBUG_LIGHTPEN
-#define DBG(x) log_printf x
-#else
-#define DBG(x)
-#endif
 
 /* ------------------------------------------------------------------ */
 /* External interface */
@@ -60,7 +51,9 @@ void sdl_lightpen_update(void)
         buttons = 0;
     }
 
-    DBG(("%s : x = %i, y = %i, buttons = %02x", __func__, x, y, buttons));
+#ifdef SDL_DEBUG
+    fprintf(stderr, "%s : x = %i, y = %i, buttons = %02x\n", __func__, x, y, buttons);
+#endif
 
     screen_num = sdl_active_canvas_num;
 

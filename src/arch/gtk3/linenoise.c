@@ -5,13 +5,8 @@
  *
  * Modified for the VICE project by Fabrizio Gennari,
  * for use in combination with a terminal
- * not represented by a couple of file descriptors
+ * not represented by a couple of file descrptors
  * (abstracted buy the opaque struct console_private_s)
- *
- * NOTE: Due to the above, it is not possible to share this modified library
- * with anything else. Also due to how the GTK monitor works, we can not replace
- * this modified library by a standard linenoise (or -ng), which works on top
- * of file descriptors.
  *
  * You can find the latest source code at:
  *

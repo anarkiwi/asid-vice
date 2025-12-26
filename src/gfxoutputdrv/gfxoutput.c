@@ -47,7 +47,11 @@
 #include "pngdrv.h"
 #endif
 
+#ifdef HAVE_FFMPEG
+#include "ffmpegdrv.h"
+#endif
 #include "ffmpegexedrv.h"
+
 #include "zmbvdrv.h"
 
 struct gfxoutputdrv_list_s {
@@ -111,6 +115,9 @@ int gfxoutput_early_init(int help)
 
     /* video related */
     gfxoutput_init_zmbv(help);
+#ifdef HAVE_FFMPEG
+    gfxoutput_init_ffmpeg(help);
+#endif
     gfxoutput_init_ffmpegexe(help);
 
     /* C64 formats */

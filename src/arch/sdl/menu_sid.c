@@ -169,94 +169,6 @@ UI_MENU_DEFINE_SLIDER(SidResid8580FilterBias, -5000, 5000)
 
 #endif /* HAVE_RESID */
 
-#ifdef HAVE_USBSID
-UI_MENU_DEFINE_TOGGLE(SidUSBSIDReadMode)
-UI_MENU_DEFINE_TOGGLE(SidUSBSIDAudioMode)
-UI_MENU_DEFINE_RADIO(SidUSBSIDDiffSize)
-UI_MENU_DEFINE_RADIO(SidUSBSIDBufferSize)
-
-static const ui_menu_entry_t us_diffsize_menu[] = {
-    {   .string   = "32",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDDiffSize_callback,
-        .data     = (ui_callback_data_t)32
-    },
-    {   .string   = "64",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDDiffSize_callback,
-        .data     = (ui_callback_data_t)64
-    },
-    {   .string   = "128",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDDiffSize_callback,
-        .data     = (ui_callback_data_t)128
-    },
-    {   .string   = "256",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDDiffSize_callback,
-        .data     = (ui_callback_data_t)256
-    },
-    SDL_MENU_LIST_END
-};
-
-static const ui_menu_entry_t us_buffsize_menu[] = {
-    {   .string   = "512",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDBufferSize_callback,
-        .data     = (ui_callback_data_t)512
-    },
-    {   .string   = "1024",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDBufferSize_callback,
-        .data     = (ui_callback_data_t)1024
-    },
-    {   .string   = "2048",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDBufferSize_callback,
-        .data     = (ui_callback_data_t)2048
-    },
-    {   .string   = "4096",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDBufferSize_callback,
-        .data     = (ui_callback_data_t)4096
-    },
-    {   .string   = "8192",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDBufferSize_callback,
-        .data     = (ui_callback_data_t)8192
-    },
-    {   .string   = "16384",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = radio_SidUSBSIDBufferSize_callback,
-        .data     = (ui_callback_data_t)16384
-    },
-    SDL_MENU_LIST_END
-};
-
-# define VICE_SDL_USBSID_OPTIONS                                                                                              \
-    {   .string   = "USBSID enable stereo audio mode",                                                                        \
-        .type     = MENU_ENTRY_RESOURCE_TOGGLE,                                                                               \
-        .callback = toggle_SidUSBSIDAudioMode_callback                                                                        \
-    },                                                                                                                        \
-    {   .string   = "USBSID enable read mode",                                                                                \
-        .type     = MENU_ENTRY_RESOURCE_TOGGLE,                                                                               \
-        .callback = toggle_SidUSBSIDReadMode_callback                                                                         \
-    },                                                                                                                        \
-    {   .string   = "USBSID buffer size",                                                                                     \
-        .type     = MENU_ENTRY_SUBMENU,                                                                                       \
-        .callback = submenu_radio_callback,                                                                                   \
-        .data     = (ui_callback_data_t)us_buffsize_menu                                                                      \
-    },                                                                                                                        \
-    {   .string   = "USBSID diff size",                                                                                       \
-        .type     = MENU_ENTRY_SUBMENU,                                                                                       \
-        .callback = submenu_radio_callback,                                                                                   \
-        .data     = (ui_callback_data_t)us_diffsize_menu                                                                      \
-    },                                                                                                                        \
-
-
-#endif /* HAVE_USBSID */
-
-
 UI_MENU_DEFINE_TOGGLE(SidFilters)
 UI_MENU_DEFINE_RADIO(SidStereo)
 UI_MENU_DEFINE_RADIO(Sid2AddressStart)
@@ -769,9 +681,6 @@ ui_menu_entry_t sid_c64_menu[] = {
 #ifdef HAVE_RESID
     VICE_SDL_RESID_OPTIONS
 #endif
-#ifdef HAVE_USBSID
-    VICE_SDL_USBSID_OPTIONS
-#endif
     SDL_MENU_LIST_END
 };
 
@@ -827,9 +736,6 @@ ui_menu_entry_t sid_c128_menu[] = {
 #ifdef HAVE_RESID
     VICE_SDL_RESID_OPTIONS
 #endif
-#ifdef HAVE_USBSID
-    VICE_SDL_USBSID_OPTIONS
-#endif
     SDL_MENU_LIST_END
 };
 
@@ -845,9 +751,6 @@ ui_menu_entry_t sid_cbm2_menu[] = {
 #ifdef HAVE_RESID
     VICE_SDL_RESID_OPTIONS
 #endif
-#ifdef HAVE_USBSID
-    VICE_SDL_USBSID_OPTIONS
-#endif
     SDL_MENU_LIST_END
 };
 
@@ -862,9 +765,6 @@ ui_menu_entry_t sid_dtv_menu[] = {
     },
 #ifdef HAVE_RESID
     VICE_SDL_RESID_OPTIONS
-#endif
-#ifdef HAVE_USBSID
-    VICE_SDL_USBSID_OPTIONS
 #endif
     SDL_MENU_LIST_END
 };
@@ -888,9 +788,6 @@ ui_menu_entry_t sid_vic_menu[] = {
     },
 #ifdef HAVE_RESID
     VICE_SDL_RESID_OPTIONS
-#endif
-#ifdef HAVE_USBSID
-    VICE_SDL_USBSID_OPTIONS
 #endif
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("SID address"),
@@ -935,9 +832,6 @@ ui_menu_entry_t sid_pet_menu[] = {
     },
 #ifdef HAVE_RESID
     VICE_SDL_RESID_OPTIONS
-#endif
-#ifdef HAVE_USBSID
-    VICE_SDL_USBSID_OPTIONS
 #endif
     SDL_MENU_ITEM_SEPARATOR,
     SDL_MENU_ITEM_TITLE("SID address"),
@@ -984,9 +878,6 @@ ui_menu_entry_t sid_plus4_menu[] = {
     },
 #ifdef HAVE_RESID
     VICE_SDL_RESID_OPTIONS
-#endif
-#ifdef HAVE_USBSID
-    VICE_SDL_USBSID_OPTIONS
 #endif
     SDL_MENU_ITEM_SEPARATOR,
 

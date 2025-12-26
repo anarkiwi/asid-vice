@@ -39,8 +39,6 @@
 
 #ifdef USE_GTK3UI
 
-static log_t archdep_font_log = LOG_DEFAULT;
-
 /** \brief  Filename of the TrueType CBM font used for directory display
  */
 /* #define VICE_CBM_FONT_TTF "C64_Pro_Mono-STYLE.ttf" */
@@ -69,7 +67,6 @@ static const char *font_files[] = {
 # ifdef MACOS_COMPILE
 
 #  include <CoreText/CTFontManager.h>
-#  include <pango/pangocairo.h>
 
 int archdep_register_cbmfont(void)
 {
@@ -82,7 +79,7 @@ int archdep_register_cbmfont(void)
 
     for (i = 0; i < sizeof font_files / sizeof font_files[0]; i++) {
         if (sysfile_locate(font_files[i], "common", &fontPath) < 0) {
-            log_error(archdep_font_log, "failed to find resource data '%s'.",
+            log_error(LOG_DEFAULT, "failed to find resource data '%s'.",
                     font_files[i]);
             return 0;
         }
@@ -95,7 +92,7 @@ int archdep_register_cbmfont(void)
 
         if(!CTFontManagerRegisterFontsForURLs(fontUrls, kCTFontManagerScopeProcess, &errors))
         {
-            log_error(archdep_font_log, "Failed to register font for file: %s", fontPath);
+            log_error(LOG_DEFAULT, "Failed to register font for file: %s", fontPath);
             CFRelease(fontUrls);
             CFRelease(fontUrl);
             lib_free(fontPath);
@@ -107,9 +104,6 @@ int archdep_register_cbmfont(void)
         lib_free(fontPath);
     }
 
-    /* Force Pango to reinitialize so that the available fonts are rescanned */
-    pango_cairo_font_map_set_default(NULL);
-
     return 1;
 }
 
@@ -118,7 +112,6 @@ int archdep_register_cbmfont(void)
 #  ifdef HAVE_FONTCONFIG
 
 #   include <fontconfig/fontconfig.h>
-#   include <pango/pangocairo.h>
 
 int archdep_register_cbmfont(void)
 {
@@ -130,15 +123,11 @@ int archdep_register_cbmfont(void)
         return 0;
     }
 
-    if (archdep_font_log == LOG_DEFAULT) {
-        archdep_font_log = log_open("Font");
-    }
-
     fc_config = FcConfigGetCurrent();
 
     for (i = 0; i < sizeof font_files / sizeof font_files[0]; i++) {
         if (sysfile_locate(font_files[i], "common", &path) < 0) {
-            log_error(archdep_font_log,
+            log_error(LOG_DEFAULT,
                       "failed to find resource data '%s'.",
                       font_files[i]);
             return 0;
@@ -147,13 +136,10 @@ int archdep_register_cbmfont(void)
             lib_free(path);
             return 0;
         } else {
-            log_message(archdep_font_log, "registered '%s'.", path);
+            log_message(LOG_DEFAULT, "registered font '%s'.", path);
             lib_free(path);
         }
     }
-
-    /* Force Pango to reinitialize so that the available fonts are rescanned */
-    pango_cairo_font_map_set_default(NULL);
 
     return 1;
 }
@@ -162,7 +148,7 @@ int archdep_register_cbmfont(void)
 
 int archdep_register_cbmfont(void)
 {
-    log_error(archdep_font_log, "no fontconfig support, sorry.");
+    log_error(LOG_DEFAULT, "no fontconfig support, sorry.");
     return 0;
 }
 
@@ -194,14 +180,13 @@ static bool font_registered = false;
 
 #   include <windows.h>
 #   include <pango/pango.h>
-#   include <pango/pangocairo.h>
 
 int archdep_register_cbmfont(void)
 {
     size_t i;
     int    nfonts = 0;
 
-    log_message(archdep_font_log,
+    log_message(LOG_DEFAULT,
                 "%s(): Registering CBM fonts using Pango %s",
                 __func__, pango_version_string());
 
@@ -209,7 +194,7 @@ int archdep_register_cbmfont(void)
         char *path = NULL;
 
         if (sysfile_locate(font_files[i], "common", &path) < 0) {
-            log_warning(archdep_font_log,
+            log_warning(LOG_DEFAULT,
                         "failed to find resource data '%s', continuing...",
                         font_files[i]);
         } else {
@@ -217,18 +202,18 @@ int archdep_register_cbmfont(void)
 
             if (result > 0) {
                 font_registered = true;
-                log_message(archdep_font_log,
+                log_message(LOG_DEFAULT,
                             "succesfully registered %d font(s) from %s.",
                             result, path);
                 lib_free(path);
                 nfonts += result;
             } else {
-                log_warning(archdep_font_log, "no fonts found in %s.", path);
+                log_warning(LOG_DEFAULT, "no fonts found in %s.", path);
             }
         }
     }
 
-    log_message(archdep_font_log, "registered %d font(s) total.", nfonts);
+    log_message(LOG_DEFAULT, "registered %d font(s) total.", nfonts);
 #if 0
     /* Work around the fact that Pango, starting with 1.50.12, has switched to
        (only) using DirectWrite for enumarating fonts, and DirectWrite doesn't
@@ -239,14 +224,14 @@ int archdep_register_cbmfont(void)
        enumeration (with AddFontResource[A|W]) will be added back in 1.50.13.
      */
     if (pango_version() < PANGO_VERSION_ENCODE(1, 50, 12)) {
-        log_message(archdep_font_log,
+        log_message(LOG_DEFAULT,
                     "%s(): Using AddFontResourceEx()",
                     __func__);
         result = AddFontResourceEx(path, FR_PRIVATE, 0);
     } else {
         /* non-private version, if VICE crashes the font will remain on the
            host system until the system is rebooted */
-        log_message(archdep_font_log,
+        log_message(LOG_DEFAULT,
                     "%s(): Using AddFontResourceA()",
                     __func__);
         result = AddFontResourceA(path);
@@ -254,20 +239,16 @@ int archdep_register_cbmfont(void)
     lib_free(path);
     if (result > 0) {
         font_registered = true;
-        log_message(archdep_font_log,
+        log_message(LOG_DEFAULT,
                     "%s(): According to Windows, the CBM font was succesfully"
                     " registered.",
                     __func__);
-    } else {
-        log_warning(archdep_font_log,
-                    "%s(): According to Windows, registering the font failed",
-                    __func__);
-        return 0;
+        return 1;
     }
+    log_warning(LOG_DEFAULT,
+                "%s(): According to Windows, registering the font failed",
+                __func__);
 #endif
-    /* Force Pango to reinitialize so that the available fonts are rescanned */
-    pango_cairo_font_map_set_default(NULL);
-
     return 1;
 }
 
@@ -295,13 +276,13 @@ void archdep_unregister_cbmfont(void)
         char *path;
 
         if (sysfile_locate(VICE_CBM_FONT_TTF, "common", &path) < 0) {
-            log_error(archdep_font_log, "failed to find resource data '%s'.",
+            log_error(LOG_DEFAULT, "failed to find resource data '%s'.",
                     VICE_CBM_FONT_TTF);
             return;
         }
 
         if (pango_version() < PANGO_VERSION_ENCODE(1, 50, 12)) {
-            log_message(archdep_font_log,
+            log_message(LOG_DEFAULT,
                         "%s(): Unregistering CBM font with RemoveFontResourceExA()",
                         __func__);
             RemoveFontResourceExA(path, FR_PRIVATE, 0);
@@ -318,7 +299,7 @@ void archdep_unregister_cbmfont(void)
              * So we leave the font around for the session, after a reboot (heh)
              * the font will be gone again and VICE will register it again.
              */
-            log_warning(archdep_font_log,
+            log_warning(LOG_DEFAULT,
                         "%s(): Pango version >= 1.5.12: skipping unregistering"
                         " font with RemoveFontResourceA()",
                         __func__);

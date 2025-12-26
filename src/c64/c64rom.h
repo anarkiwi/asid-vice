@@ -107,4 +107,6 @@ int c64rom_print_basic_info(void);
 
 int c64rom_isloaded(void);
 
+extern int c64rom_cartkernal_active;
+
 #endif

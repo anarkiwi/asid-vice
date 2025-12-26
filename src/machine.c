@@ -297,8 +297,6 @@ int machine_init(void)
 {
     machine_init_was_called = 1;
 
-    DBG(("machine_init"));
-
     fsdevice_init();
     file_system_init();
     mem_initialize_memory();
@@ -377,9 +375,10 @@ void machine_shutdown(void)
     autostart_shutdown();
 
     joystick_close();
-#if !defined(USE_HEADLESSUI)
-    joystick_arch_shutdown();
+#ifdef MAC_JOYSTICK
+    joy_hidlib_exit();
 #endif
+
     sound_close();
 
     printer_shutdown();

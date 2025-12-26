@@ -57,9 +57,7 @@
 
 #include <stddef.h>
 #include <string.h>
-#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#endif
 
 #ifdef HAVE_RAWNET
 

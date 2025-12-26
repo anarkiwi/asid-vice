@@ -33,15 +33,7 @@
 #include "archdep.h"
 #include "archdep_defs.h"
 #include "vice_sdl.h"
-#ifndef USE_SDL_PREFIX
-# include <SDL_image.h>
-#else
-# ifdef USE_SDL2UI
-#  include <SDL2/SDL_image.h>
-# else
-#  include <SDL/SDL_image.h>
-# endif
-#endif
+#include <SDL_image.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

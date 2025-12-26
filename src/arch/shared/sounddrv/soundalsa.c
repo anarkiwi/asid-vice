@@ -37,7 +37,6 @@
 #include "debug.h"
 #include "log.h"
 #include "sound.h"
-#include "archdep_sleep.h"
 
 /* NetBSD doesn't define ESTRPIPE, this fix I noticed in gstreamer code */
 #ifndef ESTRPIPE
@@ -152,7 +151,7 @@ static int xrun_recovery(snd_pcm_t *hnd, int err)
     } else if (err == -ESTRPIPE) {
         while ((err = snd_pcm_resume(hnd)) == -EAGAIN) {
             log_message(LOG_DEFAULT, "xrun_recovery: %s", snd_strerror(err));
-            archdep_sleep(1);       /* wait until the suspend flag is released */
+            sleep(1);       /* wait until the suspend flag is released */
         }
         if (err < 0) {
             if ((err = snd_pcm_prepare(hnd)) < 0) {

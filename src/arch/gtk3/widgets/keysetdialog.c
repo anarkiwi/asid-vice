@@ -70,7 +70,6 @@
 #include "resources.h"
 #include "widgethelpers.h"
 #include "ui.h"
-#include "kbd.h"
 
 #include "keysetdialog.h"
 
@@ -195,7 +194,7 @@ static gboolean on_key_pressed(GtkWidget *widget, GdkEventKey *event,
 {
     int row;
     int col;
-    guint key = kbd_fix_keyval((GdkEvent*)event);
+    guint key = event->keyval;
 
     /* don't accept Alt keys */
     if (key == GDK_KEY_Alt_L || key == GDK_KEY_Alt_R) {

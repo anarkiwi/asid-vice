@@ -1,9 +1,5 @@
 SUBDIRS = p64 linenoise-ng libzmbv md5
 
-if HAVE_USBSID
-SUBDIRS += libusbsiddrv
-endif
-
 AM_CFLAGS = @VICE_CFLAGS@
 
 AM_CXXFLAGS = @VICE_CXXFLAGS@
@@ -20,9 +16,3 @@ libp64:
 
 libzmbv:
 	(cd libzmbv; $(MAKE))
-
-.PHONY: libusbsiddrv
-if HAVE_USBSID
-libusbsiddrv:
-	(cd libusbsiddrv; $(MAKE))
-endif

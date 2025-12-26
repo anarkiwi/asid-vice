@@ -142,16 +142,12 @@ libc64cart_a_SOURCES = \
 	mach5.h \
 	magicdesk.c \
 	magicdesk.h \
-	magicdesk16.c \
-	magicdesk16.h \
 	magicformel.c \
 	magicformel.h \
 	magicvoice.c \
 	magicvoice.h \
 	maxbasic.c \
 	maxbasic.h \
-	megabyter.c \
-	megabyter.h \
 	mikroass.c \
 	mikroass.h \
 	mmcreplay.c \
@@ -166,8 +162,6 @@ libc64cart_a_SOURCES = \
 	pagefox.h \
 	partner64.c \
 	partner64.h \
-	profidos.c \
-	profidos.h \
 	prophet64.c \
 	prophet64.h \
 	ramcart.c \

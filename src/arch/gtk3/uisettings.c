@@ -114,8 +114,6 @@
 # include "settings_midi.h"
 #endif
 #include "settings_misc.h"
-#include "settings_minimon.h"
-#include "settings_megabyter.h"
 #include "settings_megacart.h"
 #include "settings_mmc64.h"
 #include "settings_mmcr.h"
@@ -320,9 +318,6 @@ static ui_settings_tree_node_t c64_cartridges[] = {
     { CARTRIDGE_NAME_GMOD3,
       "gmod3",
       settings_gmod3_widget_create, NULL },
-    { CARTRIDGE_NAME_MEGABYTER,
-      "megabyter",
-      settings_megabyter_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -462,9 +457,6 @@ static ui_settings_tree_node_t scpu64_cartridges[] = {
     { CARTRIDGE_NAME_GMOD3,
       "gmod3",
       settings_gmod3_widget_create, NULL },
-    { CARTRIDGE_NAME_MEGABYTER,
-      "megabyter",
-      settings_megabyter_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -594,9 +586,6 @@ static ui_settings_tree_node_t c128_cartridges[] = {
     { CARTRIDGE_NAME_GMOD3,
       "gmod3",
       settings_gmod3_widget_create, NULL },
-    { CARTRIDGE_NAME_MEGABYTER,
-      "megabyter",
-      settings_megabyter_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 
@@ -695,12 +684,6 @@ static ui_settings_tree_node_t vic20_cartridges[] = {
     { "Default cartridge",
       "default-cart",
       settings_default_cart_widget_create, NULL },
-
-    UI_SETTINGS_SEPARATOR,
-
-    { CARTRIDGE_VIC20_NAME_MINIMON,
-      "Minimon",
-      settings_minimon_widget_create, NULL },
 
     UI_SETTINGS_SEPARATOR,
 

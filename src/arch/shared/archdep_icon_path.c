@@ -47,8 +47,8 @@
  */
 char *archdep_app_icon_path_png(int size)
 {
-    char        buffer[256];
-    char       *path = NULL;
+    char buffer[256];
+    char *path = NULL;
     const char *icon;
 
     /*
@@ -58,39 +58,39 @@ char *archdep_app_icon_path_png(int size)
     switch (machine_class) {
         case VICE_MACHINE_C64:      /* fall through */
         case VICE_MACHINE_C64SC:
-            icon = "x64";
+            icon = "C64";
             break;
         case VICE_MACHINE_C64DTV:
-            icon = "x64dtv";
+            icon = "DTV";
             break;
         case VICE_MACHINE_SCPU64:
-            icon = "xscpu64";
+            icon = "SCPU";
             break;
         case VICE_MACHINE_C128:
-            icon = "x128";
+            icon = "C128";
             break;
         case VICE_MACHINE_PET:
-            icon = "xpet";
+            icon = "PET";
             break;
         case VICE_MACHINE_VIC20:
-            icon = "xvic";
+            icon = "VIC20";
             break;
         case VICE_MACHINE_CBM5x0:   /* fall through */
         case VICE_MACHINE_CBM6x0:
-            icon = "xcbm2";
+            icon = "CBM2";
             break;
         case VICE_MACHINE_PLUS4:
-            icon = "xplus4";
+            icon = "Plus4";
             break;
         case VICE_MACHINE_VSID:
-            icon = "vsid";
+            icon = "SID";
             break;
         default:
-            icon = "error";
+            icon = "unknown-emulator-machine-class";
     }
 
-    snprintf(buffer, sizeof buffer, "vice-%s_%d.png", icon, size);
-    buffer[sizeof buffer - 1u] = '\0';
+    snprintf(buffer, sizeof(buffer), "%s_%d.png", icon, size);
+    buffer[sizeof(buffer) - 1] = '\0';
     sysfile_locate(buffer, "common", &path);
     return path;
 }

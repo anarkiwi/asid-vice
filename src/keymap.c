@@ -31,6 +31,7 @@
  */
 
 /* #define DBGKBD */
+/* #define DBGKBD_MODIFIERS */
 
 #include "vice.h"
 
@@ -64,9 +65,15 @@
 #include "vice-event.h"
 
 #ifdef DBGKBD
-#define DBG(x)  log_printf x
+#define DBG(x)  printf x
 #else
 #define DBG(x)
+#endif
+
+#ifdef DBGKBD_MODIFIERS
+#define DBGMOD(x)  printf x
+#else
+#define DBGMOD(x)
 #endif
 
 static log_t keyboard_log = LOG_DEFAULT;
@@ -698,14 +705,14 @@ static int keyboard_parse_keymap(const char *filename, int child)
     char buffer[1024];
     int line = 0;
 
-    DBG((">keyboard_parse_keymap(%s)", filename));
+    DBG((">keyboard_parse_keymap(%s)\n", filename));
 
     /* open in binary mode so the newline system doesn't matter */
     fp = sysfile_open(filename, machine_name, &complete_path, "rb");
 
     if (fp == NULL) {
         log_message(keyboard_log, "Error loading keymap `%s'->`%s'.", filename, complete_path ? complete_path : "<empty/null>");
-        DBG(("<keyboard_parse_keymap(%s) ERROR", filename));
+        DBG(("<keyboard_parse_keymap(%s) ERROR\n", filename));
         return -1;
     }
 
@@ -754,15 +761,15 @@ static int keyboard_parse_keymap(const char *filename, int child)
 
     check_modifiers(filename);
 
-    DBG(("<keyboard_parse_keymap OK"));
+    DBG(("<keyboard_parse_keymap OK\n"));
     return 0;
 }
 
 static int keyboard_keymap_load(const char *filename)
 {
-    DBG((">keyboard_keymap_load(%s)", filename));
+    DBG((">keyboard_keymap_load(%s)\n", filename));
     if (filename == NULL) {
-        DBG(("<keyboard_keymap_load ERROR"));
+        DBG(("<keyboard_keymap_load ERROR\n"));
         return -1;
     }
 
@@ -772,7 +779,7 @@ static int keyboard_keymap_load(const char *filename)
 
     keyboard_keyconvmap_alloc();
 
-    DBG(("<keyboard_keymap_load -> keyboard_parse_keymap"));
+    DBG(("<keyboard_keymap_load -> keyboard_parse_keymap\n"));
     return keyboard_parse_keymap(filename, 0);
 }
 
@@ -1056,7 +1063,7 @@ static int load_keymap_file(int val)
             return -1;
         }
 
-        DBG(("load_keymap_file(%d) calls keyboard_keymap_load(%s)", val, name));
+        DBG(("load_keymap_file(%d) calls keyboard_keymap_load(%s)\n", val, name));
         if (keyboard_keymap_load(name) >= 0) {
 
         } else {
@@ -1076,7 +1083,7 @@ int keyboard_set_keymap_file(const char *val, void *param)
 
     newindex = vice_ptr_to_int(param);
 
-    DBG(("keyboard_set_keymap_file '%s' newidx:%d", val, newindex));
+    DBG(("keyboard_set_keymap_file '%s' newidx:%d\n", val, newindex));
 
     /* FIXME: remove */
     if (newindex >= machine_num_keyboard_mappings()) {
@@ -1106,7 +1113,7 @@ int keyboard_set_keymap_index(int val, void *param)
     int mapping;
     int type;
 
-    DBG(("*keyboard_set_keymap_index(%d)", val));
+    DBG(("*keyboard_set_keymap_index(%d)\n", val));
 
     if ((val < 0) || (val > KBD_INDEX_LAST)) {
         return -1;
@@ -1115,11 +1122,11 @@ int keyboard_set_keymap_index(int val, void *param)
     mapping = machine_keyboard_mapping;
     type = machine_keyboard_type;
 
-    DBG((">keyboard_set_keymap_index(idx:%d mapping:%d type:%d)", val, mapping, type));
+    DBG((">keyboard_set_keymap_index(idx:%d mapping:%d type:%d)\n", val, mapping, type));
 
     if (val < 2) {
         if (switch_keymap_file(KBD_SWITCH_INDEX, &val, &mapping, &type) < 0) {
-            DBG(("<keyboard_set_keymap_index switch_keymap_file ERROR"));
+            DBG(("<keyboard_set_keymap_index switch_keymap_file ERROR\n"));
             log_error(keyboard_log, "Default keymap not found, this should be fixed. Going on anyway...");
             /* return -1; */
             return 0; /* HACK: allow to start up when default keymap is missing */
@@ -1129,16 +1136,15 @@ int keyboard_set_keymap_index(int val, void *param)
     }
 
     if (load_keymap_file(val) < 0) {
-        DBG(("<keyboard_set_keymap_index load_keymap_file ERROR"));
+        DBG(("<keyboard_set_keymap_index load_keymap_file ERROR\n"));
         return -1;
     }
 
-    DBG(("<keyboard_set_keymap_index OK (idx:%d mapping:%d type:%d)", val, mapping, type));
+    DBG(("<keyboard_set_keymap_index OK (idx:%d mapping:%d type:%d)\n", val, mapping, type));
     machine_keymap_index = val;
     return 0;
 }
 
-#ifndef USE_HEADLESSUI
 /* handle change of "KeyboardType" */
 static int keyboard_set_keyboard_type(int val, void *param)
 {
@@ -1147,7 +1153,7 @@ static int keyboard_set_keyboard_type(int val, void *param)
     mapping = machine_keyboard_mapping;
     idx = machine_keymap_index;
 
-    DBG((">keyboard_set_keyboard_type(idx:%d mapping:%d type:%d)", idx, mapping, val));
+    DBG((">keyboard_set_keyboard_type(idx:%d mapping:%d type:%d)\n", idx, mapping, val));
     if (idx < 2) {
         if (switch_keymap_file(KBD_SWITCH_TYPE, &idx, &mapping, &val) < 0) {
             log_error(keyboard_log, "Default keymap not found, this should be fixed. Going on anyway...");
@@ -1159,17 +1165,15 @@ static int keyboard_set_keyboard_type(int val, void *param)
     }
 
     if (load_keymap_file(idx) < 0) {
-        DBG(("<keyboard_set_keyboard_type load_keymap_file ERROR"));
+        DBG(("<keyboard_set_keyboard_type load_keymap_file ERROR\n"));
         return -1;
     }
 
     machine_keyboard_type = val;
-    DBG(("<keyboard_set_keyboard_type(%d)", val));
+    DBG(("<keyboard_set_keyboard_type(%d)\n", val));
     return 0;
 }
-#endif
 
-#ifndef USE_HEADLESSUI
 /* handle change if "KeyboardMapping" */
 static int keyboard_set_keyboard_mapping(int val, void *param)
 {
@@ -1179,7 +1183,7 @@ static int keyboard_set_keyboard_mapping(int val, void *param)
 
     type = machine_keyboard_type;
     idx = machine_keymap_index;
-    DBG((">keyboard_set_keyboard_mapping(%d,%d,%d)", idx, type, val));
+    DBG((">keyboard_set_keyboard_mapping(%d,%d,%d)\n", idx, type, val));
 
     if (idx < 2) {
         if (switch_keymap_file(KBD_SWITCH_MAPPING, &idx, &val, &type) < 0) {
@@ -1192,16 +1196,15 @@ static int keyboard_set_keyboard_mapping(int val, void *param)
     }
 
     if (load_keymap_file(idx) < 0) {
-        DBG(("<keyboard_set_keyboard_mapping load_keymap_file ERROR"));
+        DBG(("<keyboard_set_keyboard_mapping load_keymap_file ERROR\n"));
         return -1;
     }
 
     machine_keyboard_mapping = val;
-    DBG(("<keyboard_set_keyboard_mapping(%d,%d,%d)", idx, type, val));
+    DBG(("<keyboard_set_keyboard_mapping(%d,%d,%d)\n", idx, type, val));
 
     return 0;
 }
-#endif
 
 /* return number of available keyboard maps for gives "type" and "index" (sym/pos) */
 int keyboard_get_num_mappings(void)
@@ -1252,7 +1255,7 @@ static char *keyboard_get_keymap_name(int idx, int mapping, int type)
     const char *mapname;
     char *name = NULL, *tstr = NULL;
 
-    DBG((">keyboard_get_keymap_name idx %d mapping %d type %d", idx, mapping, type));
+    DBG((">keyboard_get_keymap_name idx %d mapping %d type %d\n", idx, mapping, type));
     if (type >= 0) {
         tstr = machine_get_keyboard_type_name(type);
     }
@@ -1269,7 +1272,7 @@ static char *keyboard_get_keymap_name(int idx, int mapping, int type)
         name = util_concat(KBD_PORT_PREFIX, "_", tstr, "_", sympos[idx], "_", mapname, ".vkm", NULL);
     }
 
-    DBG(("keyboard_get_keymap_name: (port:%s type:%s idx:%d mapping:%d) '%s' = '%s'",
+    DBG(("keyboard_get_keymap_name: (port:%s type:%s idx:%d mapping:%d) '%s' = '%s'\n",
                 KBD_PORT_PREFIX, tstr ? tstr : "-", idx, mapping,
                 idx ? "KeymapPosFile" : "KeymapSymFile", name));
 
@@ -1332,16 +1335,16 @@ static int try_set_keymap_file(int atidx, int idx, int mapping, int type)
     name = keyboard_get_keymap_name(idx, mapping, type);
 
     util_string_set(&machine_keymap_file_list[atidx], name);
-    DBG(("try_set_keymap_file calls sysfile_locate(%s)", name));
+    DBG(("try_set_keymap_file calls sysfile_locate(%s)\n", name));
     if (sysfile_locate(name, machine_name, &complete_path) != 0) {
-        DBG(("<try_set_keymap_file ERROR locating keymap `%s'.", name ? name : "(null)"));
+        DBG(("<try_set_keymap_file ERROR locating keymap `%s'.\n", name ? name : "(null)"));
         lib_free(name);
         lib_free(complete_path);
         return -1;
     }
     lib_free(name);
     lib_free(complete_path);
-    DBG(("<try_set_keymap_file OK"));
+    DBG(("<try_set_keymap_file OK\n"));
     return 0;
 }
 
@@ -1352,8 +1355,7 @@ static int switch_keymap_file(int sw, int *idxp, int *mapp, int *typep)
     int idx = *idxp;
     int atidx = *idxp;
 
-    DBG((">switch_keymap_file idx %d mapping %d type %d", *idxp, *mapp, *typep));
-
+    DBG((">switch_keymap_file idx %d mapping %d type %d\n", *idxp, *mapp, *typep));
     if(try_set_keymap_file(atidx, idx, mapping, type) >= 0) {
         goto ok;
     }
@@ -1392,18 +1394,17 @@ static int switch_keymap_file(int sw, int *idxp, int *mapp, int *typep)
         type = 0; /* FIXME */
         goto ok;
     }
-    DBG(("<switch_keymap_file ERROR idx %d mapping %d type %d", idx, mapping, type));
+    DBG(("<switch_keymap_file ERROR idx %d mapping %d type %d\n", idx, mapping, type));
     return -1;
 
 ok:
-    DBG(("<switch_keymap_file OK idx %d mapping %d type %d", idx, mapping, type));
+    DBG(("<switch_keymap_file OK idx %d mapping %d type %d\n", idx, mapping, type));
     *idxp = idx;
     *mapp = mapping;
     *typep = type;
     return 0;
 }
 
-#ifndef USE_HEADLESSUI
 /* called by keyboard_resources_init to create the default keymap(s)
    idx is the index to the resource for the setting ("KeymapIndex")
  */
@@ -1412,7 +1413,7 @@ static int keyboard_set_default_keymap_file(int idx)
     int mapping = 0;
     int type = 0;
 
-    DBG((">keyboard_set_default_keymap_file(%d)", idx));
+    DBG((">keyboard_set_default_keymap_file(%d)\n", idx));
 
     if ((idx != KBD_INDEX_SYM) && (idx != KBD_INDEX_POS)) {
         /* it's a user keymap, do not set a default */
@@ -1429,7 +1430,7 @@ static int keyboard_set_default_keymap_file(int idx)
 
     if(switch_keymap_file(KBD_SWITCH_DEFAULT, &idx, &mapping, &type) < 0) {
         /* return -1; */
-        DBG(("<keyboard_set_default_keymap_file(FAILURE: idx: %d type: %d mapping: %d)", idx, type, mapping));
+        DBG(("<keyboard_set_default_keymap_file(FAILURE: idx: %d type: %d mapping: %d)\n", idx, type, mapping));
         return 0; /* always return success to allow starting up without valid keymap */
     }
 
@@ -1437,10 +1438,9 @@ static int keyboard_set_default_keymap_file(int idx)
     machine_keyboard_type = type;
     machine_keyboard_mapping = mapping;
 
-    DBG(("<keyboard_set_default_keymap_file(OK: idx: %d type: %d mapping: %d)", idx, type, mapping));
+    DBG(("<keyboard_set_default_keymap_file(OK: idx: %d type: %d mapping: %d)\n", idx, type, mapping));
     return 0; /* success */
 }
-#endif
 
 /*--------------------------------------------------------------------------*/
 
@@ -1449,7 +1449,6 @@ static char *resources_string_d1 = NULL;
 static char *resources_string_d2 = NULL;
 static char *resources_string_d3 = NULL;
 
-#ifndef USE_HEADLESSUI
 static const resource_string_t resources_string[] = {
     { "KeymapSymFile", "", RES_EVENT_NO, NULL,
       &machine_keymap_file_list[KBD_INDEX_SYM],
@@ -1477,16 +1476,11 @@ static const resource_int_t resources_int[] = {
       &machine_keyboard_type, keyboard_set_keyboard_type, NULL },
     RESOURCE_INT_LIST_END
 };
-#endif
 
 /*--------------------------------------------------------------------------*/
 
 int keymap_resources_init(void)
 {
-#ifdef USE_HEADLESSUI
-    /* headless has no keyboard, no point in further initializing anything */
-    return 0;
-#else
     int nsym, npos, mapping, idx, type;
     const char *name;
 
@@ -1508,7 +1502,7 @@ int keymap_resources_init(void)
     npos = (machine_keymap_file_list[KBD_INDEX_POS] == NULL) || (machine_keymap_file_list[KBD_INDEX_POS][0] == 0);
     nsym = (machine_keymap_file_list[KBD_INDEX_SYM] == NULL) || (machine_keymap_file_list[KBD_INDEX_SYM][0] == 0);
 
-    DBG((">>keyboard_resources_init(first start:%s)", (npos && nsym) ? "yes" : "no"));
+    DBG((">>keyboard_resources_init(first start:%s)\n", (npos && nsym) ? "yes" : "no"));
 
     if (npos && nsym) {
         mapping = archdep_kbd_get_host_mapping();
@@ -1524,7 +1518,7 @@ int keymap_resources_init(void)
 
         keyboard_set_default_keymap_file(KBD_INDEX_POS);
         if (resources_get_string("KeymapPosFile", &name) < 0) {
-            DBG(("<<keyboard_resources_init(error)"));
+            DBG(("<<keyboard_resources_init(error)\n"));
             return -1;
         }
         util_string_set(&resources_string_d1, name);
@@ -1533,7 +1527,7 @@ int keymap_resources_init(void)
         log_verbose(keyboard_log, "Default positional map is: %s", name);
         keyboard_set_default_keymap_file(KBD_INDEX_SYM);
         if (resources_get_string("KeymapSymFile", &name) < 0) {
-            DBG(("<<keyboard_resources_init(error)"));
+            DBG(("<<keyboard_resources_init(error)\n"));
             return -1;
         }
         log_verbose(keyboard_log, "Default symbolic map is: %s", name);
@@ -1549,24 +1543,23 @@ int keymap_resources_init(void)
 
         idx = type = mapping = 0;
         if (resources_get_int("KeymapIndex", &idx) < 0) {
-            DBG(("<<keyboard_resources_init(error)"));
+            DBG(("<<keyboard_resources_init(error)\n"));
             return -1;
         }
         if (resources_get_int("KeyboardType", &type) < 0) {
-            DBG(("<<keyboard_resources_init(error)"));
+            DBG(("<<keyboard_resources_init(error)\n"));
             return -1;
         }
         if (resources_get_int("KeyboardMapping", &mapping) < 0) {
-            DBG(("<<keyboard_resources_init(error)"));
+            DBG(("<<keyboard_resources_init(error)\n"));
             return -1;
         }
         resources_set_default_int("KeymapIndex", idx);
         resources_set_default_int("KeyboardType", type);
         resources_set_default_int("KeyboardMapping", mapping);
     }
-    DBG(("<<keyboard_resources_init(ok)"));
+    DBG(("<<keyboard_resources_init(ok)\n"));
     return 0;
-#endif
 }
 
 static void keyboard_resources_shutdown(void)
@@ -1587,7 +1580,6 @@ static void keyboard_resources_shutdown(void)
 
 /*--------------------------------------------------------------------------*/
 
-#ifndef USE_HEADLESSUI
 static cmdline_option_t const cmdline_options[] =
 {
     { "-keymap", SET_RESOURCE, CMDLINE_ATTRIB_NEED_ARGS,
@@ -1609,15 +1601,12 @@ static cmdline_option_t const cmdline_options[] =
       "<Name>", "Specify name of positional keymap file" },
     CMDLINE_LIST_END
 };
-#endif
 
 int keymap_cmdline_options_init(void)
 {
-#ifndef USE_HEADLESSUI
     if (machine_class != VICE_MACHINE_VSID) {
         return cmdline_register_options(cmdline_options);
     }
-#endif
     return 0;
 }
 
@@ -1625,12 +1614,10 @@ int keymap_cmdline_options_init(void)
 
 void keymap_init(void)
 {
-#ifndef USE_HEADLESSUI
     if (machine_class != VICE_MACHINE_VSID) {
         load_keymap_ok = 1;
         keyboard_set_keymap_index(machine_keymap_index, NULL);
     }
-#endif
 }
 
 void keymap_shutdown(void)

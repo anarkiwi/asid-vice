@@ -45,11 +45,7 @@
 
 #ifndef CPU_LOG_ID
 #define CPU_LOG_ID LOG_DEFAULT
-#ifdef _MSC_VER
-#pragma message ("Warning: CPU_LOG_ID not defined, using LOG_DEFAULT by default")
-#else
 #warning "CPU_LOG_ID not defined, using LOG_DEFAULT by default"
-#endif
 #endif
 
 #include "traps.h"
@@ -827,11 +823,7 @@ FIXME: perhaps we really have to add some randomness to (some) bits
 
 #ifndef ANE_LOG_LEVEL
 #define ANE_LOG_LEVEL 0
-#ifdef _MSC_VER
-#pragma message ("Warning: ANE_LOG_LEVEL not defined, disabling by default")
-#else
 #warning "ANE_LOG_LEVEL not defined, disabling by default"
-#endif
 #endif
 
 #if 1
@@ -1282,11 +1274,7 @@ FIXME: perhaps we really have to add some randomness to (some) bits
 
 #ifndef LXA_LOG_LEVEL
 #define LXA_LOG_LEVEL 0
-#ifdef _MSC_VER
-#pragma message ("Warning: LXA_LOG_LEVEL not defined, disabling by default")
-#else
 #warning "LXA_LOG_LEVEL not defined, disabling by default"
-#endif
 #endif
 
 #if 1
@@ -1715,11 +1703,7 @@ static const uint8_t fetch_tab[] = {
 #ifndef CPU_IS_JAMMED
     static int cpu_is_jammed = 0;
 #define CPU_IS_JAMMED cpu_is_jammed
-#ifdef _MSC_VER
-#pragma message ("Warning: CPU_IS_JAMMED not defined, using default (internal)")
-#else
 #warning "CPU_IS_JAMMED not defined, using default (internal)"
-#endif
 #endif
 
 #if !defined(DRIVE_CPU)
@@ -1791,25 +1775,7 @@ static const uint8_t fetch_tab[] = {
 
         SET_LAST_ADDR(reg_pc);
 
-        /* HACK: The real CPU would stop fetching opcodes all together when
-         * "jammed" - however, our code may rely on FETCH_OPCODE being called
-         * here, so we can not simply skip it. What we do instead is remembering
-         * the opcode fetched when not jammed and force it when jammed.
-         * This is needed so the CPU would not continue executing opcodes when
-         * the value at the original jam location changed to a non-jam, for
-         * whatever reason.
-         */
-        {
-            static uint8_t lastop;
-            FETCH_OPCODE(opcode);
-            if (!CPU_IS_JAMMED) {
-                /* remember current opcode */
-                lastop = p0;
-            } else {
-                /* set opcode that made the cpu jam */
-                SET_OPCODE(lastop);
-            }
-        }
+        FETCH_OPCODE(opcode);
 
 #ifdef FEATURE_CPUMEMHISTORY
         /* If reg_pc >= bank_limit  then JSR (0x20) hasn't load p2 yet.

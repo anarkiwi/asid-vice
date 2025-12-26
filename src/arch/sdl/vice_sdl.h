@@ -44,27 +44,15 @@
 #endif
 
 #ifdef USE_SDL2UI
-#  ifdef USE_SDL_PREFIX
-#    include <SDL2/SDL.h>
-#    include <SDL2/SDL_keycode.h>
-#    ifdef INCLUDE_SDL_SYSWM_H
-#      include <SDL2/SDL_syswm.h>
-#    endif
-#    ifdef HAVE_SDLMAIN
-#      include <SDL2/SDL_main.h>
-#    endif
-#    include <SDL2/SDL_opengl.h>
-#  else
-#    include <SDL.h>
-#    include <SDL_keycode.h>
-#    ifdef INCLUDE_SDL_SYSWM_H
-#      include <SDL_syswm.h>
-#    endif
-#    ifdef HAVE_SDLMAIN
-#      include <SDL_main.h>
-#    endif
-#    include <SDL_opengl.h>
+#  include <SDL.h>
+#  include <SDL_keycode.h>
+#  ifdef INCLUDE_SDL_SYSWM_H
+#    include <SDL_syswm.h>
 #  endif
+#  ifdef HAVE_SDLMAIN
+#    include <SDL_main.h>
+#  endif
+#  include <SDL_opengl.h>
 #else
 #  ifdef USE_SDL_PREFIX
 #    include <SDL/SDL.h>

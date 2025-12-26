@@ -86,11 +86,6 @@ static const ui_menu_entry_t dtv_model_submenu[] = {
         .callback = custom_DTVModel_callback,
         .data     = (ui_callback_data_t)DTVMODEL_V3_NTSC
     },
-    {   .string   = "Hummer PAL",
-        .type     = MENU_ENTRY_RESOURCE_RADIO,
-        .callback = custom_DTVModel_callback,
-        .data     = (ui_callback_data_t)DTVMODEL_HUMMER_PAL
-    },
     {   .string   = "Hummer NTSC",
         .type     = MENU_ENTRY_RESOURCE_RADIO,
         .callback = custom_DTVModel_callback,
@@ -105,8 +100,7 @@ UI_MENU_DEFINE_FILE_STRING(DTVNTSCV2FlashName)
 UI_MENU_DEFINE_FILE_STRING(DTVPALV2FlashName)
 UI_MENU_DEFINE_FILE_STRING(DTVNTSCV3FlashName)
 UI_MENU_DEFINE_FILE_STRING(DTVPALV3FlashName)
-UI_MENU_DEFINE_FILE_STRING(DTVPALHummerFlashName)
-UI_MENU_DEFINE_FILE_STRING(DTVNTSCHummerFlashName)
+UI_MENU_DEFINE_FILE_STRING(DTVHummerFlashName)
 
 UI_MENU_DEFINE_TOGGLE(c64dtvromrw)
 UI_MENU_DEFINE_TOGGLE(FlashTrueFS)
@@ -168,15 +162,10 @@ const ui_menu_entry_t c64dtv_hardware_menu[] = {
         .callback = file_string_DTVPALV3FlashName_callback,
         .data     = (ui_callback_data_t)"Select C64DTV PAL v3 ROM image file"
     },
-    {   .string   = "PAL Hummer",
+    {   .string   = "Hummer",
         .type     = MENU_ENTRY_DIALOG,
-        .callback = file_string_DTVPALHummerFlashName_callback,
-        .data     = (ui_callback_data_t)"Select C64DTV PAL Hummer ROM image file"
-    },
-    {   .string   = "NTSC Hummer",
-        .type     = MENU_ENTRY_DIALOG,
-        .callback = file_string_DTVNTSCHummerFlashName_callback,
-        .data     = (ui_callback_data_t)"Select C64DTV NTSC Hummer ROM image file"
+        .callback = file_string_DTVHummerFlashName_callback,
+        .data     = (ui_callback_data_t)"Select C64DTV Hummer ROM image file"
     },
     SDL_MENU_ITEM_SEPARATOR,
 

@@ -35,19 +35,9 @@
 #include "screenshot.h"
 #include "sound.h"
 #include "ui.h"
-#include "uiapi.h"
 #include "uimedia.h"
-#include "log.h"
 
 #include "statusbarrecordingwidget.h"
-
-/* #define DEBUG_RECORDING */
-
-#ifdef DEBUG_RECORDING
-#define DBG(x) log_printf x
-#else
-#define DBG(x)
-#endif
 
 
 /** \brief  Seconds to wait before hiding the widget after pressing 'STOP'
@@ -91,7 +81,7 @@ enum {
     RW_ROW_BUTTON = 0   /**< STOP button (takes both rows) */
 };
 
-#if 0
+
 /** \brief  Types of recordings
  */
 enum {
@@ -100,7 +90,7 @@ enum {
     RW_TYPE_AUDIO,  /**< recording audio */
     RW_TYPE_VIDEO   /**< recording video */
 };
-#endif
+
 
 /** \brief  Types of recordings as strings
  */
@@ -248,14 +238,12 @@ GtkWidget *statusbar_recording_widget_create(void)
  * \param[in]       status  recording status (boolean)
  */
 void statusbar_recording_widget_set_recording_status(GtkWidget *widget,
-                                                     int type)
+                                                     int status)
 {
     GtkWidget *label;
     gchar buffer[256];
     GtkWidget *button;
-    int status = (type == UI_RECORDING_STATUS_NONE) ? 0 : 1;
-
-    DBG(("statusbar_recording_widget_set_recording_status status:%d", status));
+    int type = 0;   /* set recording type to 'inactive' */
 
     if (timeout_id > 0) {
         g_source_remove(timeout_id);
@@ -266,9 +254,7 @@ void statusbar_recording_widget_set_recording_status(GtkWidget *widget,
     if (status == 0) {
         g_object_set_data(G_OBJECT(widget), "Seconds", GINT_TO_POINTER(0));
     }
-#if 0
-    DBG(("event_record_active():%d sound_is_recording():%d screenshot_is_recording():%d",
-         event_record_active(), sound_is_recording(), screenshot_is_recording()));
+
     /* determine recording type */
     if (event_record_active()) {
         type = RW_TYPE_EVENTS;
@@ -285,23 +271,9 @@ void statusbar_recording_widget_set_recording_status(GtkWidget *widget,
     } else if (screenshot_is_recording()) {
         type = RW_TYPE_VIDEO;
     }
-    if ((type != RW_TYPE_NONE) && (type != RW_TYPE_EVENTS) && status) {
+
+    if (type != RW_TYPE_NONE && type != RW_TYPE_EVENTS && status) {
         g_timeout_add_seconds(1, update_timer, (gpointer)widget);
-    }
-#endif
-
-    DBG(("statusbar_recording_widget_set_recording_status type:%d", type));
-
-    switch (type) {
-        case UI_RECORDING_STATUS_NONE:
-            statusbar_recording_widget_hide_all(GTK_WIDGET(widget), HIDE_ALL_TIMEOUT);
-            break;
-        case UI_RECORDING_STATUS_EVENTS:
-            break;
-        case UI_RECORDING_STATUS_AUDIO:
-        case UI_RECORDING_STATUS_VIDEO:
-            g_timeout_add_seconds(1, update_timer, (gpointer)widget);
-            break;
     }
 
     /* update recording status text */
@@ -361,11 +333,11 @@ void statusbar_recording_widget_set_time(GtkWidget *widget,
     status = gtk_grid_get_child_at(GTK_GRID(widget), RW_COL_TEXT, RW_ROW_TEXT);
     /* determine recording type */
     if (event_record_active()) {
-        type = UI_RECORDING_STATUS_EVENTS;
+        type = RW_TYPE_EVENTS;
     } else if ((dev != NULL && *dev != '\0') && !screenshot_is_recording()) {
-        type = UI_RECORDING_STATUS_AUDIO;
+        type = RW_TYPE_AUDIO;
     } else {
-        type = UI_RECORDING_STATUS_VIDEO;
+        type = RW_TYPE_VIDEO;
     }
     g_snprintf(buffer, sizeof(buffer), "Recording %s ...", rec_types[type]);
     gtk_label_set_text(GTK_LABEL(status), buffer);

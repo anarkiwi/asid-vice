@@ -35,7 +35,6 @@
 #include "c64mem.h"
 #include "c64meminit.h"
 #include "c64memrom.h"
-#include "c64model.h"
 #include "cartio.h"
 #include "machine.h"
 #include "resources.h"
@@ -129,37 +128,23 @@ const unsigned int c64meminit_romh_mapping[32] = {
 void c64meminit(unsigned int base)
 {
     unsigned int i, j;
-    int board = BOARD_C64;
+    int board = 0;
 
     if (machine_class != VICE_MACHINE_C128) {
         resources_get_int("BoardType", &board);
     }
 
-    if (board != BOARD_MAX) {
+    if (board != 1) {
         /* Setup BASIC ROM at $A000-$BFFF (memory configs 3, 7, 11, 15).  */
         for (i = 0xa0; i <= 0xbf; i++) {
-            uintptr_t addr = 0 - 0xa000;
-
             mem_read_tab_set(base + 3, i, c64memrom_basic64_read);
             mem_read_tab_set(base + 7, i, c64memrom_basic64_read);
             mem_read_tab_set(base + 11, i, c64memrom_basic64_read);
             mem_read_tab_set(base + 15, i, c64memrom_basic64_read);
-#if 0
             mem_read_base_set(base + 3, i, c64memrom_basic64_rom - 0xa000);
             mem_read_base_set(base + 7, i, c64memrom_basic64_rom - 0xa000);
             mem_read_base_set(base + 11, i, c64memrom_basic64_rom - 0xa000);
             mem_read_base_set(base + 15, i, c64memrom_basic64_rom - 0xa000);
-#else
-            mem_read_base_set(base + 3, i, (uint8_t*)addr);
-            mem_read_base_set(base + 7, i, (uint8_t*)addr);
-            mem_read_base_set(base + 11, i, (uint8_t*)addr);
-            mem_read_base_set(base + 15, i, (uint8_t*)addr);
-
-            mem_read_addr_set(base + 3, i, (uintptr_t)c64memrom_basic64_rom);
-            mem_read_addr_set(base + 7, i, (uintptr_t)c64memrom_basic64_rom);
-            mem_read_addr_set(base + 11, i, (uintptr_t)c64memrom_basic64_rom);
-            mem_read_addr_set(base + 15, i, (uintptr_t)c64memrom_basic64_rom);
-#endif
         }
     }
 
@@ -211,11 +196,10 @@ void c64meminit(unsigned int base)
         }
     }
 
-    if (board != BOARD_MAX) {
+    if (board != 1) {
         /* Setup Kernal ROM at $E000-$FFFF (memory configs 2, 3, 6, 7, 10,
         11, 14, 15, 26, 27, 30, 31).  */
         for (i = 0xe0; i <= 0xff; i++) {
-            uintptr_t addr = 0 - 0xe000;
             mem_read_tab_set(base + 2, i, c64memrom_kernal64_read);
             mem_read_tab_set(base + 3, i, c64memrom_kernal64_read);
             mem_read_tab_set(base + 6, i, c64memrom_kernal64_read);
@@ -228,7 +212,6 @@ void c64meminit(unsigned int base)
             mem_read_tab_set(base + 27, i, c64memrom_kernal64_read);
             mem_read_tab_set(base + 30, i, c64memrom_kernal64_read);
             mem_read_tab_set(base + 31, i, c64memrom_kernal64_read);
-#if 0
             mem_read_base_set(base + 2, i, c64memrom_kernal64_trap_rom - 0xe000);
             mem_read_base_set(base + 3, i, c64memrom_kernal64_trap_rom - 0xe000);
             mem_read_base_set(base + 6, i, c64memrom_kernal64_trap_rom - 0xe000);
@@ -241,33 +224,6 @@ void c64meminit(unsigned int base)
             mem_read_base_set(base + 27, i, c64memrom_kernal64_trap_rom - 0xe000);
             mem_read_base_set(base + 30, i, c64memrom_kernal64_trap_rom - 0xe000);
             mem_read_base_set(base + 31, i, c64memrom_kernal64_trap_rom - 0xe000);
-#else
-            mem_read_base_set(base + 2, i, (uint8_t*)addr);
-            mem_read_base_set(base + 3, i, (uint8_t*)addr);
-            mem_read_base_set(base + 6, i, (uint8_t*)addr);
-            mem_read_base_set(base + 7, i, (uint8_t*)addr);
-            mem_read_base_set(base + 10, i, (uint8_t*)addr);
-            mem_read_base_set(base + 11, i, (uint8_t*)addr);
-            mem_read_base_set(base + 14, i, (uint8_t*)addr);
-            mem_read_base_set(base + 15, i, (uint8_t*)addr);
-            mem_read_base_set(base + 26, i, (uint8_t*)addr);
-            mem_read_base_set(base + 27, i, (uint8_t*)addr);
-            mem_read_base_set(base + 30, i, (uint8_t*)addr);
-            mem_read_base_set(base + 31, i, (uint8_t*)addr);
-
-            mem_read_addr_set(base + 2, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 3, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 6, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 7, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 10, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 11, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 14, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 15, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 26, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 27, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 30, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-            mem_read_addr_set(base + 31, i, (uintptr_t)c64memrom_kernal64_trap_rom);
-#endif
         }
     }
 
@@ -348,7 +304,7 @@ void c64meminit(unsigned int base)
 
     /* Setup Ultimax configuration.  */
     for (j = 16; j < 24; j++) {
-        if (board == BOARD_MAX) {
+        if (board == 1) {
             for (i = 0x08; i <= 0x0f; i++) {
                 mem_read_tab_set(base + j, i, ultimax_0800_0fff_read);
                 mem_set_write_hook(base + j, i, ultimax_0800_0fff_store);

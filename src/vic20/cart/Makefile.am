@@ -31,8 +31,6 @@ libvic20cart_a_SOURCES = \
 	megacart.h \
 	mikroassembler.c \
 	mikroassembler.h \
-	minimon.c \
-	minimon.h \
 	rabbit.c \
 	rabbit.h \
 	superexpander.c \
@@ -51,9 +49,7 @@ libvic20cart_a_SOURCES = \
 	vic20cart.c \
 	vic20cart.h \
 	vic20cartmem.c \
-	vic20cartmem.h \
-	writenow.c \
-	writenow.h
+	vic20cartmem.h
 
 libmascuerade_a_SOURCES = \
 	mascuerade-stubs.h \

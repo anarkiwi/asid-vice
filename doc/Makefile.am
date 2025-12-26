@@ -6,7 +6,6 @@ MISC_DOX = \
 	Documentation-Howto.txt \
 	Doxygen-Howto.txt \
 	iec-bus.txt \
-	joystick.md \
 	Release-Howto.txt \
 	vice.texi \
 	gpl.texi

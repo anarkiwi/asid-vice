@@ -7,6 +7,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/lib/libzmbv \
 	-I$(top_srcdir)/src/arch/shared/sounddrv \
+	@FFMPEG_INCLUDES@ \
 	@ARCH_INCLUDES@
 
 AM_CFLAGS = @VICE_CFLAGS@
@@ -20,6 +21,10 @@ noinst_LIBRARIES = libgfxoutputdrv.a
 
 # These sources are linked only under certain circumstances.
 EXTRA_libgfxoutputdrv_a_SOURCES = \
+	ffmpegdrv.c \
+	ffmpegdrv.h \
+	ffmpeglib.c \
+	ffmpeglib.h \
 	gifdrv.c \
 	gifdrv.h \
 	pngdrv.c \
