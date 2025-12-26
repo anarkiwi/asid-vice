@@ -50,8 +50,13 @@ void cartridge_init_config(void);
 /* detect cartridge type (takes crt and bin files) */
 int cartridge_detect(const char *filename);
 
-/* attach (and enable) a cartridge by type and filename (takes crt and bin files) */
+/* attach (and enable) a cartridge by type and filename (takes crt and bin files)
+   this function detaches previously attached image(s) in the (all) main slot(s) */
 int cartridge_attach_image(int type, const char *filename);
+
+/* attach (and enable) a cartridge by type and filename (takes crt and bin files)
+   this function ADDs one (or more) images (usually to the generic cartridge) */
+int cartridge_attach_add_image(int type, const char *filename);
 
 /* enable cartridge by type. loads default image if any.
    should be used by the UI instead of using the resources directly */
@@ -65,6 +70,7 @@ void cartridge_detach_image(int type);
 
 /* FIXME: slot arg is ignored right now.
    this should return a valid cartridge ID for a given slot, or CARTRIDGE_NONE
+   (it does NOT return CARTRIDGE_CRT)
 */
 int cartridge_get_id(int slot);
 
@@ -266,7 +272,10 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_UC15                 81 /* uc2.c */
 #define CARTRIDGE_UC2                  82 /* uc2.c */
 #define CARTRIDGE_BMPDATATURBO         83 /* bmpdataturbo.c */
-#define CARTRIDGE_LAST                 83 /* cartconv: last cartridge in list */
+#define CARTRIDGE_PROFIDOS             84 /* profidos.c */
+#define CARTRIDGE_MAGIC_DESK_16        85 /* magicdesk16.c */
+#define CARTRIDGE_MEGABYTER            86 /* megabyter.c */
+#define CARTRIDGE_LAST                 86 /* cartconv: last cartridge in list */
 
 /* list of canonical names for the c64 cartridges:
    note: often it is hard to determine "the" official name, let alone the way it
@@ -339,10 +348,12 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_NAME_LT_KERNAL          "Lt. Kernal Host Adaptor"
 #define CARTRIDGE_NAME_MACH5              "MACH 5" /* http://rr.pokefinder.org/wiki/MACH_5 */
 #define CARTRIDGE_NAME_MAGIC_DESK         "Magic Desk" /* also: "Domark, Hes Australia" */
+#define CARTRIDGE_NAME_MAGIC_DESK_16      "Magic Desk 16K" /* https://github.com/crystalct/MagicDesk2 */
 #define CARTRIDGE_NAME_MAGIC_FORMEL       "Magic Formel" /* http://rr.pokefinder.org/wiki/Magic_Formel */
 #define CARTRIDGE_NAME_MAGIC_VOICE        "Magic Voice" /* all lowercase on cart ? */
 #define CARTRIDGE_NAME_MIDI_MAPLIN        "Maplin MIDI"
 #define CARTRIDGE_NAME_MAX_BASIC          "MAX Basic"
+#define CARTRIDGE_NAME_MEGABYTER          "PTV Megabyter"
 #define CARTRIDGE_NAME_MIKRO_ASSEMBLER    "Mikro Assembler"
 #define CARTRIDGE_NAME_MMC64              "MMC64" /* see manual */
 #define CARTRIDGE_NAME_MMC_REPLAY         "MMC Replay" /* see manual */
@@ -352,6 +363,7 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_NAME_OCEAN              "Ocean"
 #define CARTRIDGE_NAME_PAGEFOX            "Pagefox"
 #define CARTRIDGE_NAME_PARTNER64          "Partner 64"
+#define CARTRIDGE_NAME_PROFIDOS           "Profi-DOS"
 #define CARTRIDGE_NAME_MIDI_PASSPORT      "Passport MIDI"
 #define CARTRIDGE_NAME_P64                "Prophet64" /* see http://www.prophet64.com/ */
 #define CARTRIDGE_NAME_RAMCART            "RamCart" /* see cc65 driver */
@@ -470,8 +482,10 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_VIC20_RABBIT          6   /* rabbit.c */
 #define CARTRIDGE_VIC20_SUPEREXPANDER   7   /* superexpander.c */
 #define CARTRIDGE_VIC20_MIKRO_ASSEMBLER 8   /* mikroassembler.c */
+#define CARTRIDGE_VIC20_WRITE_NOW       9   /* writenow.c */
+#define CARTRIDGE_VIC20_MINIMON         10  /* minimon.c */
 
-#define CARTRIDGE_VIC20_LAST            8   /* cartconv: last cartridge in list */
+#define CARTRIDGE_VIC20_LAST            10  /* cartconv: last cartridge in list */
 
 /*
  * VIC20 Generic cartridges
@@ -536,10 +550,12 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_VIC20_NAME_IO3_RAM         "I/O-3 RAM"
 #define CARTRIDGE_VIC20_NAME_IEEE488         "VIC-1112 IEEE-488 Interface"  /*https://sleepingelephant.com/denial/wiki/index.php/File:Chipitos.be-VIC-1112.jpg */
 #define CARTRIDGE_VIC20_NAME_MIDI            "MIDI"
+#define CARTRIDGE_VIC20_NAME_MINIMON         "Minimon"
 #define CARTRIDGE_VIC20_NAME_SIDCART         "SIDCART"
 #define CARTRIDGE_VIC20_NAME_RABBIT          "Rabbit Tape"
 #define CARTRIDGE_VIC20_NAME_SUPEREXPANDER   "Super Expander"
 #define CARTRIDGE_VIC20_NAME_MIKRO_ASSEMBLER "Mikro Assembler"
+#define CARTRIDGE_VIC20_NAME_WRITE_NOW       "Write Now"
 
 /*
  * plus4 cartridge system
@@ -554,8 +570,9 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_PLUS4_MAGIC           1   /* c264 magic cart */
 #define CARTRIDGE_PLUS4_MULTI           2   /* plus4 multi cart */
 #define CARTRIDGE_PLUS4_JACINT1MB       3   /* 1MB Cartridge */
+#define CARTRIDGE_PLUS4_SPEEDY          4   /* Speedy */
 
-#define CARTRIDGE_PLUS4_LAST            3
+#define CARTRIDGE_PLUS4_LAST            4
 
 /* FIXME: get rid of this */
 #define CARTRIDGE_PLUS4_DETECT          0x8200 /* low byte must be 0x00 */
@@ -579,6 +596,7 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_PLUS4_NAME_JACINT1MB  "1MB Cartridge"
 #define CARTRIDGE_PLUS4_NAME_MAGIC      "c264 magic cart"
 #define CARTRIDGE_PLUS4_NAME_MULTI      "Plus4 multi cart"
+#define CARTRIDGE_PLUS4_NAME_SPEEDY     "Speedy"
 
 /*
  * cbm2 cartridge system
@@ -629,8 +647,10 @@ void cartridge_sound_chip_init(void);
 #define CARTRIDGE_SIZE_8MB      CARTRIDGE_SIZE_8192KB
 #define CARTRIDGE_SIZE_16MB     CARTRIDGE_SIZE_16384KB
 
-#define CARTRIDGE_FILETYPE_BIN  1
-#define CARTRIDGE_FILETYPE_CRT  2
+#define CARTRIDGE_FILETYPE_NONE     0 /* implies "no file" */
+#define CARTRIDGE_FILETYPE_BIN      1
+#define CARTRIDGE_FILETYPE_CRT      2
+#define CARTRIDGE_FILETYPE_SNAPSHOT 3 /* file is embedded into a snapshot */
 
 /* FIXME: merge the cartridge list with the one used by cartconv */
 
