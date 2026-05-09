@@ -1169,6 +1169,14 @@ int machine_specific_init(void)
 
     machine_drive_stub();
 
+    /* Register the C64 screen-state provider with the monitor. Lets
+       the binmon SCREEN_GET / text-monitor `screen` commands return
+       VIC-II state, screen RAM, color RAM, and the active charset. */
+    {
+        extern void c64screen_init(void);
+        c64screen_init();
+    }
+
     DBG(("machine_specific_init (done)"));
 
     return 0;

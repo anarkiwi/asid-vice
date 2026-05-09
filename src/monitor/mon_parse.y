@@ -58,6 +58,8 @@ char *alloca();
 #include "mon_disassemble.h"
 #include "mon_drive.h"
 #include "mon_file.h"
+#include "mon_keymatrix.h"
+#include "mon_screen.h"
 #include "mon_memmap.h"
 #include "mon_memory.h"
 #include "mon_register.h"
@@ -147,6 +149,8 @@ void set_yydebug(int val);
 %token CMD_LOAD_LABELS CMD_SAVE_LABELS CMD_ADD_LABEL CMD_DEL_LABEL CMD_SHOW_LABELS CMD_CLEAR_LABELS
 %token CMD_RECORD CMD_MON_STOP CMD_PLAYBACK CMD_CHAR_DISPLAY CMD_SPRITE_DISPLAY
 %token CMD_TEXT_DISPLAY CMD_SCREENCODE_DISPLAY CMD_ENTER_DATA CMD_ENTER_BIN_DATA CMD_KEYBUF
+%token CMD_KEYMATRIX KMX_TAP KMX_PRESS KMX_RELEASE KMX_POKE KMX_SHOW KMX_NAMES
+%token CMD_SCREENSCRAPE
 %token CMD_BLOAD CMD_BSAVE CMD_SCREEN CMD_UNTIL CMD_CPU CMD_YYDEBUG
 %token CMD_BACKTRACE CMD_SCREENSHOT CMD_PWD CMD_DIR CMD_MKDIR CMD_RMDIR
 %token CMD_RESOURCE_GET CMD_RESOURCE_SET CMD_LOAD_RESOURCES CMD_SAVE_RESOURCES
@@ -559,6 +563,20 @@ monitor_misc_rules: CMD_DISK rest_of_line end_cmd
                     { mon_change_dir($2); }
                   | CMD_KEYBUF rest_of_line end_cmd /* STRING */
                     { mon_keyboard_feed($2); }
+                  | CMD_KEYMATRIX KMX_TAP opt_rest_of_line end_cmd
+                    { mon_keymatrix_tap($3); if ($3) lib_free($3); }
+                  | CMD_KEYMATRIX KMX_PRESS opt_rest_of_line end_cmd
+                    { mon_keymatrix_press($3); if ($3) lib_free($3); }
+                  | CMD_KEYMATRIX KMX_RELEASE opt_rest_of_line end_cmd
+                    { mon_keymatrix_release($3); if ($3) lib_free($3); }
+                  | CMD_KEYMATRIX KMX_POKE opt_rest_of_line end_cmd
+                    { mon_keymatrix_poke($3); if ($3) lib_free($3); }
+                  | CMD_KEYMATRIX KMX_SHOW end_cmd
+                    { mon_keymatrix_show(); }
+                  | CMD_KEYMATRIX KMX_NAMES end_cmd
+                    { mon_keymatrix_names(); }
+                  | CMD_SCREENSCRAPE opt_rest_of_line end_cmd
+                    { mon_screen_show($2); if ($2) lib_free($2); }
                   | CMD_BACKTRACE end_cmd
                     { mon_backtrace(); }
                   | CMD_DIR opt_rest_of_line end_cmd

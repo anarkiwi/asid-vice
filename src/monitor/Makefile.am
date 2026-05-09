@@ -51,6 +51,10 @@ libmonitor_a_SOURCES = \
 	mon_drive.h \
 	mon_file.c \
 	mon_file.h \
+	mon_keymatrix.c \
+	mon_keymatrix.h \
+	mon_screen.c \
+	mon_screen.h \
 	mon_memmap.c \
 	mon_memmap.h \
 	mon_memory.c \

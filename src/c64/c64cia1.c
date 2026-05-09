@@ -47,6 +47,7 @@
 #include "log.h"
 #include "machine.h"
 #include "maincpu.h"
+#include "monitor/mon_keymatrix.h"
 #include "types.h"
 #include "userport.h"
 #include "vicii.h"
@@ -338,6 +339,12 @@ static uint8_t read_ciapa(cia_context_t *cia_context)
 
     DBGA((" out:%02x\n", byte));
 
+    /* Notify the monitor's keymatrix injector of this PA read so it can
+       count CIA1 reads that sampled an injected bit. The hook short-
+       circuits when no injection is active. The mask passed is the same
+       PB-driven row mask the function uses above (active rows = bit 0). */
+    mon_keymatrix_cia1_pa_read(cia_context->old_pb & read_joyport_dig(JOYPORT_1));
+
     return byte;
 }
 
@@ -429,6 +436,10 @@ static uint8_t read_ciapb(cia_context_t *cia_context)
     byte &= read_joyport_dig(JOYPORT_1);
 
     DBGB((" out:%02x\n", byte));
+
+    /* Notify the monitor's keymatrix injector of this PB read. The mask
+       is the PA-driven column mask (active cols = bit 0). */
+    mon_keymatrix_cia1_pb_read(cia_context->old_pa & read_joyport_dig(JOYPORT_2));
 
     return byte;
 }

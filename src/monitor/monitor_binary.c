@@ -55,6 +55,8 @@
 #include "mon_memmap.h"
 #include "mon_breakpoint.h"
 #include "mon_file.h"
+#include "mon_keymatrix.h"
+#include "mon_screen.h"
 #include "mon_register.h"
 
 #include "version.h"
@@ -105,6 +107,10 @@ enum t_binary_command {
     e_MON_CMD_ADVANCE_INSTRUCTIONS = 0x71,
     e_MON_CMD_KEYBOARD_FEED = 0x72,
     e_MON_CMD_EXECUTE_UNTIL_RETURN = 0x73,
+    e_MON_CMD_KEYMATRIX_SET = 0x74,
+    e_MON_CMD_KEYMATRIX_TAP = 0x75,
+    e_MON_CMD_KEYMATRIX_GET = 0x76,
+    e_MON_CMD_SCREEN_GET    = 0x77,
 
     e_MON_CMD_PING = 0x81,
     e_MON_CMD_BANKS_AVAILABLE = 0x82,
@@ -154,6 +160,10 @@ enum t_binary_response {
     e_MON_RESPONSE_ADVANCE_INSTRUCTIONS = 0x71,
     e_MON_RESPONSE_KEYBOARD_FEED = 0x72,
     e_MON_RESPONSE_EXECUTE_UNTIL_RETURN = 0x73,
+    e_MON_RESPONSE_KEYMATRIX_SET = 0x74,
+    e_MON_RESPONSE_KEYMATRIX_TAP = 0x75,
+    e_MON_RESPONSE_KEYMATRIX_GET = 0x76,
+    e_MON_RESPONSE_SCREEN_GET    = 0x77,
 
     e_MON_RESPONSE_PING = 0x81,
     e_MON_RESPONSE_BANKS_AVAILABLE = 0x82,
@@ -766,6 +776,50 @@ static void monitor_binary_process_execute_until_return(binary_command_t *comman
     mon_instruction_return();
 
     monitor_binary_response(0, e_MON_RESPONSE_EXECUTE_UNTIL_RETURN, e_MON_ERR_OK, command->request_id, NULL);
+}
+
+static void monitor_binary_process_keymatrix_set(binary_command_t *command)
+{
+    if (mon_keymatrix_binmon_set(command->body, command->length) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
+        return;
+    }
+    monitor_binary_response(0, e_MON_RESPONSE_KEYMATRIX_SET, e_MON_ERR_OK,
+                            command->request_id, NULL);
+}
+
+static void monitor_binary_process_keymatrix_tap(binary_command_t *command)
+{
+    if (mon_keymatrix_binmon_tap(command->body, command->length) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
+        return;
+    }
+    monitor_binary_response(0, e_MON_RESPONSE_KEYMATRIX_TAP, e_MON_ERR_OK,
+                            command->request_id, NULL);
+}
+
+static void monitor_binary_process_keymatrix_get(binary_command_t *command)
+{
+    uint8_t buf[MON_KEYMATRIX_BINMON_GET_RESPONSE_SIZE];
+    uint32_t out_len = sizeof(buf);
+    if (mon_keymatrix_binmon_get(buf, &out_len) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+        return;
+    }
+    monitor_binary_response(out_len, e_MON_RESPONSE_KEYMATRIX_GET,
+                            e_MON_ERR_OK, command->request_id, buf);
+}
+
+static void monitor_binary_process_screen_get(binary_command_t *command)
+{
+    uint8_t buf[MON_SCREEN_BINMON_GET_RESPONSE_SIZE];
+    uint32_t out_len = sizeof(buf);
+    if (mon_screen_binmon_get(buf, &out_len) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+        return;
+    }
+    monitor_binary_response(out_len, e_MON_RESPONSE_SCREEN_GET,
+                            e_MON_ERR_OK, command->request_id, buf);
 }
 
 static void monitor_binary_process_autostart(binary_command_t *command)
@@ -1811,6 +1865,15 @@ static void monitor_binary_process_command(unsigned char * pbuffer)
         monitor_binary_process_keyboard_feed(&command);
     } else if (command_type == e_MON_CMD_EXECUTE_UNTIL_RETURN) {
         monitor_binary_process_execute_until_return(&command);
+
+    } else if (command_type == e_MON_CMD_KEYMATRIX_SET) {
+        monitor_binary_process_keymatrix_set(&command);
+    } else if (command_type == e_MON_CMD_KEYMATRIX_TAP) {
+        monitor_binary_process_keymatrix_tap(&command);
+    } else if (command_type == e_MON_CMD_KEYMATRIX_GET) {
+        monitor_binary_process_keymatrix_get(&command);
+    } else if (command_type == e_MON_CMD_SCREEN_GET) {
+        monitor_binary_process_screen_get(&command);
 
     } else if (command_type == e_MON_CMD_PALETTE_GET) {
         monitor_binary_process_palette_get(&command);
