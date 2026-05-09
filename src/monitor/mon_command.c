@@ -301,6 +301,48 @@ static const mon_cmds_t mon_cmd_array[] = {
       NO_FILENAME_ARG
     },
 
+    { "screenscrape", "scrscr",
+      "[raw]",
+      "Emit the current C64 screen state in a form an external app can"
+      " consume: VIC-II video mode, the screen RAM at the live screen pointer"
+      " (D018 + VIC bank), the color RAM, and the active 2 KiB character set"
+      " (from chargen ROM or RAM, with metadata indicating which). The text"
+      " monitor renders a 40x25 ASCII grid by default; pass `raw` for a hex"
+      " dump of screen RAM. The same data is available efficiently as a"
+      " single-shot binary read via the binmon SCREEN_GET (0x77) opcode.\n"
+      "C64 only.",
+      NO_FILENAME_ARG
+    },
+
+    { "keymatrix", "",
+      "tap|press|release|poke|show|names ...",
+      "Inject keypresses directly into the C64 keyboard matrix (the layer the"
+      " CIA1 reads), so programs that scan the matrix without using KERNAL"
+      " routines still see them. Sub-commands:\n"
+      "  keymatrix tap <key>... [for <frames>]\n"
+      "        Press the listed keys (chord) and release as soon as the\n"
+      "        program reads CIA1 in a way that sampled an injected bit;\n"
+      "        if no such read happens, release after a safety timeout (60\n"
+      "        frames default; override with `for <frames>` for a fixed\n"
+      "        duration that ignores observation).\n"
+      "  keymatrix press <key>...\n"
+      "        Sticky press; bits stay set until you `keymatrix release`.\n"
+      "  keymatrix release [<key>...]\n"
+      "        Release listed keys, or every matrix bit if no keys given.\n"
+      "  keymatrix poke <row> <col> <0|1>\n"
+      "        Raw matrix-bit poke (escape hatch for unmapped keys or for\n"
+      "        non-C64 machines).\n"
+      "  keymatrix show\n"
+      "        Print the live matrix and the last/current tap report\n"
+      "        (CIA1 read counts, what released, after how many frames).\n"
+      "  keymatrix names\n"
+      "        List the recognised C64 key names (case-insensitive).\n"
+      "Keys can be symbolic (A, F1, LSHIFT, RUNSTOP, RESTORE, ...) or a\n"
+      "raw `<row>,<col>` pair like 7,7. Combine for chords:\n"
+      "  keymatrix tap lshift a",
+      NO_FILENAME_ARG
+    },
+
     { "warp", "",
       "[on|off|toggle]",
       "Turn warp mode on or off. If the argument is 'toggle' then the current mode"

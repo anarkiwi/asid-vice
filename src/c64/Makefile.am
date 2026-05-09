@@ -203,6 +203,7 @@ libc64sc_a_SOURCES = \
 	c64romset.c \
 	c64rsuser.c \
 	c64rsuser.h \
+	c64screen.c \
 	c64sound.c \
 	c64video.c \
 	plus256k.c \

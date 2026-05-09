@@ -34,6 +34,7 @@
 #include <string.h>
 
 #include "archdep_defs.h"
+#include "attach.h"
 #include "cmdline.h"
 #include "drive.h"
 #include "interrupt.h"
@@ -55,6 +56,8 @@
 #include "mon_memmap.h"
 #include "mon_breakpoint.h"
 #include "mon_file.h"
+#include "mon_keymatrix.h"
+#include "mon_screen.h"
 #include "mon_register.h"
 
 #include "version.h"
@@ -105,6 +108,11 @@ enum t_binary_command {
     e_MON_CMD_ADVANCE_INSTRUCTIONS = 0x71,
     e_MON_CMD_KEYBOARD_FEED = 0x72,
     e_MON_CMD_EXECUTE_UNTIL_RETURN = 0x73,
+    e_MON_CMD_KEYMATRIX_SET = 0x74,
+    e_MON_CMD_KEYMATRIX_TAP = 0x75,
+    e_MON_CMD_KEYMATRIX_GET = 0x76,
+    e_MON_CMD_SCREEN_GET    = 0x77,
+    e_MON_CMD_DRIVE_ATTACH  = 0x78,
 
     e_MON_CMD_PING = 0x81,
     e_MON_CMD_BANKS_AVAILABLE = 0x82,
@@ -154,6 +162,11 @@ enum t_binary_response {
     e_MON_RESPONSE_ADVANCE_INSTRUCTIONS = 0x71,
     e_MON_RESPONSE_KEYBOARD_FEED = 0x72,
     e_MON_RESPONSE_EXECUTE_UNTIL_RETURN = 0x73,
+    e_MON_RESPONSE_KEYMATRIX_SET = 0x74,
+    e_MON_RESPONSE_KEYMATRIX_TAP = 0x75,
+    e_MON_RESPONSE_KEYMATRIX_GET = 0x76,
+    e_MON_RESPONSE_SCREEN_GET    = 0x77,
+    e_MON_RESPONSE_DRIVE_ATTACH  = 0x78,
 
     e_MON_RESPONSE_PING = 0x81,
     e_MON_RESPONSE_BANKS_AVAILABLE = 0x82,
@@ -766,6 +779,122 @@ static void monitor_binary_process_execute_until_return(binary_command_t *comman
     mon_instruction_return();
 
     monitor_binary_response(0, e_MON_RESPONSE_EXECUTE_UNTIL_RETURN, e_MON_ERR_OK, command->request_id, NULL);
+}
+
+static void monitor_binary_process_keymatrix_set(binary_command_t *command)
+{
+    if (mon_keymatrix_binmon_set(command->body, command->length) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
+        return;
+    }
+    monitor_binary_response(0, e_MON_RESPONSE_KEYMATRIX_SET, e_MON_ERR_OK,
+                            command->request_id, NULL);
+}
+
+static void monitor_binary_process_keymatrix_tap(binary_command_t *command)
+{
+    if (mon_keymatrix_binmon_tap(command->body, command->length) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
+        return;
+    }
+    monitor_binary_response(0, e_MON_RESPONSE_KEYMATRIX_TAP, e_MON_ERR_OK,
+                            command->request_id, NULL);
+}
+
+static void monitor_binary_process_keymatrix_get(binary_command_t *command)
+{
+    uint8_t buf[MON_KEYMATRIX_BINMON_GET_RESPONSE_SIZE];
+    uint32_t out_len = sizeof(buf);
+    if (mon_keymatrix_binmon_get(buf, &out_len) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+        return;
+    }
+    monitor_binary_response(out_len, e_MON_RESPONSE_KEYMATRIX_GET,
+                            e_MON_ERR_OK, command->request_id, buf);
+}
+
+static void monitor_binary_process_screen_get(binary_command_t *command)
+{
+    uint8_t buf[MON_SCREEN_BINMON_GET_RESPONSE_SIZE];
+    uint32_t out_len = sizeof(buf);
+    if (mon_screen_binmon_get(buf, &out_len) != 0) {
+        monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+        return;
+    }
+    monitor_binary_response(out_len, e_MON_RESPONSE_SCREEN_GET,
+                            e_MON_ERR_OK, command->request_id, buf);
+}
+
+/*
+ * DRIVE_ATTACH (0x78)
+ *
+ * Attach a disk image at runtime, or detach one.
+ *
+ * Request body:
+ *     u8  unit        (8..11)
+ *     u8  drive       (0 or 1; second drive on dual-drive units)
+ *     u8  path_len    (0 = detach; 1..255 = attach)
+ *     u8  path[path_len]   ASCII path inside the emulator process's
+ *                          file system. NOT NUL-terminated.
+ *
+ * Response: empty body, e_MON_ERR_OK on success.
+ *
+ * Why this exists:
+ *
+ * The standard binmon RESOURCE_SET (0x52) handler in this build refuses
+ * a zero-length value, which makes a clean detach via that path
+ * impossible. Worse, file_system_attach_disk() is not bound to a
+ * VICE resource at all (it is wired up directly from the cmdline
+ * `-8 image.d64` arg), so even with a non-empty value RESOURCE_SET
+ * cannot reach it.
+ *
+ * For automation harnesses (CI tests, headless rendering pipelines,
+ * any script that drives the emulator from the outside) this is a
+ * real problem: the host-side .d64 file is only consistently flushed
+ * to disk when VICE detaches its image, and there was previously no
+ * binmon-level way to trigger that. DRIVE_ATTACH gives clients a
+ * direct attach/detach primitive — a same-path "attach" detaches the
+ * old image first (which closes any open files and writes the BAM
+ * back), so it doubles as an explicit flush.
+ */
+static void monitor_binary_process_drive_attach(binary_command_t *command)
+{
+    unsigned char *body = command->body;
+    uint8_t unit;
+    uint8_t drive;
+    uint8_t path_len;
+    char path_buf[256];
+
+    if (command->length < 3) {
+        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
+        return;
+    }
+    unit = body[0];
+    drive = body[1];
+    path_len = body[2];
+
+    if (command->length < (uint32_t)(3 + path_len)) {
+        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
+        return;
+    }
+    if (unit < 8 || unit > 11 || drive > 1) {
+        monitor_binary_error(e_MON_ERR_INVALID_PARAMETER, command->request_id);
+        return;
+    }
+
+    if (path_len == 0) {
+        file_system_detach_disk(unit, drive);
+    } else {
+        memcpy(path_buf, &body[3], path_len);
+        path_buf[path_len] = '\0';
+        if (file_system_attach_disk(unit, drive, path_buf) < 0) {
+            monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+            return;
+        }
+    }
+
+    monitor_binary_response(0, e_MON_RESPONSE_DRIVE_ATTACH,
+                            e_MON_ERR_OK, command->request_id, NULL);
 }
 
 static void monitor_binary_process_autostart(binary_command_t *command)
@@ -1811,6 +1940,17 @@ static void monitor_binary_process_command(unsigned char * pbuffer)
         monitor_binary_process_keyboard_feed(&command);
     } else if (command_type == e_MON_CMD_EXECUTE_UNTIL_RETURN) {
         monitor_binary_process_execute_until_return(&command);
+
+    } else if (command_type == e_MON_CMD_KEYMATRIX_SET) {
+        monitor_binary_process_keymatrix_set(&command);
+    } else if (command_type == e_MON_CMD_KEYMATRIX_TAP) {
+        monitor_binary_process_keymatrix_tap(&command);
+    } else if (command_type == e_MON_CMD_KEYMATRIX_GET) {
+        monitor_binary_process_keymatrix_get(&command);
+    } else if (command_type == e_MON_CMD_SCREEN_GET) {
+        monitor_binary_process_screen_get(&command);
+    } else if (command_type == e_MON_CMD_DRIVE_ATTACH) {
+        monitor_binary_process_drive_attach(&command);
 
     } else if (command_type == e_MON_CMD_PALETTE_GET) {
         monitor_binary_process_palette_get(&command);

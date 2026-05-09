@@ -128,7 +128,7 @@ send:
 
 HDIGIT  [0-9a-f]
 
-%x FNAME CMD STR ROL ROLQ ASM_MODE COND_MODE REG_ASGN LABEL_ASGN BNAME CTYPE RADIX
+%x FNAME CMD STR ROL ROLQ ASM_MODE COND_MODE REG_ASGN LABEL_ASGN BNAME CTYPE RADIX KMX_VERB
 
 %%
 
@@ -194,6 +194,7 @@ HDIGIT  [0-9a-f]
         io              { BEGIN(INITIAL);       return CMD_IO; }
         jpdb            { BEGIN(INITIAL);       return CMD_JPDB; }
         keybuf          { BEGIN(ROL);           return CMD_KEYBUF; }
+        keymatrix       { BEGIN(KMX_VERB);      return CMD_KEYMATRIX; }
         list            { BEGIN(INITIAL);       return CMD_LIST; }
         load|l          { BEGIN(FNAME);         return CMD_LOAD; }
         loadbasic|ldb   { BEGIN(FNAME);         return CMD_BASICLOAD; }
@@ -227,6 +228,7 @@ HDIGIT  [0-9a-f]
         save|s          { BEGIN(FNAME);         return CMD_SAVE; }
         save_labels|sl  { BEGIN(FNAME);         return CMD_SAVE_LABELS; }
         screen|sc       { BEGIN(INITIAL);       return CMD_SCREEN; }
+        screenscrape|scrscr { BEGIN(ROL);       return CMD_SCREENSCRAPE; }
         screenshot|scrsh { BEGIN(FNAME);        return CMD_SCREENSHOT; }
         show_labels|shl { BEGIN(INITIAL);       return CMD_SHOW_LABELS; }
         sidefx|sfx      { BEGIN(INITIAL);       return CMD_SIDEFX; }
@@ -254,6 +256,18 @@ HDIGIT  [0-9a-f]
             }
         maincpu_trace   { BEGIN(INITIAL);       return CMD_MAINCPU_TRACE; }
 }
+
+ /* sub-verbs for the `keymatrix` command. Their argument tail (if any) is
+    captured as a rest-of-line token and parsed by mon_keymatrix.c. */
+<KMX_VERB>{
+        tap     { BEGIN(ROL);     return KMX_TAP; }
+        press   { BEGIN(ROL);     return KMX_PRESS; }
+        release { BEGIN(ROL);     return KMX_RELEASE; }
+        poke    { BEGIN(ROL);     return KMX_POKE; }
+        show    { BEGIN(INITIAL); return KMX_SHOW; }
+        names   { BEGIN(INITIAL); return KMX_NAMES; }
+}
+
  /* this is not a real command, but could be a label name for a label assignment */
 <CMD>[_a-zA-Z][_a-zA-Z0-9]* { BEGIN(LABEL_ASGN); yylval.str = lib_strdup(yytext); return CMD_LABEL_ASGN; }
 
