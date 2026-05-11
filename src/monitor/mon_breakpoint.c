@@ -555,8 +555,6 @@ bool mon_breakpoint_check_checkpoint(MEMSPACE mem, unsigned int addr, unsigned i
 
             cp->hit_count++;
 
-            mon_breakpoint_event(cp);
-
             if (cp->stop) {
                 must_stop = TRUE;
                 action_str = "Stop on";
@@ -564,42 +562,52 @@ bool mon_breakpoint_check_checkpoint(MEMSPACE mem, unsigned int addr, unsigned i
                 action_str = "Trace";
             }
 
-            mon_out("#%d (%s %5s %04x) ", cp->checknum, action_str, op_str, addr);
+            /* asid-vice extension: silent checkpoints skip all per-hit
+             * output work (binmon event, trace print, disassembly).
+             * Only hit_count + the stop/temporary bookkeeping above and
+             * below this block runs. This is the line that pays for
+             * itself ~10^7 times per second under byte-granular
+             * coverage + warp playback. */
+            if (!cp->silent) {
+                mon_breakpoint_event(cp);
 
-            if (mon_interfaces[mem]->get_line_cycle != NULL) {
-                unsigned int line, cycle;
-                int half_cycle;
+                mon_out("#%d (%s %5s %04x) ", cp->checknum, action_str, op_str, addr);
 
-                mon_interfaces[mem]->get_line_cycle(&line, &cycle, &half_cycle);
+                if (mon_interfaces[mem]->get_line_cycle != NULL) {
+                    unsigned int line, cycle;
+                    int half_cycle;
 
-                if (half_cycle == -1) {
-                    mon_out(" %3u/$%03x, %3u/$%02x\n",
-                            line, line, cycle, cycle);
+                    mon_interfaces[mem]->get_line_cycle(&line, &cycle, &half_cycle);
+
+                    if (half_cycle == -1) {
+                        mon_out(" %3u/$%03x, %3u/$%02x\n",
+                                line, line, cycle, cycle);
+                    } else {
+                        mon_out(" %3u/$%03x, %3u/$%02x %i\n",
+                                line, line, cycle, cycle, half_cycle);
+                    }
                 } else {
-                    mon_out(" %3u/$%03x, %3u/$%02x %i\n",
-                            line, line, cycle, cycle, half_cycle);
+                    mon_out("\n");
                 }
-            } else {
-                mon_out("\n");
-            }
 
-            /* always disassemble using CPU bank */
-            if (mon_interfaces[mem]->mem_bank_from_name != NULL) {
-                mon_interfaces[mem]->current_bank = mon_interfaces[mem]->mem_bank_from_name("cpu");
-            } else {
-                mon_interfaces[mem]->current_bank = 0;
-            }
+                /* always disassemble using CPU bank */
+                if (mon_interfaces[mem]->mem_bank_from_name != NULL) {
+                    mon_interfaces[mem]->current_bank = mon_interfaces[mem]->mem_bank_from_name("cpu");
+                } else {
+                    mon_interfaces[mem]->current_bank = 0;
+                }
 
-            if (is_loadstore) {
-                mon_disassemble_with_regdump(mem, loadstorepc);
-            } else if (!is_loadstore || cp->stop) {
-                mon_disassemble_with_regdump(mem, instpc);
-            }
-            mon_interfaces[mem]->current_bank = monbank; /* restore value used in monitor */
+                if (is_loadstore) {
+                    mon_disassemble_with_regdump(mem, loadstorepc);
+                } else if (!is_loadstore || cp->stop) {
+                    mon_disassemble_with_regdump(mem, instpc);
+                }
+                mon_interfaces[mem]->current_bank = monbank; /* restore value used in monitor */
 
-            if (cp->command) {
-                mon_out("Executing: %s\n", cp->command);
-                parse_and_execute_line(cp->command);
+                if (cp->command) {
+                    mon_out("Executing: %s\n", cp->command);
+                    parse_and_execute_line(cp->command);
+                }
             }
 
             if (cp->temporary) {
@@ -673,6 +681,10 @@ int breakpoint_add_checkpoint(MON_ADDR start_addr, MON_ADDR end_addr,
     new_cp->check_store = memory_op & e_store;
     new_cp->check_exec = memory_op & e_exec;
     new_cp->temporary = is_temp;
+    /* Default: emit per-hit event/print. binmon CHECKPOINT_SET handler
+     * can override this after creation when its extended body opts in
+     * (see monitor_binary_process_checkpoint_set). */
+    new_cp->silent = false;
 
     mem = addr_memspace(start_addr);
     add_to_checkpoint_list(&all_checkpoints, new_cp);

@@ -49,6 +49,14 @@ struct mon_checkpoint_s {
     bool check_store;
     bool check_exec;
     bool temporary;
+    /* asid-vice extension: when true, the on-hit handler increments
+     * hit_count but skips the per-hit binmon event, trace print, and
+     * disassembly. Cheap polled-coverage mode for stop_when_hit=false
+     * watchpoints over large ranges (~45K cps in defmon-src) — avoids
+     * the ~10^7 events/s flood that otherwise wedges the binmon
+     * pipeline under warp playback. Default false; only set via the
+     * extended CHECKPOINT_SET body byte 9. */
+    bool silent;
 };
 typedef struct mon_checkpoint_s mon_checkpoint_t;
 

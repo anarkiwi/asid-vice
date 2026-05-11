@@ -576,6 +576,12 @@ static void monitor_binary_process_checkpoint_set(binary_command_t *command)
     MEMSPACE memspace = e_comp_space;
     unsigned char *body = command->body;
     uint8_t requested_memspace = command->body[8];
+    /* asid-vice extension: optional silent flag at body[9]. When set,
+     * the checkpoint increments hit_count on hit but emits no
+     * CHECKPOINT_INFO event and runs no trace/disassemble work — the
+     * mode coverage harvesters need to avoid the per-hit event flood
+     * that otherwise wedges the binmon pipeline under warp playback. */
+    bool silent = false;
 
     if (command->length < 8) {
         monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
@@ -592,6 +598,10 @@ static void monitor_binary_process_checkpoint_set(binary_command_t *command)
         }
     }
 
+    if (command->length >= 10) {
+        silent = (bool)body[9];
+    }
+
     brknum = mon_breakpoint_add_checkpoint(
         (MON_ADDR)new_addr(memspace, little_endian_to_uint16(&body[0])),
         (MON_ADDR)new_addr(memspace, little_endian_to_uint16(&body[2])),
@@ -606,6 +616,7 @@ static void monitor_binary_process_checkpoint_set(binary_command_t *command)
     }
 
     checkpt = mon_breakpoint_find_checkpoint(brknum);
+    checkpt->silent = silent;
 
     monitor_binary_response_checkpoint_info(command->request_id, checkpt, 0);
 }
