@@ -47,7 +47,7 @@
 #include "log.h"
 #include "machine.h"
 #include "maincpu.h"
-#include "monitor/mon_keymatrix.h"
+#include "mon_keymatrix.h"
 #include "types.h"
 #include "userport.h"
 #include "vicii.h"

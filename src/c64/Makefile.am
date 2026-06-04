@@ -203,7 +203,6 @@ libc64sc_a_SOURCES = \
 	c64romset.c \
 	c64rsuser.c \
 	c64rsuser.h \
-	c64screen.c \
 	c64sound.c \
 	c64video.c \
 	plus256k.c \
@@ -298,3 +297,9 @@ libc64cart:
 libc64cartsystem:
 libc64commoncart:
 	(cd cart; $(MAKE))
+
+# >>> revice wiring (managed by apply-wiring.sh) >>>
+AM_CPPFLAGS += -I$(top_srcdir)/src/revice/libs/screen/include -I$(top_srcdir)/src/revice/libs/screen/vice
+AM_CPPFLAGS += -I$(top_srcdir)/src/revice/libs/keymatrix/vice
+libc64sc_a_SOURCES += $(top_srcdir)/src/revice/libs/screen/vice/c64screen.c
+# <<< revice wiring <<<

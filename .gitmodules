@@ -1,0 +1,3 @@
+[submodule "src/revice"]
+	path = src/revice
+	url = https://github.com/anarkiwi/revice

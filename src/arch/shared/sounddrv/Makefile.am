@@ -19,7 +19,8 @@ noinst_LIBRARIES = libsounddrv.a
 # These sources are linked only under certain circumstances.
 EXTRA_libsounddrv_a_SOURCES = \
 	soundalsa.c \
-	soundasid.c \
+	$(top_srcdir)/src/revice/libs/asid/vice/soundasid.c \
+	$(top_srcdir)/src/revice/libs/asid/src/asid_core.c \
 	soundbeos.cc \
 	soundbsp.cc \
 	soundcoreaudio.c \
@@ -61,3 +62,7 @@ libsounddrv_a_LIBADD = @SOUND_DRIVERS@
 
 EXTRA_DIST = \
 	lamelib.h
+
+# >>> revice wiring (managed by apply-wiring.sh) >>>
+AM_CPPFLAGS += -I$(top_srcdir)/src/revice/libs/asid/include
+# <<< revice wiring <<<

@@ -51,10 +51,6 @@ libmonitor_a_SOURCES = \
 	mon_drive.h \
 	mon_file.c \
 	mon_file.h \
-	mon_keymatrix.c \
-	mon_keymatrix.h \
-	mon_screen.c \
-	mon_screen.h \
 	mon_memmap.c \
 	mon_memmap.h \
 	mon_memory.c \
@@ -82,3 +78,17 @@ libmonitor_a_SOURCES = \
 BUILT_SOURCES = mon_parse.c mon_parse.h mon_lex.c
 
 mon_parse.h:	mon_parse.c
+
+# >>> revice wiring (managed by apply-wiring.sh) >>>
+AM_CPPFLAGS += \
+	-I$(top_srcdir)/src/revice/libs/keymatrix/include   -I$(top_srcdir)/src/revice/libs/keymatrix/vice \
+	-I$(top_srcdir)/src/revice/libs/screen/include      -I$(top_srcdir)/src/revice/libs/screen/vice \
+	-I$(top_srcdir)/src/revice/libs/driveattach/include -I$(top_srcdir)/src/revice/libs/checkpoint/include
+libmonitor_a_SOURCES += \
+	$(top_srcdir)/src/revice/libs/keymatrix/src/keymatrix_core.c \
+	$(top_srcdir)/src/revice/libs/keymatrix/vice/mon_keymatrix.c \
+	$(top_srcdir)/src/revice/libs/screen/src/screen_core.c \
+	$(top_srcdir)/src/revice/libs/screen/vice/mon_screen.c \
+	$(top_srcdir)/src/revice/libs/driveattach/src/driveattach_core.c \
+	$(top_srcdir)/src/revice/libs/checkpoint/src/checkpoint_core.c
+# <<< revice wiring <<<
