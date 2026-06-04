@@ -60,6 +60,9 @@
 #include "mon_screen.h"
 #include "mon_register.h"
 
+#include "revice_driveattach.h"
+#include "revice_checkpoint.h"
+
 #include "version.h"
 
 #ifdef USE_SVN_REVISION
@@ -598,9 +601,7 @@ static void monitor_binary_process_checkpoint_set(binary_command_t *command)
         }
     }
 
-    if (command->length >= 10) {
-        silent = (bool)body[9];
-    }
+    silent = checkpoint_decode_silent(body, command->length) ? true : false;
 
     brknum = mon_breakpoint_add_checkpoint(
         (MON_ADDR)new_addr(memspace, little_endian_to_uint16(&body[0])),
@@ -870,38 +871,25 @@ static void monitor_binary_process_screen_get(binary_command_t *command)
  */
 static void monitor_binary_process_drive_attach(binary_command_t *command)
 {
-    unsigned char *body = command->body;
-    uint8_t unit;
-    uint8_t drive;
-    uint8_t path_len;
-    char path_buf[256];
+    da_request_t req;
 
-    if (command->length < 3) {
-        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
-        return;
-    }
-    unit = body[0];
-    drive = body[1];
-    path_len = body[2];
-
-    if (command->length < (uint32_t)(3 + path_len)) {
-        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
-        return;
-    }
-    if (unit < 8 || unit > 11 || drive > 1) {
-        monitor_binary_error(e_MON_ERR_INVALID_PARAMETER, command->request_id);
-        return;
-    }
-
-    if (path_len == 0) {
-        file_system_detach_disk(unit, drive);
-    } else {
-        memcpy(path_buf, &body[3], path_len);
-        path_buf[path_len] = '\0';
-        if (file_system_attach_disk(unit, drive, path_buf) < 0) {
-            monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+    switch (da_decode(command->body, command->length, &req)) {
+        case DA_OK:
+            break;
+        case DA_ERR_LENGTH:
+            monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
             return;
-        }
+        case DA_ERR_PARAM:
+        default:
+            monitor_binary_error(e_MON_ERR_INVALID_PARAMETER, command->request_id);
+            return;
+    }
+
+    if (req.detach) {
+        file_system_detach_disk(req.unit, req.drive);
+    } else if (file_system_attach_disk(req.unit, req.drive, req.path) < 0) {
+        monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+        return;
     }
 
     monitor_binary_response(0, e_MON_RESPONSE_DRIVE_ATTACH,
