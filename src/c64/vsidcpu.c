@@ -33,6 +33,8 @@
 #include "c64pla.h"
 #endif
 
+#include "soundbustrace.h"
+
 /* ------------------------------------------------------------------------- */
 
 /* MACHINE_STUFF should define/undef
@@ -63,6 +65,8 @@ static void memmap_mem_store(unsigned int addr, unsigned int value)
     } else {
         monitor_memmap_store(addr, MEMMAP_RAM_W);
     }
+    bustrace_observe_access((uint16_t)addr, (uint8_t)value,
+                            REVICE_BUSTRACE_RW_WRITE);
     (*_mem_write_tab_ptr[(addr) >> 8])((uint16_t)(addr), (uint8_t)(value));
 }
 
@@ -73,6 +77,8 @@ static void memmap_mem_store_dummy(unsigned int addr, unsigned int value)
     } else {
         monitor_memmap_store(addr, MEMMAP_RAM_W);
     }
+    bustrace_observe_access((uint16_t)addr, (uint8_t)value,
+                            REVICE_BUSTRACE_RW_WRITE | REVICE_BUSTRACE_RW_DUMMY);
     (*_mem_write_tab_ptr_dummy[(addr) >> 8])((uint16_t)(addr), (uint8_t)(value));
 }
 
@@ -103,14 +109,22 @@ static void memmap_mark_read(unsigned int addr)
 
 static uint8_t memmap_mem_read(unsigned int addr)
 {
+    uint8_t bustrace_rw = (memmap_state & MEMMAP_STATE_OPCODE)
+                          ? REVICE_BUSTRACE_RW_OPCODE : 0;
+    uint8_t value;
     memmap_mark_read(addr);
-    return (*_mem_read_tab_ptr[(addr) >> 8])((uint16_t)(addr));
+    value = (*_mem_read_tab_ptr[(addr) >> 8])((uint16_t)(addr));
+    bustrace_observe_access((uint16_t)addr, value, bustrace_rw);
+    return value;
 }
 
 static uint8_t memmap_mem_read_dummy(unsigned int addr)
 {
+    uint8_t value;
     memmap_mark_read(addr);
-    return (*_mem_read_tab_ptr_dummy[(addr) >> 8])((uint16_t)(addr));
+    value = (*_mem_read_tab_ptr_dummy[(addr) >> 8])((uint16_t)(addr));
+    bustrace_observe_access((uint16_t)addr, value, REVICE_BUSTRACE_RW_DUMMY);
+    return value;
 }
 #endif
 
