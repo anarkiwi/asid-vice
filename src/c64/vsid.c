@@ -71,6 +71,8 @@
 #include "vsid-debugcart.h"
 #include "vsync.h"
 
+#include "soundbustrace.h"
+
 
 machine_context_t machine_context;
 
@@ -127,6 +129,10 @@ int machine_resources_init(void)
         init_resource_fail("debug cart");
         return -1;
     }
+    if (bustrace_resources_init() < 0) {
+        init_resource_fail("bustrace");
+        return -1;
+    }
 #ifdef DEBUG
     if (debug_resources_init() < 0) {
         init_resource_fail("debug");
@@ -165,6 +171,10 @@ int machine_cmdline_options_init(void)
     }
     if (debugcart_cmdline_options_init() < 0) {
         init_cmdline_options_fail("debug cart");
+        return -1;
+    }
+    if (bustrace_cmdline_options_init() < 0) {
+        init_cmdline_options_fail("bustrace");
         return -1;
     }
     return 0;
@@ -289,6 +299,8 @@ void machine_specific_shutdown(void)
 {
     ciacore_shutdown(machine_context.cia1);
     ciacore_shutdown(machine_context.cia2);
+
+    bustrace_shutdown();
 
     /* close the video chip(s) */
     vicii_shutdown();

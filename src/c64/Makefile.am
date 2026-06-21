@@ -303,3 +303,10 @@ AM_CPPFLAGS += -I$(top_srcdir)/src/revice/libs/screen/include -I$(top_srcdir)/sr
 AM_CPPFLAGS += -I$(top_srcdir)/src/revice/libs/keymatrix/vice
 libc64sc_a_SOURCES += $(top_srcdir)/src/revice/libs/screen/vice/c64screen.c
 # <<< revice wiring <<<
+
+# >>> revice wiring: bustrace (managed by apply-wiring.sh) >>>
+AM_CPPFLAGS += -I$(top_srcdir)/src/revice/libs/bustrace/include -I$(top_srcdir)/src/revice/libs/bustrace/vice
+libvsid_a_SOURCES += \
+	$(top_srcdir)/src/revice/libs/bustrace/src/bustrace_core.c \
+	$(top_srcdir)/src/revice/libs/bustrace/vice/soundbustrace.c
+# <<< revice wiring: bustrace <<<
