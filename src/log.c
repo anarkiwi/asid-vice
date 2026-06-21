@@ -760,6 +760,17 @@ static int log_helper(log_t log, unsigned int level, const char *format,
         /* FIXME: we should force colors off here, if the standard logger goes
                   into a file (because stdout was redirected) */
         if (archdep_default_logger_is_terminal() == 0) {
+            /* The non-colorized strings are only built above when log_to_file is
+               set or colorizing is off. When neither holds (e.g. +logtofile with
+               colorizing on) but stdout is not a terminal, they are still NULL
+               here - build them now so log_archdep() never strlen()s a NULL
+               pointer (which segfaults / corrupts the heap). */
+            if (nocolorpre == NULL) {
+                nocolorpre = logskipcolors(pretxt);
+            }
+            if (nocolortxt == NULL) {
+                nocolortxt = logskipcolors(logtxt);
+            }
             terminalpre = nocolorpre;
             terminaltxt = nocolortxt;
         }
