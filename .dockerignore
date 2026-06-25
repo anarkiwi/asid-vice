@@ -82,6 +82,9 @@ src/monitor/mon_parse.h
 
 # --- documentation build outputs -----------------------------------------
 doc/html/*.html
+# ...but doc/html/index.html is checked-in *source* that src/Makefile.am's
+# infocontrib.h rule reads (it `cp`s it), so the build needs it in context.
+!doc/html/index.html
 doc/html/*.png
 doc/html/COPYING
 doc/html/NEWS

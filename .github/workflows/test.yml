@@ -10,3 +10,15 @@ jobs:
           submodules: recursive
       - name: test build
         run: ./build.sh
+
+  docker-build:
+    # Build the headless binmon image so the Dockerfile itself is exercised
+    # (build.sh above runs on the runner, which ships utilities the slim base
+    # image does not, so it does not catch missing Dockerfile build deps).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: docker build
+        run: docker build -t asid-vice:latest .
