@@ -34,7 +34,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Build deps. SDL/GLEW/GTK are *not* needed for --enable-headlessui, but
 # we keep libpng (for screenshot subsystem) and libasound (for the audio
-# pipeline; harmless even when no device is attached).
+# pipeline; harmless even when no device is attached). `file` is required by
+# src/Makefile.am's infocontrib.h rule (`file --mime-encoding`); the slim base
+# image does not ship it, unlike the Ubuntu CI runner that runs build.sh.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         autoconf \
         automake \
@@ -42,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         byacc \
         ca-certificates \
         dos2unix \
+        file \
         flex \
         libasound2-dev \
         libcurl4-openssl-dev \
