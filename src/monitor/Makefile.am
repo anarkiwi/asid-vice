@@ -83,12 +83,15 @@ mon_parse.h:	mon_parse.c
 AM_CPPFLAGS += \
 	-I$(top_srcdir)/src/revice/libs/keymatrix/include   -I$(top_srcdir)/src/revice/libs/keymatrix/vice \
 	-I$(top_srcdir)/src/revice/libs/screen/include      -I$(top_srcdir)/src/revice/libs/screen/vice \
-	-I$(top_srcdir)/src/revice/libs/driveattach/include -I$(top_srcdir)/src/revice/libs/checkpoint/include
+	-I$(top_srcdir)/src/revice/libs/driveattach/include -I$(top_srcdir)/src/revice/libs/checkpoint/include \
+	-I$(top_srcdir)/src/revice/libs/video/include       -I$(top_srcdir)/src/revice/libs/video/vice
 libmonitor_a_SOURCES += \
 	$(top_srcdir)/src/revice/libs/keymatrix/src/keymatrix_core.c \
 	$(top_srcdir)/src/revice/libs/keymatrix/vice/mon_keymatrix.c \
 	$(top_srcdir)/src/revice/libs/screen/src/screen_core.c \
 	$(top_srcdir)/src/revice/libs/screen/vice/mon_screen.c \
 	$(top_srcdir)/src/revice/libs/driveattach/src/driveattach_core.c \
-	$(top_srcdir)/src/revice/libs/checkpoint/src/checkpoint_core.c
+	$(top_srcdir)/src/revice/libs/checkpoint/src/checkpoint_core.c \
+	$(top_srcdir)/src/revice/libs/video/src/video_core.c \
+	$(top_srcdir)/src/revice/libs/video/vice/mon_video.c
 # <<< revice wiring <<<

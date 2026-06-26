@@ -55,6 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pkg-config \
         texinfo \
         xa65 \
+        zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
@@ -90,6 +91,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpng16-16 \
         libpulse0 \
         libusb-1.0-0 \
+        zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the installed VICE tree (binary + ROMs + data) from the builder.

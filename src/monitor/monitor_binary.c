@@ -52,12 +52,14 @@
 #include "screenshot.h"
 #include "machine-video.h"
 #include "palette.h"
+#include "vsync.h"
 
 #include "mon_memmap.h"
 #include "mon_breakpoint.h"
 #include "mon_file.h"
 #include "mon_keymatrix.h"
 #include "mon_screen.h"
+#include "mon_video.h"
 #include "mon_register.h"
 
 #include "revice_driveattach.h"
@@ -116,6 +118,7 @@ enum t_binary_command {
     e_MON_CMD_KEYMATRIX_GET = 0x76,
     e_MON_CMD_SCREEN_GET    = 0x77,
     e_MON_CMD_DRIVE_ATTACH  = 0x78,
+    e_MON_CMD_VIDEO_RECORD  = 0x79,
 
     e_MON_CMD_PING = 0x81,
     e_MON_CMD_BANKS_AVAILABLE = 0x82,
@@ -170,6 +173,7 @@ enum t_binary_response {
     e_MON_RESPONSE_KEYMATRIX_GET = 0x76,
     e_MON_RESPONSE_SCREEN_GET    = 0x77,
     e_MON_RESPONSE_DRIVE_ATTACH  = 0x78,
+    e_MON_RESPONSE_VIDEO_RECORD  = 0x79,
 
     e_MON_RESPONSE_PING = 0x81,
     e_MON_RESPONSE_BANKS_AVAILABLE = 0x82,
@@ -893,6 +897,58 @@ static void monitor_binary_process_drive_attach(binary_command_t *command)
     }
 
     monitor_binary_response(0, e_MON_RESPONSE_DRIVE_ATTACH,
+                            e_MON_ERR_OK, command->request_id, NULL);
+}
+
+/*
+ * VIDEO_RECORD (0x79)
+ *
+ * Start or stop native VICE video recording of the emulated screen to a
+ * host-side file, using the in-tree ZMBV gfxoutput driver (lossless ZMBV
+ * inside an AVI container; depends only on zlib, no external ffmpeg).
+ *
+ * Request body:
+ *     u8  action      0 = stop recording (finalize/close the file)
+ *                     1 = start recording
+ *     u8  path_len    length of path (only used when action == 1)
+ *     u8  path[path_len]   ASCII path inside the emulator process's file
+ *                          system. NOT NUL-terminated. Should end in .avi.
+ *
+ * Response: empty body, e_MON_ERR_OK on success.
+ *
+ * Why this exists:
+ *
+ * The standard binmon protocol has no way to drive VICE's screenshot/movie
+ * recorder, and the text-monitor `screenshot` command in this headless build
+ * only exposes still-image formats. Automation harnesses that drive the
+ * emulator from the outside (CI tests, headless rendering pipelines) need a
+ * real, playable capture of gameplay rather than a stitched-together GIF.
+ *
+ * Recording is driven per emulated frame by screenshot_record() out of the
+ * machine vsync hook. screenshot_save_core() deliberately skips encoding
+ * while warp mode is active (warped frames are produced far faster than a
+ * playable video can represent), so starting a recording forces warp OFF and
+ * stopping it restores the prior warp state. This lets a warp-booted harness
+ * record a normal-speed clip and then resume warping.
+ *
+ * The body parsing, the already-recording guard and the warp save/restore
+ * policy live in the revice video core (libs/video); this wiring only maps the
+ * core's result to the binmon response/error. See mon_video.h.
+ */
+static void monitor_binary_process_video_record(binary_command_t *command)
+{
+    int rc = mon_video_binmon_record(command->body, command->length);
+
+    if (rc == VIDEO_ERR_LENGTH) {
+        monitor_binary_error(e_MON_ERR_CMD_INVALID_LENGTH, command->request_id);
+        return;
+    }
+    if (rc != VIDEO_OK) {
+        monitor_binary_error(e_MON_ERR_CMD_FAILURE, command->request_id);
+        return;
+    }
+
+    monitor_binary_response(0, e_MON_RESPONSE_VIDEO_RECORD,
                             e_MON_ERR_OK, command->request_id, NULL);
 }
 
@@ -1950,6 +2006,8 @@ static void monitor_binary_process_command(unsigned char * pbuffer)
         monitor_binary_process_screen_get(&command);
     } else if (command_type == e_MON_CMD_DRIVE_ATTACH) {
         monitor_binary_process_drive_attach(&command);
+    } else if (command_type == e_MON_CMD_VIDEO_RECORD) {
+        monitor_binary_process_video_record(&command);
 
     } else if (command_type == e_MON_CMD_PALETTE_GET) {
         monitor_binary_process_palette_get(&command);
