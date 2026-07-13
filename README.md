@@ -7,36 +7,51 @@ originally posted as a patch in http://midibox.org/forums/topic/17538-vice-emula
 This allows VICE to command an Elektron SIDStation, or a C64 with a Vessel interface and [VAP](https://github.com/anarkiwi/vap),
 or a C64 with a regular MIDI interface and [Station64](https://csdb.dk/release/?id=142049).  ASID isn't fast enough for sample playback.
 
-## Building
-### Installing build dependencies
+## Docker image
+
+The published image (`anarkiwi/asid-vice` on Docker Hub) is built from
+[`Dockerfile.x11`](Dockerfile.x11): the full **GTK3 (X11) VICE** with the widest
+practical set of options enabled — reSID + HardSID + ParSID, ASID-over-MIDI and
+the emulated MIDI cartridge, The Final Ethernet, FLAC / Ogg-Vorbis / MP3
+(mpg123 decode, LAME encode), PNG + GIF screenshots, libcurl, and `ffmpeg`
+video capture. It is a multi-stage build, so the runtime image carries only the
+binaries, ROMs and shared libraries. Each `v*` release tag (e.g. `v3.10.0.0`)
+publishes it via
+[`.github/workflows/release.yml`](.github/workflows/release.yml), which needs
+the repo secrets `DOCKER_USERNAME` and `DOCKER_TOKEN`.
+
+### Pull from Docker Hub
 ```
-sudo apt update && sudo apt install \
-	autoconf \
-	build-essential \
-	byacc \
-	dos2unix \
-	flex \
-	libasound2-dev \
-	libevdev-dev \
-	libglew-dev \
-	libglib2.0-dev \
-	libpng-dev \
-	libsdl2-dev \
-	libsdl2-image-dev \
-	texinfo \
-	texmaker \
-	xa65
+docker pull anarkiwi/asid-vice:latest
 ```
 
-### Compiling 
+### Build locally
 ```
-./autogen.sh && ./configure --with-alsa && make -j
+docker build -f Dockerfile.x11 -t asid-vice:x11 .
 ```
 
-### Installing
+### Running X11 inside a container
+
+The GTK3 UI needs an X server. The entrypoint auto-starts `Xvfb` when no
+`DISPLAY` is set, so the image runs in a bare container out of the box; the
+binary monitor is exposed on TCP `6502`.
 ```
-sudo make install
+# Virtual framebuffer, no host X server needed
+docker run --rm -p 6502:6502 anarkiwi/asid-vice:latest
+
+# Show a real window on the host X server (Linux)
+docker run --rm -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -p 6502:6502 anarkiwi/asid-vice:latest
+
+# Autostart a disk/prg by mounting it (extra args replace the default CMD,
+# so start them with the emulator binary):
+docker run --rm -p 6502:6502 -v "$PWD/Commando.d64:/work/disk.d64:ro" \
+    anarkiwi/asid-vice:latest x64sc -autostart /work/disk.d64
 ```
+
+For ASID over a real MIDI device, pass the host ALSA devices through with
+`--device /dev/snd` and select the port with `-sounddev asid -soundarg <n>`
+(see below).
 
 ## Running
 To enable the asid output, use the `-sounddev asid` command line option.
@@ -125,6 +140,8 @@ so a freshly-started container is already listening for binmon
 clients. From there your app can `keymatrix tap` to feed input and
 `screenscrape` (`SCREEN_GET`) to read the display every frame —
 nothing in the data path requires a display, X server, or audio device.
+This minimal `Dockerfile` is the alternative to the published X11 image
+([Docker image](#docker-image) above) when all you need is binmon driving.
 
 ---
 

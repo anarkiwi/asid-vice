@@ -22,3 +22,14 @@ jobs:
           submodules: recursive
       - name: docker build
         run: docker build -t asid-vice:latest .
+
+  docker-build-x11:
+    # Build the X11 (GTK3, full-feature) image that release.yml publishes, so
+    # the Dockerfile.x11 build stays exercised on every push/PR without pushing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: docker build x11
+        run: docker build -f Dockerfile.x11 -t asid-vice:x11 .
