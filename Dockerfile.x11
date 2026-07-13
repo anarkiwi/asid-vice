@@ -1,0 +1,156 @@
+# asid-vice X11 (GTK3) image — the build published to Docker Hub.
+#
+# Unlike the headless `Dockerfile`, this builds the full GTK3 (X11) UI with the
+# widest practical set of VICE options enabled: reSID + HardSID + ParSID sound,
+# ASID-over-MIDI (ALSA), emulated MIDI cartridge, The Final Ethernet (libpcap),
+# every audio codec VICE can use (FLAC / Ogg-Vorbis / MP3 decode via mpg123 /
+# MP3 encode via LAME), PNG + GIF screenshots, libcurl, and ffmpeg video
+# capture (the driver shells out to the `ffmpeg` binary at runtime).
+#
+# Multi-stage: the builder compiles + `make install`s VICE into /opt/vice; the
+# runtime stage carries only that tree plus the shared libraries the binaries
+# link, keeping the published image small.
+#
+# The GTK3 UI needs an X server. The entrypoint auto-starts Xvfb when no
+# DISPLAY is provided, so the image runs in a bare container out of the box;
+# bind-mount the host X socket and pass -e DISPLAY to show a real window.
+#
+# Build:
+#   docker build -f Dockerfile.x11 -t asid-vice:x11 .
+#
+# Run (virtual framebuffer, binmon on 6502):
+#   docker run --rm -p 6502:6502 asid-vice:x11
+#
+# Run showing a window on the host X server:
+#   docker run --rm -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
+#       -p 6502:6502 asid-vice:x11
+
+# ---------------------------------------------------------------------------
+# Stage 1: build
+# ---------------------------------------------------------------------------
+FROM debian:bookworm-slim AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Toolchain + every -dev package needed to turn the configure options below
+# on. GTK3 pulls in GLEW/OpenGL (rendering) and libglib2.0-dev-bin (the
+# glib-compile-resources / glib-genmarshal tools the GTK build invokes). `file`
+# is required by src/Makefile.am's infocontrib.h rule.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
+        build-essential \
+        byacc \
+        ca-certificates \
+        dos2unix \
+        file \
+        flex \
+        libasound2-dev \
+        libcurl4-openssl-dev \
+        libevdev-dev \
+        libflac-dev \
+        libgif-dev \
+        libglew-dev \
+        libglib2.0-dev \
+        libglib2.0-dev-bin \
+        libgtk-3-dev \
+        libieee1284-3-dev \
+        libmp3lame-dev \
+        libmpg123-dev \
+        libpcap-dev \
+        libpng-dev \
+        libpulse-dev \
+        libvorbis-dev \
+        pkg-config \
+        texinfo \
+        xa65 \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . /src
+
+# --prefix=/opt/vice so the runtime stage copies one self-contained tree.
+# PNG, libcurl, PulseAudio, reSID, HardSID and cpu-history are on by default;
+# the flags below add the GTK3 UI and the remaining optional features.
+RUN ./autogen.sh \
+    && ./configure \
+        --prefix=/opt/vice \
+        --enable-gtk3ui \
+        --with-alsa \
+        --enable-midi \
+        --enable-ethernet \
+        --enable-parsid \
+        --with-libieee1284 \
+        --with-flac \
+        --with-vorbis \
+        --with-mpg123 \
+        --with-lame \
+        --with-gif \
+        --disable-html-docs \
+        --disable-realdevice \
+    && make -j"$(nproc)" \
+    && make install \
+    && (strip /opt/vice/bin/* || true)
+
+# ---------------------------------------------------------------------------
+# Stage 2: runtime
+# ---------------------------------------------------------------------------
+FROM debian:bookworm-slim AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Runtime shared libraries the installed binaries link against, plus Xvfb (so
+# the GTK3 UI runs without a host X server) and ffmpeg (video capture driver).
+# libgtk-3-0 pulls in the Pango/Cairo/gdk-pixbuf stack transitively.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        libasound2 \
+        libcurl4 \
+        libevdev2 \
+        libflac12 \
+        libgif7 \
+        libgl1-mesa-dri \
+        libglew2.2 \
+        libglib2.0-0 \
+        libgtk-3-0 \
+        libieee1284-3 \
+        libmp3lame0 \
+        libmpg123-0 \
+        libpcap0.8 \
+        libpng16-16 \
+        libpulse0 \
+        libvorbis0a \
+        libvorbisenc2 \
+        xauth \
+        xvfb \
+        zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/vice /opt/vice
+COPY docker/x11-entrypoint.sh /usr/local/bin/x11-entrypoint.sh
+RUN chmod +x /usr/local/bin/x11-entrypoint.sh
+
+ENV PATH=/opt/vice/bin:$PATH
+
+# VICE writes its config/state/log under these; pre-create so a fresh run does
+# not fail trying to create them.
+RUN mkdir -p /root/.config/vice /root/.local/state/vice /root/.cache/vice
+
+# Working directory for mounting disk/prg/snapshot images.
+WORKDIR /work
+
+# Binary monitor port. Use `-p 6502:6502` on `docker run` to expose it.
+EXPOSE 6502
+
+# x11-entrypoint.sh brings up Xvfb (unless DISPLAY is already set) then execs
+# the CMD. Extra `docker run` arguments replace the CMD and are passed to
+# x64sc (e.g. `-autostart /work/foo.d64`).
+ENTRYPOINT ["/usr/local/bin/x11-entrypoint.sh"]
+CMD [ \
+    "x64sc", \
+    "-default", \
+    "-warp", \
+    "-binarymonitor", \
+    "-binarymonitoraddress", "ip4://0.0.0.0:6502" \
+]
