@@ -6,6 +6,7 @@ sudo apt-get -qy install \
   build-essential \
   byacc \
   dos2unix \
+  file \
   flex \
   libasound2-dev \
   libcurl4-openssl-dev \
@@ -15,8 +16,9 @@ sudo apt-get -qy install \
   libgtk-3-dev \
   libpng-dev \
   libpulse-dev \
+  texinfo \
   texmaker \
   xa65
 ./autogen.sh
-./configure --with-alsa
+./configure --with-alsa --disable-html-docs
 make -j

@@ -123,7 +123,7 @@ dist/
 *.dockerignore.bak
 
 # --- existing alternate Dockerfile ---------------------------------------
-# The fork already ships Dockerfile.2410 (a thin wrapper around build.sh).
+# The fork already ships Dockerfile.2604 (a thin wrapper around build.sh).
 # It's source, not output, so it stays in the context, but listing it here
 # makes the dependency explicit if someone removes it later.
-# Dockerfile.2410
+# Dockerfile.2604
