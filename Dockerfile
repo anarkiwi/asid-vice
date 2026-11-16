@@ -65,6 +65,7 @@ COPY . /src
 # tree. Headless UI, no docs, no real-device (OpenCBM), no SDL/GTK.
 RUN ./autogen.sh \
     && ./configure \
+        --disable-arch \
         --prefix=/opt/vice \
         --enable-headlessui \
         --with-alsa \
