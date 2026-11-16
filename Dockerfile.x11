@@ -75,6 +75,7 @@ COPY . /src
 # the flags below add the GTK3 UI and the remaining optional features.
 RUN ./autogen.sh \
     && ./configure \
+        --disable-arch \
         --prefix=/opt/vice \
         --enable-gtk3ui \
         --with-alsa \
