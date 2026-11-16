@@ -903,18 +903,24 @@ static void monitor_binary_process_drive_attach(binary_command_t *command)
 /*
  * VIDEO_RECORD (0x79)
  *
- * Start or stop native VICE video recording of the emulated screen to a
- * host-side file, using the in-tree ZMBV gfxoutput driver (lossless ZMBV
- * inside an AVI container; depends only on zlib, no external ffmpeg).
+ * Start, stop, pause or resume recording of the emulated screen to a
+ * host-side file, in one of two modes: the in-tree ZMBV gfxoutput driver
+ * (lossless ZMBV inside an AVI container), or a rendered recording of every
+ * frame after the video chip's render filter (CRT emulation), scaled to a
+ * requested height and encoded to H.264 by the external ffmpeg binary.
  *
- * Request body:
- *     u8  action      0 = stop recording (finalize/close the file)
- *                     1 = start recording
- *     u8  path_len    length of path (only used when action == 1)
- *     u8  path[path_len]   ASCII path inside the emulator process's file
- *                          system. NOT NUL-terminated. Should end in .avi.
+ * Request body (u8 action, then):
+ *     0 stop          -                   finalize whichever mode records
+ *     1 start ZMBV    u8 len, path[len]   path should end in .avi
+ *     2 start render  u16 LE height (>0), u8 len, path[len]
+ *     3 pause         -                   rendered frames not encoded
+ *     4 resume        -
+ * Paths are NOT NUL-terminated, 1..255 bytes, in the emulator's file system.
  *
- * Response: empty body, e_MON_ERR_OK on success.
+ * Response: empty body, e_MON_ERR_OK on success; e_MON_ERR_CMD_INVALID_LENGTH
+ * for a malformed body or unknown action; e_MON_ERR_CMD_FAILURE when a start
+ * finds either mode already recording or the recorder refuses, or pause/resume
+ * has no rendered recording.
  *
  * Why this exists:
  *
@@ -924,16 +930,16 @@ static void monitor_binary_process_drive_attach(binary_command_t *command)
  * emulator from the outside (CI tests, headless rendering pipelines) need a
  * real, playable capture of gameplay rather than a stitched-together GIF.
  *
- * Recording is driven per emulated frame by screenshot_record() out of the
- * machine vsync hook. screenshot_save_core() deliberately skips encoding
- * while warp mode is active (warped frames are produced far faster than a
- * playable video can represent), so starting a recording forces warp OFF and
- * stopping it restores the prior warp state. This lets a warp-booted harness
- * record a normal-speed clip and then resume warping.
+ * ZMBV recording is driven per emulated frame by screenshot_record() out of
+ * the machine vsync hook. screenshot_save_core() deliberately skips encoding
+ * while warp mode is active, so starting a ZMBV recording forces warp OFF and
+ * stopping it restores the prior warp state. A rendered recording leaves warp
+ * alone and encodes every frame, warped or not.
  *
- * The body parsing, the already-recording guard and the warp save/restore
- * policy live in the revice video core (libs/video); this wiring only maps the
- * core's result to the binmon response/error. See mon_video.h.
+ * The body parsing, mode and pause state, the already-recording guard and the
+ * warp save/restore policy live in the revice video core (libs/video); this
+ * wiring only maps the core's result to the binmon response/error. See
+ * mon_video.h.
  */
 static void monitor_binary_process_video_record(binary_command_t *command)
 {
